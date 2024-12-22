@@ -12,6 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { usePlayer } from "@/components/layout/MainLayout";
 import { SendPlaylistDialog } from "./SendPlaylistDialog";
+import { websocketService } from "@/services/websocketService";
 
 interface PlaylistCardProps {
   playlist: {
@@ -34,6 +35,10 @@ export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: Playli
   
   const handlePlay = () => {
     setShowPlayer(true);
+    websocketService.sendMessage({
+      type: 'playlist',
+      data: playlist
+    });
     onPlay(playlist._id);
   };
 
