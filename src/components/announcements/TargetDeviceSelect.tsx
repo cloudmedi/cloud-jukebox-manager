@@ -36,12 +36,12 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
     },
   });
 
-  const filteredDevices = devices.filter((device: any) =>
+  const filteredDevices = (devices || []).filter((device: any) =>
     device?.name?.toLowerCase().includes(deviceSearch.toLowerCase()) ||
     device?.location?.toLowerCase().includes(deviceSearch.toLowerCase())
   );
 
-  const filteredGroups = groups.filter((group: any) =>
+  const filteredGroups = (groups || []).filter((group: any) =>
     group?.name?.toLowerCase().includes(groupSearch.toLowerCase())
   );
 
@@ -62,7 +62,7 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
                   className="w-full justify-between"
                 >
                   {field.value?.[0]
-                    ? devices.find((device: any) => device._id === field.value[0])?.name || "Cihaz seçin..."
+                    ? devices?.find((device: any) => device?._id === field.value[0])?.name || "Cihaz seçin..."
                     : "Cihaz seçin..."}
                   <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -118,7 +118,7 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
                   className="w-full justify-between"
                 >
                   {field.value?.[0]
-                    ? groups.find((group: any) => group._id === field.value[0])?.name || "Grup seçin..."
+                    ? groups?.find((group: any) => group?._id === field.value[0])?.name || "Grup seçin..."
                     : "Grup seçin..."}
                   <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
