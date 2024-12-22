@@ -42,6 +42,10 @@ const announcementSchema = new mongoose.Schema({
     min: 1,
     default: null
   },
+  immediateInterrupt: {
+    type: Boolean,
+    default: false
+  },
   specificTimes: [{
     type: String,
     validate: {
