@@ -1,51 +1,54 @@
-const { defineConfig } = require('electron-vite');
-const { resolve } = require('path');
-const react = require('@vitejs/plugin-react-swc');
+const { defineConfig } = require('electron-vite')
+const react = require('@vitejs/plugin-react-swc')
+const path = require('path')
 
 module.exports = defineConfig({
   main: {
     build: {
-      rollupOptions: {
-        input: {
-          index: resolve(__dirname, 'src/main/index.js')
-        },
-        external: ['electron', 'electron-store', 'os', 'path', 'axios']
-      },
       outDir: 'out/main',
-      lib: {
-        entry: 'src/main/index.js',
-        formats: ['cjs']
-      },
-      // Services dosyalarını kopyalamak için
-      copyFiles: [
-        {
-          from: 'src/main/services',
-          to: 'out/main/services'
-        }
-      ]
+      rollupOptions: {
+        external: [
+          'electron',
+          'electron-store',
+          'os',
+          'path',
+          'axios',
+          'systeminformation',
+          'uuid',
+          'sonner',
+          'node-fetch',
+          'fs-extra',
+          'crypto',
+          'clsx',
+          'tailwind-merge',
+          'lucide-react',
+          'bufferutil',
+          'utf-8-validate',
+          'ws'
+        ]
+      }
     }
   },
   preload: {
     build: {
-      rollupOptions: {
-        input: {
-          index: resolve(__dirname, 'src/preload/index.js')
-        },
-        external: ['electron']
-      },
       outDir: 'out/preload'
     }
   },
   renderer: {
     root: '.',
     build: {
+      outDir: 'out/renderer',
       rollupOptions: {
         input: {
-          index: resolve(__dirname, 'index.html')
+          index: path.join(__dirname, 'index.html')
         }
-      },
-      outDir: 'out/renderer'
+      }
     },
-    plugins: [react()]
+    plugins: [react()],
+    resolve: {
+      alias: {
+        '@': path.resolve(__dirname, 'src')
+      }
+    }
   }
-});
+})
