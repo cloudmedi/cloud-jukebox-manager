@@ -2,6 +2,7 @@
   "name": "cloud-media-player",
   "version": "1.0.0",
   "description": "Cloud Media Player Desktop Application",
+  "type": "module",
   "main": "dist-electron/main/index.js",
   "scripts": {
     "format": "prettier --write .",
