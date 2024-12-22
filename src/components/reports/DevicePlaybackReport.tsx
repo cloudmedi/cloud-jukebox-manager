@@ -1,13 +1,11 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { DatePickerWithRange } from "@/components/ui/date-picker";
 import { addDays } from "date-fns";
 import { Download, Loader2, Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import jsPDF from "jspdf";
+import { jsPDF } from "jspdf"; 
 import autoTable from "jspdf-autotable";
 import { useToast } from "@/hooks/use-toast";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
