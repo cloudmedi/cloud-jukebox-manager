@@ -35,8 +35,12 @@ class AudioPlayer {
     }
 
     try {
+      // Dosya yolunu file:// protokolü ile başlayacak şekilde düzenle
+      const filePath = `file://${song.localPath}`.replace(/\\/g, '/');
+      console.log('Playing file from:', filePath);
+
       this.currentSound = new Howl({
-        src: [song.localPath],
+        src: [filePath],
         format: ['mp3'],
         html5: true,
         volume: this.volume,
@@ -45,7 +49,7 @@ class AudioPlayer {
         },
         onloaderror: (id, error) => {
           console.error('Song loading error:', error);
-          console.error('Song path:', song.localPath);
+          console.error('Song path:', filePath);
           this.playNext();
         },
         onplay: () => {
