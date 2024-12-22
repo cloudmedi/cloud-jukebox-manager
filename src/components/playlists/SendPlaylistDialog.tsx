@@ -26,7 +26,18 @@ export const SendPlaylistDialog = ({ isOpen, onClose, playlist }: SendPlaylistDi
 
   const onSubmit = async (data: any) => {
     try {
-      if (data.targetDevices.length > 0) {
+      console.log("Gönderilen veriler:", data); // Debug için
+
+      if (!data.targetDevices?.length && !data.targetGroups?.length) {
+        toast({
+          variant: "destructive",
+          title: "Hata",
+          description: "En az bir cihaz veya grup seçmelisiniz",
+        });
+        return;
+      }
+
+      if (data.targetDevices?.length > 0) {
         const devicePromises = data.targetDevices.map((deviceId: string) =>
           fetch(`http://localhost:5000/api/devices/${deviceId}`, {
             method: "PATCH",
@@ -41,22 +52,24 @@ export const SendPlaylistDialog = ({ isOpen, onClose, playlist }: SendPlaylistDi
         await Promise.all(devicePromises);
       }
 
-      if (data.targetGroups.length > 0) {
+      if (data.targetGroups?.length > 0) {
         const groupResponse = await fetch(`http://localhost:5000/api/device-groups/${data.targetGroups[0]}`);
         const group = await groupResponse.json();
         
-        const groupDevicePromises = group.devices.map((deviceId: string) =>
-          fetch(`http://localhost:5000/api/devices/${deviceId}`, {
-            method: "PATCH",
-            headers: {
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              activePlaylist: playlist._id,
-            }),
-          })
-        );
-        await Promise.all(groupDevicePromises);
+        if (group?.devices?.length) {
+          const groupDevicePromises = group.devices.map((deviceId: string) =>
+            fetch(`http://localhost:5000/api/devices/${deviceId}`, {
+              method: "PATCH",
+              headers: {
+                "Content-Type": "application/json",
+              },
+              body: JSON.stringify({
+                activePlaylist: playlist._id,
+              }),
+            })
+          );
+          await Promise.all(groupDevicePromises);
+        }
       }
 
       toast({
@@ -65,6 +78,7 @@ export const SendPlaylistDialog = ({ isOpen, onClose, playlist }: SendPlaylistDi
       });
       onClose();
     } catch (error) {
+      console.error("Gönderme hatası:", error); // Debug için
       toast({
         variant: "destructive",
         title: "Hata",
@@ -86,14 +100,20 @@ export const SendPlaylistDialog = ({ isOpen, onClose, playlist }: SendPlaylistDi
               <div>
                 <DeviceSelect 
                   form={form} 
-                  onSelect={(value) => form.setValue("targetDevices", [value])}
+                  onSelect={(value) => {
+                    console.log("Seçilen cihaz:", value); // Debug için
+                    form.setValue("targetDevices", [value]);
+                  }}
                 />
               </div>
 
               <div>
                 <GroupSelect 
                   form={form} 
-                  onSelect={(value) => form.setValue("targetGroups", [value])}
+                  onSelect={(value) => {
+                    console.log("Seçilen grup:", value); // Debug için
+                    form.setValue("targetGroups", [value]);
+                  }}
                 />
               </div>
             </div>
