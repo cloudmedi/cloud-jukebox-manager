@@ -32,21 +32,26 @@ interface DeviceFormProps {
 
 const DeviceForm = ({ onSuccess, initialData }: DeviceFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deviceInfo, setDeviceInfo] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const form = useForm<FormData>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      name: initialData?.name || "",
-      token: initialData?.token || "",
-      location: initialData?.location || "",
-      volume: initialData?.volume || 50,
-    },
-  });
+  const validateToken = async (token: string) => {
+    const response = await fetch(`http://localhost:5000/api/tokens/validate/${token}`);
+    if (!response.ok) {
+      throw new Error("Geçersiz token");
+    }
+    const data = await response.json();
+    setDeviceInfo(data.deviceInfo);
+    return data;
+  };
 
   const createDevice = useMutation({
     mutationFn: async (data: FormData) => {
+      // Önce token'ı doğrula
+      await validateToken(data.token);
+
+      // Cihazı oluştur
       const response = await fetch("http://localhost:5000/api/devices", {
         method: "POST",
         headers: {
@@ -58,6 +63,11 @@ const DeviceForm = ({ onSuccess, initialData }: DeviceFormProps) => {
       if (!response.ok) {
         throw new Error("Cihaz eklenirken bir hata oluştu");
       }
+
+      // Token'ı kullanıldı olarak işaretle
+      await fetch(`http://localhost:5000/api/tokens/${data.token}/use`, {
+        method: "PATCH",
+      });
 
       return response.json();
     },
@@ -119,6 +129,24 @@ const DeviceForm = ({ onSuccess, initialData }: DeviceFormProps) => {
                     placeholder="6 haneli token" 
                     maxLength={6}
                     {...field} 
+                    onChange={async (e) => {
+                      field.onChange(e);
+                      if (e.target.value.length === 6) {
+                        try {
+                          await validateToken(e.target.value);
+                          toast({
+                            title: "Token Doğrulandı",
+                            description: "Token geçerli ve kullanılabilir.",
+                          });
+                        } catch (error) {
+                          toast({
+                            variant: "destructive",
+                            title: "Geçersiz Token",
+                            description: "Token geçersiz veya daha önce kullanılmış.",
+                          });
+                        }
+                      }
+                    }}
                   />
                 </FormControl>
                 <FormMessage />
@@ -160,6 +188,15 @@ const DeviceForm = ({ onSuccess, initialData }: DeviceFormProps) => {
               </FormItem>
             )}
           />
+
+          {deviceInfo && (
+            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
+              <h3 className="font-semibold mb-2">Cihaz Bilgileri:</h3>
+              <p>Platform: {deviceInfo.platform}</p>
+              <p>İşlemci: {deviceInfo.cpus}</p>
+              <p>Toplam Bellek: {deviceInfo.totalMemory}</p>
+            </div>
+          )}
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? "Ekleniyor..." : "Cihaz Ekle"}
