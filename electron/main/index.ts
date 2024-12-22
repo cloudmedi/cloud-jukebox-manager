@@ -1,7 +1,9 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import path from 'path';
+import DeviceService from './services/deviceService';
 
 let mainWindow: BrowserWindow | null = null;
+let deviceService: any = null;
 
 async function createWindow() {
   mainWindow = new BrowserWindow({
@@ -15,17 +17,25 @@ async function createWindow() {
     autoHideMenuBar: true
   });
 
-  // Development mode - load local URL
   if (process.env.VITE_DEV_SERVER_URL) {
     await mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
     mainWindow.webContents.openDevTools();
   } else {
-    // Production - load built files
     await mainWindow.loadFile(path.join(__dirname, '../../dist/index.html'));
   }
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(async () => {
+  // DeviceService'i app hazır olduktan sonra başlat
+  deviceService = DeviceService.getInstance();
+  await createWindow();
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -33,8 +43,7 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
+// IPC handlers'ı app hazır olduktan sonra kaydet
+ipcMain.handle('get-device-info', () => {
+  return deviceService.getDeviceInfo();
 });

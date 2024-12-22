@@ -1,17 +1,26 @@
-const { v4: uuidv4 } = require('uuid');
-const os = require('os');
 const Store = require('electron-store');
+const os = require('os');
+const { v4: uuidv4 } = require('uuid');
 
 class DeviceService {
   static instance = null;
+  store = null;
 
   constructor() {
-    this.store = new Store({
-      name: 'device-config'
-    });
-
-    if (!this.store.get('deviceInfo')) {
-      this.initializeDeviceInfo();
+    // Store'u lazy loading ile başlat
+    if (!this.store) {
+      try {
+        this.store = new Store({
+          name: 'device-config',
+          defaults: {
+            deviceInfo: null
+          }
+        });
+        console.log('Store initialized successfully');
+      } catch (error) {
+        console.error('Failed to initialize store:', error);
+        throw new Error('Store initialization failed');
+      }
     }
   }
 
@@ -33,27 +42,52 @@ class DeviceService {
       createdAt: new Date().toISOString()
     };
 
-    this.store.set('deviceInfo', deviceInfo);
-    return deviceInfo;
+    try {
+      this.store.set('deviceInfo', deviceInfo);
+      console.log('Device info initialized:', deviceInfo);
+      return deviceInfo;
+    } catch (error) {
+      console.error('Failed to initialize device info:', error);
+      throw error;
+    }
   }
 
   generateToken() {
-    return Math.random().toString().slice(2, 8);
+    return Math.random().toString(36).substring(2, 8);
   }
 
   getDeviceInfo() {
-    return this.store.get('deviceInfo');
+    try {
+      let deviceInfo = this.store.get('deviceInfo');
+      if (!deviceInfo) {
+        deviceInfo = this.initializeDeviceInfo();
+      }
+      return deviceInfo;
+    } catch (error) {
+      console.error('Failed to get device info:', error);
+      throw error;
+    }
   }
 
   updateDeviceInfo(updates) {
-    const currentInfo = this.getDeviceInfo();
-    const updatedInfo = { ...currentInfo, ...updates };
-    this.store.set('deviceInfo', updatedInfo);
-    return updatedInfo;
+    try {
+      const currentInfo = this.getDeviceInfo();
+      const updatedInfo = { ...currentInfo, ...updates };
+      this.store.set('deviceInfo', updatedInfo);
+      return updatedInfo;
+    } catch (error) {
+      console.error('Failed to update device info:', error);
+      throw error;
+    }
   }
 
   clearDeviceInfo() {
-    this.store.delete('deviceInfo');
+    try {
+      this.store.delete('deviceInfo');
+    } catch (error) {
+      console.error('Failed to clear device info:', error);
+      throw error;
+    }
   }
 }
 
