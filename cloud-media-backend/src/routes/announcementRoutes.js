@@ -36,8 +36,13 @@ router.post('/', async (req, res) => {
     content: req.body.content,
     audioFile: req.body.audioFile,
     duration: req.body.duration,
-    priority: req.body.priority,
-    schedule: req.body.schedule,
+    startDate: req.body.startDate,
+    endDate: req.body.endDate,
+    scheduleType: req.body.scheduleType,
+    songInterval: req.body.songInterval,
+    minuteInterval: req.body.minuteInterval,
+    immediateInterrupt: req.body.immediateInterrupt,
+    specificTimes: req.body.specificTimes,
     targetDevices: req.body.targetDevices,
     targetGroups: req.body.targetGroups,
     createdBy: req.body.createdBy
@@ -59,8 +64,27 @@ router.patch('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Anons bulunamadı' });
     }
 
-    Object.keys(req.body).forEach(key => {
-      announcement[key] = req.body[key];
+    const allowedUpdates = [
+      'title',
+      'content',
+      'audioFile',
+      'duration',
+      'startDate',
+      'endDate',
+      'scheduleType',
+      'songInterval',
+      'minuteInterval',
+      'immediateInterrupt',
+      'specificTimes',
+      'targetDevices',
+      'targetGroups',
+      'status'
+    ];
+
+    allowedUpdates.forEach(update => {
+      if (req.body[update] !== undefined) {
+        announcement[update] = req.body[update];
+      }
     });
 
     const updatedAnnouncement = await announcement.save();
@@ -90,14 +114,43 @@ router.get('/active/now', async (req, res) => {
     const now = new Date();
     const activeAnnouncements = await Announcement.find({
       status: 'active',
-      'schedule.startDate': { $lte: now },
-      'schedule.endDate': { $gte: now }
-    }).populate('targetDevices').populate('targetGroups');
+      startDate: { $lte: now },
+      endDate: { $gte: now }
+    })
+    .populate('targetDevices')
+    .populate('targetGroups');
     
     res.json(activeAnnouncements);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
+
+// Belirli bir cihaz için çalınması gereken anosları getir
+router.get('/device/:deviceId', async (req, res) => {
+  try {
+    const now = new Date();
+    const deviceAnnouncements = await Announcement.find({
+      status: 'active',
+      startDate: { $lte: now },
+      endDate: { $gte: now },
+      $or: [
+        { targetDevices: req.params.deviceId },
+        { targetGroups: { $in: await getDeviceGroupIds(req.params.deviceId) } }
+      ]
+    });
+    
+    res.json(deviceAnnouncements);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Yardımcı fonksiyon: Cihazın bağlı olduğu grupların ID'lerini getir
+async function getDeviceGroupIds(deviceId) {
+  const Device = require('../models/Device');
+  const device = await Device.findById(deviceId);
+  return device ? device.groups : [];
+}
 
 module.exports = router;
