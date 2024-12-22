@@ -1,4 +1,4 @@
-import DeviceList from "@/components/devices/DeviceList";
+import { DeviceList } from "@/components/devices/DeviceList";
 import DeviceGroups from "@/components/devices/DeviceGroups";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";

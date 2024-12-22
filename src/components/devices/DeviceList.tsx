@@ -1,26 +1,31 @@
 import { useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { deviceService } from "@/services/deviceService";
 import { DeviceTableHeader } from "./DeviceTableHeader";
 import { DeviceTableRow } from "./DeviceTableRow";
 import { Table, TableBody } from "@/components/ui/table";
 import websocketService from "@/services/websocketService";
+import { Device } from "@/services/deviceService";
 
 export const DeviceList = () => {
   const queryClient = useQueryClient();
   
   const { data: devices, isLoading } = useQuery({
     queryKey: ['devices'],
-    queryFn: deviceService.getDevices,
+    queryFn: async () => {
+      const response = await fetch("http://localhost:5000/api/devices");
+      if (!response.ok) {
+        throw new Error("Cihazlar yüklenirken bir hata oluştu");
+      }
+      return response.json();
+    },
   });
 
   useEffect(() => {
-    // Cihaz durumu değişikliklerini dinle
     websocketService.addMessageHandler('deviceStatus', (data) => {
-      queryClient.setQueryData(['devices'], (oldDevices: any) => {
+      queryClient.setQueryData(['devices'], (oldDevices: Device[] | undefined) => {
         if (!oldDevices) return oldDevices;
         
-        return oldDevices.map((device: any) => {
+        return oldDevices.map((device) => {
           if (device.token === data.token) {
             return { ...device, ...data };
           }
@@ -35,7 +40,11 @@ export const DeviceList = () => {
   }, [queryClient]);
 
   if (isLoading) {
-    return <div>Yükleniyor...</div>;
+    return (
+      <div className="flex items-center justify-center h-[200px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+      </div>
+    );
   }
 
   return (
@@ -43,7 +52,7 @@ export const DeviceList = () => {
       <Table>
         <DeviceTableHeader />
         <TableBody>
-          {devices?.map((device) => (
+          {devices?.map((device: Device) => (
             <DeviceTableRow key={device._id} device={device} />
           ))}
         </TableBody>
