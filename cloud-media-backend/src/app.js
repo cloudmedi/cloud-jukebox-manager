@@ -14,11 +14,12 @@ connectDB();
 const uploadsDir = path.join(__dirname, '../uploads');
 const playlistsDir = path.join(uploadsDir, 'playlists');
 
+// Klasörleri oluştur ve izinleri ayarla
 if (!fs.existsSync(uploadsDir)) {
-  fs.mkdirSync(uploadsDir);
+  fs.mkdirSync(uploadsDir, { recursive: true, mode: 0o777 });
 }
 if (!fs.existsSync(playlistsDir)) {
-  fs.mkdirSync(playlistsDir);
+  fs.mkdirSync(playlistsDir, { recursive: true, mode: 0o777 });
 }
 
 // Middleware
