@@ -13,18 +13,12 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
 import { DialogTitle } from "@/components/ui/dialog";
 
 const formSchema = z.object({
   name: z.string().min(1, "Cihaz adı zorunludur"),
+  token: z.string().length(6, "Token 6 haneli olmalıdır").regex(/^\d+$/, "Token sadece rakam içermelidir"),
   location: z.string().min(1, "Konum zorunludur"),
   volume: z.number().min(0).max(100).default(50),
 });
@@ -45,6 +39,7 @@ const DeviceForm = ({ onSuccess, initialData }: DeviceFormProps) => {
     resolver: zodResolver(formSchema),
     defaultValues: {
       name: initialData?.name || "",
+      token: initialData?.token || "",
       location: initialData?.location || "",
       volume: initialData?.volume || 50,
     },
@@ -107,6 +102,24 @@ const DeviceForm = ({ onSuccess, initialData }: DeviceFormProps) => {
                 <FormLabel>Cihaz Adı</FormLabel>
                 <FormControl>
                   <Input placeholder="Örn: Mağaza-1" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="token"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Token</FormLabel>
+                <FormControl>
+                  <Input 
+                    placeholder="6 haneli token" 
+                    maxLength={6}
+                    {...field} 
+                  />
                 </FormControl>
                 <FormMessage />
               </FormItem>

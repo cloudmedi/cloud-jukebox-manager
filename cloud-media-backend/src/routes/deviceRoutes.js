@@ -18,8 +18,9 @@ router.get('/', async (req, res) => {
 router.post('/', async (req, res) => {
   const device = new Device({
     name: req.body.name,
-    token: Device.generateToken(),
-    location: req.body.location
+    token: req.body.token,
+    location: req.body.location,
+    volume: req.body.volume
   });
 
   try {
@@ -39,9 +40,7 @@ router.patch('/:id', async (req, res) => {
     }
 
     Object.keys(req.body).forEach(key => {
-      if (key !== 'token') { // Token güncellenemez
-        device[key] = req.body[key];
-      }
+      device[key] = req.body[key];
     });
 
     const updatedDevice = await device.save();

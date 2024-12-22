@@ -55,11 +55,6 @@ const deviceSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Token oluşturma için helper method
-deviceSchema.statics.generateToken = function() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-};
-
 // Cihaz durumunu güncelleme methodu
 deviceSchema.methods.updateStatus = function(isOnline) {
   this.isOnline = isOnline;
