@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { BasicInfoForm } from "./BasicInfoForm";
 import { PlaybackScheduleForm } from "./PlaybackScheduleForm";
+import { Form } from "@/components/ui/form";
 
 interface AnnouncementFormProps {
   announcement?: any;
@@ -82,64 +83,65 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
   };
 
   return (
-    <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-      <BasicInfoForm form={form} />
-      
-      <PlaybackScheduleForm form={form} />
+    <Form {...form}>
+      <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+        <BasicInfoForm form={form} />
+        <PlaybackScheduleForm form={form} />
 
-      {!announcement && (
-        <div className="space-y-2">
-          <label className="block text-sm font-medium text-gray-700">
-            Ses Dosyası
-          </label>
-          <div className="border-2 border-dashed rounded-lg p-8 text-center space-y-4">
-            <div className="flex flex-col items-center justify-center gap-2">
-              <div className="bg-primary/10 p-4 rounded-full">
-                <Upload className="h-8 w-8 text-primary" />
+        {!announcement && (
+          <div className="space-y-2">
+            <label className="block text-sm font-medium text-gray-700">
+              Ses Dosyası
+            </label>
+            <div className="border-2 border-dashed rounded-lg p-8 text-center space-y-4">
+              <div className="flex flex-col items-center justify-center gap-2">
+                <div className="bg-primary/10 p-4 rounded-full">
+                  <Upload className="h-8 w-8 text-primary" />
+                </div>
+                <div>
+                  <p className="text-sm text-muted-foreground">
+                    MP3 formatında ses dosyası yükleyin
+                  </p>
+                </div>
               </div>
-              <div>
-                <p className="text-sm text-muted-foreground">
-                  MP3 formatında ses dosyası yükleyin
-                </p>
+
+              <div className="flex justify-center">
+                <Button
+                  type="button"
+                  variant="outline"
+                  disabled={uploading}
+                  onClick={() => document.getElementById("file")?.click()}
+                >
+                  <Upload className="mr-2 h-4 w-4" />
+                  {uploading ? "Yükleniyor..." : "Dosya Seç"}
+                </Button>
+                <input
+                  id="file"
+                  name="file"
+                  type="file"
+                  accept="audio/*"
+                  className="hidden"
+                  required={!announcement}
+                />
               </div>
+
+              {uploading && (
+                <div className="space-y-2">
+                  <Progress value={progress} className="w-full" />
+                  <p className="text-sm text-muted-foreground">
+                    Yükleniyor... {progress}%
+                  </p>
+                </div>
+              )}
             </div>
-
-            <div className="flex justify-center">
-              <Button
-                type="button"
-                variant="outline"
-                disabled={uploading}
-                onClick={() => document.getElementById("file")?.click()}
-              >
-                <Upload className="mr-2 h-4 w-4" />
-                {uploading ? "Yükleniyor..." : "Dosya Seç"}
-              </Button>
-              <input
-                id="file"
-                name="file"
-                type="file"
-                accept="audio/*"
-                className="hidden"
-                required={!announcement}
-              />
-            </div>
-
-            {uploading && (
-              <div className="space-y-2">
-                <Progress value={progress} className="w-full" />
-                <p className="text-sm text-muted-foreground">
-                  Yükleniyor... {progress}%
-                </p>
-              </div>
-            )}
           </div>
-        </div>
-      )}
+        )}
 
-      <Button type="submit" disabled={uploading}>
-        {announcement ? 'Anonsu Güncelle' : 'Anons Oluştur'}
-      </Button>
-    </form>
+        <Button type="submit" disabled={uploading}>
+          {announcement ? 'Anonsu Güncelle' : 'Anons Oluştur'}
+        </Button>
+      </form>
+    </Form>
   );
 };
 

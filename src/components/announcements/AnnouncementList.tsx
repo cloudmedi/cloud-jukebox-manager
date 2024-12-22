@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Play, Pencil, Trash, MoreVertical, Calendar } from "lucide-react";
+import { Play, Pencil, Trash, MoreVertical } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -32,11 +32,9 @@ interface Announcement {
   audioFile: string;
   duration: number;
   status: string;
-  schedule: {
-    startDate: string;
-    endDate: string;
-    repeatType: string;
-  };
+  startDate: string;
+  endDate: string;
+  scheduleType: string;
   createdAt: string;
 }
 
@@ -45,13 +43,21 @@ const AnnouncementList = () => {
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
-  const { data: announcements, isLoading } = useQuery({
+  const { data: announcements, isLoading, error } = useQuery({
     queryKey: ["announcements"],
     queryFn: async () => {
-      const response = await fetch("http://localhost:5000/api/announcements");
-      if (!response.ok) throw new Error("Anonslar yüklenirken hata oluştu");
-      return response.json();
+      try {
+        const response = await fetch("http://localhost:5000/api/announcements");
+        if (!response.ok) {
+          throw new Error("API yanıt vermedi");
+        }
+        return response.json();
+      } catch (error) {
+        console.error("Veri çekme hatası:", error);
+        throw new Error("Anonslar yüklenirken hata oluştu");
+      }
     },
+    retry: 1,
   });
 
   const handleDelete = async (id: string) => {
@@ -85,6 +91,14 @@ const AnnouncementList = () => {
     return <div>Yükleniyor...</div>;
   }
 
+  if (error) {
+    return (
+      <div className="text-center p-4 text-red-500">
+        Anonslar yüklenirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.
+      </div>
+    );
+  }
+
   return (
     <>
       <div className="rounded-md border">
@@ -109,12 +123,12 @@ const AnnouncementList = () => {
                 <TableCell>{formatDuration(announcement.duration)}</TableCell>
                 <TableCell>{announcement.status}</TableCell>
                 <TableCell>
-                  {new Date(announcement.schedule.startDate).toLocaleDateString("tr-TR")}
+                  {new Date(announcement.startDate).toLocaleDateString("tr-TR")}
                 </TableCell>
                 <TableCell>
-                  {new Date(announcement.schedule.endDate).toLocaleDateString("tr-TR")}
+                  {new Date(announcement.endDate).toLocaleDateString("tr-TR")}
                 </TableCell>
-                <TableCell>{announcement.schedule.repeatType}</TableCell>
+                <TableCell>{announcement.scheduleType}</TableCell>
                 <TableCell>
                   <DropdownMenu>
                     <DropdownMenuTrigger asChild>
