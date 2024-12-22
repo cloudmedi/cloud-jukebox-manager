@@ -1,10 +1,10 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlayCircle, Smartphone, Calendar, Activity } from "lucide-react";
+import { PlayCircle, Smartphone, Calendar, Activity, Music } from "lucide-react";
 import PlaybackStats from "@/components/reports/PlaybackStats";
 import DeviceStats from "@/components/reports/DeviceStats";
 import ScheduleStats from "@/components/reports/ScheduleStats";
 import PerformanceStats from "@/components/reports/PerformanceStats";
+import DevicePlaybackReport from "@/components/reports/DevicePlaybackReport";
 
 const Reports = () => {
   return (
@@ -31,6 +31,10 @@ const Reports = () => {
             <Activity className="h-4 w-4" />
             Performans Metrikleri
           </TabsTrigger>
+          <TabsTrigger value="device-playback" className="flex items-center gap-2">
+            <Music className="h-4 w-4" />
+            Cihaz Çalma Raporu
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="playback">
@@ -47,6 +51,10 @@ const Reports = () => {
 
         <TabsContent value="performance">
           <PerformanceStats />
+        </TabsContent>
+
+        <TabsContent value="device-playback">
+          <DevicePlaybackReport />
         </TabsContent>
       </Tabs>
     </div>
