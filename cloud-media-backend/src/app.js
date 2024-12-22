@@ -38,6 +38,7 @@ app.use('/api/announcements', require('./routes/announcementRoutes'));
 app.use('/api/playlist-schedules', require('./routes/playlistScheduleRoutes'));
 app.use('/api/stats', require('./routes/statsRoutes'));
 app.use('/api/tokens', require('./routes/tokenRoutes'));
+app.use('/api/notifications', require('./routes/notificationRoutes'));
 
 const PORT = process.env.PORT || 5000;
 

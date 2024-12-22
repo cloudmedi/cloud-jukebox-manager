@@ -1,52 +1,78 @@
-import { Button } from "@/components/ui/button";
+import { Bell } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
-import { Bell } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useState } from "react";
+import { Badge } from "@/components/ui/badge";
 
 interface Notification {
   id: string;
+  type: 'playlist' | 'device' | 'announcement' | 'system' | 'user';
   title: string;
   message: string;
-  time: string;
   read: boolean;
+  createdAt: string;
 }
 
 export function NotificationsPopover() {
-  const [notifications, setNotifications] = useState<Notification[]>([
-    {
-      id: "1",
-      title: "Yeni Playlist",
-      message: "Yaz Hit 2024 playlistine 5 yeni şarkı eklendi",
-      time: "5 dakika önce",
-      read: false,
-    },
-    {
-      id: "2",
-      title: "Cihaz Durumu",
-      message: "Mağaza-1 cihazı çevrimdışı oldu",
-      time: "1 saat önce",
-      read: false,
-    },
-    {
-      id: "3",
-      title: "Sistem Bildirimi",
-      message: "Sistem güncellemesi başarıyla tamamlandı",
-      time: "2 saat önce",
-      read: true,
-    },
-  ]);
+  const { toast } = useToast();
 
-  const unreadCount = notifications.filter(n => !n.read).length;
+  const { data: notifications = [], isLoading } = useQuery({
+    queryKey: ['notifications'],
+    queryFn: async () => {
+      const response = await fetch('http://localhost:5000/api/notifications');
+      if (!response.ok) {
+        throw new Error('Bildirimler yüklenemedi');
+      }
+      return response.json();
+    },
+  });
 
-  const markAsRead = (id: string) => {
-    setNotifications(notifications.map(n => 
-      n.id === id ? { ...n, read: true } : n
-    ));
+  const unreadCount = notifications.filter((n: Notification) => !n.read).length;
+
+  const markAllAsRead = async () => {
+    try {
+      const response = await fetch('http://localhost:5000/api/notifications/mark-all-read', {
+        method: 'POST',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Bildirimler okundu olarak işaretlenemedi');
+      }
+
+      toast({
+        title: "Başarılı",
+        description: "Tüm bildirimler okundu olarak işaretlendi",
+      });
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description: "Bildirimler işaretlenirken bir hata oluştu",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const getNotificationIcon = (type: string) => {
+    switch (type) {
+      case 'playlist':
+        return '🎵';
+      case 'device':
+        return '📱';
+      case 'announcement':
+        return '📢';
+      case 'system':
+        return '⚙️';
+      case 'user':
+        return '👤';
+      default:
+        return '📌';
+    }
   };
 
   return (
@@ -55,47 +81,60 @@ export function NotificationsPopover() {
         <Button variant="ghost" size="icon" className="relative">
           <Bell className="h-5 w-5" />
           {unreadCount > 0 && (
-            <span className="absolute -top-1 -right-1 h-4 w-4 rounded-full bg-red-500 text-[10px] font-medium text-white flex items-center justify-center">
+            <Badge 
+              variant="destructive" 
+              className="absolute -top-1 -right-1 h-5 w-5 flex items-center justify-center p-0 text-xs"
+            >
               {unreadCount}
-            </span>
+            </Badge>
           )}
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-80">
-        <div className="flex justify-between items-center mb-2">
+        <div className="flex justify-between items-center mb-4">
           <h4 className="font-semibold">Bildirimler</h4>
           {unreadCount > 0 && (
-            <Button 
-              variant="ghost" 
-              size="sm"
-              onClick={() => setNotifications(notifications.map(n => ({ ...n, read: true })))}
-            >
+            <Button variant="ghost" size="sm" onClick={markAllAsRead}>
               Tümünü okundu işaretle
             </Button>
           )}
         </div>
         <ScrollArea className="h-[300px]">
-          <div className="space-y-2">
-            {notifications.map((notification) => (
-              <div
-                key={notification.id}
-                className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                  notification.read ? 'bg-background' : 'bg-muted/50'
-                }`}
-                onClick={() => markAsRead(notification.id)}
-              >
-                <div className="flex justify-between items-start mb-1">
-                  <h5 className="font-medium text-sm">{notification.title}</h5>
-                  <span className="text-xs text-muted-foreground">
-                    {notification.time}
-                  </span>
+          {isLoading ? (
+            <div className="flex items-center justify-center h-full">
+              <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+            </div>
+          ) : notifications.length === 0 ? (
+            <p className="text-center text-muted-foreground py-4">
+              Bildirim bulunmuyor
+            </p>
+          ) : (
+            <div className="space-y-2">
+              {notifications.map((notification: Notification) => (
+                <div
+                  key={notification.id}
+                  className={`p-3 rounded-lg ${
+                    notification.read ? 'bg-background' : 'bg-muted'
+                  }`}
+                >
+                  <div className="flex gap-2">
+                    <span>{getNotificationIcon(notification.type)}</span>
+                    <div className="space-y-1">
+                      <p className="text-sm font-medium leading-none">
+                        {notification.title}
+                      </p>
+                      <p className="text-sm text-muted-foreground">
+                        {notification.message}
+                      </p>
+                      <p className="text-xs text-muted-foreground">
+                        {new Date(notification.createdAt).toLocaleString('tr-TR')}
+                      </p>
+                    </div>
+                  </div>
                 </div>
-                <p className="text-sm text-muted-foreground">
-                  {notification.message}
-                </p>
-              </div>
-            ))}
-          </div>
+              ))}
+            </div>
+          )}
         </ScrollArea>
       </PopoverContent>
     </Popover>
