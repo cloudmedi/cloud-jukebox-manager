@@ -19,41 +19,38 @@ const announcementSchema = new mongoose.Schema({
     type: Number,
     required: [true, 'Anons süresi zorunludur']
   },
-  priority: {
+  startDate: {
+    type: Date,
+    required: [true, 'Başlangıç tarihi zorunludur']
+  },
+  endDate: {
+    type: Date,
+    required: [true, 'Bitiş tarihi zorunludur']
+  },
+  scheduleType: {
+    type: String,
+    enum: ['songs', 'minutes', 'specific'],
+    required: [true, 'Zamanlama tipi zorunludur']
+  },
+  songInterval: {
     type: Number,
-    default: 1,
     min: 1,
-    max: 5
+    default: null
   },
-  schedule: {
-    startDate: {
-      type: Date,
-      required: true
-    },
-    endDate: {
-      type: Date,
-      required: true
-    },
-    repeatType: {
-      type: String,
-      enum: ['once', 'daily', 'weekly', 'monthly'],
-      default: 'once'
-    },
-    repeatDays: [{
-      type: Number,
-      min: 0,
-      max: 6
-    }],
-    repeatTimes: [{
-      type: String,
-      validate: {
-        validator: function(v) {
-          return /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(v);
-        },
-        message: props => `${props.value} geçerli bir saat formatı değil!`
-      }
-    }]
+  minuteInterval: {
+    type: Number,
+    min: 1,
+    default: null
   },
+  specificTimes: [{
+    type: String,
+    validate: {
+      validator: function(v) {
+        return /^([01]?[0-9]|2[0-3]):[0-5][0-9]$/.test(v);
+      },
+      message: props => `${props.value} geçerli bir saat formatı değil!`
+    }
+  }],
   targetDevices: [{
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Device'
