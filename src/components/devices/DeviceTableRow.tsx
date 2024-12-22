@@ -65,12 +65,18 @@ export const DeviceTableRow = ({ device, style }: DeviceTableRowProps) => {
           </Tooltip>
         );
       default:
-        return (
-          <Badge variant="secondary">
-            Durum Bilinmiyor
-          </Badge>
-        );
+        return null;
     }
+  };
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleString('tr-TR', {
+      day: '2-digit',
+      month: '2-digit',
+      year: 'numeric',
+      hour: '2-digit',
+      minute: '2-digit'
+    });
   };
 
   return (
@@ -89,10 +95,12 @@ export const DeviceTableRow = ({ device, style }: DeviceTableRowProps) => {
         </Badge>
       </TableCell>
       <TableCell>{getPlaylistStatusBadge()}</TableCell>
-      <TableCell>{device.volume}%</TableCell>
       <TableCell>
-        {new Date(device.lastSeen).toLocaleString("tr-TR")}
+        <div className="flex items-center gap-2">
+          <span>{device.volume}%</span>
+        </div>
       </TableCell>
+      <TableCell>{formatDate(device.lastSeen)}</TableCell>
       <TableCell className="text-right">
         <DeviceActions device={device} />
       </TableCell>

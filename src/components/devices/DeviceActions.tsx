@@ -13,7 +13,6 @@ import {
   Volume2,
   Users,
   Info,
-  StopCircle,
   Trash2,
   MoreVertical,
 } from "lucide-react";
@@ -27,7 +26,7 @@ interface DeviceActionsProps {
     _id: string;
     isOnline: boolean;
     volume: number;
-    groupId?: string | null;  // Made groupId optional
+    groupId?: string | null;
   };
 }
 
@@ -69,17 +68,6 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
       queryClient.invalidateQueries({ queryKey: ['devices'] });
     } catch (error) {
       console.error('Group management error:', error);
-    }
-  };
-
-  const handleEmergencyStop = async () => {
-    if (!window.confirm('Cihazı acil olarak durdurmak istediğinizden emin misiniz?')) return;
-    
-    try {
-      await deviceService.emergencyStop(device._id);
-      queryClient.invalidateQueries({ queryKey: ['devices'] });
-    } catch (error) {
-      console.error('Emergency stop error:', error);
     }
   };
 
@@ -126,10 +114,6 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
           <DropdownMenuItem onClick={() => console.log('Device details')}>
             <Info className="mr-2 h-4 w-4" />
             Cihaz Detayları
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleEmergencyStop} className="text-red-600">
-            <StopCircle className="mr-2 h-4 w-4" />
-            Acil Durdur
           </DropdownMenuItem>
           <DropdownMenuItem onClick={handleDelete} className="text-red-600">
             <Trash2 className="mr-2 h-4 w-4" />
