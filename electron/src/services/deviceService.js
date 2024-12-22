@@ -1,14 +1,30 @@
+const { v4: uuidv4 } = require('uuid');
 const os = require('os');
-const Store = require('electron-store');
+
+let Store;
+
+// Dynamic import for electron-store
+import('electron-store').then(module => {
+  Store = module.default;
+}).catch(err => {
+  console.error('Failed to load electron-store:', err);
+});
 
 class DeviceService {
   static instance = null;
-  
+
   constructor() {
+    if (!Store) {
+      throw new Error('electron-store module not loaded');
+    }
+    
     this.store = new Store({
       name: 'device-config'
     });
-    this.deviceToken = this.store.get('deviceToken');
+
+    if (!this.store.get('deviceInfo')) {
+      this.initializeDeviceInfo();
+    }
   }
 
   static getInstance() {
@@ -18,42 +34,38 @@ class DeviceService {
     return DeviceService.instance;
   }
 
-  generateToken() {
-    if (this.deviceToken) return this.deviceToken;
-    
-    const token = Math.floor(100000 + Math.random() * 900000).toString();
-    this.setToken(token);
-    return token;
+  initializeDeviceInfo() {
+    const deviceInfo = {
+      id: uuidv4(),
+      token: this.generateToken(),
+      platform: os.platform(),
+      hostname: os.hostname(),
+      cpus: `${os.cpus()[0].model} (${os.cpus().length} cores)`,
+      totalMemory: `${Math.round(os.totalmem() / (1024 * 1024 * 1024))} GB`,
+      createdAt: new Date().toISOString()
+    };
+
+    this.store.set('deviceInfo', deviceInfo);
+    return deviceInfo;
   }
 
-  setToken(token) {
-    this.deviceToken = token;
-    this.store.set('deviceToken', token);
+  generateToken() {
+    return Math.random().toString().slice(2, 8);
   }
 
   getDeviceInfo() {
-    const networkInterfaces = Object.values(os.networkInterfaces())
-      .flat()
-      .filter(ni => ni !== undefined)
-      .map(ni => ni.address)
-      .filter(addr => addr && !addr.includes(':'));
-
-    return {
-      token: this.deviceToken || this.generateToken(),
-      hostname: os.hostname(),
-      platform: os.platform(),
-      arch: os.arch(),
-      cpus: `${os.cpus()[0].model} (${os.cpus().length} cores)`,
-      totalMemory: `${Math.round(os.totalmem() / (1024 * 1024 * 1024))} GB`,
-      freeMemory: `${Math.round(os.freemem() / (1024 * 1024 * 1024))} GB`,
-      networkInterfaces: networkInterfaces,
-      osVersion: os.release()
-    };
+    return this.store.get('deviceInfo');
   }
 
-  clearToken() {
-    this.deviceToken = null;
-    this.store.delete('deviceToken');
+  updateDeviceInfo(updates) {
+    const currentInfo = this.getDeviceInfo();
+    const updatedInfo = { ...currentInfo, ...updates };
+    this.store.set('deviceInfo', updatedInfo);
+    return updatedInfo;
+  }
+
+  clearDeviceInfo() {
+    this.store.delete('deviceInfo');
   }
 }
 
