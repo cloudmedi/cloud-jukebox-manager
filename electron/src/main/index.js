@@ -1,49 +1,40 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
-const { join } = require('path');
-const DeviceService = require('./services/deviceService');
-const ApiService = require('./services/apiService');
+const path = require('path');
+const DeviceService = require('../services/deviceService');
+const ApiService = require('../services/apiService');
 
-let mainWindow = null;
-const deviceService = DeviceService.getInstance();
-const apiService = ApiService.getInstance();
+let mainWindow;
+const deviceService = new DeviceService();
+const apiService = new ApiService();
 
-async function createWindow() {
+function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 900,
-    height: 670,
+    width: 1200,
+    height: 800,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: true,
-      preload: join(__dirname, '../preload/index.js')
-    },
-    autoHideMenuBar: true
-  });
-
-  const deviceInfo = deviceService.getDeviceInfo();
-  try {
-    await apiService.registerToken(deviceInfo);
-  } catch (error) {
-    console.error('Failed to register token:', error);
-  }
-
-  if (process.env.VITE_DEV_SERVER_URL) {
-    try {
-      await mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
-      mainWindow.webContents.openDevTools();
-    } catch (error) {
-      console.error('Failed to load dev server URL:', error);
-      await mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
+      preload: path.join(__dirname, '../preload/index.js')
     }
-  } else {
-    await mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
-  }
-
-  ipcMain.handle('get-device-info', () => {
-    return deviceService.getDeviceInfo();
   });
+
+  if (process.env.NODE_ENV === 'development') {
+    mainWindow.loadURL('http://localhost:5173');
+    mainWindow.webContents.openDevTools();
+  } else {
+    mainWindow.loadFile(path.join(__dirname, '../renderer/index.html'));
+  }
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(() => {
+  createWindow();
+
+  app.on('activate', () => {
+    if (BrowserWindow.getAllWindows().length === 0) {
+      createWindow();
+    }
+  });
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -51,8 +42,10 @@ app.on('window-all-closed', () => {
   }
 });
 
-app.on('activate', () => {
-  if (BrowserWindow.getAllWindows().length === 0) {
-    createWindow();
-  }
+ipcMain.handle('get-device-info', () => {
+  return deviceService.getDeviceInfo();
+});
+
+ipcMain.handle('api-request', async (event, { method, endpoint, data }) => {
+  return apiService.makeRequest(method, endpoint, data);
 });
