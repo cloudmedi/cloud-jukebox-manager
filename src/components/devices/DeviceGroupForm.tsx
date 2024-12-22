@@ -13,6 +13,7 @@ import { Badge } from "@/components/ui/badge";
 interface Device {
   _id: string;
   name: string;
+  location?: string;
 }
 
 interface DeviceGroup {
@@ -35,36 +36,25 @@ export const DeviceGroupForm = ({ group, onSuccess }: DeviceGroupFormProps) => {
   const [selectedDevices, setSelectedDevices] = useState<string[]>(group?.devices || []);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: devices } = useQuery({
+  const { data: devices = [] } = useQuery({
     queryKey: ["devices"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/devices");
       if (!response.ok) {
-        throw new Error("Cihazlar yüklenirken bir hata oluştu");
+        throw new Error("Cihazlar yüklenemedi");
       }
       return response.json();
     },
   });
 
   // Seçili cihazların detaylı bilgilerini getir
-  const { data: selectedDevicesData } = useQuery({
-    queryKey: ["selected-devices", selectedDevices],
-    queryFn: async () => {
-      if (!selectedDevices.length) return [];
-      const response = await fetch("http://localhost:5000/api/devices");
-      if (!response.ok) {
-        throw new Error("Seçili cihazlar yüklenirken bir hata oluştu");
-      }
-      const allDevices = await response.json();
-      return allDevices.filter((device: Device) => selectedDevices.includes(device._id));
-    },
-    enabled: selectedDevices.length > 0,
-  });
+  const selectedDevicesData = devices.filter((device: Device) => 
+    selectedDevices.includes(device._id)
+  );
 
-  // Seçili olmayan ve arama kriterine uyan cihazları filtrele
-  const filteredDevices = devices?.filter((device: Device) =>
-    device.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
-    !selectedDevices.includes(device._id)
+  // Arama kriterine uyan ve seçili olmayan cihazları filtrele
+  const filteredDevices = devices.filter((device: Device) =>
+    device.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -91,7 +81,7 @@ export const DeviceGroupForm = ({ group, onSuccess }: DeviceGroupFormProps) => {
       });
 
       if (!response.ok) {
-        throw new Error("Grup kaydedilirken bir hata oluştu");
+        throw new Error("Grup kaydedilemedi");
       }
 
       toast.success(group ? "Grup güncellendi" : "Grup oluşturuldu");
@@ -132,7 +122,7 @@ export const DeviceGroupForm = ({ group, onSuccess }: DeviceGroupFormProps) => {
         </div>
 
         {/* Seçili cihazları göster */}
-        {selectedDevicesData && selectedDevicesData.length > 0 && (
+        {selectedDevicesData.length > 0 && (
           <div>
             <Label>Seçili Cihazlar</Label>
             <div className="flex flex-wrap gap-2 mt-2 p-2 border rounded-md">
@@ -162,7 +152,7 @@ export const DeviceGroupForm = ({ group, onSuccess }: DeviceGroupFormProps) => {
             className="mb-2"
           />
           <ScrollArea className="h-[200px] border rounded-md p-2">
-            {filteredDevices?.map((device: Device) => (
+            {filteredDevices.map((device: Device) => (
               <div key={device._id} className="flex items-center space-x-2 py-2">
                 <Checkbox
                   id={device._id}
