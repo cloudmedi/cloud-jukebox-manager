@@ -23,16 +23,20 @@ class WebSocketService {
         token: token
       }));
 
-      // Uygulama açıldığında online durumunu bildir
-      this.sendStatus({
-        type: 'status',
-        isOnline: true
-      });
+      // Bağlantı kurulduktan sonra bir süre bekleyip online durumunu bildir
+      setTimeout(() => {
+        this.sendStatus({
+          type: 'status',
+          isOnline: true
+        });
+        console.log('Online durumu gönderildi');
+      }, 1000);
     });
 
     this.ws.on('message', (data) => {
       try {
         const message = JSON.parse(data);
+        console.log('Alınan mesaj:', message);
         this.handleMessage(message);
       } catch (error) {
         console.error('Message parsing error:', error);
@@ -108,6 +112,7 @@ class WebSocketService {
         type: 'volume',
         volume: volume
       });
+      console.log('Ses seviyesi güncellendi:', volume);
     } catch (error) {
       console.error('Set volume error:', error);
     }
@@ -115,21 +120,29 @@ class WebSocketService {
 
   sendStatus(status) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      console.log('Status gönderiliyor:', status);
       this.ws.send(JSON.stringify(status));
+    } else {
+      console.log('WebSocket bağlantısı kapalı, status gönderilemedi');
     }
   }
 
   disconnect() {
     if (this.ws) {
+      console.log('Uygulama kapatılıyor, offline durumu gönderiliyor');
+      
       // Uygulama kapatılmadan önce offline durumunu bildir
       this.sendStatus({
         type: 'status',
         isOnline: false
       });
       
-      // Bağlantıyı kapat
-      this.ws.close();
-      this.ws = null;
+      // Bağlantının kapanması için biraz bekle
+      setTimeout(() => {
+        this.ws.close();
+        this.ws = null;
+        console.log('WebSocket bağlantısı kapatıldı');
+      }, 500);
     }
   }
 }
