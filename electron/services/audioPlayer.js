@@ -13,47 +13,68 @@ class AudioPlayer {
   }
 
   loadPlaylist(playlist) {
+    console.log('Loading playlist:', playlist);
     this.playlist = playlist;
     this.currentIndex = 0;
     this.queue = [...playlist.songs];
+    console.log('Queue updated:', this.queue);
     this.loadCurrentSong();
   }
 
   loadCurrentSong() {
-    if (!this.playlist || !this.queue[this.currentIndex]) return;
+    if (!this.playlist || !this.queue[this.currentIndex]) {
+      console.log('No playlist or song to load');
+      return;
+    }
 
     const song = this.queue[this.currentIndex];
+    console.log('Loading song:', song);
+    
     if (this.currentSound) {
       this.currentSound.unload();
     }
 
-    this.currentSound = new Howl({
-      src: [song.localPath],
-      html5: true,
-      volume: this.volume,
-      onend: () => {
-        this.playNext();
-      },
-      onloaderror: (id, error) => {
-        console.error('Şarkı yükleme hatası:', error);
-        this.playNext();
-      },
-      onplay: () => {
-        this.updatePlaybackState('playing');
-      },
-      onpause: () => {
-        this.updatePlaybackState('paused');
-      },
-      onstop: () => {
-        this.updatePlaybackState('stopped');
-      }
-    });
+    try {
+      this.currentSound = new Howl({
+        src: [song.localPath],
+        format: ['mp3'],
+        html5: true,
+        volume: this.volume,
+        onload: () => {
+          console.log('Song loaded successfully:', song.name);
+        },
+        onloaderror: (id, error) => {
+          console.error('Song loading error:', error);
+          console.error('Song path:', song.localPath);
+          this.playNext();
+        },
+        onplay: () => {
+          console.log('Song started playing:', song.name);
+          this.updatePlaybackState('playing');
+        },
+        onend: () => {
+          console.log('Song ended, playing next');
+          this.playNext();
+        },
+        onpause: () => {
+          this.updatePlaybackState('paused');
+        },
+        onstop: () => {
+          this.updatePlaybackState('stopped');
+        }
+      });
+    } catch (error) {
+      console.error('Error creating Howl instance:', error);
+    }
   }
 
   play() {
+    console.log('Play requested');
     if (this.currentSound) {
       this.currentSound.play();
       this.isPlaying = true;
+    } else {
+      console.log('No sound loaded to play');
     }
   }
 
