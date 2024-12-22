@@ -1,13 +1,5 @@
 import { useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { MoreVertical, Play, Pencil, Trash2 } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
 import { useToast } from "@/hooks/use-toast";
 import {
   AlertDialog,
@@ -19,15 +11,8 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import {
-  Pagination,
-  PaginationContent,
-  PaginationEllipsis,
-  PaginationItem,
-  PaginationLink,
-  PaginationNext,
-  PaginationPrevious,
-} from "@/components/ui/pagination";
+import { PlaylistCard } from "./PlaylistCard";
+import { PlaylistPagination } from "./PlaylistPagination";
 
 interface Playlist {
   _id: string;
@@ -81,9 +66,23 @@ export const PlaylistList = ({ playlists, onPlaylistUpdate }: PlaylistListProps)
     }
   };
 
+  const handleEdit = (id: string) => {
+    // Edit functionality will be implemented later
+    console.log("Edit playlist:", id);
+  };
+
+  const handlePlay = (id: string) => {
+    // Play functionality will be implemented later
+    console.log("Play playlist:", id);
+  };
+
   if (!playlists?.length) {
     return (
-      <div className="text-center p-8 border rounded-lg bg-muted/10">
+      <div 
+        className="text-center p-8 border rounded-lg bg-muted/10"
+        role="alert"
+        aria-label="Boş playlist listesi"
+      >
         <p className="text-muted-foreground">Henüz playlist oluşturulmamış</p>
       </div>
     );
@@ -91,106 +90,32 @@ export const PlaylistList = ({ playlists, onPlaylistUpdate }: PlaylistListProps)
 
   return (
     <div className="space-y-6">
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+      <div 
+        className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+        role="list"
+        aria-label="Playlist listesi"
+      >
         {currentPlaylists.map((playlist) => (
-          <div
+          <PlaylistCard
             key={playlist._id}
-            className="border rounded-lg p-4 space-y-4 hover:shadow-md transition-shadow"
-          >
-            <div className="flex items-center justify-between">
-              <h3 className="font-semibold truncate">{playlist.name}</h3>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button variant="ghost" size="icon">
-                    <MoreVertical className="h-4 w-4" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuItem>
-                    <Play className="mr-2 h-4 w-4" />
-                    Oynat
-                  </DropdownMenuItem>
-                  <DropdownMenuItem>
-                    <Pencil className="mr-2 h-4 w-4" />
-                    Düzenle
-                  </DropdownMenuItem>
-                  <DropdownMenuItem 
-                    className="text-destructive"
-                    onClick={() => setPlaylistToDelete(playlist._id)}
-                  >
-                    <Trash2 className="mr-2 h-4 w-4" />
-                    Sil
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
-
-            <p className="text-sm text-muted-foreground line-clamp-2">
-              {playlist.description || "Açıklama yok"}
-            </p>
-
-            <div className="flex justify-between text-sm text-muted-foreground">
-              <span>{playlist.songs?.length || 0} şarkı</span>
-              <span>
-                {playlist.totalDuration
-                  ? `${Math.floor(playlist.totalDuration / 60)} dk`
-                  : "0 dk"}
-              </span>
-            </div>
-          </div>
+            playlist={playlist}
+            onDelete={setPlaylistToDelete}
+            onEdit={handleEdit}
+            onPlay={handlePlay}
+          />
         ))}
       </div>
 
-      {totalPages > 1 && (
-        <Pagination className="mt-6">
-          <PaginationContent>
-            <PaginationItem>
-              <PaginationPrevious 
-                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
-                disabled={currentPage === 1}
-              />
-            </PaginationItem>
-            
-            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
-              if (
-                page === 1 ||
-                page === totalPages ||
-                (page >= currentPage - 1 && page <= currentPage + 1)
-              ) {
-                return (
-                  <PaginationItem key={page}>
-                    <PaginationLink
-                      onClick={() => setCurrentPage(page)}
-                      isActive={currentPage === page}
-                    >
-                      {page}
-                    </PaginationLink>
-                  </PaginationItem>
-                );
-              } else if (
-                page === currentPage - 2 ||
-                page === currentPage + 2
-              ) {
-                return (
-                  <PaginationItem key={page}>
-                    <PaginationEllipsis />
-                  </PaginationItem>
-                );
-              }
-              return null;
-            })}
+      <PlaylistPagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={setCurrentPage}
+      />
 
-            <PaginationItem>
-              <PaginationNext 
-                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
-                disabled={currentPage === totalPages}
-              />
-            </PaginationItem>
-          </PaginationContent>
-        </Pagination>
-      )}
-
-      <AlertDialog open={!!playlistToDelete} onOpenChange={() => setPlaylistToDelete(null)}>
+      <AlertDialog 
+        open={!!playlistToDelete} 
+        onOpenChange={() => setPlaylistToDelete(null)}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Playlist'i Sil</AlertDialogTitle>
