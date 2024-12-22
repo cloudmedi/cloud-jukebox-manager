@@ -1,19 +1,14 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-contextBridge.exposeInMainWorld('electron', {
-  ipcRenderer: {
-    send(channel: string, data: any) {
-      ipcRenderer.send(channel, data);
-    },
-    on(channel: string, func: (...args: any[]) => void) {
-      const subscription = (_: any, ...args: any[]) => func(...args);
-      ipcRenderer.on(channel, subscription);
-      return () => {
-        ipcRenderer.removeListener(channel, subscription);
-      };
-    },
-    once(channel: string, func: (...args: any[]) => void) {
-      ipcRenderer.once(channel, (_, ...args) => func(...args));
-    },
+contextBridge.exposeInMainWorld('electronAPI', {
+  getDeviceInfo: () => ipcRenderer.invoke('get-device-info'),
+  onConnectionStatus: (callback: (status: string) => void) => {
+    ipcRenderer.on('connection-status', (_, status) => callback(status));
   },
+  onDeviceToken: (callback: (token: string) => void) => {
+    ipcRenderer.on('device-token', (_, token) => callback(token));
+  },
+  onWebSocketMessage: (callback: (message: any) => void) => {
+    ipcRenderer.on('ws-message', (_, message) => callback(message));
+  }
 });
