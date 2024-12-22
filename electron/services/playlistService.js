@@ -1,30 +1,41 @@
 const { app } = require('electron');
 const path = require('path');
-const fs = require('fs');
-const axios = require('axios');
 const Store = require('electron-store');
 const audioPlayer = require('./audioPlayer');
+const { PlaylistDownloader } = require('./PlaylistDownloader');
 
 class PlaylistService {
   constructor() {
     this.store = new Store();
     this.downloadPath = path.join(app.getPath('userData'), 'downloads');
-    this.currentDownloads = new Map();
-    this.ensureDirectories();
-  }
-
-  ensureDirectories() {
-    if (!fs.existsSync(this.downloadPath)) {
-      fs.mkdirSync(this.downloadPath, { recursive: true });
-    }
+    this.downloader = new PlaylistDownloader();
   }
 
   handlePlaylistMessage(playlist, ws) {
-    console.log('Playlist mesajı işleniyor:', playlist); // Debug için log ekledik
+    console.log('Playlist mesajı alındı:', playlist);
     
     try {
-      // Playlist indirme işlemini başlat
-      this.downloadPlaylist(playlist, ws);
+      this.downloader.downloadPlaylist(playlist, ws)
+        .then(() => {
+          // Playlist'i local veritabanına kaydet
+          this.savePlaylistToDb(playlist);
+          
+          // Çalmaya başla
+          audioPlayer.loadPlaylist(playlist);
+          audioPlayer.play();
+          
+          ws.send(JSON.stringify({
+            type: 'playlistReady',
+            playlistId: playlist._id
+          }));
+        })
+        .catch(error => {
+          console.error('Playlist indirme hatası:', error);
+          ws.send(JSON.stringify({
+            type: 'error',
+            error: error.message
+          }));
+        });
     } catch (error) {
       console.error('Playlist işleme hatası:', error);
       ws.send(JSON.stringify({
@@ -34,161 +45,11 @@ class PlaylistService {
     }
   }
 
-  async downloadPlaylist(playlist, ws) {
-    console.log('Playlist indirme başlatılıyor:', playlist._id); // Debug için log ekledik
-    
-    try {
-      const playlistPath = path.join(this.downloadPath, playlist._id);
-      
-      // İndirme durumunu kaydet
-      this.store.set(`download.${playlist._id}`, {
-        status: 'downloading',
-        progress: 0,
-        completedSongs: []
-      });
-
-      // Artwork indir (eğer varsa)
-      if (playlist.artwork) {
-        await this.downloadArtwork(playlist.artwork, playlistPath);
-      }
-
-      // Şarkıları sırayla indir
-      for (let i = 0; i < playlist.songs.length; i++) {
-        const song = playlist.songs[i];
-        console.log(`Şarkı indiriliyor (${i + 1}/${playlist.songs.length}):`, song.name); // Debug için log ekledik
-        
-        const songStatus = await this.downloadSong(song, playlistPath);
-        
-        if (songStatus.success) {
-          // Başarılı indirmeleri kaydet
-          const downloadState = this.store.get(`download.${playlist._id}`);
-          downloadState.completedSongs.push(song._id);
-          this.store.set(`download.${playlist._id}`, downloadState);
-        }
-
-        // İlerleme durumunu gönder
-        ws.send(JSON.stringify({
-          type: 'downloadProgress',
-          playlistId: playlist._id,
-          songId: song._id,
-          progress: Math.round(((i + 1) / playlist.songs.length) * 100)
-        }));
-      }
-
-      // Playlist'i local veritabanına kaydet
-      this.savePlaylistToDb(playlist, playlistPath);
-
-      // İndirme durumunu güncelle
-      this.store.set(`download.${playlist._id}`, {
-        status: 'completed',
-        progress: 100,
-        completedSongs: playlist.songs.map(s => s._id)
-      });
-
-      console.log('Playlist indirme tamamlandı:', playlist._id); // Debug için log ekledik
-
-      // Çalmaya başla
-      audioPlayer.loadPlaylist(playlist);
-      audioPlayer.play();
-
-    } catch (error) {
-      console.error('Playlist indirme hatası:', error);
-      throw error;
-    }
-  }
-
-  async downloadArtwork(artworkUrl, playlistPath) {
-    const artworkPath = path.join(playlistPath, 'artwork.jpg');
-    
-    // Eğer dosya zaten varsa tekrar indirme
-    if (fs.existsSync(artworkPath)) {
-      return artworkPath;
-    }
-
-    await this.downloadFile(artworkUrl, artworkPath);
-    return artworkPath;
-  }
-
-  async downloadSong(song, playlistPath) {
-    const songPath = path.join(playlistPath, `${song._id}.mp3`);
-    
-    // Yarım kalan indirmeyi kontrol et
-    const downloadState = this.store.get(`download.${song._id}`);
-    if (downloadState && downloadState.status === 'completed') {
-      return { success: true, path: songPath };
-    }
-
-    try {
-      await this.downloadFile(song.filePath, songPath, (progress) => {
-        this.sendProgress(ws, 'song', progress, song._id);
-      });
-
-      this.store.set(`download.${song._id}`, {
-        status: 'completed',
-        path: songPath
-      });
-
-      return { success: true, path: songPath };
-    } catch (error) {
-      console.error(`Şarkı indirme hatası (${song.name}):`, error);
-      this.store.set(`download.${song._id}`, {
-        status: 'error',
-        error: error.message
-      });
-
-      ws.send(JSON.stringify({
-        type: 'songError',
-        songId: song._id,
-        error: error.message
-      }));
-
-      return { success: false, error: error.message };
-    }
-  }
-
-  async downloadFile(url, filePath, onProgress) {
-    const dir = path.dirname(filePath);
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-
-    const response = await axios({
-      url,
-      method: 'GET',
-      responseType: 'stream',
-      onDownloadProgress: (progressEvent) => {
-        if (onProgress) {
-          const progress = Math.round(
-            (progressEvent.loaded * 100) / progressEvent.total
-          );
-          onProgress(progress);
-        }
-      }
-    });
-
-    const writer = fs.createWriteStream(filePath);
-    response.data.pipe(writer);
-
-    return new Promise((resolve, reject) => {
-      writer.on('finish', resolve);
-      writer.on('error', reject);
-    });
-  }
-
-  sendProgress(ws, type, progress, songId = null) {
-    ws.send(JSON.stringify({
-      type: 'downloadProgress',
-      downloadType: type,
-      progress,
-      songId
-    }));
-  }
-
-  savePlaylistToDb(playlist, playlistPath) {
+  savePlaylistToDb(playlist) {
+    const playlistPath = path.join(this.downloadPath, playlist._id);
     const playlistData = {
       _id: playlist._id,
       name: playlist.name,
-      artwork: path.join(playlistPath, 'artwork.jpg'),
       songs: playlist.songs.map(song => ({
         ...song,
         localPath: path.join(playlistPath, `${song._id}.mp3`)
@@ -205,7 +66,6 @@ class PlaylistService {
 
     Object.entries(downloads).forEach(([playlistId, download]) => {
       if (download.status === 'downloading') {
-        // Yarım kalan indirmeyi devam ettir
         const playlist = this.store.get(`playlists.${playlistId}`);
         if (playlist) {
           this.handlePlaylistMessage({ playlist }, ws);
