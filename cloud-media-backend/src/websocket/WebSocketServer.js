@@ -6,6 +6,7 @@ class WebSocketServer {
   constructor(server) {
     this.wss = new WebSocket.Server({ server });
     this.channelManager = new ChannelManager();
+    this.heartbeatInterval = 30000; // 30 saniye
     this.initialize();
   }
 
@@ -13,30 +14,57 @@ class WebSocketServer {
     this.wss.on('connection', async (ws, req) => {
       console.log('New WebSocket connection attempt');
 
+      // Heartbeat mekanizması
+      ws.isAlive = true;
+      ws.on('pong', () => {
+        ws.isAlive = true;
+      });
+
       if (req.url === '/admin') {
         this.handleAdminConnection(ws);
       } else {
         this.handleDeviceConnection(ws);
       }
     });
+
+    // Heartbeat kontrolü
+    this.startHeartbeat();
+  }
+
+  startHeartbeat() {
+    setInterval(() => {
+      this.wss.clients.forEach(ws => {
+        if (ws.isAlive === false) {
+          console.log('Client terminated due to heartbeat failure');
+          return ws.terminate();
+        }
+        
+        ws.isAlive = false;
+        ws.ping(() => {});
+      });
+    }, this.heartbeatInterval);
   }
 
   async handleAdminConnection(ws) {
     console.log('Admin client connected');
     this.channelManager.joinChannel('admin', 'admin-' + Date.now(), ws);
 
-    const devices = await Device.find({});
-    const deviceStatuses = devices.map(device => ({
-      type: 'deviceStatus',
-      token: device.token,
-      isOnline: device.isOnline,
-      volume: device.volume
-    }));
+    try {
+      const devices = await Device.find({});
+      const deviceStatuses = devices.map(device => ({
+        type: 'deviceStatus',
+        token: device.token,
+        isOnline: device.isOnline,
+        volume: device.volume
+      }));
 
-    ws.send(JSON.stringify({
-      type: 'initialState',
-      devices: deviceStatuses
-    }));
+      ws.send(JSON.stringify({
+        type: 'initialState',
+        devices: deviceStatuses
+      }));
+    } catch (error) {
+      console.error('Error fetching initial device states:', error);
+    }
 
     ws.on('message', async (message) => {
       try {
@@ -84,7 +112,7 @@ class WebSocketServer {
             deviceToken = device.token;
             console.log(`Device authenticated: ${deviceToken}`);
 
-            // Cihazı genel kanala ve kendi özel kanalına ekle
+            // Cihazı kanallara ekle
             this.channelManager.joinChannel('devices', deviceToken, ws);
             this.channelManager.joinChannel(`device-${deviceToken}`, deviceToken, ws);
 
