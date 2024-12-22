@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Play, Pencil, Trash, MoreVertical } from "lucide-react";
 import {
   Table,
@@ -38,8 +38,11 @@ interface Announcement {
   createdAt: string;
 }
 
+const API_URL = "http://localhost:5000/api";
+
 const AnnouncementList = () => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   const [selectedAnnouncement, setSelectedAnnouncement] = useState<Announcement | null>(null);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
 
@@ -47,27 +50,28 @@ const AnnouncementList = () => {
     queryKey: ["announcements"],
     queryFn: async () => {
       try {
-        const response = await fetch("http://localhost:5000/api/announcements");
+        const response = await fetch(`${API_URL}/announcements`);
         if (!response.ok) {
           throw new Error("API yanıt vermedi");
         }
         return response.json();
       } catch (error) {
         console.error("Veri çekme hatası:", error);
-        throw new Error("Anonslar yüklenirken hata oluştu");
+        throw error;
       }
-    },
-    retry: 1,
+    }
   });
 
   const handleDelete = async (id: string) => {
     try {
-      const response = await fetch(`http://localhost:5000/api/announcements/${id}`, {
+      const response = await fetch(`${API_URL}/announcements/${id}`, {
         method: "DELETE",
       });
 
       if (!response.ok) throw new Error("Silme işlemi başarısız");
 
+      queryClient.invalidateQueries({ queryKey: ["announcements"] });
+      
       toast({
         title: "Başarılı",
         description: "Anons başarıyla silindi",

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useMutation } from "@tanstack/react-query";
 import { useForm } from "react-hook-form";
 import { Upload } from "lucide-react";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,8 @@ import { useToast } from "@/hooks/use-toast";
 import { BasicInfoForm } from "./BasicInfoForm";
 import { PlaybackScheduleForm } from "./PlaybackScheduleForm";
 import { Form } from "@/components/ui/form";
+
+const API_URL = "http://localhost:5000/api";
 
 interface AnnouncementFormProps {
   announcement?: any;
@@ -33,6 +35,70 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
     },
   });
 
+  const createAnnouncementMutation = useMutation({
+    mutationFn: async (formData: FormData) => {
+      const response = await fetch(`${API_URL}/announcements`, {
+        method: "POST",
+        body: formData,
+      });
+      
+      if (!response.ok) {
+        throw new Error("Anons oluşturma başarısız");
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["announcements"] });
+      toast({
+        title: "Başarılı",
+        description: "Anons başarıyla oluşturuldu",
+      });
+      if (onSuccess) onSuccess();
+      form.reset();
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: error.message,
+      });
+    },
+  });
+
+  const updateAnnouncementMutation = useMutation({
+    mutationFn: async (data: any) => {
+      const response = await fetch(`${API_URL}/announcements/${announcement._id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        throw new Error("Anons güncelleme başarısız");
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["announcements"] });
+      toast({
+        title: "Başarılı",
+        description: "Anons başarıyla güncellendi",
+      });
+      if (onSuccess) onSuccess();
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: error.message,
+      });
+    },
+  });
+
   const handleSubmit = async (data: any) => {
     setUploading(true);
     setProgress(0);
@@ -49,33 +115,17 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
         }
       });
 
-      const url = announcement 
-        ? `http://localhost:5000/api/announcements/${announcement._id}`
-        : "http://localhost:5000/api/announcements";
-      
-      const method = announcement ? "PATCH" : "POST";
-
-      const response = await fetch(url, {
-        method,
-        body: formData,
-      });
-
-      if (!response.ok) throw new Error("İşlem başarısız");
-
-      toast({
-        title: "Başarılı",
-        description: `Anons başarıyla ${announcement ? 'güncellendi' : 'oluşturuldu'}`,
-      });
-
-      queryClient.invalidateQueries({ queryKey: ["announcements"] });
-      if (onSuccess) onSuccess();
-      form.reset();
+      if (announcement) {
+        await updateAnnouncementMutation.mutateAsync(data);
+      } else {
+        const fileInput = document.getElementById('file') as HTMLInputElement;
+        if (fileInput?.files?.[0]) {
+          formData.append('audioFile', fileInput.files[0]);
+        }
+        await createAnnouncementMutation.mutateAsync(formData);
+      }
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Hata",
-        description: "İşlem sırasında bir hata oluştu",
-      });
+      console.error("Form gönderme hatası:", error);
     } finally {
       setUploading(false);
       setProgress(0);
