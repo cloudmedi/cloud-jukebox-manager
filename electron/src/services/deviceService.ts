@@ -1,7 +1,7 @@
 import os from 'os';
-import { v4 as uuidv4 } from 'uuid';
+import Store from 'electron-store';
 
-interface DeviceInfo {
+export interface DeviceInfo {
   token: string;
   hostname: string;
   platform: string;
@@ -10,13 +10,18 @@ interface DeviceInfo {
   totalMemory: string;
   freeMemory: string;
   networkInterfaces: string[];
+  osVersion: string;
 }
 
 export class DeviceService {
   private static instance: DeviceService;
+  private store: Store;
   private deviceToken: string | null = null;
 
-  private constructor() {}
+  private constructor() {
+    this.store = new Store();
+    this.deviceToken = this.store.get('deviceToken') as string || null;
+  }
 
   static getInstance(): DeviceService {
     if (!DeviceService.instance) {
@@ -28,9 +33,10 @@ export class DeviceService {
   generateToken(): string {
     if (this.deviceToken) return this.deviceToken;
     
-    // 6 haneli sayısal token oluştur
     const token = Math.floor(100000 + Math.random() * 900000).toString();
     this.deviceToken = token;
+    this.store.set('deviceToken', token);
+    
     return token;
   }
 
@@ -49,8 +55,14 @@ export class DeviceService {
       cpus: `${os.cpus()[0].model} (${os.cpus().length} cores)`,
       totalMemory: `${Math.round(os.totalmem() / (1024 * 1024 * 1024))} GB`,
       freeMemory: `${Math.round(os.freemem() / (1024 * 1024 * 1024))} GB`,
-      networkInterfaces: networkInterfaces
+      networkInterfaces: networkInterfaces,
+      osVersion: os.release()
     };
+  }
+
+  clearToken(): void {
+    this.deviceToken = null;
+    this.store.delete('deviceToken');
   }
 }
 
