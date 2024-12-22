@@ -52,7 +52,7 @@ export const DeviceGroupForm = ({ group, onSuccess }: DeviceGroupFormProps) => {
     selectedDevices.includes(device._id)
   );
 
-  // Arama kriterine uyan ve seçili olmayan cihazları filtrele
+  // Arama kriterine uyan cihazları filtrele
   const filteredDevices = devices.filter((device: Device) =>
     device.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -165,7 +165,7 @@ export const DeviceGroupForm = ({ group, onSuccess }: DeviceGroupFormProps) => {
                     }
                   }}
                 />
-                <Label htmlFor={device._id}>{device.name}</Label>
+                <Label htmlFor={device._id} className="cursor-pointer">{device.name}</Label>
               </div>
             ))}
           </ScrollArea>
