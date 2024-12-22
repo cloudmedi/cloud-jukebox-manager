@@ -1,77 +1,125 @@
 const { app } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
-const audioPlayer = require('./audioPlayer');
-const { PlaylistDownloader } = require('./PlaylistDownloader');
+const { ensureDirectoryExists, createFullUrl, downloadFile } = require('./downloadUtils');
 
 class PlaylistService {
   constructor() {
     this.store = new Store();
     this.downloadPath = path.join(app.getPath('userData'), 'downloads');
-    this.downloader = new PlaylistDownloader();
+    ensureDirectoryExists(this.downloadPath);
   }
 
-  handlePlaylistMessage(playlist, ws) {
-    console.log('Playlist mesajı alındı:', playlist);
+  async downloadSong(song, playlistPath, baseUrl, ws) {
+    const songPath = path.join(playlistPath, `${song._id}.mp3`);
     
     try {
-      this.downloader.downloadPlaylist(playlist, ws)
-        .then(() => {
-          // Playlist'i local veritabanına kaydet
-          this.savePlaylistToDb(playlist);
-          
-          // Çalmaya başla
-          audioPlayer.loadPlaylist(playlist);
-          audioPlayer.play();
-          
+      const fullUrl = createFullUrl(baseUrl, song.filePath);
+      console.log('Downloading song from URL:', fullUrl);
+      
+      await downloadFile(fullUrl, songPath, (progress) => {
+        if (ws) {
           ws.send(JSON.stringify({
-            type: 'playlistReady',
-            playlistId: playlist._id
+            type: 'downloadProgress',
+            songId: song._id,
+            progress
           }));
-        })
-        .catch(error => {
-          console.error('Playlist indirme hatası:', error);
-          ws.send(JSON.stringify({
-            type: 'error',
-            error: error.message
-          }));
-        });
+        }
+      });
+      
+      this.store.set(`download.${song._id}`, {
+        status: 'completed',
+        path: songPath
+      });
+
+      return { success: true, path: songPath };
     } catch (error) {
-      console.error('Playlist işleme hatası:', error);
-      ws.send(JSON.stringify({
-        type: 'error',
+      console.error(`Şarkı indirme hatası (${song.name}):`, error);
+      this.store.set(`download.${song._id}`, {
+        status: 'error',
         error: error.message
-      }));
+      });
+
+      if (ws) {
+        ws.send(JSON.stringify({
+          type: 'error',
+          songId: song._id,
+          error: error.message
+        }));
+      }
+
+      return { success: false, error: error.message };
     }
   }
 
-  savePlaylistToDb(playlist) {
-    const playlistPath = path.join(this.downloadPath, playlist._id);
-    const playlistData = {
-      _id: playlist._id,
-      name: playlist.name,
-      songs: playlist.songs.map(song => ({
-        ...song,
-        localPath: path.join(playlistPath, `${song._id}.mp3`)
-      })),
-      createdAt: new Date().toISOString()
-    };
+  async handlePlaylistMessage(message, ws) {
+    console.log('Playlist mesajı alındı:', message);
+    
+    try {
+      const playlist = message.data;
+      console.log('Playlist mesajı işleniyor:', playlist);
+      
+      const playlistPath = path.join(this.downloadPath, playlist._id);
+      ensureDirectoryExists(playlistPath);
+      
+      console.log('Playlist indirme başlatılıyor:', playlist._id);
+      
+      // İndirme durumunu kaydet
+      this.store.set(`download.${playlist._id}`, {
+        status: 'downloading',
+        progress: 0,
+        completedSongs: []
+      });
 
-    this.store.set(`playlists.${playlist._id}`, playlistData);
-  }
+      // Şarkıları sırayla indir
+      for (let i = 0; i < playlist.songs.length; i++) {
+        const song = playlist.songs[i];
+        console.log(`Şarkı indiriliyor (${i + 1}/${playlist.songs.length}):`, song.name);
+        
+        const result = await this.downloadSong(song, playlistPath, playlist.baseUrl, ws);
+        
+        if (result.success) {
+          // Başarılı indirmeleri kaydet
+          const downloadState = this.store.get(`download.${playlist._id}`);
+          downloadState.completedSongs.push(song._id);
+          this.store.set(`download.${playlist._id}`, downloadState);
+        }
 
-  resumeIncompleteDownloads(ws) {
-    const downloads = this.store.get('download');
-    if (!downloads) return;
-
-    Object.entries(downloads).forEach(([playlistId, download]) => {
-      if (download.status === 'downloading') {
-        const playlist = this.store.get(`playlists.${playlistId}`);
-        if (playlist) {
-          this.handlePlaylistMessage({ playlist }, ws);
+        // İlerleme durumunu gönder
+        if (ws) {
+          ws.send(JSON.stringify({
+            type: 'downloadProgress',
+            playlistId: playlist._id,
+            progress: Math.round(((i + 1) / playlist.songs.length) * 100)
+          }));
         }
       }
-    });
+
+      // İndirme durumunu güncelle
+      this.store.set(`download.${playlist._id}`, {
+        status: 'completed',
+        progress: 100,
+        completedSongs: playlist.songs.map(s => s._id)
+      });
+
+      if (ws) {
+        ws.send(JSON.stringify({
+          type: 'playlistReady',
+          playlistId: playlist._id
+        }));
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Playlist indirme hatası:', error);
+      if (ws) {
+        ws.send(JSON.stringify({
+          type: 'error',
+          error: error.message
+        }));
+      }
+      throw error;
+    }
   }
 }
 
