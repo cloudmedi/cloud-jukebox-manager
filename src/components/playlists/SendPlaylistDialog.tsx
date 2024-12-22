@@ -58,7 +58,8 @@ export const SendPlaylistDialog = ({ isOpen, onClose, playlist }: SendPlaylistDi
       
       ws.onopen = () => {
         ws.send(JSON.stringify({
-          type: 'sendPlaylist',
+          type: 'playlist',
+          action: 'send',
           playlist: {
             _id: playlistDetails._id,
             name: playlistDetails.name,

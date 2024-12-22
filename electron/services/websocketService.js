@@ -63,16 +63,26 @@ class WebSocketService {
 
   handleMessage(message) {
     switch (message.type) {
-      case 'auth':
-        this.handleAuthResponse(message);
-        break;
-      
       case 'playlist':
-        PlaylistService.handlePlaylistMessage(message, this.ws);
+        switch (message.action) {
+          case 'send':
+            PlaylistService.handlePlaylistMessage(message, this.ws);
+            break;
+          case 'update':
+            // Playlist güncelleme işlemleri
+            break;
+          case 'delete':
+            // Playlist silme işlemleri
+            break;
+        }
         break;
-
+        
       case 'command':
         this.handleCommand(message);
+        break;
+        
+      case 'auth':
+        this.handleAuthResponse(message);
         break;
     }
   }
