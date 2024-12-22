@@ -1,5 +1,4 @@
 import os from 'os';
-import { toast } from "@/components/ui/use-toast";
 
 interface DeviceInfo {
   hostname: string;
@@ -30,37 +29,48 @@ export const collectDeviceInfo = (): DeviceInfo => {
   };
 };
 
-export const registerDevice = async (deviceInfo: DeviceInfo): Promise<string> => {
+export const registerDevice = async (deviceInfo: DeviceInfo): Promise<{ token: string, device: any }> => {
   try {
-    const token = Math.floor(100000 + Math.random() * 900000).toString();
-    
-    const response = await fetch('http://localhost:5000/api/tokens', {
+    // 1. Token oluştur ve kaydet
+    const tokenResponse = await fetch('http://localhost:5000/api/tokens', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        token,
+        token: Math.floor(100000 + Math.random() * 900000).toString(),
         deviceInfo
       }),
     });
 
-    if (!response.ok) {
+    if (!tokenResponse.ok) {
       throw new Error('Token kaydı başarısız oldu');
     }
 
-    toast({
-      title: "Başarılı",
-      description: "Cihaz başarıyla kaydedildi",
+    const tokenData = await tokenResponse.json();
+
+    // 2. Cihazı kaydet
+    const deviceResponse = await fetch('http://localhost:5000/api/devices', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        name: deviceInfo.hostname,
+        token: tokenData.token,
+        location: 'Bilinmiyor',
+        volume: 50
+      }),
     });
 
-    return token;
+    if (!deviceResponse.ok) {
+      throw new Error('Cihaz kaydı başarısız oldu');
+    }
+
+    const deviceData = await deviceResponse.json();
+    return { token: tokenData.token, device: deviceData };
   } catch (error) {
-    toast({
-      variant: "destructive",
-      title: "Hata",
-      description: "Cihaz kaydı sırasında bir hata oluştu",
-    });
+    console.error('Kayıt hatası:', error);
     throw error;
   }
 };
