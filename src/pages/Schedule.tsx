@@ -83,7 +83,7 @@ const Schedule = () => {
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Playlist Zamanla</DialogTitle>
           </DialogHeader>
@@ -91,7 +91,8 @@ const Schedule = () => {
         </DialogContent>
       </Dialog>
 
-      <style jsx global>{`
+      <style>
+        {`
         .monthly-view .fc-daygrid-day {
           min-height: 120px !important;
         }
@@ -124,7 +125,8 @@ const Schedule = () => {
         .fc .fc-day-today {
           background-color: rgb(243 244 246) !important;
         }
-      `}</style>
+        `}
+      </style>
     </div>
   );
 };

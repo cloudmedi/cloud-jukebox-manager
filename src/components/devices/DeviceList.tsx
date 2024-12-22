@@ -27,7 +27,7 @@ interface Device {
   lastSeen: string;
 }
 
-const LIMIT = 20; // Her sayfada gösterilecek cihaz sayısı
+const LIMIT = 20;
 
 const DeviceList = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -50,6 +50,7 @@ const DeviceList = () => {
   } = useInfiniteQuery({
     queryKey: ['devices'],
     queryFn: fetchDevices,
+    initialPageParam: 0,
     getNextPageParam: (lastPage, pages) => {
       if (lastPage.length < LIMIT) return undefined;
       return pages.length * LIMIT;
