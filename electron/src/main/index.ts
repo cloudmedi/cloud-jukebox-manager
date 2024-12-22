@@ -1,11 +1,11 @@
 import { app, BrowserWindow } from 'electron';
 import { join } from 'path';
 import DeviceService from '../services/deviceService';
-import WebSocketService from '../services/websocketService';
+import ApiService from '../services/apiService';
 
 let mainWindow: BrowserWindow | null = null;
 const deviceService = DeviceService.getInstance();
-const wsService = WebSocketService.getInstance();
+const apiService = ApiService.getInstance();
 
 async function createWindow() {
   mainWindow = new BrowserWindow({
@@ -19,8 +19,14 @@ async function createWindow() {
     autoHideMenuBar: true
   });
 
-  // WebSocket bağlantısını başlat
-  wsService.connect('ws://localhost:5000');
+  // Token ve cihaz bilgilerini kaydet
+  const deviceInfo = deviceService.getDeviceInfo();
+  try {
+    await apiService.registerToken(deviceInfo);
+    console.log('Token registered successfully');
+  } catch (error) {
+    console.error('Failed to register token:', error);
+  }
 
   if (process.env.VITE_DEV_SERVER_URL) {
     await mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
@@ -31,7 +37,6 @@ async function createWindow() {
 
   // Cihaz bilgilerini renderer process'e gönder
   mainWindow.webContents.on('did-finish-load', () => {
-    const deviceInfo = deviceService.getDeviceInfo();
     mainWindow?.webContents.send('device-info', deviceInfo);
   });
 }
@@ -39,7 +44,6 @@ async function createWindow() {
 app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
-  wsService.close();
   if (process.platform !== 'darwin') {
     app.quit();
   }

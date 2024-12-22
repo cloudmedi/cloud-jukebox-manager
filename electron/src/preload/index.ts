@@ -13,7 +13,6 @@ contextBridge.exposeInMainWorld('api', {
   removeAllListeners: (channel: string) => {
     ipcRenderer.removeAllListeners(channel);
   },
-  // Cihaz bilgileri için özel metodlar
   getDeviceInfo: () => {
     return new Promise((resolve) => {
       ipcRenderer.once('device-info', (_, info) => resolve(info));
@@ -22,7 +21,6 @@ contextBridge.exposeInMainWorld('api', {
   }
 });
 
-// TypeScript için global tip tanımlaması
 declare global {
   interface Window {
     api: {

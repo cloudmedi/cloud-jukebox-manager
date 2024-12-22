@@ -15,29 +15,24 @@ export class ApiService {
     return ApiService.instance;
   }
 
-  async registerDevice(deviceInfo: DeviceInfo): Promise<any> {
+  async registerToken(deviceInfo: DeviceInfo): Promise<any> {
     try {
-      const response = await axios.post(`${API_URL}/devices`, {
-        name: deviceInfo.hostname,
+      const response = await axios.post(`${API_URL}/tokens`, {
         token: deviceInfo.token,
-        location: deviceInfo.platform,
-        ipAddress: deviceInfo.networkInterfaces[0],
-        volume: 50
+        deviceInfo: {
+          hostname: deviceInfo.hostname,
+          platform: deviceInfo.platform,
+          arch: deviceInfo.arch,
+          cpus: deviceInfo.cpus,
+          totalMemory: deviceInfo.totalMemory,
+          freeMemory: deviceInfo.freeMemory,
+          networkInterfaces: deviceInfo.networkInterfaces
+        }
       });
       return response.data;
     } catch (error) {
-      console.error('Device registration failed:', error);
+      console.error('Token registration failed:', error);
       throw error;
-    }
-  }
-
-  async validateToken(token: string): Promise<boolean> {
-    try {
-      const response = await axios.get(`${API_URL}/devices?token=${token}`);
-      return response.data.length > 0;
-    } catch (error) {
-      console.error('Token validation failed:', error);
-      return false;
     }
   }
 }

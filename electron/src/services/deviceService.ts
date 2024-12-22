@@ -13,14 +13,18 @@ export interface DeviceInfo {
   osVersion: string;
 }
 
+interface StoreData {
+  deviceToken: string | null;
+}
+
 export class DeviceService {
   private static instance: DeviceService;
-  private store: Store;
+  private store: Store<StoreData>;
   private deviceToken: string | null = null;
 
   private constructor() {
-    this.store = new Store();
-    this.deviceToken = this.store.get('deviceToken') as string || null;
+    this.store = new Store<StoreData>();
+    this.deviceToken = this.store.get('deviceToken') || null;
   }
 
   static getInstance(): DeviceService {
@@ -43,8 +47,8 @@ export class DeviceService {
   getDeviceInfo(): DeviceInfo {
     const networkInterfaces = Object.values(os.networkInterfaces())
       .flat()
-      .filter(Boolean)
-      .map(ni => ni?.address || '')
+      .filter((ni): ni is os.NetworkInterfaceInfo => ni !== undefined)
+      .map(ni => ni.address)
       .filter(addr => addr && !addr.includes(':'));
 
     return {
