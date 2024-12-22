@@ -13,7 +13,7 @@ interface PlaybackTableProps {
   isLoading: boolean;
 }
 
-export const PlaybackTable = ({ data, isLoading }: PlaybackTableProps) => {
+export function PlaybackTable({ data, isLoading }: PlaybackTableProps) {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[200px]">
@@ -22,7 +22,9 @@ export const PlaybackTable = ({ data, isLoading }: PlaybackTableProps) => {
     );
   }
 
-  if (!data) return null;
+  if (!data) {
+    return null;
+  }
 
   return (
     <div className="rounded-md border">
@@ -52,4 +54,4 @@ export const PlaybackTable = ({ data, isLoading }: PlaybackTableProps) => {
       </table>
     </div>
   );
-};
+}

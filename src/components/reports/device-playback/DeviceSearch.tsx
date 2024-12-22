@@ -1,8 +1,18 @@
-import { Button } from "@/components/ui/button";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Search } from "lucide-react";
 import { useState } from "react";
+import { Search } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 interface DeviceSearchProps {
   devices: any[];
@@ -11,18 +21,19 @@ interface DeviceSearchProps {
   isLoading: boolean;
 }
 
-export const DeviceSearch = ({ 
-  devices, 
-  selectedDevice, 
+export function DeviceSearch({
+  devices,
+  selectedDevice,
   onDeviceSelect,
-  isLoading 
-}: DeviceSearchProps) => {
+  isLoading,
+}: DeviceSearchProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredDevices = devices?.filter((device: any) =>
-    device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    device.location.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredDevices = devices?.filter(
+    (device) =>
+      device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      device.location.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -36,7 +47,7 @@ export const DeviceSearch = ({
           disabled={isLoading}
         >
           {selectedDevice
-            ? devices?.find((device: any) => device._id === selectedDevice)?.name
+            ? devices?.find((device) => device._id === selectedDevice)?.name
             : "Cihaz seçin..."}
           <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -50,7 +61,7 @@ export const DeviceSearch = ({
           />
           <CommandEmpty>Cihaz bulunamadı.</CommandEmpty>
           <CommandGroup className="max-h-[300px] overflow-auto">
-            {filteredDevices?.map((device: any) => (
+            {filteredDevices?.map((device) => (
               <CommandItem
                 key={device._id}
                 value={device._id}
@@ -67,4 +78,4 @@ export const DeviceSearch = ({
       </PopoverContent>
     </Popover>
   );
-};
+}

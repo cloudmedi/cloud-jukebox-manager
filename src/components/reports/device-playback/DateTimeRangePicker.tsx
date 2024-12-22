@@ -1,33 +1,34 @@
-import { Button } from "@/components/ui/button";
-import { DatePickerWithRange } from "@/components/ui/date-picker";
-import { Input } from "@/components/ui/input";
 import { Download } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { DatePickerWithRange } from "@/components/ui/date-picker";
+import { DateRange } from "react-day-picker";
 
 interface DateTimeRangePickerProps {
-  dateRange: { from: Date; to: Date };
-  timeRange: { startTime: string; endTime: string };
-  onDateRangeChange: (range: { from: Date; to: Date }) => void;
-  onTimeRangeChange: (type: 'startTime' | 'endTime', value: string) => void;
+  dateRange: DateRange;
+  timeRange: {
+    startTime: string;
+    endTime: string;
+  };
+  onDateRangeChange: (range: DateRange) => void;
+  onTimeRangeChange: (type: "startTime" | "endTime", value: string) => void;
   showDownloadButton?: boolean;
   isDownloadDisabled?: boolean;
   onDownload?: () => void;
 }
 
-export const DateTimeRangePicker = ({
+export function DateTimeRangePicker({
   dateRange,
   timeRange,
   onDateRangeChange,
   onTimeRangeChange,
   showDownloadButton,
   isDownloadDisabled,
-  onDownload
-}: DateTimeRangePickerProps) => {
+  onDownload,
+}: DateTimeRangePickerProps) {
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      <DatePickerWithRange
-        date={dateRange}
-        setDate={onDateRangeChange}
-      />
+      <DatePickerWithRange date={dateRange} setDate={onDateRangeChange} />
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">
@@ -35,7 +36,7 @@ export const DateTimeRangePicker = ({
           <Input
             type="time"
             value={timeRange.startTime}
-            onChange={(e) => onTimeRangeChange('startTime', e.target.value)}
+            onChange={(e) => onTimeRangeChange("startTime", e.target.value)}
           />
         </div>
         <div className="space-y-2">
@@ -43,7 +44,7 @@ export const DateTimeRangePicker = ({
           <Input
             type="time"
             value={timeRange.endTime}
-            onChange={(e) => onTimeRangeChange('endTime', e.target.value)}
+            onChange={(e) => onTimeRangeChange("endTime", e.target.value)}
           />
         </div>
       </div>
@@ -60,4 +61,4 @@ export const DateTimeRangePicker = ({
       )}
     </div>
   );
-};
+}
