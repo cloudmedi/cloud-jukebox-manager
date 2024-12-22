@@ -6,7 +6,15 @@ module.exports = defineConfig({
   main: {
     build: {
       rollupOptions: {
-        external: ['electron']
+        external: ['electron', 'electron-store'],
+        input: {
+          index: resolve(__dirname, 'src/main/index.js')
+        }
+      }
+    },
+    resolve: {
+      alias: {
+        '@': resolve(__dirname, 'src/main')
       }
     }
   },
