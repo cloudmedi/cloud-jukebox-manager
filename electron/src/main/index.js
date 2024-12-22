@@ -19,7 +19,6 @@ async function createWindow() {
     autoHideMenuBar: true
   });
 
-  // Token ve cihaz bilgilerini kaydet
   const deviceInfo = deviceService.getDeviceInfo();
   try {
     console.log('Registering token with device info:', deviceInfo);
