@@ -1,8 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Download } from "lucide-react";
 import { addDays } from "date-fns";
 import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
@@ -101,18 +99,10 @@ export default function DevicePlaybackReport() {
           onTimeRangeChange={(type, value) =>
             setTimeRange(prev => ({ ...prev, [type]: value }))
           }
+          showDownloadButton={!!selectedDevice}
+          isDownloadDisabled={!playbackData || playbackLoading}
+          onDownload={generatePDF}
         />
-
-        {selectedDevice && (
-          <Button
-            onClick={generatePDF}
-            disabled={!playbackData || playbackLoading}
-            className="w-full md:w-auto"
-          >
-            <Download className="mr-2 h-4 w-4" />
-            PDF İndir
-          </Button>
-        )}
 
         <PlaybackTable
           data={playbackData}

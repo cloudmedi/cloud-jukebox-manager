@@ -1,7 +1,7 @@
 import { DateRange } from "react-day-picker";
 import { Calendar } from "@/components/ui/calendar";
 import { Button } from "@/components/ui/button";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { Calendar as CalendarIcon, Download } from "lucide-react";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
 import { format } from "date-fns";
@@ -15,6 +15,9 @@ interface DateTimeRangePickerProps {
   };
   onDateRangeChange: (range: { from: Date; to: Date }) => void;
   onTimeRangeChange: (type: "startTime" | "endTime", value: string) => void;
+  onDownload?: () => void;
+  showDownloadButton?: boolean;
+  isDownloadDisabled?: boolean;
 }
 
 export function DateTimeRangePicker({
@@ -22,6 +25,9 @@ export function DateTimeRangePicker({
   timeRange,
   onDateRangeChange,
   onTimeRangeChange,
+  onDownload,
+  showDownloadButton = false,
+  isDownloadDisabled = false,
 }: DateTimeRangePickerProps) {
   const handleDateRangeChange = (range: DateRange | undefined) => {
     if (range?.from) {
@@ -76,7 +82,7 @@ export function DateTimeRangePicker({
         </Popover>
       </div>
 
-      <div className="grid grid-cols-2 gap-4">
+      <div className="grid grid-cols-3 gap-4">
         <div className="flex flex-col space-y-2">
           <label className="text-sm font-medium">Başlangıç Saati</label>
           <Input
@@ -93,6 +99,19 @@ export function DateTimeRangePicker({
             onChange={(e) => onTimeRangeChange("endTime", e.target.value)}
           />
         </div>
+        {showDownloadButton && (
+          <div className="flex flex-col space-y-2">
+            <label className="text-sm font-medium">&nbsp;</label>
+            <Button
+              onClick={onDownload}
+              disabled={isDownloadDisabled}
+              className="w-full"
+            >
+              <Download className="mr-2 h-4 w-4" />
+              PDF İndir
+            </Button>
+          </div>
+        )}
       </div>
     </div>
   );
