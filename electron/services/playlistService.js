@@ -3,11 +3,11 @@ const path = require('path');
 const Store = require('electron-store');
 const axios = require('axios');
 const fs = require('fs');
+const audioPlayer = require('./audioPlayer');
 
 class PlaylistService {
   constructor() {
     this.store = new Store();
-    // Uygulama başlatılırken downloads klasörünü oluştur
     this.initializeDownloadPath();
   }
 
@@ -87,6 +87,9 @@ class PlaylistService {
           const downloadState = this.store.get(`download.${playlist._id}`);
           downloadState.completedSongs.push(song._id);
           this.store.set(`download.${playlist._id}`, downloadState);
+
+          // Şarkı yolunu güncelle
+          playlist.songs[i].localPath = songPath;
           
           console.log(`Şarkı başarıyla indirildi: ${song.name}`);
         } catch (error) {
@@ -118,6 +121,10 @@ class PlaylistService {
       });
 
       console.log('Playlist indirme tamamlandı:', playlist._id);
+
+      // Playlist'i AudioPlayer'a yükle ve çalmaya başla
+      audioPlayer.loadPlaylist(playlist);
+      audioPlayer.play();
 
       if (ws) {
         ws.send(JSON.stringify({
