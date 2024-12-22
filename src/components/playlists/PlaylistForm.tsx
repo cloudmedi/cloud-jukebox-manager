@@ -17,28 +17,20 @@ const playlistSchema = z.object({
   description: z.string().max(500, "Açıklama çok uzun").optional(),
   songs: z.array(z.string()).default([]),
   artwork: z
-    .any()
+    .instanceof(FileList)
     .optional()
+    .nullable()
     .refine((files) => {
       if (!files) return true;
-      if (files instanceof FileList) {
-        return files.length === 0 || files.length === 1;
-      }
-      return true;
+      return files.length === 0 || files.length === 1;
     }, "Bir adet kapak resmi seçin")
     .refine((files) => {
       if (!files) return true;
-      if (files instanceof FileList) {
-        return files.length === 0 || files[0].size <= MAX_FILE_SIZE;
-      }
-      return true;
+      return files.length === 0 || files[0].size <= MAX_FILE_SIZE;
     }, "Maksimum dosya boyutu 5MB")
     .refine((files) => {
       if (!files) return true;
-      if (files instanceof FileList) {
-        return files.length === 0 || ACCEPTED_IMAGE_TYPES.includes(files[0].type);
-      }
-      return true;
+      return files.length === 0 || ACCEPTED_IMAGE_TYPES.includes(files[0].type);
     }, "Sadece .jpg, .jpeg, .png ve .webp formatları kabul edilir"),
   isShuffled: z.boolean().default(false),
 });
@@ -65,7 +57,7 @@ export const PlaylistForm = ({
       name: "",
       description: "",
       songs: [],
-      artwork: undefined,
+      artwork: null,
       isShuffled: false,
     },
   });
@@ -77,7 +69,7 @@ export const PlaylistForm = ({
       if (data.description) formData.append("description", data.description);
       data.songs.forEach((songId) => formData.append("songs[]", songId));
       
-      if (data.artwork instanceof FileList && data.artwork.length > 0) {
+      if (data.artwork && data.artwork.length > 0) {
         formData.append("artwork", data.artwork[0]);
       }
       

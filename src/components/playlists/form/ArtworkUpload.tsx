@@ -4,7 +4,7 @@ import { UseFormReturn } from "react-hook-form";
 import { PlaylistFormValues } from "../PlaylistForm";
 import { Card, CardContent } from "@/components/ui/card";
 import { ImageIcon } from "lucide-react";
-import { useRef } from "react";
+import { useRef, useEffect } from "react";
 
 interface ArtworkUploadProps {
   form: UseFormReturn<PlaylistFormValues>;
@@ -14,12 +14,22 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
   const artwork = form.watch("artwork");
   
-  const previewUrl = artwork instanceof FileList && artwork.length > 0
+  const previewUrl = artwork && artwork.length > 0
     ? URL.createObjectURL(artwork[0])
     : null;
 
+  useEffect(() => {
+    return () => {
+      if (previewUrl) {
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
   const handleCardClick = () => {
-    fileInputRef.current?.click();
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
   };
 
   return (
@@ -53,7 +63,10 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
                     accept="image/jpeg,image/jpg,image/png,image/webp"
                     className="hidden"
                     onChange={(e) => {
-                      onChange(e.target.files);
+                      const files = e.target.files;
+                      if (files?.length) {
+                        onChange(files);
+                      }
                     }}
                     {...field}
                   />
