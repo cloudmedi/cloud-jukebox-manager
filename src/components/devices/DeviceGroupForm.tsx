@@ -121,7 +121,6 @@ export const DeviceGroupForm = ({ group, onSuccess }: DeviceGroupFormProps) => {
           />
         </div>
 
-        {/* Seçili cihazları göster */}
         {selectedDevicesData.length > 0 && (
           <div>
             <Label>Seçili Cihazlar</Label>
