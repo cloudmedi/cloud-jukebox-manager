@@ -12,12 +12,16 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
+import { Switch } from "@/components/ui/switch";
 import { useToast } from "@/hooks/use-toast";
 import { useQueryClient } from "@tanstack/react-query";
 
 const playlistSchema = z.object({
   name: z.string().min(1, "Playlist adı gereklidir").max(100, "Playlist adı çok uzun"),
   description: z.string().max(500, "Açıklama çok uzun").optional(),
+  songs: z.array(z.string()).default([]),
+  artwork: z.string().optional(),
+  isShuffled: z.boolean().default(false),
 });
 
 type PlaylistFormValues = z.infer<typeof playlistSchema>;
@@ -37,6 +41,9 @@ export const PlaylistForm = ({ onSuccess, initialData, isEditing = false }: Play
     defaultValues: initialData || {
       name: "",
       description: "",
+      songs: [],
+      artwork: "",
+      isShuffled: false,
     },
   });
 
@@ -47,7 +54,10 @@ export const PlaylistForm = ({ onSuccess, initialData, isEditing = false }: Play
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          ...data,
+          createdBy: "system", // Varsayılan değer
+        }),
       });
 
       if (!response.ok) {
@@ -103,6 +113,41 @@ export const PlaylistForm = ({ onSuccess, initialData, isEditing = false }: Play
                 />
               </FormControl>
               <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="artwork"
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Kapak Resmi URL</FormLabel>
+              <FormControl>
+                <Input placeholder="Kapak resmi URL'si" {...field} />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name="isShuffled"
+          render={({ field }) => (
+            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+              <div className="space-y-0.5">
+                <FormLabel className="text-base">Karışık Çalma</FormLabel>
+                <div className="text-sm text-muted-foreground">
+                  Şarkıları rastgele sırayla çal
+                </div>
+              </div>
+              <FormControl>
+                <Switch
+                  checked={field.value}
+                  onCheckedChange={field.onChange}
+                />
+              </FormControl>
             </FormItem>
           )}
         />
