@@ -1,0 +1,35 @@
+{
+  "name": "cloud-media-player",
+  "version": "1.0.0",
+  "description": "Offline media player for Cloud Media System",
+  "main": "src/main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --debug",
+    "build": "electron-builder"
+  },
+  "author": "",
+  "license": "ISC",
+  "devDependencies": {
+    "electron": "^28.2.0",
+    "electron-builder": "^24.9.1"
+  },
+  "dependencies": {
+    "ws": "^8.16.0",
+    "sqlite3": "^5.1.7",
+    "systeminformation": "^5.21.22",
+    "uuid": "^9.0.1"
+  },
+  "build": {
+    "appId": "com.cloudmedia.player",
+    "mac": {
+      "category": "public.app-category.music"
+    },
+    "win": {
+      "target": "nsis"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}
