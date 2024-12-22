@@ -121,11 +121,10 @@ router.patch('/:id', async (req, res) => {
 // Şarkı sil
 router.delete('/:id', async (req, res) => {
   try {
-    const song = await Song.findById(req.params.id);
-    if (!song) {
+    const deletedSong = await Song.findByIdAndDelete(req.params.id);
+    if (!deletedSong) {
       return res.status(404).json({ message: 'Şarkı bulunamadı' });
     }
-    await song.remove();
     res.json({ message: 'Şarkı silindi' });
   } catch (error) {
     res.status(500).json({ message: error.message });
