@@ -34,11 +34,21 @@ app.whenReady().then(() => {
   createWindow();
 
   ipcMain.handle('get-device-info', () => {
-    return deviceService.getDeviceInfo();
+    try {
+      return deviceService.getDeviceInfo();
+    } catch (error) {
+      console.error('Error getting device info:', error);
+      throw error;
+    }
   });
 
   ipcMain.handle('api-request', async (event, { method, endpoint, data }) => {
-    return apiService.makeRequest(method, endpoint, data);
+    try {
+      return await apiService.makeRequest(method, endpoint, data);
+    } catch (error) {
+      console.error('API request error:', error);
+      throw error;
+    }
   });
 
   app.on('activate', () => {
