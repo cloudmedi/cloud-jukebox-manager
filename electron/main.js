@@ -12,18 +12,18 @@ function createWindow() {
     height: 600,
     webPreferences: {
       nodeIntegration: true,
-      contextIsolation: false
+      contextIsolation: false,
+      webSecurity: true,
+      allowRunningInsecureContent: false
     }
   });
 
   mainWindow.loadFile('index.html');
   
-  // Development ortamında DevTools'u aç
   if (process.env.NODE_ENV === 'development') {
     mainWindow.webContents.openDevTools();
   }
 
-  // Kayıtlı cihaz bilgilerini al ve WebSocket bağlantısını başlat
   const deviceInfo = store.get('deviceInfo');
   if (deviceInfo && deviceInfo.token) {
     websocketService.connect(deviceInfo.token);
@@ -45,11 +45,9 @@ app.on('activate', () => {
   }
 });
 
-// Device bilgilerini kaydetme
 ipcMain.handle('save-device-info', async (event, deviceInfo) => {
   store.set('deviceInfo', deviceInfo);
   
-  // WebSocket bağlantısını başlat
   if (deviceInfo.token) {
     websocketService.connect(deviceInfo.token);
   }
@@ -57,7 +55,6 @@ ipcMain.handle('save-device-info', async (event, deviceInfo) => {
   return deviceInfo;
 });
 
-// Device bilgilerini alma
 ipcMain.handle('get-device-info', async () => {
   return store.get('deviceInfo');
 });
