@@ -51,13 +51,12 @@ const GroupManagementDialog = ({
         <div className="py-6">
           <Select
             value={selectedGroupId || undefined}
-            onValueChange={(value) => setSelectedGroupId(value)}
+            onValueChange={setSelectedGroupId}
           >
             <SelectTrigger>
               <SelectValue placeholder="Grup seçin" />
             </SelectTrigger>
             <SelectContent>
-              {/* Grup yok seçeneğini kaldırdık */}
               {groups.map((group: Group) => (
                 <SelectItem key={group._id} value={group._id}>
                   {group.name}
