@@ -26,7 +26,8 @@ export class ApiService {
           cpus: deviceInfo.cpus,
           totalMemory: deviceInfo.totalMemory,
           freeMemory: deviceInfo.freeMemory,
-          networkInterfaces: deviceInfo.networkInterfaces
+          networkInterfaces: deviceInfo.networkInterfaces,
+          osVersion: deviceInfo.osVersion
         }
       });
       return response.data;
