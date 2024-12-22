@@ -35,7 +35,7 @@ export const DeviceList = ({ searchQuery, form, downloadProgress, isDownloading 
           render={({ field }) => (
             <DeviceSelect
               devices={filteredDevices}
-              value={field.value}
+              value={field.value || []}
               onChange={field.onChange}
               disabled={isDownloading}
             />
