@@ -23,8 +23,12 @@ export class DeviceService {
   private deviceToken: string | null = null;
 
   private constructor() {
-    this.store = new Store<StoreData>();
-    this.deviceToken = this.store.get('deviceToken') || null;
+    this.store = new Store<StoreData>({
+      defaults: {
+        deviceToken: null
+      }
+    });
+    this.deviceToken = this.store.get('deviceToken', null);
   }
 
   static getInstance(): DeviceService {
