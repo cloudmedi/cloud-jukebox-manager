@@ -1,4 +1,4 @@
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Plus } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PlaylistList } from "@/components/playlists/PlaylistList";
@@ -9,6 +9,7 @@ import { useToast } from "@/components/ui/use-toast";
 const Playlists = () => {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: playlists, isLoading } = useQuery({
     queryKey: ["playlists"],
@@ -20,6 +21,10 @@ const Playlists = () => {
       return response.json();
     },
   });
+
+  const handlePlaylistUpdate = () => {
+    queryClient.invalidateQueries({ queryKey: ["playlists"] });
+  };
 
   if (isLoading) {
     return <div>Yükleniyor...</div>;
@@ -35,7 +40,10 @@ const Playlists = () => {
         </Button>
       </div>
 
-      <PlaylistList playlists={playlists} />
+      <PlaylistList 
+        playlists={playlists} 
+        onPlaylistUpdate={handlePlaylistUpdate}
+      />
 
       <PlaylistDialog 
         open={isDialogOpen} 

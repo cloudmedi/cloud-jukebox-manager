@@ -10,12 +10,20 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { PlaylistSongManager } from "./PlaylistSongManager";
+
+interface Song {
+  _id: string;
+  name: string;
+  artist: string;
+  duration: number;
+}
 
 interface Playlist {
   _id: string;
   name: string;
   description: string;
-  songs: any[];
+  songs: Song[];
   status: "active" | "inactive";
   createdAt: string;
   totalDuration: number;
@@ -23,9 +31,10 @@ interface Playlist {
 
 interface PlaylistListProps {
   playlists: Playlist[];
+  onPlaylistUpdate: () => void;
 }
 
-export const PlaylistList = ({ playlists }: PlaylistListProps) => {
+export const PlaylistList = ({ playlists, onPlaylistUpdate }: PlaylistListProps) => {
   if (!playlists?.length) {
     return (
       <div className="text-center py-10">
@@ -37,9 +46,9 @@ export const PlaylistList = ({ playlists }: PlaylistListProps) => {
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+    <div className="grid gap-4 md:grid-cols-2">
       {playlists.map((playlist) => (
-        <Card key={playlist._id}>
+        <Card key={playlist._id} className="flex flex-col">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-lg font-bold">{playlist.name}</CardTitle>
             <DropdownMenu>
@@ -50,18 +59,17 @@ export const PlaylistList = ({ playlists }: PlaylistListProps) => {
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
                 <DropdownMenuItem>Düzenle</DropdownMenuItem>
-                <DropdownMenuItem>Şarkı Ekle</DropdownMenuItem>
                 <DropdownMenuItem className="text-destructive">
                   Sil
                 </DropdownMenuItem>
               </DropdownMenuContent>
             </DropdownMenu>
           </CardHeader>
-          <CardContent>
-            <CardDescription className="line-clamp-2">
+          <CardContent className="flex-1">
+            <CardDescription className="line-clamp-2 mb-4">
               {playlist.description || "Açıklama yok"}
             </CardDescription>
-            <div className="mt-4 space-y-2">
+            <div className="space-y-2 mb-4">
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Şarkı Sayısı</span>
                 <span className="font-medium">{playlist.songs.length}</span>
@@ -69,7 +77,8 @@ export const PlaylistList = ({ playlists }: PlaylistListProps) => {
               <div className="flex items-center justify-between text-sm">
                 <span className="text-muted-foreground">Toplam Süre</span>
                 <span className="font-medium">
-                  {Math.floor(playlist.totalDuration / 60)}:{String(playlist.totalDuration % 60).padStart(2, "0")}
+                  {Math.floor(playlist.totalDuration / 60)}:
+                  {String(playlist.totalDuration % 60).padStart(2, "0")}
                 </span>
               </div>
               <div className="flex items-center justify-between text-sm">
@@ -87,6 +96,10 @@ export const PlaylistList = ({ playlists }: PlaylistListProps) => {
                 </Badge>
               </div>
             </div>
+            <PlaylistSongManager 
+              playlist={playlist} 
+              onPlaylistUpdate={onPlaylistUpdate}
+            />
           </CardContent>
         </Card>
       ))}
