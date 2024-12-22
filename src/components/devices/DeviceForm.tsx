@@ -1,7 +1,5 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import * as z from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
@@ -15,6 +13,8 @@ import {
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { DialogTitle } from "@/components/ui/dialog";
+import * as z from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
 
 const formSchema = z.object({
   name: z.string().min(1, "Cihaz adı zorunludur"),
@@ -27,31 +27,41 @@ type FormData = z.infer<typeof formSchema>;
 
 interface DeviceFormProps {
   onSuccess?: () => void;
-  initialData?: Partial<FormData>;
 }
 
-const DeviceForm = ({ onSuccess, initialData }: DeviceFormProps) => {
+const DeviceForm = ({ onSuccess }: DeviceFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [deviceInfo, setDeviceInfo] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  const form = useForm<FormData>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: "",
+      token: "",
+      location: "",
+      volume: 50,
+    },
+  });
+
   const validateToken = async (token: string) => {
-    const response = await fetch(`http://localhost:5000/api/tokens/validate/${token}`);
-    if (!response.ok) {
-      throw new Error("Geçersiz token");
+    try {
+      const response = await fetch(`http://localhost:5000/api/tokens/validate/${token}`);
+      if (!response.ok) {
+        throw new Error("Geçersiz token");
+      }
+      const data = await response.json();
+      setDeviceInfo(data.deviceInfo);
+      return data;
+    } catch (error) {
+      setDeviceInfo(null);
+      throw error;
     }
-    const data = await response.json();
-    setDeviceInfo(data.deviceInfo);
-    return data;
   };
 
   const createDevice = useMutation({
     mutationFn: async (data: FormData) => {
-      // Önce token'ı doğrula
-      await validateToken(data.token);
-
-      // Cihazı oluştur
       const response = await fetch("http://localhost:5000/api/devices", {
         method: "POST",
         headers: {
@@ -63,11 +73,6 @@ const DeviceForm = ({ onSuccess, initialData }: DeviceFormProps) => {
       if (!response.ok) {
         throw new Error("Cihaz eklenirken bir hata oluştu");
       }
-
-      // Token'ı kullanıldı olarak işaretle
-      await fetch(`http://localhost:5000/api/tokens/${data.token}/use`, {
-        method: "PATCH",
-      });
 
       return response.json();
     },

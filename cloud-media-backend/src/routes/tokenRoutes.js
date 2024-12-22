@@ -56,4 +56,23 @@ router.patch('/:token/use', async (req, res) => {
   }
 });
 
+// Token'ı serbest bırak (Cihaz silindiğinde çağrılacak)
+router.patch('/:token/release', async (req, res) => {
+  try {
+    const token = await Token.findOneAndUpdate(
+      { token: req.params.token },
+      { isUsed: false },
+      { new: true }
+    );
+    
+    if (!token) {
+      return res.status(404).json({ message: 'Token bulunamadı' });
+    }
+    
+    res.json(token);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router;

@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Device = require('../models/Device');
+const Token = require('../models/Token');
 
 // Tüm cihazları getir
 router.get('/', async (req, res) => {
@@ -25,6 +26,11 @@ router.post('/', async (req, res) => {
 
   try {
     const newDevice = await device.save();
+    // Token'ı kullanıldı olarak işaretle
+    await Token.findOneAndUpdate(
+      { token: req.body.token },
+      { isUsed: true }
+    );
     res.status(201).json(newDevice);
   } catch (error) {
     res.status(400).json({ message: error.message });
@@ -57,6 +63,14 @@ router.delete('/:id', async (req, res) => {
     if (!device) {
       return res.status(404).json({ message: 'Cihaz bulunamadı' });
     }
+
+    // Önce cihazın token'ını serbest bırak
+    await Token.findOneAndUpdate(
+      { token: device.token },
+      { isUsed: false }
+    );
+
+    // Sonra cihazı sil
     await device.remove();
     res.json({ message: 'Cihaz silindi' });
   } catch (error) {

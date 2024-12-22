@@ -25,12 +25,9 @@ const tokenSchema = new mongoose.Schema({
   isUsed: {
     type: Boolean,
     default: false
-  },
-  createdAt: {
-    type: Date,
-    default: Date.now,
-    expires: 86400 // 24 saat sonra otomatik silinir
   }
+}, {
+  timestamps: true
 });
 
 const Token = mongoose.model('Token', tokenSchema);
