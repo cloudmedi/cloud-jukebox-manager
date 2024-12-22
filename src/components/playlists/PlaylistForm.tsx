@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useQueryClient } from "@tanstack/react-query";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -15,10 +17,16 @@ import { Textarea } from "@/components/ui/textarea";
 import { useToast } from "@/hooks/use-toast";
 import { Loader2 } from "lucide-react";
 
-interface PlaylistFormData {
-  name: string;
-  description?: string;
-}
+const playlistFormSchema = z.object({
+  name: z.string()
+    .min(2, "Playlist adı en az 2 karakter olmalıdır")
+    .max(50, "Playlist adı en fazla 50 karakter olabilir"),
+  description: z.string()
+    .max(200, "Açıklama en fazla 200 karakter olabilir")
+    .optional(),
+});
+
+type PlaylistFormData = z.infer<typeof playlistFormSchema>;
 
 interface PlaylistFormProps {
   onSuccess: () => void;
@@ -30,6 +38,7 @@ export const PlaylistForm = ({ onSuccess }: PlaylistFormProps) => {
   const queryClient = useQueryClient();
 
   const form = useForm<PlaylistFormData>({
+    resolver: zodResolver(playlistFormSchema),
     defaultValues: {
       name: "",
       description: "",
@@ -55,18 +64,21 @@ export const PlaylistForm = ({ onSuccess }: PlaylistFormProps) => {
         throw new Error("Playlist oluşturulamadı");
       }
 
+      const result = await response.json();
+
       toast({
         title: "Başarılı",
         description: "Playlist başarıyla oluşturuldu",
       });
 
       queryClient.invalidateQueries({ queryKey: ["playlists"] });
+      form.reset();
       onSuccess();
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Hata",
-        description: "Playlist oluşturulurken bir hata oluştu",
+        description: error instanceof Error ? error.message : "Playlist oluşturulurken bir hata oluştu",
       });
     } finally {
       setIsSubmitting(false);
@@ -79,12 +91,15 @@ export const PlaylistForm = ({ onSuccess }: PlaylistFormProps) => {
         <FormField
           control={form.control}
           name="name"
-          rules={{ required: "Playlist adı zorunludur" }}
           render={({ field }) => (
             <FormItem>
               <FormLabel>Playlist Adı</FormLabel>
               <FormControl>
-                <Input placeholder="Yeni Playlist" {...field} />
+                <Input 
+                  placeholder="Yeni Playlist" 
+                  {...field} 
+                  disabled={isSubmitting}
+                />
               </FormControl>
               <FormMessage />
             </FormItem>
@@ -102,6 +117,7 @@ export const PlaylistForm = ({ onSuccess }: PlaylistFormProps) => {
                   placeholder="Playlist açıklaması..."
                   className="resize-none"
                   {...field}
+                  disabled={isSubmitting}
                 />
               </FormControl>
               <FormMessage />
@@ -109,7 +125,11 @@ export const PlaylistForm = ({ onSuccess }: PlaylistFormProps) => {
           )}
         />
 
-        <Button type="submit" disabled={isSubmitting} className="w-full">
+        <Button 
+          type="submit" 
+          disabled={isSubmitting} 
+          className="w-full"
+        >
           {isSubmitting ? (
             <>
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
