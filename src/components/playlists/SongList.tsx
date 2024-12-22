@@ -1,15 +1,50 @@
-import { Button } from "@/components/ui/button";
-import { Play, Trash2 } from "lucide-react";
-import { formatDuration } from "@/lib/utils";
+import {
+  DndContext,
+  DragEndEvent,
+  KeyboardSensor,
+  PointerSensor,
+  closestCenter,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+} from "@dnd-kit/sortable";
+import { DraggableSongItem } from "./DraggableSongItem";
 import { Song } from "@/types/song";
 
 interface SongListProps {
   songs: Song[];
   onRemove: (songId: string) => void;
+  onReorder?: (songs: Song[]) => void;
   isLoading?: boolean;
 }
 
-export const SongList = ({ songs, onRemove, isLoading }: SongListProps) => {
+export const SongList = ({ songs, onRemove, onReorder, isLoading }: SongListProps) => {
+  const sensors = useSensors(
+    useSensor(PointerSensor),
+    useSensor(KeyboardSensor, {
+      coordinateGetter: sortableKeyboardCoordinates,
+    })
+  );
+
+  const handleDragEnd = (event: DragEndEvent) => {
+    const { active, over } = event;
+
+    if (over && active.id !== over.id) {
+      const oldIndex = songs.findIndex((song) => song._id === active.id);
+      const newIndex = songs.findIndex((song) => song._id === over.id);
+
+      const newSongs = [...songs];
+      const [movedSong] = newSongs.splice(oldIndex, 1);
+      newSongs.splice(newIndex, 0, movedSong);
+
+      onReorder?.(newSongs);
+    }
+  };
+
   if (songs.length === 0) {
     return (
       <div className="p-4 text-center text-muted-foreground">
@@ -19,35 +54,22 @@ export const SongList = ({ songs, onRemove, isLoading }: SongListProps) => {
   }
 
   return (
-    <div className="space-y-1 p-4">
-      {songs.map((song) => (
-        <div
-          key={song._id}
-          className="flex items-center justify-between rounded-lg border p-2 hover:bg-accent"
-        >
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon">
-              <Play className="h-4 w-4" />
-            </Button>
-            <div>
-              <p className="font-medium">{song.name}</p>
-              <p className="text-sm text-muted-foreground">{song.artist}</p>
-            </div>
-          </div>
-          <div className="flex items-center gap-4">
-            <span className="text-sm text-muted-foreground">
-              {formatDuration(song.duration)}
-            </span>
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={() => onRemove(song._id)}
-            >
-              <Trash2 className="h-4 w-4 text-destructive" />
-            </Button>
-          </div>
+    <DndContext
+      sensors={sensors}
+      collisionDetection={closestCenter}
+      onDragEnd={handleDragEnd}
+    >
+      <SortableContext items={songs.map(song => song._id)} strategy={verticalListSortingStrategy}>
+        <div className="space-y-1 p-4">
+          {songs.map((song) => (
+            <DraggableSongItem
+              key={song._id}
+              song={song}
+              onRemove={onRemove}
+            />
+          ))}
         </div>
-      ))}
-    </div>
+      </SortableContext>
+    </DndContext>
   );
 };

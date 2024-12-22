@@ -100,6 +100,33 @@ export const PlaylistSongManager = ({
     }
   };
 
+  const handleReorderSongs = async (newSongs: Song[]) => {
+    try {
+      const response = await fetch(
+        `http://localhost:5000/api/playlists/${playlist._id}`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            songs: newSongs.map((song) => song._id),
+          }),
+        }
+      );
+
+      if (!response.ok) throw new Error("Şarkı sırası güncellenemedi");
+
+      onPlaylistUpdate();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Şarkı sırası güncellenirken bir hata oluştu",
+      });
+    }
+  };
+
   if (error) {
     return (
       <Alert variant="destructive">
@@ -133,6 +160,7 @@ export const PlaylistSongManager = ({
           <SongList
             songs={playlist.songs}
             onRemove={handleRemoveSong}
+            onReorder={handleReorderSongs}
             isLoading={isLoading}
           />
         )}
