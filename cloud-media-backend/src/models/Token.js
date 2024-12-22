@@ -3,14 +3,13 @@ const mongoose = require('mongoose');
 const tokenSchema = new mongoose.Schema({
   token: {
     type: String,
-    required: true,
+    required: [true, 'Token zorunludur'],
     unique: true,
-    length: 6,
     validate: {
       validator: function(v) {
         return /^\d{6}$/.test(v);
       },
-      message: 'Token 6 haneli sayısal bir değer olmalıdır'
+      message: props => `${props.value} geçerli bir token değil! Token 6 haneli bir sayı olmalıdır.`
     }
   },
   deviceInfo: {
@@ -20,7 +19,8 @@ const tokenSchema = new mongoose.Schema({
     cpus: String,
     totalMemory: String,
     freeMemory: String,
-    networkInterfaces: [String]
+    networkInterfaces: [String],
+    osVersion: String
   },
   isUsed: {
     type: Boolean,
