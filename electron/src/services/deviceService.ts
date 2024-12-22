@@ -1,4 +1,4 @@
-import os from 'os';
+import os from 'node:os';
 import Store from 'electron-store';
 
 export interface DeviceInfo {
