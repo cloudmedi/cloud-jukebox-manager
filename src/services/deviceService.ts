@@ -16,6 +16,7 @@ export interface Device {
     name: string;
   } | null;
   playlistStatus?: 'loaded' | 'loading' | 'error';
+  groupId?: string | null;
 }
 
 export const deviceService = {
