@@ -7,6 +7,7 @@ import { Progress } from "@/components/ui/progress";
 import { useToast } from "@/hooks/use-toast";
 import { BasicInfoForm } from "./BasicInfoForm";
 import { PlaybackScheduleForm } from "./PlaybackScheduleForm";
+import { TargetDeviceSelect } from "./TargetDeviceSelect";
 import { Form } from "@/components/ui/form";
 
 const API_URL = "http://localhost:5000/api";
@@ -32,6 +33,8 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
       songInterval: announcement?.songInterval || 1,
       minuteInterval: announcement?.minuteInterval || 5,
       specificTimes: announcement?.specificTimes || [""],
+      targetDevices: announcement?.targetDevices || [],
+      targetGroups: announcement?.targetGroups || [],
     },
   });
 
@@ -137,6 +140,7 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <BasicInfoForm form={form} />
         <PlaybackScheduleForm form={form} />
+        <TargetDeviceSelect form={form} />
 
         {!announcement && (
           <div className="space-y-2">
