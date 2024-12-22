@@ -9,13 +9,20 @@ module.exports = defineConfig({
         input: {
           index: resolve(__dirname, 'src/main/index.js')
         },
-        external: ['electron', 'electron-store']
+        external: ['electron', 'electron-store', 'os', 'path', 'axios']
       },
       outDir: 'out/main',
       lib: {
         entry: 'src/main/index.js',
         formats: ['cjs']
-      }
+      },
+      // Services dosyalarını kopyalamak için
+      copyFiles: [
+        {
+          from: 'src/main/services',
+          to: 'out/main/services'
+        }
+      ]
     }
   },
   preload: {

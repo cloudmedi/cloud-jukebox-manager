@@ -42,6 +42,7 @@ app.on('window-all-closed', () => {
   }
 });
 
+// IPC handlers
 ipcMain.handle('get-device-info', () => {
   return deviceService.getDeviceInfo();
 });
