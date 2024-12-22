@@ -5,10 +5,10 @@ import Header from "./Header";
 import Player from "../player/Player";
 
 interface MainLayoutProps {
-  children: React.ReactNode;
+  children?: React.ReactNode;
 }
 
-const MainLayout = ({ children }: MainLayoutProps) => {
+export const MainLayout = ({ children }: MainLayoutProps) => {
   const [showPlayer, setShowPlayer] = useState(false);
   
   return (
@@ -26,5 +26,3 @@ const MainLayout = ({ children }: MainLayoutProps) => {
     </SidebarProvider>
   );
 };
-
-export default MainLayout;

@@ -14,11 +14,13 @@ export const usePlaylistQueries = () => {
       return data;
     },
     staleTime: 1000 * 60 * 5, // 5 dakika
-    gcTime: 1000 * 60 * 30, // 30 dakika (eski cacheTime)
+    gcTime: 1000 * 60 * 30, // 30 dakika
     retry: 3,
-    onError: (error) => {
-      setError(error as Error);
-    },
+    meta: {
+      onError: (error: Error) => {
+        setError(error);
+      }
+    }
   });
 
   const playlist = (id: string) =>
