@@ -1,7 +1,23 @@
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Power, Settings, Check, AlertCircle, Loader2, Music } from "lucide-react";
+import { 
+  RefreshCw, 
+  Power,
+  Music,
+  Volume2,
+  Users,
+  Info,
+  StopCircle,
+  Trash2,
+  MoreVertical
+} from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Device {
@@ -88,6 +104,46 @@ export const DeviceTableRow = ({ device, style }: DeviceTableRowProps) => {
     }
   };
 
+  const handleRestart = () => {
+    console.log('Restart device:', device._id);
+    // API call to restart device
+  };
+
+  const handlePowerToggle = () => {
+    console.log('Toggle power for device:', device._id);
+    // API call to toggle power
+  };
+
+  const handlePlaylistManagement = () => {
+    console.log('Manage playlist for device:', device._id);
+    // Open playlist management dialog
+  };
+
+  const handleVolumeControl = () => {
+    console.log('Control volume for device:', device._id);
+    // Open volume control dialog
+  };
+
+  const handleGroupManagement = () => {
+    console.log('Manage group for device:', device._id);
+    // Open group management dialog
+  };
+
+  const handleDeviceDetails = () => {
+    console.log('View details for device:', device._id);
+    // Navigate to device details page
+  };
+
+  const handleEmergencyStop = () => {
+    console.log('Emergency stop for device:', device._id);
+    // API call for emergency stop
+  };
+
+  const handleDelete = () => {
+    console.log('Delete device:', device._id);
+    // Open delete confirmation dialog
+  };
+
   return (
     <TableRow style={style}>
       <TableCell className="font-medium">{device.name}</TableCell>
@@ -109,9 +165,47 @@ export const DeviceTableRow = ({ device, style }: DeviceTableRowProps) => {
         {new Date(device.lastSeen).toLocaleString("tr-TR")}
       </TableCell>
       <TableCell className="text-right">
-        <Button variant="ghost" size="icon">
-          <Settings className="h-4 w-4" />
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" size="icon">
+              <MoreVertical className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-48">
+            <DropdownMenuItem onClick={handleRestart}>
+              <RefreshCw className="mr-2 h-4 w-4" />
+              Yeniden Başlat
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handlePowerToggle}>
+              <Power className="mr-2 h-4 w-4" />
+              {device.isOnline ? 'Cihazı Kapat' : 'Cihazı Aç'}
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handlePlaylistManagement}>
+              <Music className="mr-2 h-4 w-4" />
+              Playlist Yönetimi
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleVolumeControl}>
+              <Volume2 className="mr-2 h-4 w-4" />
+              Ses Kontrolü
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleGroupManagement}>
+              <Users className="mr-2 h-4 w-4" />
+              Grup Yönetimi
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleDeviceDetails}>
+              <Info className="mr-2 h-4 w-4" />
+              Cihaz Detayları
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleEmergencyStop} className="text-red-600">
+              <StopCircle className="mr-2 h-4 w-4" />
+              Acil Durdur
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={handleDelete} className="text-red-600">
+              <Trash2 className="mr-2 h-4 w-4" />
+              Cihazı Sil
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </TableCell>
     </TableRow>
   );
