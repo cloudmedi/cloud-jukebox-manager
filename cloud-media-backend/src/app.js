@@ -2,12 +2,24 @@ const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/database');
 const path = require('path');
+const fs = require('fs');
 require('dotenv').config();
 
 const app = express();
 
 // Connect to MongoDB
 connectDB();
+
+// Uploads klasörlerini oluştur
+const uploadsDir = path.join(__dirname, '../uploads');
+const playlistsDir = path.join(uploadsDir, 'playlists');
+
+if (!fs.existsSync(uploadsDir)) {
+  fs.mkdirSync(uploadsDir);
+}
+if (!fs.existsSync(playlistsDir)) {
+  fs.mkdirSync(playlistsDir);
+}
 
 // Middleware
 app.use(cors());
