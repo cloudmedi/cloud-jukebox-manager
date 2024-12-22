@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { useState } from "react";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface TargetDeviceSelectProps {
   form: any;
@@ -16,7 +17,7 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
   const [deviceSearch, setDeviceSearch] = useState("");
   const [groupSearch, setGroupSearch] = useState("");
 
-  const { data: devices = [] } = useQuery({
+  const { data: devices = [], isError: isDevicesError } = useQuery({
     queryKey: ["devices"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/devices");
@@ -26,7 +27,7 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
     },
   });
 
-  const { data: groups = [] } = useQuery({
+  const { data: groups = [], isError: isGroupsError } = useQuery({
     queryKey: ["device-groups"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/device-groups");
@@ -36,14 +37,24 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
     },
   });
 
-  const filteredDevices = (devices || []).filter((device: any) =>
+  const filteredDevices = devices.filter((device: any) =>
     device?.name?.toLowerCase().includes(deviceSearch.toLowerCase()) ||
     device?.location?.toLowerCase().includes(deviceSearch.toLowerCase())
   );
 
-  const filteredGroups = (groups || []).filter((group: any) =>
+  const filteredGroups = groups.filter((group: any) =>
     group?.name?.toLowerCase().includes(groupSearch.toLowerCase())
   );
+
+  if (isDevicesError || isGroupsError) {
+    return (
+      <Alert variant="destructive">
+        <AlertDescription>
+          Veriler yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.
+        </AlertDescription>
+      </Alert>
+    );
+  }
 
   return (
     <div className="grid grid-cols-2 gap-4">
@@ -62,7 +73,7 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
                   className="w-full justify-between"
                 >
                   {field.value?.[0]
-                    ? devices?.find((device: any) => device?._id === field.value[0])?.name || "Cihaz seçin..."
+                    ? devices.find((device: any) => device._id === field.value[0])?.name || "Cihaz seçin..."
                     : "Cihaz seçin..."}
                   <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -118,7 +129,7 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
                   className="w-full justify-between"
                 >
                   {field.value?.[0]
-                    ? groups?.find((group: any) => group?._id === field.value[0])?.name || "Grup seçin..."
+                    ? groups.find((group: any) => group._id === field.value[0])?.name || "Grup seçin..."
                     : "Grup seçin..."}
                   <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
