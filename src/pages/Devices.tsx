@@ -1,6 +1,6 @@
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import DeviceList from "@/components/devices/DeviceList";
 import DeviceGroups from "@/components/devices/DeviceGroups";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 const Devices = () => {
   return (
