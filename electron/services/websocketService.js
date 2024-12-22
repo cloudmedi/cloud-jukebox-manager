@@ -22,6 +22,12 @@ class WebSocketService {
         type: 'auth',
         token: token
       }));
+
+      // Uygulama açıldığında online durumunu bildir
+      this.sendStatus({
+        type: 'status',
+        isOnline: true
+      });
     });
 
     this.ws.on('message', (data) => {
@@ -115,6 +121,13 @@ class WebSocketService {
 
   disconnect() {
     if (this.ws) {
+      // Uygulama kapatılmadan önce offline durumunu bildir
+      this.sendStatus({
+        type: 'status',
+        isOnline: false
+      });
+      
+      // Bağlantıyı kapat
       this.ws.close();
       this.ws = null;
     }
