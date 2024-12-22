@@ -7,14 +7,32 @@ import { Button } from "@/components/ui/button";
 import { Calendar, List } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { PlaylistScheduleForm } from "@/components/schedule/PlaylistScheduleForm";
+import { useQuery } from "@tanstack/react-query";
+import { format } from "date-fns";
 
 const Schedule = () => {
   const [view, setView] = useState<"timeGridWeek" | "dayGridMonth">("timeGridWeek");
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+
+  const { data: schedules } = useQuery({
+    queryKey: ["playlist-schedules"],
+    queryFn: async () => {
+      const response = await fetch("http://localhost:5000/api/playlist-schedules");
+      return response.json();
+    },
+  });
 
   const handleDateSelect = (selectInfo: any) => {
-    const dialog = document.getElementById("schedule-dialog") as HTMLButtonElement;
-    if (dialog) dialog.click();
+    setIsDialogOpen(true);
   };
+
+  const events = schedules?.map((schedule: any) => ({
+    id: schedule._id,
+    title: `${schedule.playlist.name} - ${schedule.targets.devices.length > 0 ? 'Cihaz' : 'Grup'}`,
+    start: schedule.startDate,
+    end: schedule.endDate,
+    backgroundColor: schedule.status === 'active' ? '#10b981' : '#6b7280',
+  })) || [];
 
   return (
     <div className="space-y-6">
@@ -49,21 +67,19 @@ const Schedule = () => {
           selectMirror={true}
           dayMaxEvents={true}
           weekends={true}
+          events={events}
           select={handleDateSelect}
           height="auto"
           locale="tr"
         />
       </div>
 
-      <Dialog>
-        <DialogTrigger id="schedule-dialog" className="hidden">
-          Open
-        </DialogTrigger>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Playlist Zamanla</DialogTitle>
           </DialogHeader>
-          <PlaylistScheduleForm />
+          <PlaylistScheduleForm onSuccess={() => setIsDialogOpen(false)} />
         </DialogContent>
       </Dialog>
     </div>
