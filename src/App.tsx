@@ -7,6 +7,9 @@ import Index from "./pages/Index";
 import Devices from "./pages/Devices";
 import Playlists from "./pages/Playlists";
 import Schedule from "./pages/Schedule";
+import Announcements from "./pages/Announcements";
+import Upload from "./pages/Upload";
+import Reports from "./pages/Reports";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -28,6 +31,9 @@ function App() {
               <Route path="/devices" element={<Devices />} />
               <Route path="/playlists" element={<Playlists />} />
               <Route path="/schedule" element={<Schedule />} />
+              <Route path="/announcements" element={<Announcements />} />
+              <Route path="/upload" element={<Upload />} />
+              <Route path="/reports" element={<Reports />} />
             </Route>
           </Routes>
           <Toaster />
