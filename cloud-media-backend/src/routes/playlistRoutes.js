@@ -1,6 +1,34 @@
 const express = require('express');
 const router = express.Router();
 const Playlist = require('../models/Playlist');
+const multer = require('multer');
+const path = require('path');
+
+// Multer yapılandırması
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/playlists')
+  },
+  filename: function (req, file, cb) {
+    const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9)
+    cb(null, 'playlist-' + uniqueSuffix + path.extname(file.originalname))
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  limits: {
+    fileSize: 5 * 1024 * 1024 // 5MB limit
+  },
+  fileFilter: function (req, file, cb) {
+    const allowedTypes = ['image/jpeg', 'image/jpg', 'image/png', 'image/webp'];
+    if (allowedTypes.includes(file.mimetype)) {
+      cb(null, true);
+    } else {
+      cb(new Error('Geçersiz dosya tipi. Sadece JPEG, JPG, PNG ve WEBP dosyaları kabul edilir.'));
+    }
+  }
+});
 
 // Tüm playlistleri getir
 router.get('/', async (req, res) => {
@@ -28,17 +56,17 @@ router.get('/:id', async (req, res) => {
 });
 
 // Yeni playlist oluştur
-router.post('/', async (req, res) => {
-  const playlist = new Playlist({
-    name: req.body.name,
-    description: req.body.description,
-    songs: req.body.songs,
-    artwork: req.body.artwork,
-    createdBy: req.body.createdBy,
-    isShuffled: req.body.isShuffled
-  });
-
+router.post('/', upload.single('artwork'), async (req, res) => {
   try {
+    const playlist = new Playlist({
+      name: req.body.name,
+      description: req.body.description,
+      songs: req.body.songs ? (Array.isArray(req.body.songs) ? req.body.songs : [req.body.songs]) : [],
+      artwork: req.file ? `/uploads/playlists/${req.file.filename}` : null,
+      createdBy: req.body.createdBy || 'system',
+      isShuffled: req.body.isShuffled === 'true'
+    });
+
     const newPlaylist = await playlist.save();
     res.status(201).json(newPlaylist);
   } catch (error) {
