@@ -19,6 +19,7 @@ app.use('/api/playlists', require('./routes/playlistRoutes'));
 app.use('/api/songs', require('./routes/songRoutes'));
 app.use('/api/announcements', require('./routes/announcementRoutes'));
 app.use('/api/playlist-schedules', require('./routes/playlistScheduleRoutes'));
+app.use('/api/stats', require('./routes/statsRoutes'));
 
 const PORT = process.env.PORT || 5000;
 
