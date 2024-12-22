@@ -16,7 +16,10 @@ import {
   Info,
   StopCircle,
   Trash2,
-  MoreVertical
+  MoreVertical,
+  Check,
+  Loader,
+  AlertCircle
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -72,7 +75,7 @@ export const DeviceTableRow = ({ device, style }: DeviceTableRowProps) => {
           <Tooltip>
             <TooltipTrigger>
               <Badge variant="warning" className="flex items-center gap-1">
-                <Loader2 className="h-3 w-3 animate-spin" />
+                <Loader className="h-3 w-3 animate-spin" />
                 Yükleniyor
               </Badge>
             </TooltipTrigger>
