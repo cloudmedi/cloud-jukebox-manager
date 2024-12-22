@@ -17,15 +17,14 @@ const playlistSchema = z.object({
   description: z.string().max(500, "Açıklama çok uzun").optional(),
   songs: z.array(z.string()).default([]),
   artwork: z
-    .instanceof(FileList)
-    .refine((files) => files?.length === 0 || files?.length === 1, "Bir adet kapak resmi seçin")
+    .any()
+    .refine((files) => !files || files?.length === 0 || files?.length === 1, "Bir adet kapak resmi seçin")
     .refine(
-      (files) => files?.length === 0 || files?.[0]?.size <= MAX_FILE_SIZE,
+      (files) => !files || files?.length === 0 || files?.[0]?.size <= MAX_FILE_SIZE,
       "Maksimum dosya boyutu 5MB"
     )
     .refine(
-      (files) =>
-        files?.length === 0 || ACCEPTED_IMAGE_TYPES.includes(files?.[0]?.type),
+      (files) => !files || files?.length === 0 || ACCEPTED_IMAGE_TYPES.includes(files?.[0]?.type),
       "Sadece .jpg, .jpeg, .png ve .webp formatları kabul edilir"
     )
     .optional(),
@@ -65,7 +64,12 @@ export const PlaylistForm = ({
       formData.append("name", data.name);
       if (data.description) formData.append("description", data.description);
       data.songs.forEach((songId) => formData.append("songs[]", songId));
-      if (data.artwork?.[0]) formData.append("artwork", data.artwork[0]);
+      
+      // Artwork kontrolü ve eklenmesi
+      if (data.artwork && data.artwork[0] instanceof File) {
+        formData.append("artwork", data.artwork[0]);
+      }
+      
       formData.append("isShuffled", String(data.isShuffled));
       formData.append("createdBy", "system");
 

@@ -4,15 +4,21 @@ import { UseFormReturn } from "react-hook-form";
 import { PlaylistFormValues } from "../PlaylistForm";
 import { Card, CardContent } from "@/components/ui/card";
 import { ImageIcon } from "lucide-react";
+import { useRef } from "react";
 
 interface ArtworkUploadProps {
   form: UseFormReturn<PlaylistFormValues>;
 }
 
 export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const previewUrl = form.watch("artwork") && form.watch("artwork")[0] 
     ? URL.createObjectURL(form.watch("artwork")[0])
     : null;
+
+  const handleCardClick = () => {
+    fileInputRef.current?.click();
+  };
 
   return (
     <FormField
@@ -22,7 +28,10 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
         <FormItem>
           <FormLabel>Kapak Resmi (300x300)</FormLabel>
           <FormControl>
-            <Card className="w-full max-w-sm cursor-pointer hover:bg-accent/50 transition-colors">
+            <Card 
+              className="w-full max-w-sm cursor-pointer hover:bg-accent/50 transition-colors"
+              onClick={handleCardClick}
+            >
               <CardContent className="p-4">
                 <div className="relative aspect-square w-full overflow-hidden rounded-lg border-2 border-dashed border-muted-foreground/25">
                   {previewUrl ? (
@@ -37,9 +46,10 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
                     </div>
                   )}
                   <Input
+                    ref={fileInputRef}
                     type="file"
                     accept="image/jpeg,image/jpg,image/png,image/webp"
-                    className="absolute inset-0 cursor-pointer opacity-0"
+                    className="hidden"
                     onChange={(e) => {
                       onChange(e.target.files);
                     }}
