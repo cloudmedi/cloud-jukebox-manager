@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Plus, Trash2, Play } from "lucide-react";
+import { Plus, Trash2, Play, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -9,7 +9,9 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface Song {
   _id: string;
@@ -29,14 +31,33 @@ interface PlaylistSongManagerProps {
   onPlaylistUpdate: () => void;
 }
 
+const SongSkeleton = () => (
+  <div className="flex items-center justify-between rounded-lg border p-2 animate-pulse">
+    <div className="flex items-center gap-3">
+      <div className="w-8 h-8 bg-muted rounded-full" />
+      <div className="space-y-2">
+        <div className="h-4 w-32 bg-muted rounded" />
+        <div className="h-3 w-24 bg-muted rounded" />
+      </div>
+    </div>
+    <div className="flex items-center gap-4">
+      <div className="h-4 w-16 bg-muted rounded" />
+      <div className="w-8 h-8 bg-muted rounded-full" />
+    </div>
+  </div>
+);
+
 export const PlaylistSongManager = ({ playlist, onPlaylistUpdate }: PlaylistSongManagerProps) => {
   const [isAddSongOpen, setIsAddSongOpen] = useState(false);
   const { toast } = useToast();
 
-  const { data: availableSongs } = useQuery({
+  const { data: availableSongs, isLoading, error } = useQuery({
     queryKey: ["songs"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/songs");
+      if (!response.ok) {
+        throw new Error("Şarkılar yüklenirken bir hata oluştu");
+      }
       return response.json();
     },
   });
@@ -101,6 +122,18 @@ export const PlaylistSongManager = ({ playlist, onPlaylistUpdate }: PlaylistSong
     return `${minutes}:${seconds.toString().padStart(2, "0")}`;
   };
 
+  if (error) {
+    return (
+      <Alert variant="destructive">
+        <AlertCircle className="h-4 w-4" />
+        <AlertTitle>Hata</AlertTitle>
+        <AlertDescription>
+          Şarkılar yüklenirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.
+        </AlertDescription>
+      </Alert>
+    );
+  }
+
   return (
     <div className="space-y-4">
       <div className="flex justify-between items-center">
@@ -112,7 +145,13 @@ export const PlaylistSongManager = ({ playlist, onPlaylistUpdate }: PlaylistSong
       </div>
 
       <ScrollArea className="h-[300px] rounded-md border">
-        {playlist.songs.length === 0 ? (
+        {isLoading ? (
+          <div className="space-y-2 p-4">
+            {[1, 2, 3].map((i) => (
+              <SongSkeleton key={i} />
+            ))}
+          </div>
+        ) : playlist.songs.length === 0 ? (
           <div className="p-4 text-center text-muted-foreground">
             Bu playlist'te henüz şarkı yok
           </div>
@@ -156,20 +195,36 @@ export const PlaylistSongManager = ({ playlist, onPlaylistUpdate }: PlaylistSong
             <DialogTitle>Şarkı Ekle</DialogTitle>
           </DialogHeader>
           <ScrollArea className="h-[400px] pr-4">
-            <div className="space-y-1">
-              {availableSongs?.map((song: Song) => (
-                <div
-                  key={song._id}
-                  className="flex items-center justify-between rounded-lg border p-2 hover:bg-accent"
-                >
-                  <div>
-                    <p className="font-medium">{song.name}</p>
-                    <p className="text-sm text-muted-foreground">{song.artist}</p>
+            {isLoading ? (
+              <div className="space-y-2">
+                {[1, 2, 3, 4].map((i) => (
+                  <SongSkeleton key={i} />
+                ))}
+              </div>
+            ) : error ? (
+              <Alert variant="destructive">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Hata</AlertTitle>
+                <AlertDescription>
+                  Şarkılar yüklenirken bir hata oluştu. Lütfen daha sonra tekrar deneyin.
+                </AlertDescription>
+              </Alert>
+            ) : (
+              <div className="space-y-1">
+                {availableSongs?.map((song: Song) => (
+                  <div
+                    key={song._id}
+                    className="flex items-center justify-between rounded-lg border p-2 hover:bg-accent"
+                  >
+                    <div>
+                      <p className="font-medium">{song.name}</p>
+                      <p className="text-sm text-muted-foreground">{song.artist}</p>
+                    </div>
+                    <Button onClick={() => handleAddSong(song._id)}>Ekle</Button>
                   </div>
-                  <Button onClick={() => handleAddSong(song._id)}>Ekle</Button>
-                </div>
-              ))}
-            </div>
+                ))}
+              </div>
+            )}
           </ScrollArea>
         </DialogContent>
       </Dialog>
