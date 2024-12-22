@@ -3,15 +3,14 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { collectDeviceInfo, registerDevice } from '@/services/deviceRegistration';
 import WebSocketService from '@/services/websocketService';
-import { useToast } from "@/hooks/use-toast";
 
 export const DeviceRegistration = () => {
   const [token, setToken] = useState<string | null>(null);
   const [isRegistering, setIsRegistering] = useState(false);
   const [wsService, setWsService] = useState<WebSocketService | null>(null);
-  const { toast } = useToast();
 
   useEffect(() => {
+    // LocalStorage'dan token'ı kontrol et
     const savedToken = localStorage.getItem('deviceToken');
     if (savedToken) {
       setToken(savedToken);
@@ -24,25 +23,15 @@ export const DeviceRegistration = () => {
     try {
       setIsRegistering(true);
       const deviceInfo = collectDeviceInfo();
-      const result = await registerDevice(deviceInfo);
+      const newToken = await registerDevice(deviceInfo);
       
-      setToken(result.token);
-      localStorage.setItem('deviceToken', result.token);
+      setToken(newToken);
+      localStorage.setItem('deviceToken', newToken);
       
-      const ws = new WebSocketService(result.token);
+      const ws = new WebSocketService(newToken);
       setWsService(ws);
-
-      toast({
-        title: "Başarılı",
-        description: "Cihaz başarıyla kaydedildi",
-      });
     } catch (error) {
-      console.error('Kayıt hatası:', error);
-      toast({
-        variant: "destructive",
-        title: "Hata",
-        description: "Cihaz kaydı sırasında bir hata oluştu",
-      });
+      console.error('Cihaz kayıt hatası:', error);
     } finally {
       setIsRegistering(false);
     }
@@ -60,7 +49,7 @@ export const DeviceRegistration = () => {
               Cihaz Token: <span className="font-mono">{token}</span>
             </p>
             <p className="text-sm text-green-500">
-              WebSocket Bağlantısı: {wsService?.isConnected() ? 'Aktif' : 'Bağlantı Kesik'}
+              WebSocket Bağlantısı: {wsService ? 'Aktif' : 'Bağlantı Kesik'}
             </p>
           </div>
         ) : (

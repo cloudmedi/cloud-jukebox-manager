@@ -1,10 +1,11 @@
+import { toast } from "@/components/ui/use-toast";
+
 class WebSocketService {
   private ws: WebSocket | null = null;
   private token: string;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
   private reconnectTimeout = 5000;
-  private connected = false;
 
   constructor(token: string) {
     this.token = token;
@@ -18,7 +19,11 @@ class WebSocketService {
       this.ws.onopen = () => {
         console.log('WebSocket bağlantısı kuruldu');
         this.reconnectAttempts = 0;
-        this.connected = true;
+        
+        toast({
+          title: "Bağlantı Kuruldu",
+          description: "Sunucu ile bağlantı başarıyla kuruldu",
+        });
       };
 
       this.ws.onmessage = (event) => {
@@ -28,22 +33,20 @@ class WebSocketService {
 
       this.ws.onclose = () => {
         console.log('WebSocket bağlantısı kapandı');
-        this.connected = false;
         this.handleReconnect();
       };
 
       this.ws.onerror = (error) => {
         console.error('WebSocket hatası:', error);
-        this.connected = false;
+        toast({
+          variant: "destructive",
+          title: "Bağlantı Hatası",
+          description: "Sunucu ile bağlantı kurulamadı",
+        });
       };
     } catch (error) {
       console.error('WebSocket bağlantı hatası:', error);
-      this.connected = false;
     }
-  }
-
-  public isConnected(): boolean {
-    return this.connected && this.ws?.readyState === WebSocket.OPEN;
   }
 
   private handleReconnect() {
@@ -54,11 +57,16 @@ class WebSocketService {
       setTimeout(() => {
         this.connect();
       }, this.reconnectTimeout);
+    } else {
+      toast({
+        variant: "destructive",
+        title: "Bağlantı Hatası",
+        description: "Sunucu ile bağlantı kurulamadı. Lütfen daha sonra tekrar deneyin.",
+      });
     }
   }
 
   private handleMessage(data: any) {
-    console.log('Gelen mesaj:', data);
     switch (data.type) {
       case 'PLAY':
         // Müzik çalma işlemleri
@@ -78,10 +86,14 @@ class WebSocketService {
   }
 
   public sendMessage(type: string, payload: any) {
-    if (this.isConnected()) {
-      this.ws?.send(JSON.stringify({ type, payload }));
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type, payload }));
     } else {
-      console.error('WebSocket bağlantısı kapalı, mesaj gönderilemedi');
+      toast({
+        variant: "destructive",
+        title: "Bağlantı Hatası",
+        description: "Sunucu ile bağlantı kurulamadı",
+      });
     }
   }
 
@@ -89,7 +101,6 @@ class WebSocketService {
     if (this.ws) {
       this.ws.close();
       this.ws = null;
-      this.connected = false;
     }
   }
 }
