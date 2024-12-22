@@ -1,61 +1,101 @@
+const Store = require('electron-store');
 const os = require('os');
-let Store;
-
-// Dynamic import for electron-store
-import('electron-store').then(module => {
-  Store = module.default;
-}).catch(err => {
-  console.error('Failed to load electron-store:', err);
-});
+const { v4: uuidv4 } = require('uuid');
 
 class DeviceService {
+  static instance = null;
+  
   constructor() {
-    if (!Store) {
-      throw new Error('electron-store module not loaded');
+    try {
+      console.log('Initializing DeviceService...');
+      this.store = new Store({
+        name: 'device-config',
+        defaults: {
+          deviceInfo: null
+        }
+      });
+      console.log('Store initialized successfully');
+    } catch (error) {
+      console.error('Failed to initialize store:', error);
+      throw new Error('Store initialization failed');
     }
-    
-    this.store = new Store({
-      name: 'device-config'
-    });
-    this.deviceToken = this.store.get('deviceToken');
+  }
+
+  static getInstance() {
+    if (!DeviceService.instance) {
+      console.log('Creating new DeviceService instance');
+      DeviceService.instance = new DeviceService();
+    }
+    return DeviceService.instance;
+  }
+
+  initializeDeviceInfo() {
+    try {
+      console.log('Initializing device info...');
+      const deviceInfo = {
+        id: uuidv4(),
+        token: this.generateToken(),
+        platform: os.platform(),
+        hostname: os.hostname(),
+        cpus: `${os.cpus()[0].model} (${os.cpus().length} cores)`,
+        totalMemory: `${Math.round(os.totalmem() / (1024 * 1024 * 1024))} GB`,
+        createdAt: new Date().toISOString()
+      };
+
+      this.store.set('deviceInfo', deviceInfo);
+      console.log('Device info initialized:', deviceInfo);
+      return deviceInfo;
+    } catch (error) {
+      console.error('Failed to initialize device info:', error);
+      throw error;
+    }
   }
 
   generateToken() {
-    if (this.deviceToken) return this.deviceToken;
-    
-    const token = Math.floor(100000 + Math.random() * 900000).toString();
-    this.setToken(token);
-    return token;
-  }
-
-  setToken(token) {
-    this.deviceToken = token;
-    this.store.set('deviceToken', token);
+    try {
+      return Math.random().toString(36).substring(2, 8);
+    } catch (error) {
+      console.error('Failed to generate token:', error);
+      throw error;
+    }
   }
 
   getDeviceInfo() {
-    const networkInterfaces = Object.values(os.networkInterfaces())
-      .flat()
-      .filter(ni => ni !== undefined)
-      .map(ni => ni.address)
-      .filter(addr => addr && !addr.includes(':'));
-
-    return {
-      token: this.deviceToken || this.generateToken(),
-      hostname: os.hostname(),
-      platform: os.platform(),
-      arch: os.arch(),
-      cpus: `${os.cpus()[0].model} (${os.cpus().length} cores)`,
-      totalMemory: `${Math.round(os.totalmem() / (1024 * 1024 * 1024))} GB`,
-      freeMemory: `${Math.round(os.freemem() / (1024 * 1024 * 1024))} GB`,
-      networkInterfaces: networkInterfaces,
-      osVersion: os.release()
-    };
+    try {
+      console.log('Getting device info...');
+      let deviceInfo = this.store.get('deviceInfo');
+      if (!deviceInfo) {
+        console.log('No device info found, initializing...');
+        deviceInfo = this.initializeDeviceInfo();
+      }
+      return deviceInfo;
+    } catch (error) {
+      console.error('Failed to get device info:', error);
+      throw error;
+    }
   }
 
-  clearToken() {
-    this.deviceToken = null;
-    this.store.delete('deviceToken');
+  updateDeviceInfo(updates) {
+    try {
+      const currentInfo = this.getDeviceInfo();
+      const updatedInfo = { ...currentInfo, ...updates };
+      this.store.set('deviceInfo', updatedInfo);
+      console.log('Device info updated:', updatedInfo);
+      return updatedInfo;
+    } catch (error) {
+      console.error('Failed to update device info:', error);
+      throw error;
+    }
+  }
+
+  clearDeviceInfo() {
+    try {
+      this.store.delete('deviceInfo');
+      console.log('Device info cleared');
+    } catch (error) {
+      console.error('Failed to clear device info:', error);
+      throw error;
+    }
   }
 }
 
