@@ -1,28 +1,77 @@
-const PlaylistMessage = require('../messages/PlaylistMessage');
+const Playlist = require('../../models/Playlist');
 const Device = require('../../models/Device');
+const DeviceGroup = require('../../models/DeviceGroup');
 
 class PlaylistHandler {
-  constructor(channelManager) {
-    this.channelManager = channelManager;
+  constructor(wss) {
+    this.wss = wss;
   }
 
-  async sendPlaylistToDevices(playlist, deviceIds) {
-    const message = PlaylistMessage.create(playlist);
-    
-    for (const deviceId of deviceIds) {
-      const device = await Device.findById(deviceId);
-      if (device) {
-        this.channelManager.sendToClient(device.token, message);
+  async handleSendPlaylist(message) {
+    try {
+      // Playlist'i tüm detaylarıyla birlikte al
+      const playlist = await Playlist.findById(message.playlist)
+        .populate({
+          path: 'songs',
+          select: 'name artist filePath duration'
+        });
+
+      if (!playlist) {
+        throw new Error('Playlist bulunamadı');
       }
-    }
-  }
 
-  async sendPlaylistToGroups(playlist, groupIds) {
-    const Device = require('../../models/Device');
-    
-    for (const groupId of groupIds) {
-      const devices = await Device.find({ groupId });
-      await this.sendPlaylistToDevices(playlist, devices.map(d => d._id));
+      // Seçilen cihazlara gönder
+      for (const deviceId of message.devices) {
+        const device = await Device.findById(deviceId);
+        if (device && device.token) {
+          this.wss.sendToDevice(device.token, {
+            type: 'playlist',
+            playlist: {
+              _id: playlist._id,
+              name: playlist.name,
+              songs: playlist.songs.map(song => ({
+                _id: song._id,
+                name: song.name,
+                artist: song.artist,
+                filePath: song.filePath,
+                duration: song.duration
+              }))
+            }
+          });
+        }
+      }
+
+      // Seçilen gruplardaki cihazlara gönder
+      for (const groupId of message.groups) {
+        const group = await DeviceGroup.findById(groupId)
+          .populate('devices');
+        
+        if (group) {
+          for (const device of group.devices) {
+            if (device.token) {
+              this.wss.sendToDevice(device.token, {
+                type: 'playlist',
+                playlist: {
+                  _id: playlist._id,
+                  name: playlist.name,
+                  songs: playlist.songs.map(song => ({
+                    _id: song._id,
+                    name: song.name,
+                    artist: song.artist,
+                    filePath: song.filePath,
+                    duration: song.duration
+                  }))
+                }
+              });
+            }
+          }
+        }
+      }
+
+      return true;
+    } catch (error) {
+      console.error('Playlist gönderme hatası:', error);
+      return false;
     }
   }
 }

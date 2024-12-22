@@ -1,12 +1,11 @@
 const WebSocket = require('ws');
 const Device = require('../models/Device');
-const ChannelManager = require('./ChannelManager');
+const PlaylistHandler = require('./handlers/PlaylistHandler');
 
 class WebSocketServer {
   constructor(server) {
     this.wss = new WebSocket.Server({ server });
-    this.channelManager = new ChannelManager();
-    this.heartbeatInterval = 30000; // 30 saniye
+    this.playlistHandler = new PlaylistHandler(this);
     this.initialize();
   }
 
@@ -42,12 +41,11 @@ class WebSocketServer {
         ws.isAlive = false;
         ws.ping(() => {});
       });
-    }, this.heartbeatInterval);
+    }, 30000);
   }
 
   async handleAdminConnection(ws) {
     console.log('Admin client connected');
-    this.channelManager.joinChannel('admin', 'admin-' + Date.now(), ws);
 
     try {
       const devices = await Device.find({});
@@ -71,16 +69,30 @@ class WebSocketServer {
         const data = JSON.parse(message);
         console.log('Admin message received:', data);
 
-        if (data.type === 'command') {
-          console.log('Sending command to device:', data.token);
-          const success = this.channelManager.sendToClient(data.token, data);
+        switch (data.type) {
+          case 'sendPlaylist':
+            const success = await this.playlistHandler.handleSendPlaylist(data);
+            ws.send(JSON.stringify({
+              type: 'playlistSent',
+              success
+            }));
+            break;
 
-          ws.send(JSON.stringify({
-            type: 'commandStatus',
-            token: data.token,
-            command: data.command,
-            success: success
-          }));
+          case 'command':
+            console.log('Sending command to device:', data.token);
+            const commandSuccess = this.sendToDevice(data.token, data);
+
+            ws.send(JSON.stringify({
+              type: 'commandStatus',
+              token: data.token,
+              command: data.command,
+              success: commandSuccess
+            }));
+            break;
+
+          default:
+            console.log('Unknown message type:', data.type);
+            break;
         }
       } catch (error) {
         console.error('Admin message handling error:', error);
@@ -93,7 +105,6 @@ class WebSocketServer {
 
     ws.on('close', () => {
       console.log('Admin client disconnected');
-      this.channelManager.leaveAllChannels('admin');
     });
   }
 
@@ -112,14 +123,10 @@ class WebSocketServer {
             deviceToken = device.token;
             console.log(`Device authenticated: ${deviceToken}`);
 
-            // Cihazı kanallara ekle
-            this.channelManager.joinChannel('devices', deviceToken, ws);
-            this.channelManager.joinChannel(`device-${deviceToken}`, deviceToken, ws);
-
             await device.updateStatus(true);
 
             // Admin'lere cihaz durumunu bildir
-            this.channelManager.broadcastToChannel('admin', {
+            this.broadcastToAdmins({
               type: 'deviceStatus',
               token: deviceToken,
               isOnline: true,
@@ -152,9 +159,8 @@ class WebSocketServer {
             ws.on('close', async () => {
               console.log(`Device disconnected: ${deviceToken}`);
               await device.updateStatus(false);
-              this.channelManager.leaveAllChannels(deviceToken);
 
-              this.channelManager.broadcastToChannel('admin', {
+              this.broadcastToAdmins({
                 type: 'deviceStatus',
                 token: deviceToken,
                 isOnline: false
@@ -185,7 +191,7 @@ class WebSocketServer {
     switch (message.type) {
       case 'status':
         await device.updateStatus(message.isOnline);
-        this.channelManager.broadcastToChannel('admin', {
+        this.broadcastToAdmins({
           type: 'deviceStatus',
           token: token,
           isOnline: message.isOnline
@@ -194,7 +200,7 @@ class WebSocketServer {
 
       case 'volume':
         await device.setVolume(message.volume);
-        this.channelManager.broadcastToChannel('admin', {
+        this.broadcastToAdmins({
           type: 'deviceStatus',
           token: token,
           volume: message.volume
@@ -202,7 +208,7 @@ class WebSocketServer {
         break;
 
       case 'error':
-        this.channelManager.broadcastToChannel('admin', {
+        this.broadcastToAdmins({
           type: 'deviceError',
           token: token,
           error: message.error
@@ -211,8 +217,33 @@ class WebSocketServer {
     }
   }
 
+  broadcastToAdmins(message) {
+    this.wss.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN && client.isAdmin) {
+        client.send(JSON.stringify(message));
+      }
+    });
+  }
+
   sendToDevice(token, message) {
-    return this.channelManager.sendToClient(token, message);
+    let sent = false;
+    this.wss.clients.forEach(client => {
+      if (client.deviceToken === token && client.readyState === WebSocket.OPEN) {
+        client.send(JSON.stringify(message));
+        sent = true;
+      }
+    });
+    return sent;
+  }
+
+  findDeviceWebSocket(token) {
+    let targetWs = null;
+    this.wss.clients.forEach(client => {
+      if (client.deviceToken === token) {
+        targetWs = client;
+      }
+    });
+    return targetWs;
   }
 }
 
