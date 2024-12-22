@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { MoreVertical, Play, Pencil, Trash2, Music2 } from "lucide-react";
+import { Play, Pencil, Trash2, Music2, MoreVertical } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { cn } from "@/lib/utils";
 
 interface PlaylistCardProps {
@@ -26,39 +26,40 @@ interface PlaylistCardProps {
 
 export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: PlaylistCardProps) => {
   return (
-    <Card className="group hover:shadow-md transition-shadow">
-      <CardHeader className="relative aspect-square p-0 mb-4">
+    <Card className="group overflow-hidden transition-all duration-300 hover:shadow-lg">
+      <CardHeader className="relative aspect-square p-0">
         {playlist.artwork ? (
           <img
             src={`http://localhost:5000${playlist.artwork}`}
             alt={playlist.name}
-            className="w-full h-full object-cover rounded-t-lg"
+            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
-          <div className="w-full h-full bg-accent/50 rounded-t-lg flex items-center justify-center">
-            <Music2 className="h-20 w-20 text-muted-foreground/25" />
+          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-purple-500/10 to-blue-500/10">
+            <Music2 className="h-24 w-24 text-muted-foreground/40" />
           </div>
         )}
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
         <Button
           variant="secondary"
           size="icon"
           className={cn(
-            "absolute right-2 top-2 opacity-0 group-hover:opacity-100 transition-opacity",
-            "bg-background/50 backdrop-blur-sm hover:bg-background/75"
+            "absolute bottom-4 right-4 opacity-0 transition-all duration-300 group-hover:opacity-100",
+            "bg-white/90 backdrop-blur-sm hover:bg-white"
           )}
           onClick={() => onPlay(playlist._id)}
         >
-          <Play className="h-4 w-4" />
+          <Play className="h-5 w-5 text-primary" />
         </Button>
       </CardHeader>
       
-      <CardContent>
-        <div className="flex items-center justify-between mb-4">
-          <div>
-            <CardTitle className="text-lg font-semibold truncate">
+      <CardContent className="space-y-3 p-6">
+        <div className="flex items-start justify-between">
+          <div className="space-y-1">
+            <h3 className="line-clamp-1 text-xl font-semibold tracking-tight">
               {playlist.name}
-            </CardTitle>
-            <p className="text-sm text-muted-foreground line-clamp-2">
+            </h3>
+            <p className="line-clamp-2 text-sm text-muted-foreground">
               {playlist.description || "Açıklama yok"}
             </p>
           </div>
@@ -67,33 +68,36 @@ export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: Playli
               <Button
                 variant="ghost"
                 size="icon"
-                className="opacity-0 group-hover:opacity-100 transition-opacity"
+                className="h-8 w-8 text-muted-foreground/60 hover:text-primary"
               >
                 <MoreVertical className="h-4 w-4" />
               </Button>
             </DropdownMenuTrigger>
-            <DropdownMenuContent align="end">
-              <DropdownMenuItem onClick={() => onPlay(playlist._id)}>
-                <Play className="mr-2 h-4 w-4" />
+            <DropdownMenuContent align="end" className="w-40">
+              <DropdownMenuItem onClick={() => onPlay(playlist._id)} className="gap-2">
+                <Play className="h-4 w-4" />
                 Oynat
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => onEdit(playlist._id)}>
-                <Pencil className="mr-2 h-4 w-4" />
+              <DropdownMenuItem onClick={() => onEdit(playlist._id)} className="gap-2">
+                <Pencil className="h-4 w-4" />
                 Düzenle
               </DropdownMenuItem>
-              <DropdownMenuItem
-                className="text-destructive"
-                onClick={() => onDelete(playlist._id)}
+              <DropdownMenuItem 
+                onClick={() => onDelete(playlist._id)} 
+                className="gap-2 text-destructive focus:text-destructive"
               >
-                <Trash2 className="mr-2 h-4 w-4" />
+                <Trash2 className="h-4 w-4" />
                 Sil
               </DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
 
-        <div className="flex justify-between text-sm text-muted-foreground">
-          <span>{playlist.songs?.length || 0} şarkı</span>
+        <div className="flex items-center justify-between border-t pt-4 text-sm text-muted-foreground">
+          <div className="flex items-center gap-1">
+            <Music2 className="h-4 w-4" />
+            <span>{playlist.songs?.length || 0} şarkı</span>
+          </div>
           <span>
             {playlist.totalDuration
               ? `${Math.floor(playlist.totalDuration / 60)} dk`

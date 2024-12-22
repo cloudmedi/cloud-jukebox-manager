@@ -11,7 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { VirtualizedPlaylistList } from "./VirtualizedPlaylistList";
+import { PlaylistCard } from "./PlaylistCard";
 import { PlaylistPagination } from "./PlaylistPagination";
 
 interface Playlist {
@@ -83,29 +83,43 @@ export const PlaylistList = ({ playlists, onPlaylistUpdate }: PlaylistListProps)
   if (!playlists?.length) {
     return (
       <div 
-        className="text-center p-8 border rounded-lg bg-muted/10"
+        className="flex h-[400px] items-center justify-center rounded-lg border bg-muted/5 text-center"
         role="alert"
         aria-label="Boş playlist listesi"
       >
-        <p className="text-muted-foreground">Henüz playlist oluşturulmamış</p>
+        <div className="space-y-2 px-8">
+          <h3 className="text-lg font-medium">Henüz playlist oluşturulmamış</h3>
+          <p className="text-sm text-muted-foreground">
+            Yeni bir playlist oluşturmak için yukarıdaki "Yeni Playlist" butonunu kullanın.
+          </p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
-      <VirtualizedPlaylistList
-        playlists={currentPlaylists}
-        onDelete={setPlaylistToDelete}
-        onEdit={handleEdit}
-        onPlay={handlePlay}
-      />
+    <div className="space-y-8">
+      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+        {currentPlaylists.map((playlist) => (
+          <PlaylistCard
+            key={playlist._id}
+            playlist={playlist}
+            onDelete={setPlaylistToDelete}
+            onEdit={handleEdit}
+            onPlay={handlePlay}
+          />
+        ))}
+      </div>
 
-      <PlaylistPagination
-        currentPage={currentPage}
-        totalPages={totalPages}
-        onPageChange={setCurrentPage}
-      />
+      {totalPages > 1 && (
+        <div className="flex justify-center">
+          <PlaylistPagination
+            currentPage={currentPage}
+            totalPages={totalPages}
+            onPageChange={setCurrentPage}
+          />
+        </div>
+      )}
 
       <AlertDialog 
         open={!!playlistToDelete} 
