@@ -7,6 +7,7 @@ import { DeviceList } from "./send-dialog/DeviceList";
 import { GroupList } from "./send-dialog/GroupList";
 import { SearchInput } from "./send-dialog/SearchInput";
 import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 
 interface SendPlaylistDialogProps {
   isOpen: boolean;
@@ -26,6 +27,17 @@ export const SendPlaylistDialog = ({ isOpen, onClose, playlist }: SendPlaylistDi
     }
   });
 
+  // Playlist detaylarını getir
+  const { data: playlistDetails } = useQuery({
+    queryKey: ['playlist', playlist._id],
+    queryFn: async () => {
+      const response = await fetch(`http://localhost:5000/api/playlists/${playlist._id}`);
+      if (!response.ok) throw new Error("Playlist detayları alınamadı");
+      return response.json();
+    },
+    enabled: isOpen // Dialog açıkken çalışsın
+  });
+
   const onSubmit = async (data: any) => {
     try {
       if (!data.targetDevices.length && !data.targetGroups.length) {
@@ -33,13 +45,30 @@ export const SendPlaylistDialog = ({ isOpen, onClose, playlist }: SendPlaylistDi
         return;
       }
 
+      if (!playlistDetails) {
+        toast.error("Playlist detayları yüklenemedi");
+        return;
+      }
+
       // WebSocket üzerinden playlist'i gönder
       const ws = new WebSocket('ws://localhost:5000/admin');
       
       ws.onopen = () => {
+        // Tüm playlist detaylarını gönder
         ws.send(JSON.stringify({
           type: 'sendPlaylist',
-          playlist: playlist._id,
+          playlist: {
+            _id: playlistDetails._id,
+            name: playlistDetails.name,
+            artwork: playlistDetails.artwork,
+            songs: playlistDetails.songs.map((song: any) => ({
+              _id: song._id,
+              name: song.name,
+              artist: song.artist,
+              filePath: song.filePath,
+              duration: song.duration
+            }))
+          },
           devices: data.targetDevices,
           groups: data.targetGroups
         }));

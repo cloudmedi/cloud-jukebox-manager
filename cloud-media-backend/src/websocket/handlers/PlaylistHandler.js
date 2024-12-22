@@ -9,61 +9,46 @@ class PlaylistHandler {
 
   async handleSendPlaylist(message) {
     try {
-      // Playlist'i tüm detaylarıyla birlikte al
-      const playlist = await Playlist.findById(message.playlist)
-        .populate({
-          path: 'songs',
-          select: 'name artist filePath duration'
-        });
+      const { playlist, devices, groups } = message;
 
-      if (!playlist) {
-        throw new Error('Playlist bulunamadı');
+      // Hedef cihazları topla
+      const targetDevices = new Set(devices);
+
+      // Grup içindeki cihazları ekle
+      if (groups && groups.length > 0) {
+        const deviceGroups = await DeviceGroup.find({
+          _id: { $in: groups }
+        }).populate('devices');
+
+        deviceGroups.forEach(group => {
+          group.devices.forEach(device => {
+            targetDevices.add(device._id.toString());
+          });
+        });
       }
 
-      // Seçilen cihazlara gönder
-      for (const deviceId of message.devices) {
+      // Her cihaza playlist'i gönder
+      for (const deviceId of targetDevices) {
         const device = await Device.findById(deviceId);
         if (device && device.token) {
-          this.wss.sendToDevice(device.token, {
-            type: 'playlist',
-            playlist: {
-              _id: playlist._id,
-              name: playlist.name,
-              songs: playlist.songs.map(song => ({
-                _id: song._id,
-                name: song.name,
-                artist: song.artist,
-                filePath: song.filePath,
-                duration: song.duration
-              }))
-            }
-          });
-        }
-      }
+          // Cihaza özel WebSocket bağlantısını bul
+          const deviceWs = this.wss.findDeviceWebSocket(device.token);
+          
+          if (deviceWs) {
+            // Playlist'i cihaza gönder
+            deviceWs.send(JSON.stringify({
+              type: 'playlist',
+              data: {
+                ...playlist,
+                baseUrl: 'http://localhost:5000' // Şarkı dosyalarının indirileceği base URL
+              }
+            }));
 
-      // Seçilen gruplardaki cihazlara gönder
-      for (const groupId of message.groups) {
-        const group = await DeviceGroup.findById(groupId)
-          .populate('devices');
-        
-        if (group) {
-          for (const device of group.devices) {
-            if (device.token) {
-              this.wss.sendToDevice(device.token, {
-                type: 'playlist',
-                playlist: {
-                  _id: playlist._id,
-                  name: playlist.name,
-                  songs: playlist.songs.map(song => ({
-                    _id: song._id,
-                    name: song.name,
-                    artist: song.artist,
-                    filePath: song.filePath,
-                    duration: song.duration
-                  }))
-                }
-              });
-            }
+            // Device'ın aktif playlist'ini güncelle
+            await Device.findByIdAndUpdate(deviceId, {
+              activePlaylist: playlist._id,
+              playlistStatus: 'loading'
+            });
           }
         }
       }
