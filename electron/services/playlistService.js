@@ -7,13 +7,32 @@ const fs = require('fs');
 class PlaylistService {
   constructor() {
     this.store = new Store();
-    this.downloadPath = path.join(app.getPath('userData'), 'downloads');
-    this.ensureDirectoryExists(this.downloadPath);
+    // Uygulama başlatılırken downloads klasörünü oluştur
+    this.initializeDownloadPath();
+  }
+
+  initializeDownloadPath() {
+    try {
+      this.downloadPath = path.join(app.getPath('userData'), 'downloads');
+      console.log('Download path:', this.downloadPath);
+      this.ensureDirectoryExists(this.downloadPath);
+    } catch (error) {
+      console.error('Download path initialization error:', error);
+    }
   }
 
   ensureDirectoryExists(dir) {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    try {
+      if (!fs.existsSync(dir)) {
+        console.log('Creating directory:', dir);
+        fs.mkdirSync(dir, { recursive: true });
+        console.log('Directory created successfully');
+      } else {
+        console.log('Directory already exists:', dir);
+      }
+    } catch (error) {
+      console.error('Directory creation error:', error);
+      throw error;
     }
   }
 
@@ -30,6 +49,7 @@ class PlaylistService {
     
     try {
       const playlistPath = path.join(this.downloadPath, playlist._id);
+      console.log('Playlist klasör yolu:', playlistPath);
       this.ensureDirectoryExists(playlistPath);
       
       console.log('Playlist indirme başlatılıyor:', playlist._id);
@@ -49,6 +69,9 @@ class PlaylistService {
         const songPath = path.join(playlistPath, `${song._id}.mp3`);
         const fullUrl = `${playlist.baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
         
+        console.log('Şarkı indirme yolu:', songPath);
+        console.log('Şarkı indirme URL:', fullUrl);
+        
         try {
           await this.downloadFile(fullUrl, songPath, (progress) => {
             if (ws) {
@@ -64,6 +87,8 @@ class PlaylistService {
           const downloadState = this.store.get(`download.${playlist._id}`);
           downloadState.completedSongs.push(song._id);
           this.store.set(`download.${playlist._id}`, downloadState);
+          
+          console.log(`Şarkı başarıyla indirildi: ${song.name}`);
         } catch (error) {
           console.error(`Şarkı indirme hatası (${song.name}):`, error);
           if (ws) {
@@ -91,6 +116,8 @@ class PlaylistService {
         progress: 100,
         completedSongs: playlist.songs.map(s => s._id)
       });
+
+      console.log('Playlist indirme tamamlandı:', playlist._id);
 
       if (ws) {
         ws.send(JSON.stringify({
@@ -122,6 +149,9 @@ class PlaylistService {
     const writer = fs.createWriteStream(filePath);
     const totalLength = response.headers['content-length'];
 
+    console.log('Dosya indirme başladı:', filePath);
+    console.log('Toplam boyut:', totalLength);
+
     response.data.pipe(writer);
 
     if (onProgress && totalLength) {
@@ -134,8 +164,14 @@ class PlaylistService {
     }
 
     return new Promise((resolve, reject) => {
-      writer.on('finish', resolve);
-      writer.on('error', reject);
+      writer.on('finish', () => {
+        console.log('Dosya indirme tamamlandı:', filePath);
+        resolve();
+      });
+      writer.on('error', (err) => {
+        console.error('Dosya indirme hatası:', err);
+        reject(err);
+      });
     });
   }
 }
