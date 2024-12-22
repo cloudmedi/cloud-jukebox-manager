@@ -10,6 +10,7 @@ import {
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { usePlayer } from "@/components/layout/MainLayout";
 
 interface PlaylistCardProps {
   playlist: {
@@ -27,13 +28,10 @@ interface PlaylistCardProps {
 }
 
 export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: PlaylistCardProps) => {
+  const { setShowPlayer } = usePlayer();
+  
   const handlePlay = () => {
-    // Player'ı göster
-    const mainLayout = document.querySelector('.main-layout');
-    if (mainLayout) {
-      mainLayout.setAttribute('data-player-visible', 'true');
-    }
-    // Playlist'i oynat
+    setShowPlayer(true);
     onPlay(playlist._id);
   };
 
