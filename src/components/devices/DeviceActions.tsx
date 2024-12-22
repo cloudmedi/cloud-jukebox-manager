@@ -27,7 +27,7 @@ interface DeviceActionsProps {
     _id: string;
     isOnline: boolean;
     volume: number;
-    groupId: string | null;
+    groupId?: string | null;  // Made groupId optional
   };
 }
 
