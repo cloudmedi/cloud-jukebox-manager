@@ -25,7 +25,7 @@ const playlistSchema = new mongoose.Schema({
   },
   createdBy: {
     type: String,
-    required: true
+    default: 'system'
   },
   isShuffled: {
     type: Boolean,
