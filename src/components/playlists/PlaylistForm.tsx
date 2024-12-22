@@ -17,7 +17,7 @@ const playlistSchema = z.object({
   description: z.string().max(500, "Açıklama çok uzun").optional(),
   songs: z.array(z.string()).default([]),
   artwork: z
-    .instanceof(FileList)
+    .custom<FileList>()
     .optional()
     .nullable()
     .refine((files) => {

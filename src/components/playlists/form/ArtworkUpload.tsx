@@ -5,6 +5,7 @@ import { PlaylistFormValues } from "../PlaylistForm";
 import { Card, CardContent } from "@/components/ui/card";
 import { ImageIcon } from "lucide-react";
 import { useRef, useEffect } from "react";
+import { Button } from "@/components/ui/button";
 
 interface ArtworkUploadProps {
   form: UseFormReturn<PlaylistFormValues>;
@@ -26,10 +27,8 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
     };
   }, [previewUrl]);
 
-  const handleCardClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
+  const handleUploadClick = () => {
+    fileInputRef.current?.click();
   };
 
   return (
@@ -38,45 +37,52 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
       name="artwork"
       render={({ field: { onChange, value, ...field } }) => (
         <FormItem>
-          <FormLabel>Kapak Resmi (300x300)</FormLabel>
+          <FormLabel>Kapak Resmi</FormLabel>
           <FormControl>
-            <Card 
-              className="w-full max-w-sm cursor-pointer hover:bg-accent/50 transition-colors"
-              onClick={handleCardClick}
-            >
-              <CardContent className="p-4">
-                <div className="relative aspect-square w-full overflow-hidden rounded-lg border-2 border-dashed border-muted-foreground/25">
-                  {previewUrl ? (
-                    <img
-                      src={previewUrl}
-                      alt="Kapak resmi önizleme"
-                      className="h-full w-full object-cover"
-                    />
-                  ) : (
-                    <div className="flex h-full items-center justify-center">
-                      <ImageIcon className="h-16 w-16 text-muted-foreground/25" />
-                    </div>
-                  )}
-                  <Input
-                    ref={fileInputRef}
-                    type="file"
-                    accept="image/jpeg,image/jpg,image/png,image/webp"
-                    className="hidden"
-                    onChange={(e) => {
-                      const files = e.target.files;
-                      if (files?.length) {
-                        onChange(files);
-                      }
-                    }}
-                    {...field}
-                  />
-                </div>
-              </CardContent>
-            </Card>
+            <div className="space-y-4">
+              <Button 
+                type="button"
+                variant="outline" 
+                onClick={handleUploadClick}
+                className="w-full"
+              >
+                <ImageIcon className="mr-2 h-4 w-4" />
+                Kapak Resmi Seç
+              </Button>
+              
+              <Card className="w-full overflow-hidden">
+                <CardContent className="p-4">
+                  <div className="relative aspect-square w-full overflow-hidden rounded-lg border border-border">
+                    {previewUrl ? (
+                      <img
+                        src={previewUrl}
+                        alt="Kapak resmi önizleme"
+                        className="h-full w-full object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full items-center justify-center bg-muted">
+                        <ImageIcon className="h-16 w-16 text-muted-foreground/25" />
+                      </div>
+                    )}
+                  </div>
+                </CardContent>
+              </Card>
+              
+              <Input
+                ref={fileInputRef}
+                type="file"
+                accept="image/jpeg,image/jpg,image/png,image/webp"
+                className="hidden"
+                onChange={(e) => {
+                  const files = e.target.files;
+                  if (files?.length) {
+                    onChange(files);
+                  }
+                }}
+                {...field}
+              />
+            </div>
           </FormControl>
-          <p className="text-sm text-muted-foreground mt-2">
-            PNG, JPG veya WEBP. Maksimum 5MB.
-          </p>
           <FormMessage />
         </FormItem>
       )}
