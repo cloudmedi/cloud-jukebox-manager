@@ -1,4 +1,6 @@
 const WebSocket = require('ws');
+const PlaylistService = require('./playlistService');
+const audioPlayer = require('./audioPlayer');
 
 class WebSocketService {
   constructor() {
@@ -6,6 +8,7 @@ class WebSocketService {
     this.reconnectInterval = 5000;
     this.isConnecting = false;
     this.token = null;
+    this.playlistService = null;
   }
 
   connect(token) {
@@ -21,39 +24,18 @@ class WebSocketService {
       this.isConnecting = false;
       
       // Token ile kimlik doğrulama
-      const authMessage = {
-        type: 'auth',
-        token: token
-      };
-      console.log('Kimlik doğrulama mesajı gönderiliyor:', authMessage);
-      this.ws.send(JSON.stringify(authMessage));
+      this.sendAuthMessage();
+      
+      // Playlist servisini başlat
+      this.playlistService = new PlaylistService(this.ws);
     });
 
     this.ws.on('message', (data) => {
       try {
         const message = JSON.parse(data);
-        console.log('Sunucudan gelen mesaj:', message);
-        
-        switch (message.type) {
-          case 'auth':
-            console.log('Kimlik doğrulama yanıtı:', message);
-            if (message.status === 'success') {
-              console.log('Kimlik doğrulama başarılı');
-              this.sendStatus({ type: 'status', isOnline: true });
-            }
-            break;
-          
-          case 'command':
-            console.log('Komut alındı:', message);
-            this.handleCommand(message);
-            break;
-
-          case 'error':
-            console.error('Sunucu hatası:', message.message);
-            break;
-        }
+        this.handleMessage(message);
       } catch (error) {
-        console.error('Mesaj işleme hatası:', error);
+        console.error('Message parsing error:', error);
       }
     });
 
@@ -64,103 +46,83 @@ class WebSocketService {
     });
 
     this.ws.on('error', (error) => {
-      console.error('WebSocket hatası:', error);
-      this.isConnecting = false;
+      console.error('WebSocket error:', error);
     });
   }
 
-  handleCommand(message) {
-    console.log('Komut işleniyor:', message);
-    
-    switch (message.command) {
-      case 'restart':
-        console.log('Yeniden başlatma komutu alındı');
-        this.handleRestart();
+  sendAuthMessage() {
+    const authMessage = {
+      type: 'auth',
+      token: this.token
+    };
+    console.log('Kimlik doğrulama mesajı gönderiliyor:', authMessage);
+    this.ws.send(JSON.stringify(authMessage));
+  }
+
+  handleMessage(message) {
+    switch (message.type) {
+      case 'auth':
+        this.handleAuthResponse(message);
+        break;
+      
+      case 'command':
+        this.handleCommand(message);
         break;
 
-      case 'setVolume':
-        console.log('Ses seviyesi değiştirme komutu alındı:', message.volume);
-        this.setSystemVolume(message.volume);
+      case 'playlistReady':
+        this.handlePlaylistReady(message);
         break;
-
-      default:
-        console.log('Bilinmeyen komut:', message.command);
     }
   }
 
-  handleRestart() {
-    const { app } = require('electron');
-    
-    // Önce mevcut uygulamayı kapat
-    app.once('will-quit', () => {
-      // Uygulama kapandıktan sonra yeni örneği başlat
-      setTimeout(() => {
-        app.relaunch();
-      }, 1000);
-    });
-    
-    // Uygulamayı kapat
-    app.quit();
+  handleAuthResponse(message) {
+    if (message.status === 'success') {
+      console.log('Kimlik doğrulama başarılı');
+      this.sendStatus({ type: 'status', isOnline: true });
+    }
   }
 
-  async setSystemVolume(volume) {
-    try {
-      console.log('Sistem ses seviyesi ayarlanıyor:', volume);
-      const platform = process.platform;
-      
-      if (platform === 'win32') {
-        console.log('Windows için ses ayarı yapılıyor');
-        const { exec } = require('child_process');
-        exec(`powershell -c "$volume = ${volume}/100; $obj = New-Object -ComObject WScript.Shell; $obj.SendKeys([char]175);"`);
-      } else if (platform === 'darwin') {
-        console.log('MacOS için ses ayarı yapılıyor');
-        const { exec } = require('child_process');
-        exec(`osascript -e "set volume output volume ${volume}"`);
-      } else if (platform === 'linux') {
-        console.log('Linux için ses ayarı yapılıyor');
-        const { exec } = require('child_process');
-        exec(`amixer -D pulse sset Master ${volume}%`);
-      }
+  handleCommand(message) {
+    switch (message.command) {
+      case 'play':
+        audioPlayer.play();
+        break;
+      case 'pause':
+        audioPlayer.pause();
+        break;
+      case 'next':
+        audioPlayer.playNext();
+        break;
+      case 'previous':
+        audioPlayer.playPrevious();
+        break;
+      case 'setVolume':
+        audioPlayer.setVolume(message.volume);
+        break;
+    }
+  }
 
-      // Ses seviyesi değişikliğini bildir
-      this.sendStatus({
-        type: 'volume',
-        volume: volume
-      });
-    } catch (error) {
-      console.error('Ses seviyesi ayarlama hatası:', error);
-      this.sendStatus({
-        type: 'error',
-        error: 'Ses seviyesi ayarlanamadı'
-      });
+  handlePlaylistReady(message) {
+    // Playlist hazır olduğunda çalmaya başla
+    const playbackState = audioPlayer.getPlaybackState();
+    if (playbackState.playlist && playbackState.playlist._id === message.playlistId) {
+      audioPlayer.play();
     }
   }
 
   sendStatus(status) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      console.log('Durum mesajı gönderiliyor:', status);
       this.ws.send(JSON.stringify(status));
-    } else {
-      console.log('WebSocket bağlantısı kapalı, durum mesajı gönderilemedi');
     }
   }
 
   disconnect() {
     if (this.ws) {
-      console.log('Uygulama kapatılıyor, offline durumu gönderiliyor');
+      this.sendStatus({ type: 'status', isOnline: false });
       
-      const offlineMessage = {
-        type: 'status',
-        isOnline: false
-      };
-      console.log('Offline durum mesajı gönderiliyor:', offlineMessage);
-      this.sendStatus(offlineMessage);
-      
-      // Mesajın gönderilmesi için kısa bir süre bekle
       setTimeout(() => {
         this.ws.close();
         this.ws = null;
-        console.log('WebSocket bağlantısı kapatıldı');
       }, 500);
     }
   }
