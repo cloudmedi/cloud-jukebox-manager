@@ -19,6 +19,9 @@ export const DeviceList = () => {
       }
       return response.json();
     },
+    // WebSocket güncellemeleri için refetch intervalini kaldırıyoruz
+    refetchInterval: 0,
+    refetchOnWindowFocus: false,
   });
 
   useEffect(() => {
@@ -42,6 +45,9 @@ export const DeviceList = () => {
 
       // Query cache'ini güncelle ve yeniden render'ı tetikle
       queryClient.setQueryData(['devices'], updatedDevices);
+      
+      // Query'yi invalidate et ve yeniden fetch'i tetikle
+      queryClient.invalidateQueries({ queryKey: ['devices'] });
     };
 
     // WebSocket mesaj dinleyicisini ekle
