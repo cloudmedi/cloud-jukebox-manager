@@ -8,12 +8,12 @@ import { Download, CalendarIcon } from "lucide-react";
 import { DateRange } from "react-day-picker";
 
 interface DateTimeRangePickerProps {
-  dateRange: DateRange;
+  dateRange: DateRange | undefined;
   timeRange: {
     startTime: string;
     endTime: string;
   };
-  onDateRangeChange: (range: DateRange) => void;
+  onDateRangeChange: (range: DateRange | undefined) => void;
   onTimeRangeChange: (type: "startTime" | "endTime", value: string) => void;
   showDownloadButton?: boolean;
   isDownloadDisabled?: boolean;

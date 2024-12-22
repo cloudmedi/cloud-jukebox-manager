@@ -13,7 +13,7 @@ import { DateRange } from "react-day-picker";
 export default function DevicePlaybackReport() {
   const { toast } = useToast();
   const [selectedDevice, setSelectedDevice] = useState<string>("");
-  const [dateRange, setDateRange] = useState<DateRange>({
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: new Date(),
     to: addDays(new Date(), 7)
   });
@@ -36,24 +36,22 @@ export default function DevicePlaybackReport() {
   const { data: playbackData, isLoading: playbackLoading } = useQuery({
     queryKey: ["device-playback", selectedDevice, dateRange, timeRange],
     queryFn: async () => {
-      if (!selectedDevice || !dateRange.from || !dateRange.to) return null;
+      if (!selectedDevice || !dateRange?.from || !dateRange?.to) return null;
       const response = await fetch(
         `http://localhost:5000/api/stats/device-playback?deviceId=${selectedDevice}&from=${dateRange.from.toISOString()}&to=${dateRange.to.toISOString()}&startTime=${timeRange.startTime}&endTime=${timeRange.endTime}`
       );
       if (!response.ok) throw new Error("Çalma verileri yüklenemedi");
       return response.json();
     },
-    enabled: !!selectedDevice && !!dateRange.from && !!dateRange.to,
+    enabled: !!selectedDevice && !!dateRange?.from && !!dateRange?.to,
   });
 
   const handleDateRangeChange = (range: DateRange | undefined) => {
-    if (range) {
-      setDateRange(range);
-    }
+    setDateRange(range);
   };
 
   const generatePDF = () => {
-    if (!dateRange.from || !dateRange.to) return;
+    if (!dateRange?.from || !dateRange?.to) return;
     
     const doc = new jsPDF();
     const deviceName = devices?.find((d) => d._id === selectedDevice)?.name || "Cihaz";
