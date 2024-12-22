@@ -1,14 +1,17 @@
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { DeviceTableHeader } from "./DeviceTableHeader";
 import { DeviceTableRow } from "./DeviceTableRow";
 import { Table, TableBody } from "@/components/ui/table";
+import { DeviceFilters } from "./DeviceFilters";
 import websocketService from "@/services/websocketService";
 import { Device } from "@/services/deviceService";
 import { toast } from "sonner";
 
 export const DeviceList = () => {
   const queryClient = useQueryClient();
+  const [filterStatus, setFilterStatus] = useState<"all" | "online" | "offline">("all");
+  const [isFormOpen, setIsFormOpen] = useState(false);
   
   const { data: devices, isLoading } = useQuery({
     queryKey: ['devices'],
@@ -19,22 +22,18 @@ export const DeviceList = () => {
       }
       return response.json();
     },
-    // WebSocket güncellemeleri için refetch intervalini kaldırıyoruz
     refetchInterval: 0,
     refetchOnWindowFocus: false,
   });
 
   useEffect(() => {
     const handleDeviceStatus = (data: any) => {
-      // Mevcut cihaz listesini al
       const currentDevices = queryClient.getQueryData<Device[]>(['devices']);
       
       if (!currentDevices) return;
 
-      // Yeni cihaz listesini oluştur
       const updatedDevices = currentDevices.map(device => {
         if (device.token === data.token) {
-          // Online/offline durumu değiştiğinde toast göster
           if (device.isOnline !== data.isOnline) {
             toast.info(`${device.name} ${data.isOnline ? 'çevrimiçi' : 'çevrimdışı'} oldu`);
           }
@@ -43,21 +42,21 @@ export const DeviceList = () => {
         return device;
       });
 
-      // Query cache'ini güncelle ve yeniden render'ı tetikle
       queryClient.setQueryData(['devices'], updatedDevices);
-      
-      // Query'yi invalidate et ve yeniden fetch'i tetikle
       queryClient.invalidateQueries({ queryKey: ['devices'] });
     };
 
-    // WebSocket mesaj dinleyicisini ekle
     websocketService.addMessageHandler('deviceStatus', handleDeviceStatus);
 
-    // Component unmount olduğunda dinleyiciyi kaldır
     return () => {
       websocketService.removeMessageHandler('deviceStatus');
     };
   }, [queryClient]);
+
+  const filteredDevices = devices?.filter((device: Device) => {
+    if (filterStatus === "all") return true;
+    return filterStatus === "online" ? device.isOnline : !device.isOnline;
+  });
 
   if (isLoading) {
     return (
@@ -68,15 +67,23 @@ export const DeviceList = () => {
   }
 
   return (
-    <div className="rounded-md border">
-      <Table>
-        <DeviceTableHeader />
-        <TableBody>
-          {devices?.map((device: Device) => (
-            <DeviceTableRow key={device._id} device={device} />
-          ))}
-        </TableBody>
-      </Table>
+    <div className="space-y-4">
+      <DeviceFilters 
+        filterStatus={filterStatus}
+        onFilterChange={setFilterStatus}
+        isFormOpen={isFormOpen}
+        setIsFormOpen={setIsFormOpen}
+      />
+      <div className="rounded-md border">
+        <Table>
+          <DeviceTableHeader />
+          <TableBody>
+            {filteredDevices?.map((device: Device) => (
+              <DeviceTableRow key={device._id} device={device} />
+            ))}
+          </TableBody>
+        </Table>
+      </div>
     </div>
   );
 };
