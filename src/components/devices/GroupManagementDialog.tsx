@@ -24,7 +24,7 @@ const GroupManagementDialog = ({
 }: GroupManagementDialogProps) => {
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(currentGroupId);
 
-  const { data: groups = [] } = useQuery<Group[]>({
+  const { data: groups = [] } = useQuery({
     queryKey: ["device-groups"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/device-groups");
@@ -50,15 +50,15 @@ const GroupManagementDialog = ({
         </DialogHeader>
         <div className="py-6">
           <Select
-            value={selectedGroupId || ""}
-            onValueChange={(value) => setSelectedGroupId(value || null)}
+            value={selectedGroupId || undefined}
+            onValueChange={(value) => setSelectedGroupId(value)}
           >
             <SelectTrigger>
               <SelectValue placeholder="Grup seçin" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="">Grup Yok</SelectItem>
-              {groups.map((group) => (
+              {/* Grup yok seçeneğini kaldırdık */}
+              {groups.map((group: Group) => (
                 <SelectItem key={group._id} value={group._id}>
                   {group.name}
                 </SelectItem>
