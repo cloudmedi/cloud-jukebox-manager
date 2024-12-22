@@ -36,6 +36,7 @@ class WebSocketService {
     this.ws.on('message', (data) => {
       try {
         const message = JSON.parse(data);
+        console.log('Alınan mesaj:', message); // Debug için log ekledik
         this.handleMessage(message);
       } catch (error) {
         console.error('Message parsing error:', error);
@@ -62,19 +63,12 @@ class WebSocketService {
   }
 
   handleMessage(message) {
+    console.log('Mesaj işleniyor:', message.type); // Debug için log ekledik
+    
     switch (message.type) {
       case 'playlist':
-        switch (message.action) {
-          case 'send':
-            PlaylistService.handlePlaylistMessage(message, this.ws);
-            break;
-          case 'update':
-            // Playlist güncelleme işlemleri
-            break;
-          case 'delete':
-            // Playlist silme işlemleri
-            break;
-        }
+        console.log('Playlist mesajı alındı:', message); // Debug için log ekledik
+        PlaylistService.handlePlaylistMessage(message.data, this.ws);
         break;
         
       case 'command':
@@ -83,6 +77,10 @@ class WebSocketService {
         
       case 'auth':
         this.handleAuthResponse(message);
+        break;
+        
+      default:
+        console.log('Bilinmeyen mesaj tipi:', message.type);
         break;
     }
   }
