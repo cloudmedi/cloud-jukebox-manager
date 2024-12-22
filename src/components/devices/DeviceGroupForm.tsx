@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -7,6 +7,8 @@ import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery } from "@tanstack/react-query";
+import { X } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 
 interface Device {
   _id: string;
@@ -44,8 +46,23 @@ export const DeviceGroupForm = ({ group, onSuccess }: DeviceGroupFormProps) => {
     },
   });
 
+  const { data: selectedDevicesData } = useQuery({
+    queryKey: ["selected-devices", selectedDevices],
+    queryFn: async () => {
+      if (!selectedDevices.length) return [];
+      const response = await fetch("http://localhost:5000/api/devices");
+      if (!response.ok) {
+        throw new Error("Seçili cihazlar yüklenirken bir hata oluştu");
+      }
+      const allDevices = await response.json();
+      return allDevices.filter((device: Device) => selectedDevices.includes(device._id));
+    },
+    enabled: selectedDevices.length > 0,
+  });
+
   const filteredDevices = devices?.filter((device: Device) =>
-    device.name.toLowerCase().includes(searchQuery.toLowerCase())
+    device.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
+    !selectedDevices.includes(device._id)
   );
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -67,7 +84,7 @@ export const DeviceGroupForm = ({ group, onSuccess }: DeviceGroupFormProps) => {
           name,
           description,
           devices: selectedDevices,
-          createdBy: "Admin", // Bu kısmı gerçek kullanıcı bilgisiyle değiştirin
+          createdBy: "Admin",
         }),
       });
 
@@ -80,6 +97,10 @@ export const DeviceGroupForm = ({ group, onSuccess }: DeviceGroupFormProps) => {
     } catch (error) {
       toast.error("Bir hata oluştu");
     }
+  };
+
+  const removeDevice = (deviceId: string) => {
+    setSelectedDevices(selectedDevices.filter(id => id !== deviceId));
   };
 
   return (
@@ -107,6 +128,27 @@ export const DeviceGroupForm = ({ group, onSuccess }: DeviceGroupFormProps) => {
             onChange={(e) => setDescription(e.target.value)}
           />
         </div>
+
+        {selectedDevicesData && selectedDevicesData.length > 0 && (
+          <div>
+            <Label>Seçili Cihazlar</Label>
+            <div className="flex flex-wrap gap-2 mt-2">
+              {selectedDevicesData.map((device: Device) => (
+                <Badge 
+                  key={device._id} 
+                  variant="secondary"
+                  className="flex items-center gap-1"
+                >
+                  {device.name}
+                  <X
+                    className="h-3 w-3 cursor-pointer hover:text-red-500"
+                    onClick={() => removeDevice(device._id)}
+                  />
+                </Badge>
+              ))}
+            </div>
+          </div>
+        )}
 
         <div>
           <Label>Cihazlar</Label>
