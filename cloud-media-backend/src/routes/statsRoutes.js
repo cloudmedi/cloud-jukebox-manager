@@ -146,32 +146,44 @@ router.get('/device-playback', async (req, res) => {
     fromDate.setHours(startHour, startMinute, 0);
     toDate.setHours(endHour, endMinute, 59);
 
-    // Örnek veri - gerçek uygulamada bu veriler veritabanından gelecek
-    const mockPlaybackData = [
+    // Cihazın belirtilen tarih aralığındaki çalma verilerini getir
+    const playbackData = await PlaybackHistory.aggregate([
       {
-        songName: "Test Şarkı 1",
-        artist: "Sanatçı 1",
-        playCount: 15,
-        totalDuration: 3600, // saniye cinsinden
-        lastPlayed: new Date(fromDate.getTime() + Math.random() * (toDate.getTime() - fromDate.getTime()))
+        $match: {
+          deviceId: mongoose.Types.ObjectId(deviceId),
+          playedAt: {
+            $gte: fromDate,
+            $lte: toDate
+          }
+        }
       },
       {
-        songName: "Test Şarkı 2",
-        artist: "Sanatçı 2",
-        playCount: 10,
-        totalDuration: 2400,
-        lastPlayed: new Date(fromDate.getTime() + Math.random() * (toDate.getTime() - fromDate.getTime()))
+        $lookup: {
+          from: 'songs',
+          localField: 'songId',
+          foreignField: '_id',
+          as: 'songDetails'
+        }
       },
       {
-        songName: "Test Şarkı 3",
-        artist: "Sanatçı 3",
-        playCount: 8,
-        totalDuration: 1800,
-        lastPlayed: new Date(fromDate.getTime() + Math.random() * (toDate.getTime() - fromDate.getTime()))
+        $unwind: '$songDetails'
+      },
+      {
+        $group: {
+          _id: '$songId',
+          songName: { $first: '$songDetails.title' },
+          artist: { $first: '$songDetails.artist' },
+          playCount: { $sum: 1 },
+          totalDuration: { $sum: '$songDetails.duration' },
+          lastPlayed: { $max: '$playedAt' }
+        }
+      },
+      {
+        $sort: { playCount: -1 }
       }
-    ];
+    ]);
 
-    res.json(mockPlaybackData);
+    res.json(playbackData);
   } catch (error) {
     console.error('Device playback stats error:', error);
     res.status(500).json({ message: error.message });
