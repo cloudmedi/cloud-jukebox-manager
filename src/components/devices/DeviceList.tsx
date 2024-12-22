@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Plus, Power, Settings } from "lucide-react";
 import {
@@ -14,6 +14,8 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import DeviceForm from "./DeviceForm";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { FixedSizeList as List } from 'react-window';
+import InfiniteLoader from "react-window-infinite-loader";
 
 interface Device {
   _id: string;
@@ -25,28 +27,86 @@ interface Device {
   lastSeen: string;
 }
 
+const LIMIT = 20; // Her sayfada gösterilecek cihaz sayısı
+
 const DeviceList = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const { toast } = useToast();
 
-  const { data: devices, isLoading } = useQuery({
-    queryKey: ["devices"],
-    queryFn: async () => {
-      const response = await fetch("http://localhost:5000/api/devices");
-      if (!response.ok) {
-        throw new Error("Cihazlar yüklenirken bir hata oluştu");
-      }
-      return response.json();
+  const fetchDevices = async ({ pageParam = 0 }) => {
+    const response = await fetch(`http://localhost:5000/api/devices?skip=${pageParam}&limit=${LIMIT}`);
+    if (!response.ok) {
+      throw new Error("Cihazlar yüklenirken bir hata oluştu");
+    }
+    return response.json();
+  };
+
+  const {
+    data,
+    fetchNextPage,
+    hasNextPage,
+    isLoading,
+    isFetchingNextPage
+  } = useInfiniteQuery({
+    queryKey: ['devices'],
+    queryFn: fetchDevices,
+    getNextPageParam: (lastPage, pages) => {
+      if (lastPage.length < LIMIT) return undefined;
+      return pages.length * LIMIT;
     },
   });
 
-  if (isLoading) {
+  const devices = data?.pages.flat() || [];
+  const itemCount = hasNextPage ? devices.length + 1 : devices.length;
+  const loadMoreItems = isLoading || isFetchingNextPage ? () => {} : () => fetchNextPage();
+  const isItemLoaded = (index: number) => !hasNextPage || index < devices.length;
+
+  if (isLoading && !isFetchingNextPage) {
     return (
       <div className="flex items-center justify-center h-[200px]">
         <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
       </div>
     );
   }
+
+  const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
+    if (!isItemLoaded(index)) {
+      return (
+        <div style={style} className="flex items-center justify-center p-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-600" />
+        </div>
+      );
+    }
+
+    const device = devices[index];
+    return (
+      <div style={style}>
+        <TableRow>
+          <TableCell className="font-medium">{device.name}</TableCell>
+          <TableCell>{device.token}</TableCell>
+          <TableCell>{device.location}</TableCell>
+          <TableCell>
+            <Badge
+              variant={device.isOnline ? "success" : "secondary"}
+              className="flex w-fit items-center gap-1"
+            >
+              <Power className="h-3 w-3" />
+              {device.isOnline ? "Çevrimiçi" : "Çevrimdışı"}
+            </Badge>
+          </TableCell>
+          <TableCell>{device.volume}%</TableCell>
+          <TableCell>
+            {new Date(device.lastSeen).toLocaleString("tr-TR")}
+          </TableCell>
+          <TableCell className="text-right">
+            <Button variant="ghost" size="icon">
+              <Settings className="h-4 w-4" />
+            </Button>
+          </TableCell>
+        </TableRow>
+      </div>
+    );
+  };
 
   return (
     <div className="space-y-6">
@@ -79,31 +139,24 @@ const DeviceList = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {devices?.map((device: Device) => (
-              <TableRow key={device._id}>
-                <TableCell className="font-medium">{device.name}</TableCell>
-                <TableCell>{device.token}</TableCell>
-                <TableCell>{device.location}</TableCell>
-                <TableCell>
-                  <Badge
-                    variant={device.isOnline ? "success" : "secondary"}
-                    className="flex w-fit items-center gap-1"
-                  >
-                    <Power className="h-3 w-3" />
-                    {device.isOnline ? "Çevrimiçi" : "Çevrimdışı"}
-                  </Badge>
-                </TableCell>
-                <TableCell>{device.volume}%</TableCell>
-                <TableCell>
-                  {new Date(device.lastSeen).toLocaleString("tr-TR")}
-                </TableCell>
-                <TableCell className="text-right">
-                  <Button variant="ghost" size="icon">
-                    <Settings className="h-4 w-4" />
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
+            <InfiniteLoader
+              isItemLoaded={isItemLoaded}
+              itemCount={itemCount}
+              loadMoreItems={loadMoreItems}
+            >
+              {({ onItemsRendered, ref }) => (
+                <List
+                  height={500}
+                  itemCount={itemCount}
+                  itemSize={60}
+                  onItemsRendered={onItemsRendered}
+                  ref={ref}
+                  width="100%"
+                >
+                  {Row}
+                </List>
+              )}
+            </InfiniteLoader>
           </TableBody>
         </Table>
       </div>

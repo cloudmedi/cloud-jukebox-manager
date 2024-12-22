@@ -3,12 +3,19 @@ const router = express.Router();
 const Device = require('../models/Device');
 const Token = require('../models/Token');
 
-// Tüm cihazları getir
+// Tüm cihazları getir (pagination ile)
 router.get('/', async (req, res) => {
   try {
+    const skip = parseInt(req.query.skip) || 0;
+    const limit = parseInt(req.query.limit) || 20;
+
     const devices = await Device.find()
       .populate('activePlaylist')
-      .populate('groupId');
+      .populate('groupId')
+      .skip(skip)
+      .limit(limit)
+      .sort({ createdAt: -1 });
+
     res.json(devices);
   } catch (error) {
     res.status(500).json({ message: error.message });
