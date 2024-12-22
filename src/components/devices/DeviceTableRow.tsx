@@ -1,7 +1,7 @@
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Power, Settings, Check, AlertCircle } from "lucide-react";
+import { Power, Settings, Check, AlertCircle, Loader2, Music } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 
 interface Device {
@@ -29,7 +29,8 @@ export const DeviceTableRow = ({ device, style }: DeviceTableRowProps) => {
   const getPlaylistStatusBadge = () => {
     if (!device.activePlaylist) {
       return (
-        <Badge variant="secondary">
+        <Badge variant="secondary" className="flex items-center gap-1">
+          <Music className="h-3 w-3" />
           Playlist Atanmamış
         </Badge>
       );
@@ -55,7 +56,7 @@ export const DeviceTableRow = ({ device, style }: DeviceTableRowProps) => {
           <Tooltip>
             <TooltipTrigger>
               <Badge variant="warning" className="flex items-center gap-1">
-                <span className="animate-spin">⏳</span>
+                <Loader2 className="h-3 w-3 animate-spin" />
                 Yükleniyor
               </Badge>
             </TooltipTrigger>
