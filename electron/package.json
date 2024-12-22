@@ -23,7 +23,9 @@
   "dependencies": {
     "ws": "^8.16.0",
     "systeminformation": "^5.21.22",
-    "@vitejs/plugin-react-swc": "^3.7.2"
+    "@vitejs/plugin-react-swc": "^3.7.2",
+    "bufferutil": "^4.0.8",
+    "utf-8-validate": "^6.0.3"
   },
   "devDependencies": {
     "electron": "^28.2.0",
