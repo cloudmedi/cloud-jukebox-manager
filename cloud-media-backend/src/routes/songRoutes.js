@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const Song = require('../models/Song');
-const { parseFile } = require('music-metadata');
+const mm = require('music-metadata');
 
 // Multer yapılandırması
 const storage = multer.diskStorage({
@@ -56,7 +56,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     }
 
     // Müzik dosyasından metadata bilgilerini çıkar
-    const metadata = await parseFile(req.file.path);
+    const metadata = await mm.parseFile(req.file.path);
     
     // Metadata'dan bilgileri al
     const artist = metadata.common.artist || 'Bilinmeyen Sanatçı';
