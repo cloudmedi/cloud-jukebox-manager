@@ -6,6 +6,7 @@ import { Toaster } from "./components/ui/toaster";
 import Index from "./pages/Index";
 import Devices from "./pages/Devices";
 import Playlists from "./pages/Playlists";
+import Schedule from "./pages/Schedule";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -26,6 +27,7 @@ function App() {
               <Route path="/" element={<Index />} />
               <Route path="/devices" element={<Devices />} />
               <Route path="/playlists" element={<Playlists />} />
+              <Route path="/schedule" element={<Schedule />} />
             </Route>
           </Routes>
           <Toaster />
