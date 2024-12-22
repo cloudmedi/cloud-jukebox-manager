@@ -82,8 +82,8 @@ export function DateTimeRangePicker({
         </Popover>
       </div>
 
-      <div className="grid grid-cols-3 gap-4">
-        <div className="flex flex-col space-y-2">
+      <div className="flex items-end gap-4">
+        <div className="flex-1 space-y-2">
           <label className="text-sm font-medium">Başlangıç Saati</label>
           <Input
             type="time"
@@ -91,7 +91,7 @@ export function DateTimeRangePicker({
             onChange={(e) => onTimeRangeChange("startTime", e.target.value)}
           />
         </div>
-        <div className="flex flex-col space-y-2">
+        <div className="flex-1 space-y-2">
           <label className="text-sm font-medium">Bitiş Saati</label>
           <Input
             type="time"
@@ -100,12 +100,11 @@ export function DateTimeRangePicker({
           />
         </div>
         {showDownloadButton && (
-          <div className="flex flex-col space-y-2">
-            <label className="text-sm font-medium">&nbsp;</label>
+          <div className="flex-1">
             <Button
               onClick={onDownload}
               disabled={isDownloadDisabled}
-              className="w-full"
+              className="w-full h-10"
             >
               <Download className="mr-2 h-4 w-4" />
               PDF İndir
