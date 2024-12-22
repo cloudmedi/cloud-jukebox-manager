@@ -28,7 +28,7 @@ export class DeviceService {
         deviceToken: null
       }
     });
-    this.deviceToken = this.store.get('deviceToken', null);
+    this.deviceToken = this.store.get('deviceToken');
   }
 
   static getInstance(): DeviceService {
