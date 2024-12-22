@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const Song = require('../models/Song');
-const mm = require('music-metadata');
+const NodeID3 = require('node-id3');
 
 // Multer yapılandırması
 const storage = multer.diskStorage({
@@ -55,18 +55,18 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ message: 'Dosya yüklenemedi' });
     }
 
-    // Müzik dosyasından metadata bilgilerini çıkar
-    const metadata = await mm.parseFile(req.file.path);
+    // ID3 etiketlerini oku
+    const tags = NodeID3.read(req.file.path);
     
     // Metadata'dan bilgileri al
-    const artist = metadata.common.artist || 'Bilinmeyen Sanatçı';
-    const title = metadata.common.title || req.file.originalname;
-    const album = metadata.common.album || '';
-    const genre = metadata.common.genre?.[0] || 'Other';
-    const year = metadata.common.year || null;
+    const artist = tags.artist || 'Bilinmeyen Sanatçı';
+    const title = tags.title || req.file.originalname;
+    const album = tags.album || '';
+    const genre = tags.genre || 'Other';
+    const year = tags.year ? parseInt(tags.year) : null;
     
-    // Süreyi saniye cinsinden hesapla
-    const duration = Math.round(metadata.format.duration || 0);
+    // Varsayılan süre (gerçek süreyi almak için farklı bir kütüphane gerekebilir)
+    const duration = 0;
 
     const song = new Song({
       name: title,
