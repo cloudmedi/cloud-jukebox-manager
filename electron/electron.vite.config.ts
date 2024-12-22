@@ -12,6 +12,7 @@ export default defineConfig({
   plugins: [
     electron([
       {
+        // Main process
         entry: 'electron/main/index.ts',
         vite: {
           build: {
@@ -20,6 +21,7 @@ export default defineConfig({
         }
       },
       {
+        // Preload process
         entry: 'electron/preload/index.ts',
         vite: {
           build: {
