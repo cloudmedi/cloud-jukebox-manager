@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -6,20 +6,20 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { Dialog } from "@/components/ui/dialog";
 import {
-  RefreshCw,
   Power,
-  Music,
+  RefreshCcw,
   Volume2,
   Users,
   Info,
   Trash2,
   MoreVertical,
 } from "lucide-react";
+import { useState } from "react";
+import { deviceService } from "@/services/deviceService";
 import VolumeControlDialog from "./VolumeControlDialog";
 import GroupManagementDialog from "./GroupManagementDialog";
-import { deviceService } from "@/services/deviceService";
-import { useQueryClient } from "@tanstack/react-query";
 
 interface DeviceActionsProps {
   device: {
@@ -36,6 +36,8 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
   const queryClient = useQueryClient();
 
   const handleRestart = async () => {
+    if (!window.confirm('Cihazı yeniden başlatmak istediğinizden emin misiniz?')) return;
+    
     try {
       await deviceService.restartDevice(device._id);
       queryClient.invalidateQueries({ queryKey: ['devices'] });
@@ -53,9 +55,10 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
     }
   };
 
-  const handleVolumeChange = async (newVolume: number) => {
+  const handleVolumeChange = async (volume: number) => {
     try {
-      await deviceService.setVolume(device._id, newVolume);
+      await deviceService.setVolume(device._id, volume);
+      setIsVolumeDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ['devices'] });
     } catch (error) {
       console.error('Volume control error:', error);
@@ -65,6 +68,7 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
   const handleGroupChange = async (groupId: string | null) => {
     try {
       await deviceService.updateGroup(device._id, groupId);
+      setIsGroupDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ['devices'] });
     } catch (error) {
       console.error('Group management error:', error);
@@ -90,18 +94,14 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
             <MoreVertical className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="w-48">
-          <DropdownMenuItem onClick={handleRestart}>
-            <RefreshCw className="mr-2 h-4 w-4" />
-            Yeniden Başlat
-          </DropdownMenuItem>
+        <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={handlePowerToggle}>
             <Power className="mr-2 h-4 w-4" />
-            {device.isOnline ? 'Cihazı Kapat' : 'Cihazı Aç'}
+            {device.isOnline ? 'Kapat' : 'Aç'}
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => console.log('Playlist management')}>
-            <Music className="mr-2 h-4 w-4" />
-            Playlist Yönetimi
+          <DropdownMenuItem onClick={handleRestart}>
+            <RefreshCcw className="mr-2 h-4 w-4" />
+            Yeniden Başlat
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setIsVolumeDialogOpen(true)}>
             <Volume2 className="mr-2 h-4 w-4" />
@@ -111,7 +111,7 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
             <Users className="mr-2 h-4 w-4" />
             Grup Yönetimi
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => console.log('Device details')}>
+          <DropdownMenuItem>
             <Info className="mr-2 h-4 w-4" />
             Cihaz Detayları
           </DropdownMenuItem>
@@ -122,19 +122,22 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <VolumeControlDialog
-        isOpen={isVolumeDialogOpen}
-        onClose={() => setIsVolumeDialogOpen(false)}
-        currentVolume={device.volume}
-        onVolumeChange={handleVolumeChange}
-      />
+      <Dialog open={isVolumeDialogOpen} onOpenChange={setIsVolumeDialogOpen}>
+        <VolumeControlDialog
+          currentVolume={device.volume}
+          onVolumeChange={handleVolumeChange}
+          onClose={() => setIsVolumeDialogOpen(false)}
+        />
+      </Dialog>
 
-      <GroupManagementDialog
-        isOpen={isGroupDialogOpen}
-        onClose={() => setIsGroupDialogOpen(false)}
-        currentGroupId={device.groupId}
-        onGroupChange={handleGroupChange}
-      />
+      <Dialog open={isGroupDialogOpen} onOpenChange={setIsGroupDialogOpen}>
+        <GroupManagementDialog
+          deviceId={device._id}
+          currentGroupId={device.groupId}
+          onGroupChange={handleGroupChange}
+          onClose={() => setIsGroupDialogOpen(false)}
+        />
+      </Dialog>
     </>
   );
 };
