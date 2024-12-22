@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Plus, Pencil, Trash2 } from "lucide-react";
+import { Plus, MoreVertical } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -14,6 +14,7 @@ import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { DeviceGroupForm } from "./DeviceGroupForm";
+import { DeviceGroupActions } from "./DeviceGroupActions";
 
 interface DeviceGroup {
   _id: string;
@@ -40,31 +41,6 @@ const DeviceGroups = () => {
     },
   });
 
-  const handleDelete = async (groupId: string) => {
-    try {
-      const response = await fetch(`http://localhost:5000/api/device-groups/${groupId}`, {
-        method: 'DELETE'
-      });
-
-      if (!response.ok) {
-        throw new Error('Grup silinirken bir hata oluştu');
-      }
-
-      toast({
-        title: "Başarılı",
-        description: "Grup başarıyla silindi",
-      });
-
-      refetch();
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Hata",
-        description: "Grup silinirken bir hata oluştu",
-      });
-    }
-  };
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[200px]">
@@ -85,7 +61,10 @@ const DeviceGroups = () => {
             </Button>
           </DialogTrigger>
           <DialogContent>
-            <DeviceGroupForm onSuccess={() => setIsFormOpen(false)} />
+            <DeviceGroupForm onSuccess={() => {
+              setIsFormOpen(false);
+              refetch();
+            }} />
           </DialogContent>
         </Dialog>
       </div>
@@ -121,22 +100,7 @@ const DeviceGroups = () => {
                   {new Date(group.createdAt).toLocaleString("tr-TR")}
                 </TableCell>
                 <TableCell className="text-right">
-                  <div className="flex justify-end gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => console.log('Edit:', group._id)}
-                    >
-                      <Pencil className="h-4 w-4" />
-                    </Button>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => handleDelete(group._id)}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  </div>
+                  <DeviceGroupActions group={group} onSuccess={refetch} />
                 </TableCell>
               </TableRow>
             ))}

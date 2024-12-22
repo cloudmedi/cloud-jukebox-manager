@@ -1,125 +1,145 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
-import { Check, Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { toast } from "sonner";
+import { DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Label } from "@/components/ui/label";
+import { useQuery } from "@tanstack/react-query";
+
+interface Device {
+  _id: string;
+  name: string;
+}
+
+interface DeviceGroup {
+  _id: string;
+  name: string;
+  description: string;
+  devices: string[];
+  status: 'active' | 'inactive';
+  createdBy: string;
+}
 
 export interface DeviceGroupFormProps {
-  onSubmit?: (data: { name: string; devices: string[] }) => void;
-  onCancel?: () => void;
+  group?: DeviceGroup;
   onSuccess: () => void;
 }
 
-export const DeviceGroupForm = ({ onSubmit, onCancel, onSuccess }: DeviceGroupFormProps) => {
-  const [groupName, setGroupName] = useState("");
+export const DeviceGroupForm = ({ group, onSuccess }: DeviceGroupFormProps) => {
+  const [name, setName] = useState(group?.name || "");
+  const [description, setDescription] = useState(group?.description || "");
+  const [selectedDevices, setSelectedDevices] = useState<string[]>(group?.devices || []);
   const [searchQuery, setSearchQuery] = useState("");
-  const [selectedDevices, setSelectedDevices] = useState<string[]>([]);
 
   const { data: devices } = useQuery({
-    queryKey: ['devices'],
+    queryKey: ["devices"],
     queryFn: async () => {
-      const response = await fetch('http://localhost:5000/api/devices');
-      if (!response.ok) throw new Error('Cihazlar yüklenemedi');
+      const response = await fetch("http://localhost:5000/api/devices");
+      if (!response.ok) {
+        throw new Error("Cihazlar yüklenirken bir hata oluştu");
+      }
       return response.json();
-    }
+    },
   });
 
-  const filteredDevices = devices?.filter((device: any) =>
-    device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    device.location.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredDevices = devices?.filter((device: Device) =>
+    device.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  const handleDeviceToggle = (deviceId: string) => {
-    setSelectedDevices(prev =>
-      prev.includes(deviceId)
-        ? prev.filter(id => id !== deviceId)
-        : [...prev, deviceId]
-    );
-  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+
+    const url = group
+      ? `http://localhost:5000/api/device-groups/${group._id}`
+      : "http://localhost:5000/api/device-groups";
+
+    const method = group ? "PATCH" : "POST";
+
     try {
-      const response = await fetch('http://localhost:5000/api/device-groups', {
-        method: 'POST',
+      const response = await fetch(url, {
+        method,
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          name: groupName,
-          devices: selectedDevices
+          name,
+          description,
+          devices: selectedDevices,
+          createdBy: "Admin", // Bu kısmı gerçek kullanıcı bilgisiyle değiştirin
         }),
       });
 
       if (!response.ok) {
-        throw new Error('Grup oluşturulurken bir hata oluştu');
+        throw new Error("Grup kaydedilirken bir hata oluştu");
       }
 
+      toast.success(group ? "Grup güncellendi" : "Grup oluşturuldu");
       onSuccess();
     } catch (error) {
-      console.error('Error:', error);
+      toast.error("Bir hata oluştu");
     }
   };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-4">
-      <div className="space-y-2">
-        <Label htmlFor="groupName">Grup Adı</Label>
-        <Input
-          id="groupName"
-          value={groupName}
-          onChange={(e) => setGroupName(e.target.value)}
-          placeholder="Grup adını girin"
-        />
-      </div>
+      <DialogHeader>
+        <DialogTitle>{group ? "Grubu Düzenle" : "Yeni Grup"}</DialogTitle>
+      </DialogHeader>
 
-      <div className="space-y-2">
-        <Label>Cihazlar</Label>
-        <div className="relative">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+      <div className="space-y-4">
+        <div>
+          <Label htmlFor="name">Grup Adı</Label>
+          <Input
+            id="name"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            required
+          />
+        </div>
+
+        <div>
+          <Label htmlFor="description">Açıklama</Label>
+          <Input
+            id="description"
+            value={description}
+            onChange={(e) => setDescription(e.target.value)}
+          />
+        </div>
+
+        <div>
+          <Label>Cihazlar</Label>
           <Input
             placeholder="Cihaz ara..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8"
+            className="mb-2"
           />
-        </div>
-
-        <ScrollArea className="h-[300px] border rounded-md p-2">
-          <div className="space-y-2">
-            {filteredDevices?.map((device: any) => (
-              <div
-                key={device._id}
-                className="flex items-center space-x-2 p-2 hover:bg-accent rounded-md"
-              >
+          <ScrollArea className="h-[200px] border rounded-md p-2">
+            {filteredDevices?.map((device: Device) => (
+              <div key={device._id} className="flex items-center space-x-2 py-2">
                 <Checkbox
                   id={device._id}
                   checked={selectedDevices.includes(device._id)}
-                  onCheckedChange={() => handleDeviceToggle(device._id)}
+                  onCheckedChange={(checked) => {
+                    if (checked) {
+                      setSelectedDevices([...selectedDevices, device._id]);
+                    } else {
+                      setSelectedDevices(selectedDevices.filter(id => id !== device._id));
+                    }
+                  }}
                 />
-                <Label
-                  htmlFor={device._id}
-                  className="flex-1 cursor-pointer"
-                >
-                  <div className="font-medium">{device.name}</div>
-                  <div className="text-sm text-muted-foreground">{device.location}</div>
-                </Label>
+                <Label htmlFor={device._id}>{device.name}</Label>
               </div>
             ))}
-          </div>
-        </ScrollArea>
+          </ScrollArea>
+        </div>
       </div>
 
-      <div className="flex justify-end space-x-2">
-        <Button variant="outline" onClick={onCancel}>
-          İptal
-        </Button>
-        <Button type="submit" disabled={!groupName || selectedDevices.length === 0}>
-          <Check className="mr-2 h-4 w-4" />
-          Kaydet
+      <div className="flex justify-end">
+        <Button type="submit">
+          {group ? "Güncelle" : "Oluştur"}
         </Button>
       </div>
     </form>
