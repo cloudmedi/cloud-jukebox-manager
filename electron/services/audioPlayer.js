@@ -8,6 +8,7 @@ class AudioPlayer {
     this.playlist = null;
     this.currentIndex = 0;
     this.isPlaying = false;
+    this.volume = 1.0;
   }
 
   loadPlaylist(playlist) {
@@ -22,6 +23,12 @@ class AudioPlayer {
     const song = this.playlist.songs[this.currentIndex];
     const songPath = path.join(this.playlist.localPath, `${song._id}.mp3`);
 
+    if (!fs.existsSync(songPath)) {
+      console.error('Şarkı dosyası bulunamadı:', songPath);
+      this.playNext();
+      return;
+    }
+
     if (this.currentSound) {
       this.currentSound.unload();
     }
@@ -29,6 +36,7 @@ class AudioPlayer {
     this.currentSound = new Howl({
       src: [songPath],
       html5: true,
+      volume: this.volume,
       onend: () => {
         this.playNext();
       },
@@ -74,8 +82,9 @@ class AudioPlayer {
   }
 
   setVolume(volume) {
+    this.volume = volume / 100;
     if (this.currentSound) {
-      this.currentSound.volume(volume / 100);
+      this.currentSound.volume(this.volume);
     }
   }
 

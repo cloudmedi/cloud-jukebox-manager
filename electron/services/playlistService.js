@@ -3,6 +3,7 @@ const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
 const { app } = require('electron');
+const audioPlayer = require('./audioPlayer');
 
 class PlaylistService {
   constructor(ws) {
@@ -19,11 +20,16 @@ class PlaylistService {
 
   setupMessageHandlers() {
     this.ws.on('message', async (data) => {
-      const message = JSON.parse(data);
-      
-      if (message.type === 'playlist') {
-        console.log('Yeni playlist alındı:', message.data.name);
-        await this.handleNewPlaylist(message.data);
+      try {
+        const message = JSON.parse(data);
+        
+        if (message.type === 'playlist') {
+          console.log('Yeni playlist alındı:', message.data.name);
+          await this.handleNewPlaylist(message.data);
+        }
+      } catch (error) {
+        console.error('Mesaj işleme hatası:', error);
+        this.sendError('Playlist işlenirken hata oluştu: ' + error.message);
       }
     });
   }
@@ -65,12 +71,17 @@ class PlaylistService {
           localPath: playlistPath
         });
       }
+
+      // Playlist'i çalmaya başla
+      audioPlayer.loadPlaylist({
+        ...playlist,
+        localPath: playlistPath
+      });
+      audioPlayer.play();
+
     } catch (error) {
       console.error('Playlist indirme hatası:', error);
-      this.ws.send(JSON.stringify({
-        type: 'error',
-        error: 'Playlist indirilemedi: ' + error.message
-      }));
+      this.sendError('Playlist indirilemedi: ' + error.message);
     }
   }
 
@@ -112,6 +123,13 @@ class PlaylistService {
       type: 'downloadProgress',
       downloadType: type,
       progress: progress
+    }));
+  }
+
+  sendError(error) {
+    this.ws.send(JSON.stringify({
+      type: 'error',
+      error: error
     }));
   }
 }
