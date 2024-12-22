@@ -6,9 +6,7 @@ class DeviceService {
   
   constructor() {
     this.store = new Store({
-      defaults: {
-        deviceToken: null
-      }
+      name: 'device-config'
     });
     this.deviceToken = this.store.get('deviceToken');
   }
