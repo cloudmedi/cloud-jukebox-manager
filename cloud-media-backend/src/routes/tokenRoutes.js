@@ -5,6 +5,7 @@ const Token = require('../models/Token');
 // Token oluştur
 router.post('/', async (req, res) => {
   try {
+    console.log('Received token registration request:', req.body);
     const { token, deviceInfo } = req.body;
     
     const newToken = new Token({
@@ -14,8 +15,10 @@ router.post('/', async (req, res) => {
     });
 
     const savedToken = await newToken.save();
+    console.log('Token saved successfully:', savedToken);
     res.status(201).json(savedToken);
   } catch (error) {
+    console.error('Token registration error:', error);
     res.status(400).json({ message: error.message });
   }
 });
