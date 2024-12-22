@@ -16,21 +16,26 @@ class AudioPlayer {
     console.log('Loading playlist:', playlist);
     this.playlist = playlist;
     this.currentIndex = 0;
-    this.queue = [...playlist.songs];
+    // Sadece localPath'i olan şarkıları kuyruğa ekle
+    this.queue = playlist.songs.filter(song => song.localPath);
     console.log('Queue updated:', this.queue);
-    this.loadCurrentSong();
+    
+    if (this.queue.length > 0) {
+      this.loadCurrentSong();
+    } else {
+      console.log('No playable songs in playlist');
+    }
   }
 
   loadCurrentSong() {
-    if (!this.playlist || !this.queue[this.currentIndex]) {
-      console.log('No playlist or song to load');
+    if (!this.queue[this.currentIndex]) {
+      console.log('No song to load at index:', this.currentIndex);
       return;
     }
 
     const song = this.queue[this.currentIndex];
     console.log('Loading song:', song);
     
-    // Mevcut ses dosyasını güvenli bir şekilde kaldır
     if (this.currentSound) {
       try {
         this.currentSound.unload();
@@ -42,6 +47,7 @@ class AudioPlayer {
     try {
       if (!song.localPath) {
         console.error('Song localPath is missing:', song);
+        this.playNext();
         return;
       }
 
@@ -79,6 +85,7 @@ class AudioPlayer {
       });
     } catch (error) {
       console.error('Error creating Howl instance:', error);
+      this.playNext();
     }
   }
 
@@ -89,6 +96,12 @@ class AudioPlayer {
       this.isPlaying = true;
     } else {
       console.log('No sound loaded to play');
+      // İlk şarkıyı yüklemeyi dene
+      this.loadCurrentSong();
+      if (this.currentSound) {
+        this.currentSound.play();
+        this.isPlaying = true;
+      }
     }
   }
 
@@ -180,6 +193,3 @@ class AudioPlayer {
       }
     }
   }
-}
-
-module.exports = new AudioPlayer();
