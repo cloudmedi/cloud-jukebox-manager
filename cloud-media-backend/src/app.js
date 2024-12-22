@@ -17,7 +17,7 @@ app.use('/api/devices', require('./routes/deviceRoutes'));
 app.use('/api/device-groups', require('./routes/deviceGroupRoutes'));
 app.use('/api/playlists', require('./routes/playlistRoutes'));
 app.use('/api/songs', require('./routes/songRoutes'));
-// app.use('/api/announcements', require('./routes/announcementRoutes'));
+app.use('/api/announcements', require('./routes/announcementRoutes'));
 
 const PORT = process.env.PORT || 5000;
 
