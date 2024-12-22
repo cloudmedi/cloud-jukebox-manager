@@ -20,31 +20,43 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
   const { data: devices = [], isError: isDevicesError } = useQuery({
     queryKey: ["devices"],
     queryFn: async () => {
-      const response = await fetch("http://localhost:5000/api/devices");
-      if (!response.ok) throw new Error("Failed to fetch devices");
-      const data = await response.json();
-      return data || [];
+      try {
+        const response = await fetch("http://localhost:5000/api/devices");
+        if (!response.ok) throw new Error("Cihazlar yüklenemedi");
+        const data = await response.json();
+        return data || [];
+      } catch (error) {
+        console.error("Cihaz yükleme hatası:", error);
+        return [];
+      }
     },
+    initialData: [], // Başlangıç değeri olarak boş dizi
   });
 
   const { data: groups = [], isError: isGroupsError } = useQuery({
     queryKey: ["device-groups"],
     queryFn: async () => {
-      const response = await fetch("http://localhost:5000/api/device-groups");
-      if (!response.ok) throw new Error("Failed to fetch device groups");
-      const data = await response.json();
-      return data || [];
+      try {
+        const response = await fetch("http://localhost:5000/api/device-groups");
+        if (!response.ok) throw new Error("Gruplar yüklenemedi");
+        const data = await response.json();
+        return data || [];
+      } catch (error) {
+        console.error("Grup yükleme hatası:", error);
+        return [];
+      }
     },
+    initialData: [], // Başlangıç değeri olarak boş dizi
   });
 
-  const filteredDevices = devices.filter((device: any) =>
-    device?.name?.toLowerCase().includes(deviceSearch.toLowerCase()) ||
-    device?.location?.toLowerCase().includes(deviceSearch.toLowerCase())
-  );
+  const filteredDevices = Array.isArray(devices) ? devices.filter((device: any) =>
+    (device?.name?.toLowerCase().includes(deviceSearch.toLowerCase()) ||
+    device?.location?.toLowerCase().includes(deviceSearch.toLowerCase()))
+  ) : [];
 
-  const filteredGroups = groups.filter((group: any) =>
+  const filteredGroups = Array.isArray(groups) ? groups.filter((group: any) =>
     group?.name?.toLowerCase().includes(groupSearch.toLowerCase())
-  );
+  ) : [];
 
   if (isDevicesError || isGroupsError) {
     return (
@@ -73,7 +85,7 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
                   className="w-full justify-between"
                 >
                   {field.value?.[0]
-                    ? devices.find((device: any) => device._id === field.value[0])?.name || "Cihaz seçin..."
+                    ? devices.find((device: any) => device?._id === field.value?.[0])?.name || "Cihaz seçin..."
                     : "Cihaz seçin..."}
                   <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -97,7 +109,7 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
                         }}
                       >
                         <div className="flex flex-col">
-                          <span className="font-medium">{device.name}</span>
+                          <span className="font-medium">{device.name || "İsimsiz Cihaz"}</span>
                           {device.location && (
                             <span className="text-sm text-muted-foreground">
                               {device.location}
@@ -129,7 +141,7 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
                   className="w-full justify-between"
                 >
                   {field.value?.[0]
-                    ? groups.find((group: any) => group._id === field.value[0])?.name || "Grup seçin..."
+                    ? groups.find((group: any) => group?._id === field.value?.[0])?.name || "Grup seçin..."
                     : "Grup seçin..."}
                   <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -152,7 +164,7 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
                           setOpenGroups(false);
                         }}
                       >
-                        {group.name}
+                        {group.name || "İsimsiz Grup"}
                       </CommandItem>
                     ))}
                   </CommandGroup>
