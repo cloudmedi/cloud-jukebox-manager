@@ -20,7 +20,9 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
     queryKey: ["devices"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/devices");
-      return response.json();
+      if (!response.ok) throw new Error("Failed to fetch devices");
+      const data = await response.json();
+      return data || [];
     },
   });
 
@@ -28,17 +30,19 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
     queryKey: ["device-groups"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/device-groups");
-      return response.json();
+      if (!response.ok) throw new Error("Failed to fetch device groups");
+      const data = await response.json();
+      return data || [];
     },
   });
 
   const filteredDevices = devices.filter((device: any) =>
-    device.name.toLowerCase().includes(deviceSearch.toLowerCase()) ||
-    device.location?.toLowerCase().includes(deviceSearch.toLowerCase())
+    device?.name?.toLowerCase().includes(deviceSearch.toLowerCase()) ||
+    device?.location?.toLowerCase().includes(deviceSearch.toLowerCase())
   );
 
   const filteredGroups = groups.filter((group: any) =>
-    group.name.toLowerCase().includes(groupSearch.toLowerCase())
+    group?.name?.toLowerCase().includes(groupSearch.toLowerCase())
   );
 
   return (
@@ -58,7 +62,7 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
                   className="w-full justify-between"
                 >
                   {field.value?.[0]
-                    ? devices.find((device: any) => device._id === field.value[0])?.name
+                    ? devices.find((device: any) => device._id === field.value[0])?.name || "Cihaz seçin..."
                     : "Cihaz seçin..."}
                   <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -83,9 +87,11 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
                       >
                         <div className="flex flex-col">
                           <span className="font-medium">{device.name}</span>
-                          <span className="text-sm text-muted-foreground">
-                            {device.location}
-                          </span>
+                          {device.location && (
+                            <span className="text-sm text-muted-foreground">
+                              {device.location}
+                            </span>
+                          )}
                         </div>
                       </CommandItem>
                     ))}
@@ -112,7 +118,7 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
                   className="w-full justify-between"
                 >
                   {field.value?.[0]
-                    ? groups.find((group: any) => group._id === field.value[0])?.name
+                    ? groups.find((group: any) => group._id === field.value[0])?.name || "Grup seçin..."
                     : "Grup seçin..."}
                   <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
