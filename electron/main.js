@@ -3,6 +3,7 @@ const path = require('path');
 const Store = require('electron-store');
 const store = new Store();
 const websocketService = require('./services/websocketService');
+require('./services/audioService');
 
 let mainWindow;
 
@@ -13,8 +14,7 @@ function createWindow() {
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
-      webSecurity: true,
-      allowRunningInsecureContent: false
+      webSecurity: false
     }
   });
 

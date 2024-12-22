@@ -1,6 +1,5 @@
 const WebSocket = require('ws');
-const PlaylistService = require('./playlistService');
-const audioPlayer = require('./audioPlayer');
+const { ipcMain } = require('electron');
 
 class WebSocketService {
   constructor() {
@@ -8,7 +7,6 @@ class WebSocketService {
     this.reconnectInterval = 5000;
     this.isConnecting = false;
     this.token = null;
-    this.messageQueue = [];
   }
 
   connect(token) {
@@ -25,16 +23,19 @@ class WebSocketService {
       
       // Token ile kimlik doğrulama
       this.sendAuthMessage();
-      
-      // Kuyruktaki mesajları gönder
-      this.flushMessageQueue();
     });
 
-    this.ws.on('message', (data) => {
+    this.ws.on('message', async (data) => {
       try {
         const message = JSON.parse(data);
         console.log('Alınan mesaj:', message);
-        this.handleMessage(message);
+        
+        if (message.type === 'playlist') {
+          // Playlist mesajını audioService'e ilet
+          const { ipcMain } = require('electron');
+          ipcMain.emit('play-playlist', null, message.data);
+        }
+        
       } catch (error) {
         console.error('Message parsing error:', error);
       }
@@ -59,95 +60,16 @@ class WebSocketService {
     this.sendMessage(authMessage);
   }
 
-  async handleMessage(message) {
-    console.log('Mesaj işleniyor:', message.type);
-    
-    switch (message.type) {
-      case 'playlist':
-        try {
-          await PlaylistService.handlePlaylistMessage(message, this.ws);
-        } catch (error) {
-          console.error('Playlist işleme hatası:', error);
-        }
-        break;
-        
-      case 'command':
-        this.handleCommand(message);
-        break;
-        
-      case 'auth':
-        this.handleAuthResponse(message);
-        break;
-        
-      default:
-        console.log('Bilinmeyen mesaj tipi:', message.type);
-        break;
-    }
-  }
-
-  handleAuthResponse(message) {
-    if (message.status === 'success') {
-      console.log('Kimlik doğrulama başarılı');
-      this.sendStatus({ type: 'status', isOnline: true });
-      
-      // Mevcut çalma durumunu geri yükle
-      audioPlayer.restoreState();
-    }
-  }
-
-  handleCommand(message) {
-    switch (message.command) {
-      case 'play':
-        audioPlayer.play();
-        break;
-      case 'pause':
-        audioPlayer.pause();
-        break;
-      case 'stop':
-        audioPlayer.stop();
-        break;
-      case 'next':
-        audioPlayer.playNext();
-        break;
-      case 'previous':
-        audioPlayer.playPrevious();
-        break;
-      case 'setVolume':
-        audioPlayer.setVolume(message.volume);
-        break;
-      case 'shuffle':
-        audioPlayer.shuffle();
-        break;
-    }
-  }
-
   sendMessage(message) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message));
-    } else {
-      this.messageQueue.push(message);
     }
-  }
-
-  flushMessageQueue() {
-    while (this.messageQueue.length > 0) {
-      const message = this.messageQueue.shift();
-      this.sendMessage(message);
-    }
-  }
-
-  sendStatus(status) {
-    this.sendMessage(status);
   }
 
   disconnect() {
     if (this.ws) {
-      this.sendStatus({ type: 'status', isOnline: false });
-      
-      setTimeout(() => {
-        this.ws.close();
-        this.ws = null;
-      }, 500);
+      this.ws.close();
+      this.ws = null;
     }
   }
 }
