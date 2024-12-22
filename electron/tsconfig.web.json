@@ -14,8 +14,9 @@
         "src/renderer/*"
       ]
     },
-    "module": "Node16",
-    "moduleResolution": "node16",
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true,
+    "noEmit": true,
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true
   }
