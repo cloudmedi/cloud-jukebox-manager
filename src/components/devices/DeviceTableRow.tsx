@@ -1,29 +1,9 @@
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Button } from "@/components/ui/button";
-import { 
-  RefreshCw, 
-  Power,
-  Music,
-  Volume2,
-  Users,
-  Info,
-  StopCircle,
-  Trash2,
-  MoreVertical,
-  Check,
-  Loader,
-  AlertCircle
-} from "lucide-react";
+import { Power, Music, Check, Loader, AlertCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-import { deviceService, Device } from "@/services/deviceService";
-import { useQueryClient } from "@tanstack/react-query";
+import { Device } from "@/services/deviceService";
+import DeviceActions from "./DeviceActions";
 
 interface DeviceTableRowProps {
   device: Device;
@@ -31,79 +11,6 @@ interface DeviceTableRowProps {
 }
 
 export const DeviceTableRow = ({ device, style }: DeviceTableRowProps) => {
-  const queryClient = useQueryClient();
-
-  const handleRestart = async () => {
-    try {
-      await deviceService.restartDevice(device._id);
-      queryClient.invalidateQueries({ queryKey: ['devices'] });
-    } catch (error) {
-      console.error('Restart error:', error);
-    }
-  };
-
-  const handlePowerToggle = async () => {
-    try {
-      await deviceService.togglePower(device._id, device.isOnline);
-      queryClient.invalidateQueries({ queryKey: ['devices'] });
-    } catch (error) {
-      console.error('Power toggle error:', error);
-    }
-  };
-
-  const handleVolumeControl = async () => {
-    // Bu kısım için ayrı bir dialog component'i oluşturulabilir
-    const volume = window.prompt('Ses seviyesini girin (0-100):', device.volume.toString());
-    if (volume === null) return;
-    
-    const newVolume = parseInt(volume);
-    if (isNaN(newVolume) || newVolume < 0 || newVolume > 100) {
-      alert('Geçersiz ses seviyesi! 0-100 arası bir değer girin.');
-      return;
-    }
-
-    try {
-      await deviceService.setVolume(device._id, newVolume);
-      queryClient.invalidateQueries({ queryKey: ['devices'] });
-    } catch (error) {
-      console.error('Volume control error:', error);
-    }
-  };
-
-  const handleGroupManagement = async () => {
-    // Bu kısım için ayrı bir dialog component'i oluşturulabilir
-    const groupId = window.prompt('Grup ID girin (boş bırakarak gruptan çıkarabilirsiniz):', device.groupId?.toString() || '');
-    
-    try {
-      await deviceService.updateGroup(device._id, groupId || null);
-      queryClient.invalidateQueries({ queryKey: ['devices'] });
-    } catch (error) {
-      console.error('Group management error:', error);
-    }
-  };
-
-  const handleEmergencyStop = async () => {
-    if (!window.confirm('Cihazı acil olarak durdurmak istediğinizden emin misiniz?')) return;
-    
-    try {
-      await deviceService.emergencyStop(device._id);
-      queryClient.invalidateQueries({ queryKey: ['devices'] });
-    } catch (error) {
-      console.error('Emergency stop error:', error);
-    }
-  };
-
-  const handleDelete = async () => {
-    if (!window.confirm('Cihazı silmek istediğinizden emin misiniz?')) return;
-    
-    try {
-      await deviceService.deleteDevice(device._id);
-      queryClient.invalidateQueries({ queryKey: ['devices'] });
-    } catch (error) {
-      console.error('Delete error:', error);
-    }
-  };
-
   const getPlaylistStatusBadge = () => {
     if (!device.activePlaylist) {
       return (
@@ -187,47 +94,7 @@ export const DeviceTableRow = ({ device, style }: DeviceTableRowProps) => {
         {new Date(device.lastSeen).toLocaleString("tr-TR")}
       </TableCell>
       <TableCell className="text-right">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" size="icon">
-              <MoreVertical className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem onClick={handleRestart}>
-              <RefreshCw className="mr-2 h-4 w-4" />
-              Yeniden Başlat
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handlePowerToggle}>
-              <Power className="mr-2 h-4 w-4" />
-              {device.isOnline ? 'Cihazı Kapat' : 'Cihazı Aç'}
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => console.log('Playlist management')}>
-              <Music className="mr-2 h-4 w-4" />
-              Playlist Yönetimi
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleVolumeControl}>
-              <Volume2 className="mr-2 h-4 w-4" />
-              Ses Kontrolü
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleGroupManagement}>
-              <Users className="mr-2 h-4 w-4" />
-              Grup Yönetimi
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => console.log('Device details')}>
-              <Info className="mr-2 h-4 w-4" />
-              Cihaz Detayları
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleEmergencyStop} className="text-red-600">
-              <StopCircle className="mr-2 h-4 w-4" />
-              Acil Durdur
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleDelete} className="text-red-600">
-              <Trash2 className="mr-2 h-4 w-4" />
-              Cihazı Sil
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <DeviceActions device={device} />
       </TableCell>
     </TableRow>
   );
