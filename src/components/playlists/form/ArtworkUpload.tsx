@@ -12,8 +12,10 @@ interface ArtworkUploadProps {
 
 export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const previewUrl = form.watch("artwork") && form.watch("artwork")[0] 
-    ? URL.createObjectURL(form.watch("artwork")[0])
+  const artwork = form.watch("artwork");
+  
+  const previewUrl = artwork instanceof FileList && artwork.length > 0
+    ? URL.createObjectURL(artwork[0])
     : null;
 
   const handleCardClick = () => {
