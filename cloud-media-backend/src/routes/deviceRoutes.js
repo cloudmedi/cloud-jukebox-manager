@@ -105,10 +105,43 @@ router.post('/:id/restart', async (req, res) => {
       return res.status(404).json({ message: 'Cihaz bulunamadı' });
     }
 
-    // Burada cihaza yeniden başlatma sinyali gönderilecek
-    // WebSocket veya başka bir yöntemle cihaza bilgi gönderilebilir
+    // WebSocket üzerinden cihaza restart komutu gönder
+    const sent = req.wss.sendToDevice(device.token, {
+      type: 'command',
+      command: 'restart'
+    });
 
-    res.json({ message: 'Cihaz yeniden başlatılıyor' });
+    if (sent) {
+      res.json({ message: 'Cihaz yeniden başlatılıyor' });
+    } else {
+      res.status(404).json({ message: 'Cihaz çevrimiçi değil' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Ses seviyesini ayarla
+router.post('/:id/volume', async (req, res) => {
+  try {
+    const device = await Device.findById(req.params.id);
+    if (!device) {
+      return res.status(404).json({ message: 'Cihaz bulunamadı' });
+    }
+
+    // WebSocket üzerinden cihaza ses seviyesi değiştirme komutu gönder
+    const sent = req.wss.sendToDevice(device.token, {
+      type: 'command',
+      command: 'setVolume',
+      volume: req.body.volume
+    });
+
+    if (sent) {
+      await device.setVolume(req.body.volume);
+      res.json({ message: 'Ses seviyesi güncellendi' });
+    } else {
+      res.status(404).json({ message: 'Cihaz çevrimiçi değil' });
+    }
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -126,21 +159,6 @@ router.post('/:id/power', async (req, res) => {
     await device.save();
 
     res.json({ message: `Cihaz ${req.body.power ? 'açıldı' : 'kapatıldı'}` });
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Ses seviyesini ayarla
-router.post('/:id/volume', async (req, res) => {
-  try {
-    const device = await Device.findById(req.params.id);
-    if (!device) {
-      return res.status(404).json({ message: 'Cihaz bulunamadı' });
-    }
-
-    await device.setVolume(req.body.volume);
-    res.json({ message: 'Ses seviyesi güncellendi' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

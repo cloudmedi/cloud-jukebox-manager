@@ -3,9 +3,15 @@ const cors = require('cors');
 const connectDB = require('./config/database');
 const path = require('path');
 const fs = require('fs');
+const http = require('http');
+const WebSocketServer = require('./websocket/WebSocketServer');
 require('dotenv').config();
 
 const app = express();
+const server = http.createServer(app);
+
+// WebSocket sunucusunu başlat
+const wss = new WebSocketServer(server);
 
 // Connect to MongoDB
 connectDB();
@@ -29,6 +35,12 @@ app.use(express.json());
 // Uploads klasörünü statik olarak sunma
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
+// WebSocket server'ı route'lara enjekte et
+app.use((req, res, next) => {
+  req.wss = wss;
+  next();
+});
+
 // Routes
 app.use('/api/devices', require('./routes/deviceRoutes'));
 app.use('/api/device-groups', require('./routes/deviceGroupRoutes'));
@@ -42,6 +54,6 @@ app.use('/api/notifications', require('./routes/notificationRoutes'));
 
 const PORT = process.env.PORT || 5000;
 
-app.listen(PORT, () => {
+server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
