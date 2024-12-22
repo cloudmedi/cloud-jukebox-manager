@@ -31,6 +31,9 @@ router.post('/', async (req, res) => {
     name: req.body.name,
     artist: req.body.artist,
     genre: req.body.genre,
+    album: req.body.album,
+    year: req.body.year,
+    language: req.body.language,
     filePath: req.body.filePath,
     duration: req.body.duration,
     createdBy: req.body.createdBy
@@ -52,8 +55,20 @@ router.patch('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Şarkı bulunamadı' });
     }
 
-    Object.keys(req.body).forEach(key => {
-      song[key] = req.body[key];
+    const allowedUpdates = [
+      'name',
+      'artist',
+      'genre',
+      'album',
+      'year',
+      'language',
+      'status'
+    ];
+
+    allowedUpdates.forEach(update => {
+      if (req.body[update] !== undefined) {
+        song[update] = req.body[update];
+      }
     });
 
     const updatedSong = await song.save();

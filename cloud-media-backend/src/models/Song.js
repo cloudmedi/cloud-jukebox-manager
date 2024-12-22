@@ -13,6 +13,21 @@ const songSchema = new mongoose.Schema({
   },
   genre: {
     type: String,
+    required: [true, 'Tür zorunludur'],
+    enum: ['Pop', 'Rock', 'Jazz', 'Classical', 'Electronic', 'Other'],
+    trim: true
+  },
+  album: {
+    type: String,
+    trim: true
+  },
+  year: {
+    type: Number,
+    min: 1900,
+    max: new Date().getFullYear()
+  },
+  language: {
+    type: String,
     trim: true
   },
   filePath: {
