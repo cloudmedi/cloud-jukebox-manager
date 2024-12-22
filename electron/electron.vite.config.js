@@ -6,18 +6,23 @@ module.exports = defineConfig({
   main: {
     build: {
       rollupOptions: {
-        external: ['electron', 'electron-store'],
         input: {
           index: resolve(__dirname, 'src/main/index.js')
-        }
-      }
+        },
+        external: ['electron', 'electron-store']
+      },
+      outDir: 'out/main'
     }
   },
   preload: {
     build: {
       rollupOptions: {
+        input: {
+          index: resolve(__dirname, 'src/preload/index.js')
+        },
         external: ['electron']
-      }
+      },
+      outDir: 'out/preload'
     }
   },
   renderer: {
@@ -27,7 +32,8 @@ module.exports = defineConfig({
         input: {
           index: resolve(__dirname, 'index.html')
         }
-      }
+      },
+      outDir: 'out/renderer'
     },
     resolve: {
       alias: {
