@@ -14,7 +14,7 @@ export const usePlaylistQueries = () => {
       return data;
     },
     staleTime: 1000 * 60 * 5, // 5 dakika
-    cacheTime: 1000 * 60 * 30, // 30 dakika
+    gcTime: 1000 * 60 * 30, // 30 dakika (eski cacheTime)
     retry: 3,
     onError: (error) => {
       setError(error as Error);
@@ -30,8 +30,8 @@ export const usePlaylistQueries = () => {
         return response.json();
       },
       enabled: !!id,
-      staleTime: 1000 * 60 * 5, // 5 dakika
-      cacheTime: 1000 * 60 * 30, // 30 dakika
+      staleTime: 1000 * 60 * 5,
+      gcTime: 1000 * 60 * 30,
     });
 
   return {

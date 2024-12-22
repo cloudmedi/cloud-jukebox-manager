@@ -23,12 +23,12 @@ const playlistSchema = z.object({
 type PlaylistFormValues = z.infer<typeof playlistSchema>;
 
 interface PlaylistFormProps {
-  onSubmit: (data: PlaylistFormValues) => Promise<void>;
+  onSuccess?: () => void;
   initialData?: PlaylistFormValues;
   isEditing?: boolean;
 }
 
-export const PlaylistForm = ({ onSubmit, initialData, isEditing = false }: PlaylistFormProps) => {
+export const PlaylistForm = ({ onSuccess, initialData, isEditing = false }: PlaylistFormProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -42,14 +42,28 @@ export const PlaylistForm = ({ onSubmit, initialData, isEditing = false }: Playl
 
   const handleSubmit = async (data: PlaylistFormValues) => {
     try {
-      await onSubmit(data);
-      // Cache'i invalidate et
+      const response = await fetch("http://localhost:5000/api/playlists", {
+        method: isEditing ? "PATCH" : "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+
+      if (!response.ok) {
+        throw new Error("İşlem başarısız oldu");
+      }
+
       queryClient.invalidateQueries({ queryKey: ["playlists"] });
       
       toast({
         title: `Playlist ${isEditing ? "güncellendi" : "oluşturuldu"}`,
         description: "İşlem başarıyla tamamlandı",
       });
+
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error) {
       toast({
         variant: "destructive",
