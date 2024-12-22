@@ -61,7 +61,7 @@ class PlaylistService {
         completedSongs: []
       });
 
-      // Şarkıları sırayla indir
+      // Şarkıları sırayla indir ve localPath'leri güncelle
       for (let i = 0; i < playlist.songs.length; i++) {
         const song = playlist.songs[i];
         console.log(`Şarkı indiriliyor (${i + 1}/${playlist.songs.length}):`, song.name);
@@ -88,10 +88,13 @@ class PlaylistService {
           downloadState.completedSongs.push(song._id);
           this.store.set(`download.${playlist._id}`, downloadState);
 
-          // Şarkı yolunu güncelle
-          playlist.songs[i].localPath = songPath;
+          // Şarkının localPath'ini güncelle
+          playlist.songs[i] = {
+            ...song,
+            localPath: songPath
+          };
           
-          console.log(`Şarkı başarıyla indirildi: ${song.name}`);
+          console.log(`Şarkı başarıyla indirildi: ${song.name}, Local path: ${songPath}`);
         } catch (error) {
           console.error(`Şarkı indirme hatası (${song.name}):`, error);
           if (ws) {
@@ -121,6 +124,7 @@ class PlaylistService {
       });
 
       console.log('Playlist indirme tamamlandı:', playlist._id);
+      console.log('Güncellenmiş playlist:', playlist);
 
       // Playlist'i AudioPlayer'a yükle ve çalmaya başla
       audioPlayer.loadPlaylist(playlist);
