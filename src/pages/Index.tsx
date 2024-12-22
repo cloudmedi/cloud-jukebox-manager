@@ -36,8 +36,8 @@ const Index = () => {
 
   if (statsLoading || playlistsLoading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="flex items-center justify-center min-h-[400px]" role="status" aria-label="Yükleniyor">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" aria-hidden="true" />
       </div>
     );
   }
@@ -46,26 +46,33 @@ const Index = () => {
     <>
       <div className="space-y-6">
         <div className="flex items-center justify-between">
-          <h2 className="text-3xl font-bold tracking-tight">Dashboard</h2>
+          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
           <div className="flex items-center gap-2">
             <Button asChild variant="default" className="shadow-sm">
-              <Link to="/playlists/new">
-                <Plus className="h-4 w-4 mr-2" />
+              <Link to="/playlists/new" aria-label="Yeni playlist oluştur">
+                <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
                 Yeni Playlist
               </Link>
             </Button>
-            <Button variant="outline" className="shadow-sm">
-              <RefreshCw className="h-4 w-4" />
+            <Button 
+              variant="outline" 
+              className="shadow-sm"
+              aria-label="Sayfayı yenile"
+            >
+              <RefreshCw className="h-4 w-4" aria-hidden="true" />
             </Button>
           </div>
         </div>
 
-        {/* Özet İstatistikler */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <div 
+          className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
+          role="region" 
+          aria-label="Özet İstatistikler"
+        >
           <Card className="shadow-sm hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Aktif Playlist</CardTitle>
-              <Music2 className="h-4 w-4 text-muted-foreground" />
+              <Music2 className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.activePlaylists || 0}</div>
@@ -78,7 +85,7 @@ const Index = () => {
           <Card className="shadow-sm hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Çalan Cihazlar</CardTitle>
-              <Play className="h-4 w-4 text-muted-foreground" />
+              <Play className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">{stats?.devicesPlaying || 0}</div>
@@ -91,7 +98,7 @@ const Index = () => {
           <Card className="shadow-sm hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Günlük Oynatma</CardTitle>
-              <Settings className="h-4 w-4 text-muted-foreground" />
+              <Settings className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">856</div>
@@ -104,7 +111,7 @@ const Index = () => {
           <Card className="shadow-sm hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Toplam Süre</CardTitle>
-              <Settings className="h-4 w-4 text-muted-foreground" />
+              <Settings className="h-4 w-4 text-muted-foreground" aria-hidden="true" />
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold">124 saat</div>
@@ -115,14 +122,24 @@ const Index = () => {
           </Card>
         </div>
 
-        {/* Aktif Playlistler */}
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div 
+          className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+          role="region" 
+          aria-label="Aktif Playlistler"
+        >
           {playlists?.slice(0, 3).map((playlist) => (
-            <Card key={playlist._id} className="flex flex-col shadow-sm hover:shadow-md transition-shadow">
+            <Card 
+              key={playlist._id} 
+              className="flex flex-col shadow-sm hover:shadow-md transition-shadow"
+            >
               <CardHeader className="flex flex-row items-center justify-between space-y-0">
                 <CardTitle className="text-lg font-bold">{playlist.name}</CardTitle>
-                <Button size="icon" variant="ghost">
-                  <Play className="h-4 w-4" />
+                <Button 
+                  size="icon" 
+                  variant="ghost"
+                  aria-label={`${playlist.name} playlistini oynat`}
+                >
+                  <Play className="h-4 w-4" aria-hidden="true" />
                 </Button>
               </CardHeader>
               <CardContent>
@@ -144,14 +161,17 @@ const Index = () => {
           ))}
         </div>
 
-        {/* Son Aktiviteler */}
         <Card className="shadow-sm">
           <CardHeader>
             <CardTitle>Son Aktiviteler</CardTitle>
             <CardDescription>Son 24 saatteki işlemler</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="space-y-4">
+            <div 
+              className="space-y-4"
+              role="log" 
+              aria-label="Son aktiviteler listesi"
+            >
               {recentActivities.map((activity) => (
                 <div
                   key={activity.id}
