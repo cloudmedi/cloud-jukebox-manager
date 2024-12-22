@@ -8,12 +8,12 @@ import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 
 interface DateTimeRangePickerProps {
-  dateRange: DateRange;
+  dateRange: { from: Date; to: Date };
   timeRange: {
     startTime: string;
     endTime: string;
   };
-  onDateRangeChange: (range: DateRange) => void;
+  onDateRangeChange: (range: { from: Date; to: Date }) => void;
   onTimeRangeChange: (type: "startTime" | "endTime", value: string) => void;
 }
 
@@ -23,6 +23,15 @@ export function DateTimeRangePicker({
   onDateRangeChange,
   onTimeRangeChange,
 }: DateTimeRangePickerProps) {
+  const handleDateRangeChange = (range: DateRange | undefined) => {
+    if (range?.from) {
+      onDateRangeChange({
+        from: range.from,
+        to: range.to ?? range.from,
+      });
+    }
+  };
+
   return (
     <div className="grid gap-4 md:grid-cols-2">
       <div className="flex flex-col space-y-2">
@@ -56,8 +65,11 @@ export function DateTimeRangePicker({
               initialFocus
               mode="range"
               defaultMonth={dateRange?.from}
-              selected={dateRange}
-              onSelect={onDateRangeChange}
+              selected={{
+                from: dateRange.from,
+                to: dateRange.to
+              }}
+              onSelect={handleDateRangeChange}
               numberOfMonths={2}
             />
           </PopoverContent>
