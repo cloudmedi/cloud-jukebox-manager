@@ -19,6 +19,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import {
+  Pagination,
+  PaginationContent,
+  PaginationEllipsis,
+  PaginationItem,
+  PaginationLink,
+  PaginationNext,
+  PaginationPrevious,
+} from "@/components/ui/pagination";
 
 interface Playlist {
   _id: string;
@@ -33,10 +42,18 @@ interface PlaylistListProps {
   onPlaylistUpdate: () => void;
 }
 
+const ITEMS_PER_PAGE = 6;
+
 export const PlaylistList = ({ playlists, onPlaylistUpdate }: PlaylistListProps) => {
   const [playlistToDelete, setPlaylistToDelete] = useState<string | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+
+  const totalPages = Math.ceil(playlists.length / ITEMS_PER_PAGE);
+  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+  const endIndex = startIndex + ITEMS_PER_PAGE;
+  const currentPlaylists = playlists.slice(startIndex, endIndex);
 
   const handleDelete = async (id: string) => {
     try {
@@ -73,54 +90,105 @@ export const PlaylistList = ({ playlists, onPlaylistUpdate }: PlaylistListProps)
   }
 
   return (
-    <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-      {playlists.map((playlist) => (
-        <div
-          key={playlist._id}
-          className="border rounded-lg p-4 space-y-4 hover:shadow-md transition-shadow"
-        >
-          <div className="flex items-center justify-between">
-            <h3 className="font-semibold truncate">{playlist.name}</h3>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                <DropdownMenuItem>
-                  <Play className="mr-2 h-4 w-4" />
-                  Oynat
-                </DropdownMenuItem>
-                <DropdownMenuItem>
-                  <Pencil className="mr-2 h-4 w-4" />
-                  Düzenle
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  className="text-destructive"
-                  onClick={() => setPlaylistToDelete(playlist._id)}
-                >
-                  <Trash2 className="mr-2 h-4 w-4" />
-                  Sil
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
+    <div className="space-y-6">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {currentPlaylists.map((playlist) => (
+          <div
+            key={playlist._id}
+            className="border rounded-lg p-4 space-y-4 hover:shadow-md transition-shadow"
+          >
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold truncate">{playlist.name}</h3>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="icon">
+                    <MoreVertical className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem>
+                    <Play className="mr-2 h-4 w-4" />
+                    Oynat
+                  </DropdownMenuItem>
+                  <DropdownMenuItem>
+                    <Pencil className="mr-2 h-4 w-4" />
+                    Düzenle
+                  </DropdownMenuItem>
+                  <DropdownMenuItem 
+                    className="text-destructive"
+                    onClick={() => setPlaylistToDelete(playlist._id)}
+                  >
+                    <Trash2 className="mr-2 h-4 w-4" />
+                    Sil
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
 
-          <p className="text-sm text-muted-foreground line-clamp-2">
-            {playlist.description || "Açıklama yok"}
-          </p>
+            <p className="text-sm text-muted-foreground line-clamp-2">
+              {playlist.description || "Açıklama yok"}
+            </p>
 
-          <div className="flex justify-between text-sm text-muted-foreground">
-            <span>{playlist.songs?.length || 0} şarkı</span>
-            <span>
-              {playlist.totalDuration
-                ? `${Math.floor(playlist.totalDuration / 60)} dk`
-                : "0 dk"}
-            </span>
+            <div className="flex justify-between text-sm text-muted-foreground">
+              <span>{playlist.songs?.length || 0} şarkı</span>
+              <span>
+                {playlist.totalDuration
+                  ? `${Math.floor(playlist.totalDuration / 60)} dk`
+                  : "0 dk"}
+              </span>
+            </div>
           </div>
-        </div>
-      ))}
+        ))}
+      </div>
+
+      {totalPages > 1 && (
+        <Pagination className="mt-6">
+          <PaginationContent>
+            <PaginationItem>
+              <PaginationPrevious 
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                disabled={currentPage === 1}
+              />
+            </PaginationItem>
+            
+            {Array.from({ length: totalPages }, (_, i) => i + 1).map((page) => {
+              if (
+                page === 1 ||
+                page === totalPages ||
+                (page >= currentPage - 1 && page <= currentPage + 1)
+              ) {
+                return (
+                  <PaginationItem key={page}>
+                    <PaginationLink
+                      onClick={() => setCurrentPage(page)}
+                      isActive={currentPage === page}
+                    >
+                      {page}
+                    </PaginationLink>
+                  </PaginationItem>
+                );
+              } else if (
+                page === currentPage - 2 ||
+                page === currentPage + 2
+              ) {
+                return (
+                  <PaginationItem key={page}>
+                    <PaginationEllipsis />
+                  </PaginationItem>
+                );
+              }
+              return null;
+            })}
+
+            <PaginationItem>
+              <PaginationNext 
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                disabled={currentPage === totalPages}
+              />
+            </PaginationItem>
+          </PaginationContent>
+        </Pagination>
+      )}
 
       <AlertDialog open={!!playlistToDelete} onOpenChange={() => setPlaylistToDelete(null)}>
         <AlertDialogContent>
