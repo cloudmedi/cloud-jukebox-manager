@@ -1,11 +1,11 @@
 const WebSocket = require('ws');
 const Device = require('../models/Device');
-const PlaylistHandler = require('./handlers/PlaylistHandler');
+const MessageHandler = require('./handlers/MessageHandler');
 
 class WebSocketServer {
   constructor(server) {
     this.wss = new WebSocket.Server({ server });
-    this.playlistHandler = new PlaylistHandler(this);
+    this.messageHandler = new MessageHandler(this);
     this.initialize();
   }
 
@@ -13,7 +13,6 @@ class WebSocketServer {
     this.wss.on('connection', async (ws, req) => {
       console.log('New WebSocket connection attempt');
 
-      // Heartbeat mekanizması
       ws.isAlive = true;
       ws.on('pong', () => {
         ws.isAlive = true;
@@ -26,7 +25,6 @@ class WebSocketServer {
       }
     });
 
-    // Heartbeat kontrolü
     this.startHeartbeat();
   }
 
@@ -46,6 +44,7 @@ class WebSocketServer {
 
   async handleAdminConnection(ws) {
     console.log('Admin client connected');
+    ws.isAdmin = true;
 
     try {
       const devices = await Device.find({});
@@ -67,33 +66,7 @@ class WebSocketServer {
     ws.on('message', async (message) => {
       try {
         const data = JSON.parse(message);
-        console.log('Admin message received:', data);
-
-        switch (data.type) {
-          case 'sendPlaylist':
-            const success = await this.playlistHandler.handleSendPlaylist(data);
-            ws.send(JSON.stringify({
-              type: 'playlistSent',
-              success
-            }));
-            break;
-
-          case 'command':
-            console.log('Sending command to device:', data.token);
-            const commandSuccess = this.sendToDevice(data.token, data);
-
-            ws.send(JSON.stringify({
-              type: 'commandStatus',
-              token: data.token,
-              command: data.command,
-              success: commandSuccess
-            }));
-            break;
-
-          default:
-            console.log('Unknown message type:', data.type);
-            break;
-        }
+        await this.messageHandler.handleAdminMessage(data, ws);
       } catch (error) {
         console.error('Admin message handling error:', error);
         ws.send(JSON.stringify({
@@ -121,11 +94,11 @@ class WebSocketServer {
 
           if (device) {
             deviceToken = device.token;
+            ws.deviceToken = deviceToken;
             console.log(`Device authenticated: ${deviceToken}`);
 
             await device.updateStatus(true);
 
-            // Admin'lere cihaz durumunu bildir
             this.broadcastToAdmins({
               type: 'deviceStatus',
               token: deviceToken,
