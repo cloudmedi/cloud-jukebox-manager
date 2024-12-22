@@ -8,20 +8,21 @@ import { useToast } from "@/hooks/use-toast";
 import { DeviceSearch } from "./DeviceSearch";
 import { DateTimeRangePicker } from "./DateTimeRangePicker";
 import { PlaybackTable } from "./PlaybackTable";
+import { DateRange } from "react-day-picker";
 
 export default function DevicePlaybackReport() {
   const { toast } = useToast();
   const [selectedDevice, setSelectedDevice] = useState<string>("");
-  const [dateRange, setDateRange] = useState({
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: new Date(),
-    to: addDays(new Date(), 7),
+    to: addDays(new Date(), 7)
   });
   const [timeRange, setTimeRange] = useState({
     startTime: "00:00",
     endTime: "23:59"
   });
 
-  // Cihazları getir
+  // Fetch devices
   const { data: devices, isLoading: devicesLoading } = useQuery({
     queryKey: ["devices"],
     queryFn: async () => {
@@ -31,23 +32,25 @@ export default function DevicePlaybackReport() {
     },
   });
 
-  // Seçili cihazın çalma verilerini getir
+  // Fetch playback data for selected device
   const { data: playbackData, isLoading: playbackLoading } = useQuery({
     queryKey: ["device-playback", selectedDevice, dateRange, timeRange],
     queryFn: async () => {
-      if (!selectedDevice) return null;
+      if (!selectedDevice || !dateRange?.from || !dateRange?.to) return null;
       const response = await fetch(
         `http://localhost:5000/api/stats/device-playback?deviceId=${selectedDevice}&from=${dateRange.from.toISOString()}&to=${dateRange.to.toISOString()}&startTime=${timeRange.startTime}&endTime=${timeRange.endTime}`
       );
       if (!response.ok) throw new Error("Çalma verileri yüklenemedi");
       return response.json();
     },
-    enabled: !!selectedDevice,
+    enabled: !!selectedDevice && !!dateRange?.from && !!dateRange?.to,
   });
 
   const generatePDF = () => {
+    if (!dateRange?.from || !dateRange?.to) return;
+    
     const doc = new jsPDF();
-    const deviceName = devices?.find((d: any) => d._id === selectedDevice)?.name || "Cihaz";
+    const deviceName = devices?.find((d) => d._id === selectedDevice)?.name || "Cihaz";
     
     doc.setFontSize(16);
     doc.text(`${deviceName} - Çalma Raporu`, 14, 15);
