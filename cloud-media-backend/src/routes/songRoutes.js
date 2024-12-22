@@ -3,6 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const Song = require('../models/Song');
+const { parseFile } = require('music-metadata');
 
 // Multer yapılandırması
 const storage = multer.diskStorage({
@@ -54,18 +55,34 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       return res.status(400).json({ message: 'Dosya yüklenemedi' });
     }
 
+    // Müzik dosyasından metadata bilgilerini çıkar
+    const metadata = await parseFile(req.file.path);
+    
+    // Metadata'dan bilgileri al
+    const artist = metadata.common.artist || 'Bilinmeyen Sanatçı';
+    const title = metadata.common.title || req.file.originalname;
+    const album = metadata.common.album || '';
+    const genre = metadata.common.genre?.[0] || 'Other';
+    const year = metadata.common.year || null;
+    
+    // Süreyi saniye cinsinden hesapla
+    const duration = Math.round(metadata.format.duration || 0);
+
     const song = new Song({
-      name: req.body.name || req.file.originalname,
-      artist: req.body.artist || 'Bilinmeyen Sanatçı',
-      genre: req.body.genre || 'Other',
+      name: title,
+      artist: artist,
+      genre: genre,
+      album: album,
+      year: year,
       filePath: req.file.path,
-      duration: 0, // Bu değer gerçek süre ile güncellenmelidir
+      duration: duration,
       createdBy: 'system'
     });
 
     const newSong = await song.save();
     res.status(201).json(newSong);
   } catch (error) {
+    console.error('Hata:', error);
     res.status(400).json({ message: error.message });
   }
 });
