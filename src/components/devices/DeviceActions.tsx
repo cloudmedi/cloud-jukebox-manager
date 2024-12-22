@@ -21,6 +21,8 @@ import { deviceService, Device } from "@/services/deviceService";
 import VolumeControlDialog from "./VolumeControlDialog";
 import GroupManagementDialog from "./GroupManagementDialog";
 import DeviceDetailsDialog from "./DeviceDetailsDialog";
+import websocketService from "@/services/websocketService";
+import { toast } from "sonner";
 
 interface DeviceActionsProps {
   device: Device;
@@ -36,10 +38,31 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
     if (!window.confirm('Cihazı yeniden başlatmak istediğinizden emin misiniz?')) return;
     
     try {
-      await deviceService.restartDevice(device._id);
-      queryClient.invalidateQueries({ queryKey: ['devices'] });
+      websocketService.sendMessage({
+        type: 'command',
+        token: device.token,
+        command: 'restart'
+      });
+      toast.success('Yeniden başlatma komutu gönderildi');
     } catch (error) {
       console.error('Restart error:', error);
+      toast.error('Yeniden başlatma komutu gönderilemedi');
+    }
+  };
+
+  const handleVolumeChange = async (volume: number) => {
+    try {
+      websocketService.sendMessage({
+        type: 'command',
+        token: device.token,
+        command: 'setVolume',
+        volume: volume
+      });
+      setIsVolumeDialogOpen(false);
+      toast.success('Ses seviyesi değiştirme komutu gönderildi');
+    } catch (error) {
+      console.error('Volume control error:', error);
+      toast.error('Ses seviyesi değiştirme komutu gönderilemedi');
     }
   };
 
@@ -49,16 +72,6 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
       queryClient.invalidateQueries({ queryKey: ['devices'] });
     } catch (error) {
       console.error('Power toggle error:', error);
-    }
-  };
-
-  const handleVolumeChange = async (volume: number) => {
-    try {
-      await deviceService.setVolume(device._id, volume);
-      setIsVolumeDialogOpen(false);
-      queryClient.invalidateQueries({ queryKey: ['devices'] });
-    } catch (error) {
-      console.error('Volume control error:', error);
     }
   };
 
