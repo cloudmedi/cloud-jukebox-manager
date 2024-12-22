@@ -193,3 +193,6 @@ class AudioPlayer {
       }
     }
   }
+}
+
+module.exports = new AudioPlayer();
