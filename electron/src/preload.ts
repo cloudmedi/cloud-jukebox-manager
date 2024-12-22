@@ -5,6 +5,6 @@ contextBridge.exposeInMainWorld('electronAPI', {
     ipcRenderer.send(channel, data);
   },
   receive: (channel: string, func: Function) => {
-    ipcRenderer.on(channel, (event, ...args) => func(...args));
+    ipcRenderer.on(channel, (_, ...args) => func(...args));
   }
 });
