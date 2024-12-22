@@ -3,7 +3,7 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const Song = require('../models/Song');
-const { parseFile } = require('music-metadata');
+const { parseFile } = require('music-metadata').parseFile;
 
 // Multer yapılandırması
 const storage = multer.diskStorage({
