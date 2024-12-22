@@ -5,6 +5,7 @@ import { DeviceTableRow } from "./DeviceTableRow";
 import { Table, TableBody } from "@/components/ui/table";
 import websocketService from "@/services/websocketService";
 import { Device } from "@/services/deviceService";
+import { toast } from "sonner";
 
 export const DeviceList = () => {
   const queryClient = useQueryClient();
@@ -21,19 +22,32 @@ export const DeviceList = () => {
   });
 
   useEffect(() => {
-    websocketService.addMessageHandler('deviceStatus', (data) => {
-      queryClient.setQueryData(['devices'], (oldDevices: Device[] | undefined) => {
-        if (!oldDevices) return oldDevices;
-        
-        return oldDevices.map((device) => {
-          if (device.token === data.token) {
-            return { ...device, ...data };
-          }
-          return device;
-        });
-      });
-    });
+    const handleDeviceStatus = (data: any) => {
+      // Mevcut cihaz listesini al
+      const currentDevices = queryClient.getQueryData<Device[]>(['devices']);
+      
+      if (!currentDevices) return;
 
+      // Yeni cihaz listesini oluştur
+      const updatedDevices = currentDevices.map(device => {
+        if (device.token === data.token) {
+          // Online/offline durumu değiştiğinde toast göster
+          if (device.isOnline !== data.isOnline) {
+            toast.info(`${device.name} ${data.isOnline ? 'çevrimiçi' : 'çevrimdışı'} oldu`);
+          }
+          return { ...device, ...data };
+        }
+        return device;
+      });
+
+      // Query cache'ini güncelle ve yeniden render'ı tetikle
+      queryClient.setQueryData(['devices'], updatedDevices);
+    };
+
+    // WebSocket mesaj dinleyicisini ekle
+    websocketService.addMessageHandler('deviceStatus', handleDeviceStatus);
+
+    // Component unmount olduğunda dinleyiciyi kaldır
     return () => {
       websocketService.removeMessageHandler('deviceStatus');
     };
