@@ -1,13 +1,12 @@
-import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
 import { PlaylistList } from "@/components/playlists/PlaylistList";
-import { PlaylistDialog } from "@/components/playlists/PlaylistDialog";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
 const Playlists = () => {
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const navigate = useNavigate();
   const { toast } = useToast();
 
   const { data: playlists, isLoading, error, refetch } = useQuery({
@@ -33,7 +32,7 @@ const Playlists = () => {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Playlist Yönetimi</h2>
-        <Button onClick={() => setIsDialogOpen(true)}>
+        <Button onClick={() => navigate("/playlists/new")}>
           <Plus className="mr-2 h-4 w-4" />
           Yeni Playlist
         </Button>
@@ -42,11 +41,6 @@ const Playlists = () => {
       <PlaylistList 
         playlists={playlists || []} 
         onPlaylistUpdate={handlePlaylistUpdate}
-      />
-
-      <PlaylistDialog 
-        open={isDialogOpen} 
-        onOpenChange={setIsDialogOpen}
       />
     </div>
   );

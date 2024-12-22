@@ -6,6 +6,7 @@ import { Toaster } from "./components/ui/toaster";
 import Index from "./pages/Index";
 import Devices from "./pages/Devices";
 import Playlists from "./pages/Playlists";
+import NewPlaylist from "./pages/NewPlaylist";
 import Schedule from "./pages/Schedule";
 import Announcements from "./pages/Announcements";
 import Upload from "./pages/Upload";
@@ -30,6 +31,7 @@ function App() {
               <Route path="/" element={<Index />} />
               <Route path="/devices" element={<Devices />} />
               <Route path="/playlists" element={<Playlists />} />
+              <Route path="/playlists/new" element={<NewPlaylist />} />
               <Route path="/schedule" element={<Schedule />} />
               <Route path="/announcements" element={<Announcements />} />
               <Route path="/upload" element={<Upload />} />
