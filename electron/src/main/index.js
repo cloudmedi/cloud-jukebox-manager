@@ -1,7 +1,7 @@
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
-const DeviceService = require('../services/deviceService');
-const ApiService = require('../services/apiService');
+const DeviceService = require('./services/deviceService');
+const ApiService = require('./services/apiService');
 
 let mainWindow;
 const deviceService = new DeviceService();
