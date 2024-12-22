@@ -1,8 +1,8 @@
-import { defineConfig } from 'electron-vite';
-import { resolve } from 'path';
-import react from '@vitejs/plugin-react-swc';
+const { defineConfig } = require('electron-vite');
+const { resolve } = require('path');
+const react = require('@vitejs/plugin-react-swc');
 
-export default defineConfig({
+module.exports = defineConfig({
   main: {
     build: {
       outDir: 'dist-electron/main',
