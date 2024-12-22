@@ -72,6 +72,8 @@ export const SendPlaylistDialog = ({ isOpen, onClose, playlist }: SendPlaylistDi
           devices: data.targetDevices,
           groups: data.targetGroups
         }));
+
+        toast.info("Playlist gönderiliyor...");
       };
 
       ws.onmessage = (event) => {
@@ -81,6 +83,9 @@ export const SendPlaylistDialog = ({ isOpen, onClose, playlist }: SendPlaylistDi
           onClose();
         } else if (response.type === 'error') {
           toast.error(response.message || "Playlist gönderilemedi");
+        } else if (response.type === 'downloadProgress') {
+          // İndirme durumunu göster
+          toast.info(`İndirme durumu: ${response.progress}%`);
         }
       };
 

@@ -40,7 +40,7 @@ class PlaylistHandler {
               type: 'playlist',
               data: {
                 ...playlist,
-                baseUrl: 'http://localhost:5000' // Şarkı dosyalarının indirileceği base URL
+                baseUrl: process.env.BASE_URL || 'http://localhost:5000'
               }
             }));
 
@@ -49,13 +49,17 @@ class PlaylistHandler {
               activePlaylist: playlist._id,
               playlistStatus: 'loading'
             });
+
+            console.log(`Playlist sent to device: ${device.token}`);
+          } else {
+            console.log(`Device not connected: ${device.token}`);
           }
         }
       }
 
       return true;
     } catch (error) {
-      console.error('Playlist gönderme hatası:', error);
+      console.error('Error sending playlist:', error);
       return false;
     }
   }
