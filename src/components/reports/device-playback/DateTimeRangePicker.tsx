@@ -5,12 +5,15 @@ import { DatePickerWithRange } from "@/components/ui/date-picker";
 import { DateRange } from "react-day-picker";
 
 interface DateTimeRangePickerProps {
-  dateRange: DateRange;
+  dateRange: {
+    from: Date;
+    to: Date;
+  };
   timeRange: {
     startTime: string;
     endTime: string;
   };
-  onDateRangeChange: (range: DateRange) => void;
+  onDateRangeChange: (range: { from: Date; to: Date }) => void;
   onTimeRangeChange: (type: "startTime" | "endTime", value: string) => void;
   showDownloadButton?: boolean;
   isDownloadDisabled?: boolean;
@@ -26,9 +29,18 @@ export function DateTimeRangePicker({
   isDownloadDisabled,
   onDownload,
 }: DateTimeRangePickerProps) {
+  const handleDateRangeChange = (range: DateRange | undefined) => {
+    if (range?.from && range?.to) {
+      onDateRangeChange({ from: range.from, to: range.to });
+    }
+  };
+
   return (
     <div className="grid gap-4 md:grid-cols-2">
-      <DatePickerWithRange date={dateRange} setDate={onDateRangeChange} />
+      <DatePickerWithRange 
+        date={dateRange} 
+        setDate={handleDateRangeChange}
+      />
 
       <div className="grid grid-cols-2 gap-4">
         <div className="space-y-2">

@@ -21,7 +21,7 @@ export default function DevicePlaybackReport() {
     endTime: "23:59"
   });
 
-  // Cihazları getir
+  // Fetch devices
   const { data: devices, isLoading: devicesLoading } = useQuery({
     queryKey: ["devices"],
     queryFn: async () => {
@@ -31,7 +31,7 @@ export default function DevicePlaybackReport() {
     },
   });
 
-  // Seçili cihazın çalma verilerini getir
+  // Fetch playback data for selected device
   const { data: playbackData, isLoading: playbackLoading } = useQuery({
     queryKey: ["device-playback", selectedDevice, dateRange, timeRange],
     queryFn: async () => {
