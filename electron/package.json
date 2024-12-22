@@ -22,7 +22,8 @@
   "license": "ISC",
   "dependencies": {
     "ws": "^8.16.0",
-    "systeminformation": "^5.21.22"
+    "systeminformation": "^5.21.22",
+    "@vitejs/plugin-react-swc": "^latest"
   },
   "devDependencies": {
     "electron": "^28.2.0",

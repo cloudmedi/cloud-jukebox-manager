@@ -13,7 +13,8 @@ async function createWindow() {
   });
 
   if (process.env.NODE_ENV === 'development') {
-    await mainWindow.loadURL('http://localhost:5173');
+    const port = process.env.PORT || 5173;
+    await mainWindow.loadURL(`http://localhost:${port}`);
     mainWindow.webContents.openDevTools();
   } else {
     await mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
