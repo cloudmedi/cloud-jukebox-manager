@@ -1,40 +1,34 @@
 const { Howl } = require('howler');
-const path = require('path');
-const fs = require('fs');
+const Store = require('electron-store');
 
 class AudioPlayer {
   constructor() {
+    this.store = new Store();
     this.currentSound = null;
     this.playlist = null;
     this.currentIndex = 0;
     this.isPlaying = false;
     this.volume = 1.0;
+    this.queue = [];
   }
 
   loadPlaylist(playlist) {
     this.playlist = playlist;
     this.currentIndex = 0;
+    this.queue = [...playlist.songs];
     this.loadCurrentSong();
   }
 
   loadCurrentSong() {
-    if (!this.playlist || !this.playlist.songs[this.currentIndex]) return;
+    if (!this.playlist || !this.queue[this.currentIndex]) return;
 
-    const song = this.playlist.songs[this.currentIndex];
-    const songPath = path.join(this.playlist.localPath, `${song._id}.mp3`);
-
-    if (!fs.existsSync(songPath)) {
-      console.error('Şarkı dosyası bulunamadı:', songPath);
-      this.playNext();
-      return;
-    }
-
+    const song = this.queue[this.currentIndex];
     if (this.currentSound) {
       this.currentSound.unload();
     }
 
     this.currentSound = new Howl({
-      src: [songPath],
+      src: [song.localPath],
       html5: true,
       volume: this.volume,
       onend: () => {
@@ -43,6 +37,15 @@ class AudioPlayer {
       onloaderror: (id, error) => {
         console.error('Şarkı yükleme hatası:', error);
         this.playNext();
+      },
+      onplay: () => {
+        this.updatePlaybackState('playing');
+      },
+      onpause: () => {
+        this.updatePlaybackState('paused');
+      },
+      onstop: () => {
+        this.updatePlaybackState('stopped');
       }
     });
   }
@@ -61,10 +64,17 @@ class AudioPlayer {
     }
   }
 
+  stop() {
+    if (this.currentSound) {
+      this.currentSound.stop();
+      this.isPlaying = false;
+    }
+  }
+
   playNext() {
     if (!this.playlist) return;
 
-    this.currentIndex = (this.currentIndex + 1) % this.playlist.songs.length;
+    this.currentIndex = (this.currentIndex + 1) % this.queue.length;
     this.loadCurrentSong();
     if (this.isPlaying) {
       this.play();
@@ -74,7 +84,7 @@ class AudioPlayer {
   playPrevious() {
     if (!this.playlist) return;
 
-    this.currentIndex = (this.currentIndex - 1 + this.playlist.songs.length) % this.playlist.songs.length;
+    this.currentIndex = (this.currentIndex - 1 + this.queue.length) % this.queue.length;
     this.loadCurrentSong();
     if (this.isPlaying) {
       this.play();
@@ -88,17 +98,52 @@ class AudioPlayer {
     }
   }
 
-  getCurrentSong() {
-    if (!this.playlist) return null;
-    return this.playlist.songs[this.currentIndex];
+  shuffle() {
+    if (!this.playlist) return;
+
+    // Fisher-Yates shuffle
+    for (let i = this.queue.length - 1; i > 0; i--) {
+      const j = Math.floor(Math.random() * (i + 1));
+      [this.queue[i], this.queue[j]] = [this.queue[j], this.queue[i]];
+    }
+
+    // Mevcut şarkıyı başa al
+    const currentSong = this.queue[this.currentIndex];
+    this.queue = [currentSong, ...this.queue.filter(s => s._id !== currentSong._id)];
+    this.currentIndex = 0;
   }
 
-  getPlaybackState() {
+  updatePlaybackState(state) {
+    const currentSong = this.queue[this.currentIndex];
+    const playbackState = {
+      state,
+      currentSong,
+      playlist: this.playlist,
+      volume: this.volume * 100,
+      timestamp: new Date().toISOString()
+    };
+
+    this.store.set('playbackState', playbackState);
+  }
+
+  getCurrentState() {
     return {
       isPlaying: this.isPlaying,
-      currentSong: this.getCurrentSong(),
-      playlist: this.playlist
+      currentSong: this.queue[this.currentIndex],
+      playlist: this.playlist,
+      volume: this.volume * 100
     };
+  }
+
+  restoreState() {
+    const state = this.store.get('playbackState');
+    if (state && state.playlist) {
+      this.loadPlaylist(state.playlist);
+      this.setVolume(state.volume);
+      if (state.state === 'playing') {
+        this.play();
+      }
+    }
   }
 }
 

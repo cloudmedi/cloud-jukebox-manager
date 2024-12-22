@@ -8,7 +8,7 @@ class WebSocketService {
     this.reconnectInterval = 5000;
     this.isConnecting = false;
     this.token = null;
-    this.playlistService = null;
+    this.messageQueue = [];
   }
 
   connect(token) {
@@ -26,8 +26,11 @@ class WebSocketService {
       // Token ile kimlik doğrulama
       this.sendAuthMessage();
       
-      // Playlist servisini başlat
-      this.playlistService = new PlaylistService(this.ws);
+      // Kuyruktaki mesajları gönder
+      this.flushMessageQueue();
+      
+      // Yarım kalan indirmeleri devam ettir
+      PlaylistService.resumeIncompleteDownloads(this.ws);
     });
 
     this.ws.on('message', (data) => {
@@ -55,8 +58,7 @@ class WebSocketService {
       type: 'auth',
       token: this.token
     };
-    console.log('Kimlik doğrulama mesajı gönderiliyor:', authMessage);
-    this.ws.send(JSON.stringify(authMessage));
+    this.sendMessage(authMessage);
   }
 
   handleMessage(message) {
@@ -65,12 +67,12 @@ class WebSocketService {
         this.handleAuthResponse(message);
         break;
       
-      case 'command':
-        this.handleCommand(message);
+      case 'playlist':
+        PlaylistService.handlePlaylistMessage(message, this.ws);
         break;
 
-      case 'playlistReady':
-        this.handlePlaylistReady(message);
+      case 'command':
+        this.handleCommand(message);
         break;
     }
   }
@@ -79,6 +81,9 @@ class WebSocketService {
     if (message.status === 'success') {
       console.log('Kimlik doğrulama başarılı');
       this.sendStatus({ type: 'status', isOnline: true });
+      
+      // Mevcut çalma durumunu geri yükle
+      audioPlayer.restoreState();
     }
   }
 
@@ -90,6 +95,9 @@ class WebSocketService {
       case 'pause':
         audioPlayer.pause();
         break;
+      case 'stop':
+        audioPlayer.stop();
+        break;
       case 'next':
         audioPlayer.playNext();
         break;
@@ -99,21 +107,29 @@ class WebSocketService {
       case 'setVolume':
         audioPlayer.setVolume(message.volume);
         break;
+      case 'shuffle':
+        audioPlayer.shuffle();
+        break;
     }
   }
 
-  handlePlaylistReady(message) {
-    // Playlist hazır olduğunda çalmaya başla
-    const playbackState = audioPlayer.getPlaybackState();
-    if (playbackState.playlist && playbackState.playlist._id === message.playlistId) {
-      audioPlayer.play();
+  sendMessage(message) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(message));
+    } else {
+      this.messageQueue.push(message);
+    }
+  }
+
+  flushMessageQueue() {
+    while (this.messageQueue.length > 0) {
+      const message = this.messageQueue.shift();
+      this.sendMessage(message);
     }
   }
 
   sendStatus(status) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(status));
-    }
+    this.sendMessage(status);
   }
 
   disconnect() {
