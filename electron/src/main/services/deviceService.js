@@ -2,20 +2,11 @@ const os = require('os');
 const Store = require('electron-store');
 
 class DeviceService {
-  static instance = null;
-  
   constructor() {
     this.store = new Store({
       name: 'device-config'
     });
     this.deviceToken = this.store.get('deviceToken');
-  }
-
-  static getInstance() {
-    if (!DeviceService.instance) {
-      DeviceService.instance = new DeviceService();
-    }
-    return DeviceService.instance;
   }
 
   generateToken() {
