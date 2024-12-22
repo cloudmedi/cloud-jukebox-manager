@@ -1,4 +1,4 @@
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Loader2 } from "lucide-react";
 
 interface PlaybackData {
   songName: string;
@@ -9,45 +9,47 @@ interface PlaybackData {
 }
 
 interface PlaybackTableProps {
-  data?: PlaybackData[];
-  isLoading?: boolean;
+  data: PlaybackData[] | null;
+  isLoading: boolean;
 }
 
-export function PlaybackTable({ data, isLoading }: PlaybackTableProps) {
+export const PlaybackTable = ({ data, isLoading }: PlaybackTableProps) => {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[200px]">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+        <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
 
+  if (!data) return null;
+
   return (
-    <div className="rounded-md border mt-4">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Şarkı</TableHead>
-            <TableHead>Sanatçı</TableHead>
-            <TableHead>Çalınma Sayısı</TableHead>
-            <TableHead>Toplam Süre</TableHead>
-            <TableHead>Son Çalınma</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
-          {data?.map((item, index) => (
-            <TableRow key={index}>
-              <TableCell className="font-medium">{item.songName}</TableCell>
-              <TableCell>{item.artist}</TableCell>
-              <TableCell>{item.playCount}</TableCell>
-              <TableCell>{Math.round(item.totalDuration / 60)} dk</TableCell>
-              <TableCell>
+    <div className="rounded-md border">
+      <table className="w-full">
+        <thead>
+          <tr className="border-b bg-muted/50">
+            <th className="p-2 text-left">Şarkı</th>
+            <th className="p-2 text-left">Sanatçı</th>
+            <th className="p-2 text-left">Çalınma Sayısı</th>
+            <th className="p-2 text-left">Toplam Süre</th>
+            <th className="p-2 text-left">Son Çalınma</th>
+          </tr>
+        </thead>
+        <tbody>
+          {data.map((item: PlaybackData, index: number) => (
+            <tr key={index} className="border-b">
+              <td className="p-2">{item.songName}</td>
+              <td className="p-2">{item.artist}</td>
+              <td className="p-2">{item.playCount}</td>
+              <td className="p-2">{Math.round(item.totalDuration / 60)} dk</td>
+              <td className="p-2">
                 {new Date(item.lastPlayed).toLocaleDateString()}
-              </TableCell>
-            </TableRow>
+              </td>
+            </tr>
           ))}
-        </TableBody>
-      </Table>
+        </tbody>
+      </table>
     </div>
   );
-}
+};
