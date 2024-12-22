@@ -5,10 +5,9 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import { Button } from "@/components/ui/button";
 import { Calendar, List } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PlaylistScheduleForm } from "@/components/schedule/PlaylistScheduleForm";
 import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
 
 const Schedule = () => {
   const [view, setView] = useState<"timeGridWeek" | "dayGridMonth">("timeGridWeek");
@@ -58,7 +57,7 @@ const Schedule = () => {
         </div>
       </div>
 
-      <div className="bg-background rounded-lg border p-4">
+      <div className={`bg-background rounded-lg border p-4 ${view === "dayGridMonth" ? "monthly-view" : "weekly-view"}`}>
         <FullCalendar
           plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
           initialView={view}
@@ -71,6 +70,15 @@ const Schedule = () => {
           select={handleDateSelect}
           height="auto"
           locale="tr"
+          slotMinTime={view === "timeGridWeek" ? "06:00:00" : undefined}
+          slotMaxTime={view === "timeGridWeek" ? "24:00:00" : undefined}
+          allDaySlot={view === "dayGridMonth"}
+          dayHeaderFormat={view === "dayGridMonth" ? { weekday: 'short' } : { weekday: 'long' }}
+          eventDisplay={view === "dayGridMonth" ? "block" : "auto"}
+          eventTimeFormat={view === "dayGridMonth" ? 
+            { hour: '2-digit', minute: '2-digit', hour12: false } : 
+            { hour: '2-digit', minute: '2-digit', hour12: false }
+          }
         />
       </div>
 
@@ -82,6 +90,41 @@ const Schedule = () => {
           <PlaylistScheduleForm onSuccess={() => setIsDialogOpen(false)} />
         </DialogContent>
       </Dialog>
+
+      <style jsx global>{`
+        .monthly-view .fc-daygrid-day {
+          min-height: 120px !important;
+        }
+        
+        .monthly-view .fc-daygrid-day-frame {
+          height: 100%;
+        }
+
+        .monthly-view .fc-daygrid-day-events {
+          margin-bottom: 0;
+        }
+
+        .monthly-view .fc-event {
+          margin: 1px 2px;
+          padding: 2px 4px;
+          font-size: 0.75rem;
+          border-radius: 4px;
+        }
+
+        .weekly-view .fc-timegrid-slot {
+          height: 40px !important;
+        }
+
+        .weekly-view .fc-event {
+          margin: 0 2px;
+          padding: 2px;
+          font-size: 0.875rem;
+        }
+
+        .fc .fc-day-today {
+          background-color: rgb(243 244 246) !important;
+        }
+      `}</style>
     </div>
   );
 };
