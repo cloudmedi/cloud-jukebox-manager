@@ -23,41 +23,43 @@ export const DeviceFilters = ({
   setIsFormOpen,
 }: DeviceFiltersProps) => {
   return (
-    <div className="flex gap-2">
-      <DropdownMenu>
-        <DropdownMenuTrigger asChild>
-          <Button variant="outline">
-            <Filter className="mr-2 h-4 w-4" />
-            Filtrele
-          </Button>
-        </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
-          <DropdownMenuCheckboxItem
-            checked={filterStatus === "all"}
-            onCheckedChange={() => onFilterChange("all")}
-          >
-            Tümü
-          </DropdownMenuCheckboxItem>
-          <DropdownMenuCheckboxItem
-            checked={filterStatus === "online"}
-            onCheckedChange={() => onFilterChange("online")}
-          >
-            Çevrimiçi
-          </DropdownMenuCheckboxItem>
-          <DropdownMenuCheckboxItem
-            checked={filterStatus === "offline"}
-            onCheckedChange={() => onFilterChange("offline")}
-          >
-            Çevrimdışı
-          </DropdownMenuCheckboxItem>
-        </DropdownMenuContent>
-      </DropdownMenu>
+    <div className="flex items-center justify-between w-full mb-4">
+      <div className="flex gap-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="default">
+              <Filter className="mr-2 h-4 w-4" />
+              Filtrele
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuCheckboxItem
+              checked={filterStatus === "all"}
+              onCheckedChange={() => onFilterChange("all")}
+            >
+              Tümü
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={filterStatus === "online"}
+              onCheckedChange={() => onFilterChange("online")}
+            >
+              Çevrimiçi
+            </DropdownMenuCheckboxItem>
+            <DropdownMenuCheckboxItem
+              checked={filterStatus === "offline"}
+              onCheckedChange={() => onFilterChange("offline")}
+            >
+              Çevrimdışı
+            </DropdownMenuCheckboxItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
       
       <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
         <DialogTrigger asChild>
-          <Button>
-            <Plus className="mr-2 h-4 w-4" />
-            Yeni Cihaz
+          <Button size="lg" className="bg-primary hover:bg-primary/90">
+            <Plus className="mr-2 h-5 w-5" />
+            Yeni Cihaz Ekle
           </Button>
         </DialogTrigger>
         <DialogContent>
