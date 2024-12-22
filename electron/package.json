@@ -1,14 +1,15 @@
 {
-  "name": "cloud-jukebox-manager",
+  "name": "cloud-media-player",
   "version": "1.0.0",
-  "description": "Cloud Media Player",
+  "description": "Cloud Media Player Desktop Application",
   "main": "main.js",
   "scripts": {
     "start": "electron .",
     "dev": "electron ."
   },
   "dependencies": {
-    "electron-store": "^5.2.0"
+    "axios": "^1.6.2",
+    "electron-store": "^8.1.0"
   },
   "devDependencies": {
     "electron": "^25.6.0"

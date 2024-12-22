@@ -7,8 +7,8 @@ let mainWindow;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+    width: 800,
+    height: 600,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false
@@ -16,6 +16,11 @@ function createWindow() {
   });
 
   mainWindow.loadFile('index.html');
+  
+  // Development ortamında DevTools'u aç
+  if (process.env.NODE_ENV === 'development') {
+    mainWindow.webContents.openDevTools();
+  }
 }
 
 app.whenReady().then(createWindow);
@@ -33,13 +38,12 @@ app.on('activate', () => {
 });
 
 // Device bilgilerini kaydetme
-ipcMain.on('save-device-info', (event, deviceInfo) => {
+ipcMain.handle('save-device-info', async (event, deviceInfo) => {
   store.set('deviceInfo', deviceInfo);
-  event.reply('device-info-saved', deviceInfo);
+  return deviceInfo;
 });
 
 // Device bilgilerini alma
-ipcMain.on('get-device-info', (event) => {
-  const deviceInfo = store.get('deviceInfo');
-  event.reply('device-info', deviceInfo);
+ipcMain.handle('get-device-info', async () => {
+  return store.get('deviceInfo');
 });
