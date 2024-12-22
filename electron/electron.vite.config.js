@@ -8,9 +8,14 @@ module.exports = defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/main/index.js')
-        }
+        },
+        external: ['electron', 'electron-store']
       },
-      outDir: 'out/main'
+      outDir: 'out/main',
+      lib: {
+        entry: 'src/main/index.js',
+        formats: ['cjs']
+      }
     }
   },
   preload: {
@@ -18,7 +23,8 @@ module.exports = defineConfig({
       rollupOptions: {
         input: {
           index: resolve(__dirname, 'src/preload/index.js')
-        }
+        },
+        external: ['electron']
       },
       outDir: 'out/preload'
     }
