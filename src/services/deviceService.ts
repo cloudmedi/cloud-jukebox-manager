@@ -120,28 +120,6 @@ export const deviceService = {
     }
   },
 
-  async emergencyStop(deviceId: string): Promise<void> {
-    try {
-      const response = await fetch(`${API_URL}/devices/${deviceId}/emergency-stop`, {
-        method: 'POST'
-      });
-      
-      if (!response.ok) throw new Error('Acil durdurma yapılamadı');
-      
-      toast({
-        title: "Başarılı",
-        description: "Cihaz acil olarak durduruldu",
-      });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Hata",
-        description: "Acil durdurma yapılamadı",
-      });
-      throw error;
-    }
-  },
-
   async deleteDevice(deviceId: string): Promise<void> {
     try {
       const response = await fetch(`${API_URL}/devices/${deviceId}`, {

@@ -10,6 +10,7 @@ import InfiniteLoader from "react-window-infinite-loader";
 import { DeviceTableHeader } from "./DeviceTableHeader";
 import { DeviceTableRow } from "./DeviceTableRow";
 import { DeviceFilters } from "./DeviceFilters";
+import { Device } from "@/services/deviceService";
 
 const LIMIT = 20;
 
@@ -19,12 +20,23 @@ const DeviceList = () => {
   const { toast } = useToast();
 
   const fetchDevices = async ({ pageParam = 0 }) => {
-    const statusParam = filterStatus !== "all" ? `&status=${filterStatus}` : "";
-    const response = await fetch(`http://localhost:5000/api/devices?skip=${pageParam}&limit=${LIMIT}${statusParam}`);
-    if (!response.ok) {
-      throw new Error("Cihazlar yüklenirken bir hata oluştu");
+    try {
+      const response = await fetch(`http://localhost:5000/api/devices?skip=${pageParam}&limit=${LIMIT}`);
+      if (!response.ok) {
+        throw new Error("Cihazlar yüklenirken bir hata oluştu");
+      }
+      const data = await response.json();
+      console.log("Fetched devices:", data); // Debug log
+      return data;
+    } catch (error) {
+      console.error("Error fetching devices:", error);
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Cihazlar yüklenirken bir hata oluştu",
+      });
+      throw error;
     }
-    return response.json();
   };
 
   const {
@@ -99,7 +111,10 @@ const DeviceList = () => {
                         </div>
                       );
                     }
-                    return <DeviceTableRow device={devices[index]} style={style} />;
+                    const device = devices[index] as Device;
+                    return device ? (
+                      <DeviceTableRow device={device} style={style} />
+                    ) : null;
                   }}
                 </List>
               )}
