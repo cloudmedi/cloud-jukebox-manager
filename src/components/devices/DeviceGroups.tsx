@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Pencil, Trash2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -29,7 +29,7 @@ const DeviceGroups = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const { toast } = useToast();
 
-  const { data: groups, isLoading } = useQuery({
+  const { data: groups, isLoading, refetch } = useQuery({
     queryKey: ["device-groups"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/device-groups");
@@ -39,6 +39,31 @@ const DeviceGroups = () => {
       return response.json();
     },
   });
+
+  const handleDelete = async (groupId: string) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/device-groups/${groupId}`, {
+        method: 'DELETE'
+      });
+
+      if (!response.ok) {
+        throw new Error('Grup silinirken bir hata oluştu');
+      }
+
+      toast({
+        title: "Başarılı",
+        description: "Grup başarıyla silindi",
+      });
+
+      refetch();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Grup silinirken bir hata oluştu",
+      });
+    }
+  };
 
   if (isLoading) {
     return (
@@ -75,6 +100,7 @@ const DeviceGroups = () => {
               <TableHead>Durum</TableHead>
               <TableHead>Oluşturan</TableHead>
               <TableHead>Oluşturma Tarihi</TableHead>
+              <TableHead className="text-right">İşlemler</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
@@ -93,6 +119,24 @@ const DeviceGroups = () => {
                 <TableCell>{group.createdBy}</TableCell>
                 <TableCell>
                   {new Date(group.createdAt).toLocaleString("tr-TR")}
+                </TableCell>
+                <TableCell className="text-right">
+                  <div className="flex justify-end gap-2">
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => console.log('Edit:', group._id)}
+                    >
+                      <Pencil className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => handleDelete(group._id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </TableCell>
               </TableRow>
             ))}
