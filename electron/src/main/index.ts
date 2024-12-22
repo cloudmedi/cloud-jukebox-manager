@@ -1,4 +1,4 @@
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, ipcMain } from 'electron';
 import { join } from 'path';
 import DeviceService from '../services/deviceService';
 import ApiService from '../services/apiService';
@@ -22,6 +22,7 @@ async function createWindow() {
   // Token ve cihaz bilgilerini kaydet
   const deviceInfo = deviceService.getDeviceInfo();
   try {
+    console.log('Registering token with device info:', deviceInfo);
     await apiService.registerToken(deviceInfo);
     console.log('Token registered successfully');
   } catch (error) {
@@ -35,9 +36,10 @@ async function createWindow() {
     await mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
   }
 
-  // Cihaz bilgilerini renderer process'e gönder
-  mainWindow.webContents.on('did-finish-load', () => {
-    mainWindow?.webContents.send('device-info', deviceInfo);
+  // IPC handler for getDeviceInfo
+  ipcMain.handle('get-device-info', () => {
+    console.log('IPC: Returning device info');
+    return deviceService.getDeviceInfo();
   });
 }
 

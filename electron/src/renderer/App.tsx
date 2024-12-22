@@ -7,13 +7,17 @@ const App = () => {
   useEffect(() => {
     const initializeApp = async () => {
       try {
-        // window.api global olarak tanımlanmış electron preload API'sini kullanıyoruz
+        console.log('Fetching device info...');
         const deviceInfo = await window.api.getDeviceInfo();
+        console.log('Received device info:', deviceInfo);
+        
         if (deviceInfo && deviceInfo.token) {
           setDeviceToken(deviceInfo.token);
           setStatus('Connected');
+          console.log('Token set:', deviceInfo.token);
         } else {
           setStatus('No device token found');
+          console.error('No token in device info');
         }
       } catch (error) {
         console.error('Failed to get device info:', error);
