@@ -134,12 +134,11 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
         onClose={() => setIsGroupDialogOpen(false)}
       />
 
-      {isDetailsDialogOpen && (
-        <DeviceDetailsDialog
-          device={device}
-          onClose={() => setIsDetailsDialogOpen(false)}
-        />
-      )}
+      <DeviceDetailsDialog
+        device={device}
+        isOpen={isDetailsDialogOpen}
+        onClose={() => setIsDetailsDialogOpen(false)}
+      />
     </>
   );
 };
