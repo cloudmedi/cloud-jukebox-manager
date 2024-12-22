@@ -11,13 +11,27 @@ class WebSocketServer {
 
   initialize() {
     this.wss.on('connection', async (ws, req) => {
-      console.log('New client connected');
+      console.log('New WebSocket connection attempt');
 
       // Admin bağlantısı kontrolü
       if (req.url === '/admin') {
         console.log('Admin client connected');
         this.adminClients.add(ws);
         
+        // Mevcut cihaz durumlarını gönder
+        const devices = await Device.find({});
+        const deviceStatuses = devices.map(device => ({
+          type: 'deviceStatus',
+          token: device.token,
+          isOnline: device.isOnline,
+          volume: device.volume
+        }));
+        
+        ws.send(JSON.stringify({
+          type: 'initialState',
+          devices: deviceStatuses
+        }));
+
         ws.on('close', () => {
           console.log('Admin client disconnected');
           this.adminClients.delete(ws);
@@ -26,12 +40,26 @@ class WebSocketServer {
         ws.on('message', async (message) => {
           try {
             const data = JSON.parse(message);
+            console.log('Admin message received:', data);
+            
             if (data.type === 'command') {
-              // Komutu ilgili cihaza ilet
-              this.sendToDevice(data.token, data);
+              console.log('Sending command to device:', data.token);
+              const success = this.sendToDevice(data.token, data);
+              
+              // Komut durumunu admin'e bildir
+              ws.send(JSON.stringify({
+                type: 'commandStatus',
+                token: data.token,
+                command: data.command,
+                success: success
+              }));
             }
           } catch (error) {
             console.error('Admin message handling error:', error);
+            ws.send(JSON.stringify({
+              type: 'error',
+              message: error.message
+            }));
           }
         });
 
@@ -42,6 +70,7 @@ class WebSocketServer {
       ws.once('message', async (message) => {
         try {
           const data = JSON.parse(message);
+          console.log('Device auth attempt:', data);
           
           if (data.type === 'auth' && data.token) {
             const device = await Device.findOne({ token: data.token });
@@ -57,11 +86,19 @@ class WebSocketServer {
               this.broadcastToAdmins({
                 type: 'deviceStatus',
                 token: device.token,
-                isOnline: true
+                isOnline: true,
+                volume: device.volume
               });
               
               // Client'a başarılı authentication bilgisi gönder
-              ws.send(JSON.stringify({ type: 'auth', status: 'success' }));
+              ws.send(JSON.stringify({ 
+                type: 'auth', 
+                status: 'success',
+                deviceInfo: {
+                  name: device.name,
+                  volume: device.volume
+                }
+              }));
               
               // Disconnect olduğunda
               ws.on('close', async () => {
@@ -81,14 +118,23 @@ class WebSocketServer {
               ws.on('message', async (message) => {
                 try {
                   const data = JSON.parse(message);
+                  console.log('Device message received:', data);
                   await this.handleDeviceMessage(device.token, data);
                 } catch (error) {
                   console.error('Message handling error:', error);
+                  ws.send(JSON.stringify({
+                    type: 'error',
+                    message: error.message
+                  }));
                 }
               });
             } else {
-              // Geçersiz token
-              ws.send(JSON.stringify({ type: 'auth', status: 'error', message: 'Invalid token' }));
+              console.log('Invalid token received:', data.token);
+              ws.send(JSON.stringify({ 
+                type: 'auth', 
+                status: 'error', 
+                message: 'Invalid token' 
+              }));
               ws.close();
             }
           }
@@ -101,6 +147,7 @@ class WebSocketServer {
   }
 
   async handleDeviceMessage(token, message) {
+    console.log(`Handling device message from ${token}:`, message);
     const device = await Device.findOne({ token });
     if (!device) return;
 
@@ -122,11 +169,19 @@ class WebSocketServer {
           volume: message.volume
         });
         break;
+
+      case 'error':
+        this.broadcastToAdmins({
+          type: 'deviceError',
+          token: token,
+          error: message.error
+        });
+        break;
     }
   }
 
-  // Admin'lere mesaj gönderme
   broadcastToAdmins(message) {
+    console.log('Broadcasting to admins:', message);
     this.adminClients.forEach((ws) => {
       if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify(message));
@@ -134,23 +189,15 @@ class WebSocketServer {
     });
   }
 
-  // Cihaza mesaj gönderme
   sendToDevice(token, message) {
+    console.log(`Sending message to device ${token}:`, message);
     const ws = this.clients.get(token);
     if (ws && ws.readyState === WebSocket.OPEN) {
       ws.send(JSON.stringify(message));
       return true;
     }
+    console.log(`Device ${token} not found or not connected`);
     return false;
-  }
-
-  // Broadcast mesaj gönderme (tüm cihazlara)
-  broadcast(message) {
-    this.clients.forEach((ws) => {
-      if (ws.readyState === WebSocket.OPEN) {
-        ws.send(JSON.stringify(message));
-      }
-    });
   }
 }
 

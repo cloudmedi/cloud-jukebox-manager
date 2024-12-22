@@ -5,11 +5,13 @@ class WebSocketService {
     this.ws = null;
     this.reconnectInterval = 5000;
     this.isConnecting = false;
+    this.token = null;
   }
 
   connect(token) {
     if (this.isConnecting) return;
     this.isConnecting = true;
+    this.token = token;
 
     console.log('WebSocket bağlantısı başlatılıyor...');
     this.ws = new WebSocket('ws://localhost:5000');
@@ -25,23 +27,31 @@ class WebSocketService {
       };
       console.log('Kimlik doğrulama mesajı gönderiliyor:', authMessage);
       this.ws.send(JSON.stringify(authMessage));
-
-      // Bağlantı kurulduktan sonra bir süre bekleyip online durumunu bildir
-      setTimeout(() => {
-        const statusMessage = {
-          type: 'status',
-          isOnline: true
-        };
-        console.log('Online durum mesajı gönderiliyor:', statusMessage);
-        this.sendStatus(statusMessage);
-      }, 1000);
     });
 
     this.ws.on('message', (data) => {
       try {
         const message = JSON.parse(data);
         console.log('Sunucudan gelen mesaj:', message);
-        this.handleMessage(message);
+        
+        switch (message.type) {
+          case 'auth':
+            console.log('Kimlik doğrulama yanıtı:', message);
+            if (message.status === 'success') {
+              console.log('Kimlik doğrulama başarılı');
+              this.sendStatus({ type: 'status', isOnline: true });
+            }
+            break;
+          
+          case 'command':
+            console.log('Komut alındı:', message);
+            this.handleCommand(message);
+            break;
+
+          case 'error':
+            console.error('Sunucu hatası:', message.message);
+            break;
+        }
       } catch (error) {
         console.error('Mesaj işleme hatası:', error);
       }
@@ -50,31 +60,13 @@ class WebSocketService {
     this.ws.on('close', () => {
       console.log('WebSocket bağlantısı kapandı, yeniden bağlanılıyor...');
       this.isConnecting = false;
-      setTimeout(() => this.connect(token), this.reconnectInterval);
+      setTimeout(() => this.connect(this.token), this.reconnectInterval);
     });
 
     this.ws.on('error', (error) => {
       console.error('WebSocket hatası:', error);
       this.isConnecting = false;
     });
-  }
-
-  handleMessage(message) {
-    console.log('Mesaj işleniyor:', message);
-    
-    switch (message.type) {
-      case 'auth':
-        console.log('Kimlik doğrulama durumu:', message.status);
-        break;
-      
-      case 'command':
-        console.log('Komut alındı:', message);
-        this.handleCommand(message);
-        break;
-
-      default:
-        console.log('Bilinmeyen mesaj tipi:', message.type);
-    }
   }
 
   handleCommand(message) {
@@ -116,14 +108,17 @@ class WebSocketService {
         exec(`amixer -D pulse sset Master ${volume}%`);
       }
 
-      const statusMessage = {
+      // Ses seviyesi değişikliğini bildir
+      this.sendStatus({
         type: 'volume',
         volume: volume
-      };
-      console.log('Ses seviyesi değişikliği bildiriliyor:', statusMessage);
-      this.sendStatus(statusMessage);
+      });
     } catch (error) {
       console.error('Ses seviyesi ayarlama hatası:', error);
+      this.sendStatus({
+        type: 'error',
+        error: 'Ses seviyesi ayarlanamadı'
+      });
     }
   }
 
@@ -147,6 +142,7 @@ class WebSocketService {
       console.log('Offline durum mesajı gönderiliyor:', offlineMessage);
       this.sendStatus(offlineMessage);
       
+      // Mesajın gönderilmesi için kısa bir süre bekle
       setTimeout(() => {
         this.ws.close();
         this.ws = null;
