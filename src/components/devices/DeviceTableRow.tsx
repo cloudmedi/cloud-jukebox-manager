@@ -22,22 +22,8 @@ import {
   AlertCircle
 } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
-
-interface Device {
-  _id: string;
-  name: string;
-  token: string;
-  location: string;
-  ipAddress: string;
-  isOnline: boolean;
-  volume: number;
-  lastSeen: string;
-  activePlaylist: {
-    _id: string;
-    name: string;
-  } | null;
-  playlistStatus?: 'loaded' | 'loading' | 'error';
-}
+import { deviceService, Device } from "@/services/deviceService";
+import { useQueryClient } from "@tanstack/react-query";
 
 interface DeviceTableRowProps {
   device: Device;
@@ -45,6 +31,79 @@ interface DeviceTableRowProps {
 }
 
 export const DeviceTableRow = ({ device, style }: DeviceTableRowProps) => {
+  const queryClient = useQueryClient();
+
+  const handleRestart = async () => {
+    try {
+      await deviceService.restartDevice(device._id);
+      queryClient.invalidateQueries({ queryKey: ['devices'] });
+    } catch (error) {
+      console.error('Restart error:', error);
+    }
+  };
+
+  const handlePowerToggle = async () => {
+    try {
+      await deviceService.togglePower(device._id, device.isOnline);
+      queryClient.invalidateQueries({ queryKey: ['devices'] });
+    } catch (error) {
+      console.error('Power toggle error:', error);
+    }
+  };
+
+  const handleVolumeControl = async () => {
+    // Bu kısım için ayrı bir dialog component'i oluşturulabilir
+    const volume = window.prompt('Ses seviyesini girin (0-100):', device.volume.toString());
+    if (volume === null) return;
+    
+    const newVolume = parseInt(volume);
+    if (isNaN(newVolume) || newVolume < 0 || newVolume > 100) {
+      alert('Geçersiz ses seviyesi! 0-100 arası bir değer girin.');
+      return;
+    }
+
+    try {
+      await deviceService.setVolume(device._id, newVolume);
+      queryClient.invalidateQueries({ queryKey: ['devices'] });
+    } catch (error) {
+      console.error('Volume control error:', error);
+    }
+  };
+
+  const handleGroupManagement = async () => {
+    // Bu kısım için ayrı bir dialog component'i oluşturulabilir
+    const groupId = window.prompt('Grup ID girin (boş bırakarak gruptan çıkarabilirsiniz):', device.groupId?.toString() || '');
+    
+    try {
+      await deviceService.updateGroup(device._id, groupId || null);
+      queryClient.invalidateQueries({ queryKey: ['devices'] });
+    } catch (error) {
+      console.error('Group management error:', error);
+    }
+  };
+
+  const handleEmergencyStop = async () => {
+    if (!window.confirm('Cihazı acil olarak durdurmak istediğinizden emin misiniz?')) return;
+    
+    try {
+      await deviceService.emergencyStop(device._id);
+      queryClient.invalidateQueries({ queryKey: ['devices'] });
+    } catch (error) {
+      console.error('Emergency stop error:', error);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!window.confirm('Cihazı silmek istediğinizden emin misiniz?')) return;
+    
+    try {
+      await deviceService.deleteDevice(device._id);
+      queryClient.invalidateQueries({ queryKey: ['devices'] });
+    } catch (error) {
+      console.error('Delete error:', error);
+    }
+  };
+
   const getPlaylistStatusBadge = () => {
     if (!device.activePlaylist) {
       return (
@@ -107,46 +166,6 @@ export const DeviceTableRow = ({ device, style }: DeviceTableRowProps) => {
     }
   };
 
-  const handleRestart = () => {
-    console.log('Restart device:', device._id);
-    // API call to restart device
-  };
-
-  const handlePowerToggle = () => {
-    console.log('Toggle power for device:', device._id);
-    // API call to toggle power
-  };
-
-  const handlePlaylistManagement = () => {
-    console.log('Manage playlist for device:', device._id);
-    // Open playlist management dialog
-  };
-
-  const handleVolumeControl = () => {
-    console.log('Control volume for device:', device._id);
-    // Open volume control dialog
-  };
-
-  const handleGroupManagement = () => {
-    console.log('Manage group for device:', device._id);
-    // Open group management dialog
-  };
-
-  const handleDeviceDetails = () => {
-    console.log('View details for device:', device._id);
-    // Navigate to device details page
-  };
-
-  const handleEmergencyStop = () => {
-    console.log('Emergency stop for device:', device._id);
-    // API call for emergency stop
-  };
-
-  const handleDelete = () => {
-    console.log('Delete device:', device._id);
-    // Open delete confirmation dialog
-  };
-
   return (
     <TableRow style={style}>
       <TableCell className="font-medium">{device.name}</TableCell>
@@ -183,7 +202,7 @@ export const DeviceTableRow = ({ device, style }: DeviceTableRowProps) => {
               <Power className="mr-2 h-4 w-4" />
               {device.isOnline ? 'Cihazı Kapat' : 'Cihazı Aç'}
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handlePlaylistManagement}>
+            <DropdownMenuItem onClick={() => console.log('Playlist management')}>
               <Music className="mr-2 h-4 w-4" />
               Playlist Yönetimi
             </DropdownMenuItem>
@@ -195,7 +214,7 @@ export const DeviceTableRow = ({ device, style }: DeviceTableRowProps) => {
               <Users className="mr-2 h-4 w-4" />
               Grup Yönetimi
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={handleDeviceDetails}>
+            <DropdownMenuItem onClick={() => console.log('Device details')}>
               <Info className="mr-2 h-4 w-4" />
               Cihaz Detayları
             </DropdownMenuItem>
