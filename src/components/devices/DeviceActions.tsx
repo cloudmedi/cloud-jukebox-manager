@@ -20,6 +20,7 @@ import { useState } from "react";
 import { deviceService } from "@/services/deviceService";
 import VolumeControlDialog from "./VolumeControlDialog";
 import GroupManagementDialog from "./GroupManagementDialog";
+import DeviceDetailsDialog from "./DeviceDetailsDialog";
 
 interface DeviceActionsProps {
   device: {
@@ -33,6 +34,7 @@ interface DeviceActionsProps {
 const DeviceActions = ({ device }: DeviceActionsProps) => {
   const [isVolumeDialogOpen, setIsVolumeDialogOpen] = useState(false);
   const [isGroupDialogOpen, setIsGroupDialogOpen] = useState(false);
+  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const handleRestart = async () => {
@@ -111,7 +113,7 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
             <Users className="mr-2 h-4 w-4" />
             Grup Yönetimi
           </DropdownMenuItem>
-          <DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setIsDetailsDialogOpen(true)}>
             <Info className="mr-2 h-4 w-4" />
             Cihaz Detayları
           </DropdownMenuItem>
@@ -138,6 +140,13 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
           onClose={() => setIsGroupDialogOpen(false)}
         />
       </Dialog>
+
+      {isDetailsDialogOpen && (
+        <DeviceDetailsDialog
+          device={device as any} // Type assertion needed because we're passing the full device object
+          onClose={() => setIsDetailsDialogOpen(false)}
+        />
+      )}
     </>
   );
 };
