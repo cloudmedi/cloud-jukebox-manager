@@ -50,9 +50,9 @@ const DeviceList = () => {
   } = useInfiniteQuery({
     queryKey: ['devices'],
     queryFn: fetchDevices,
-    initialPageParam: 0,
     getNextPageParam: (lastPage, pages) => {
-      return lastPage.length === LIMIT ? pages.length * LIMIT : undefined;
+      if (lastPage.length < LIMIT) return undefined;
+      return pages.length * LIMIT;
     },
   });
 
@@ -72,39 +72,39 @@ const DeviceList = () => {
   const Row = ({ index, style }: { index: number; style: React.CSSProperties }) => {
     if (!isItemLoaded(index)) {
       return (
-        <TableRow style={style}>
-          <TableCell colSpan={7} className="text-center">
-            <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-600 mx-auto" />
-          </TableCell>
-        </TableRow>
+        <div style={style} className="flex items-center justify-center p-4">
+          <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-gray-600" />
+        </div>
       );
     }
 
     const device = devices[index];
     return (
-      <TableRow style={style}>
-        <TableCell className="font-medium">{device.name}</TableCell>
-        <TableCell>{device.token}</TableCell>
-        <TableCell>{device.location}</TableCell>
-        <TableCell>
-          <Badge
-            variant={device.isOnline ? "success" : "secondary"}
-            className="flex w-fit items-center gap-1"
-          >
-            <Power className="h-3 w-3" />
-            {device.isOnline ? "Çevrimiçi" : "Çevrimdışı"}
-          </Badge>
-        </TableCell>
-        <TableCell>{device.volume}%</TableCell>
-        <TableCell>
-          {new Date(device.lastSeen).toLocaleString("tr-TR")}
-        </TableCell>
-        <TableCell className="text-right">
-          <Button variant="ghost" size="icon">
-            <Settings className="h-4 w-4" />
-          </Button>
-        </TableCell>
-      </TableRow>
+      <div style={style}>
+        <TableRow>
+          <TableCell className="font-medium">{device.name}</TableCell>
+          <TableCell>{device.token}</TableCell>
+          <TableCell>{device.location}</TableCell>
+          <TableCell>
+            <Badge
+              variant={device.isOnline ? "success" : "secondary"}
+              className="flex w-fit items-center gap-1"
+            >
+              <Power className="h-3 w-3" />
+              {device.isOnline ? "Çevrimiçi" : "Çevrimdışı"}
+            </Badge>
+          </TableCell>
+          <TableCell>{device.volume}%</TableCell>
+          <TableCell>
+            {new Date(device.lastSeen).toLocaleString("tr-TR")}
+          </TableCell>
+          <TableCell className="text-right">
+            <Button variant="ghost" size="icon">
+              <Settings className="h-4 w-4" />
+            </Button>
+          </TableCell>
+        </TableRow>
+      </div>
     );
   };
 
