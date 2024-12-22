@@ -88,7 +88,7 @@ export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: Playli
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-40">
-              <DropdownMenuItem onClick={() => onPlay(playlist._id)} className="gap-2">
+              <DropdownMenuItem onClick={handlePlay} className="gap-2">
                 <Play className="h-4 w-4" />
                 Oynat
               </DropdownMenuItem>
