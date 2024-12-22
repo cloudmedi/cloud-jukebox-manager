@@ -3,7 +3,6 @@ import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { Play, Plus, Music2, Settings, RefreshCw, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
-import Player from "@/components/player/Player";
 
 const Index = () => {
   const { data: stats, isLoading: statsLoading } = useQuery({
@@ -43,32 +42,31 @@ const Index = () => {
   }
 
   return (
-    <>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <div className="flex items-center gap-2">
-            <Button asChild variant="default" className="shadow-sm">
-              <Link to="/playlists/new" aria-label="Yeni playlist oluştur">
-                <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
-                Yeni Playlist
-              </Link>
-            </Button>
-            <Button 
-              variant="outline" 
-              className="shadow-sm"
-              aria-label="Sayfayı yenile"
-            >
-              <RefreshCw className="h-4 w-4" aria-hidden="true" />
-            </Button>
-          </div>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="default" className="shadow-sm">
+            <Link to="/playlists/new" aria-label="Yeni playlist oluştur">
+              <Plus className="h-4 w-4 mr-2" aria-hidden="true" />
+              Yeni Playlist
+            </Link>
+          </Button>
+          <Button 
+            variant="outline" 
+            className="shadow-sm"
+            aria-label="Sayfayı yenile"
+          >
+            <RefreshCw className="h-4 w-4" aria-hidden="true" />
+          </Button>
         </div>
+      </div>
 
-        <div 
-          className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
-          role="region" 
-          aria-label="Özet İstatistikler"
-        >
+      <div 
+        className="grid gap-4 md:grid-cols-2 lg:grid-cols-4"
+        role="region" 
+        aria-label="Özet İstatistikler"
+      >
           <Card className="shadow-sm hover:shadow-md transition-shadow">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">Aktif Playlist</CardTitle>
@@ -120,13 +118,13 @@ const Index = () => {
               </p>
             </CardContent>
           </Card>
-        </div>
+      </div>
 
-        <div 
-          className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
-          role="region" 
-          aria-label="Aktif Playlistler"
-        >
+      <div 
+        className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
+        role="region" 
+        aria-label="Aktif Playlistler"
+      >
           {playlists?.slice(0, 3).map((playlist) => (
             <Card 
               key={playlist._id} 
@@ -159,9 +157,9 @@ const Index = () => {
               </CardContent>
             </Card>
           ))}
-        </div>
+      </div>
 
-        <Card className="shadow-sm">
+      <Card className="shadow-sm">
           <CardHeader>
             <CardTitle>Son Aktiviteler</CardTitle>
             <CardDescription>Son 24 saatteki işlemler</CardDescription>
@@ -192,10 +190,8 @@ const Index = () => {
               ))}
             </div>
           </CardContent>
-        </Card>
-      </div>
-      <Player />
-    </>
+      </Card>
+    </div>
   );
 };
 
