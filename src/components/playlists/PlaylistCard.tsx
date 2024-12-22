@@ -27,6 +27,16 @@ interface PlaylistCardProps {
 }
 
 export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: PlaylistCardProps) => {
+  const handlePlay = () => {
+    // Player'ı göster
+    const mainLayout = document.querySelector('.main-layout');
+    if (mainLayout) {
+      mainLayout.setAttribute('data-player-visible', 'true');
+    }
+    // Playlist'i oynat
+    onPlay(playlist._id);
+  };
+
   return (
     <Card className="group overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 w-[200px]">
       <CardHeader className="relative aspect-square p-0">
@@ -49,7 +59,7 @@ export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: Playli
             "absolute bottom-4 right-4 opacity-0 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0 translate-y-4",
             "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 h-10 w-10"
           )}
-          onClick={() => onPlay(playlist._id)}
+          onClick={handlePlay}
         >
           <Play className="h-5 w-5" />
         </Button>

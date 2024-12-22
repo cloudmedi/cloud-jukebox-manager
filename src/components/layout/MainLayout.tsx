@@ -17,7 +17,7 @@ export const MainLayout = () => {
           <main className="flex-1 p-6 overflow-auto">
             <Outlet />
           </main>
-          <Player />
+          {showPlayer && <Player />}
         </div>
       </div>
     </SidebarProvider>
