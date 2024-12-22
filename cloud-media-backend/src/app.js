@@ -1,6 +1,7 @@
 const express = require('express');
 const cors = require('cors');
 const connectDB = require('./config/database');
+const path = require('path');
 require('dotenv').config();
 
 const app = express();
@@ -11,6 +12,9 @@ connectDB();
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Uploads klasörünü statik olarak sunma
+app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // Routes
 app.use('/api/devices', require('./routes/deviceRoutes'));

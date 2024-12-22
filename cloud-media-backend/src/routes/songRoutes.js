@@ -1,6 +1,28 @@
 const express = require('express');
 const router = express.Router();
+const multer = require('multer');
+const path = require('path');
 const Song = require('../models/Song');
+
+// Multer yapılandırması
+const storage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    cb(null, 'uploads/');
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + path.extname(file.originalname));
+  }
+});
+
+const upload = multer({
+  storage: storage,
+  fileFilter: function (req, file, cb) {
+    if (!file.originalname.match(/\.(mp3|wav|ogg)$/)) {
+      return cb(new Error('Sadece ses dosyaları yüklenebilir!'));
+    }
+    cb(null, true);
+  }
+});
 
 // Tüm şarkıları getir
 router.get('/', async (req, res) => {
@@ -25,21 +47,22 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Yeni şarkı oluştur
-router.post('/', async (req, res) => {
-  const song = new Song({
-    name: req.body.name,
-    artist: req.body.artist,
-    genre: req.body.genre,
-    album: req.body.album,
-    year: req.body.year,
-    language: req.body.language,
-    filePath: req.body.filePath,
-    duration: req.body.duration,
-    createdBy: req.body.createdBy
-  });
-
+// Dosya yükleme endpoint'i
+router.post('/upload', upload.single('file'), async (req, res) => {
   try {
+    if (!req.file) {
+      return res.status(400).json({ message: 'Dosya yüklenemedi' });
+    }
+
+    const song = new Song({
+      name: req.body.name || req.file.originalname,
+      artist: req.body.artist || 'Bilinmeyen Sanatçı',
+      genre: req.body.genre || 'Other',
+      filePath: req.file.path,
+      duration: 0, // Bu değer gerçek süre ile güncellenmelidir
+      createdBy: 'system'
+    });
+
     const newSong = await song.save();
     res.status(201).json(newSong);
   } catch (error) {
