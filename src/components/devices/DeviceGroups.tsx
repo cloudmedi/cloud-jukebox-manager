@@ -13,7 +13,7 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import DeviceGroupForm from "./DeviceGroupForm";
+import { DeviceGroupForm } from "./DeviceGroupForm";
 
 interface DeviceGroup {
   _id: string;
