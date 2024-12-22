@@ -70,15 +70,18 @@ const Schedule = () => {
           select={handleDateSelect}
           height="auto"
           locale="tr"
-          slotMinTime={view === "timeGridWeek" ? "06:00:00" : undefined}
-          slotMaxTime={view === "timeGridWeek" ? "24:00:00" : undefined}
+          initialDate={new Date()} // Başlangıç tarihi eklendi
+          duration={{ days: view === "timeGridWeek" ? 7 : 30 }} // Görünüm süresini belirle
+          slotMinTime="06:00:00"
+          slotMaxTime="24:00:00"
           allDaySlot={view === "dayGridMonth"}
-          dayHeaderFormat={view === "dayGridMonth" ? { weekday: 'short' } : { weekday: 'long' }}
+          dayHeaderFormat={{ weekday: view === "dayGridMonth" ? 'short' : 'long' }}
           eventDisplay={view === "dayGridMonth" ? "block" : "auto"}
-          eventTimeFormat={view === "dayGridMonth" ? 
-            { hour: '2-digit', minute: '2-digit', hour12: false } : 
-            { hour: '2-digit', minute: '2-digit', hour12: false }
-          }
+          eventTimeFormat={{ 
+            hour: '2-digit',
+            minute: '2-digit',
+            hour12: false
+          }}
         />
       </div>
 
