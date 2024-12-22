@@ -29,11 +29,22 @@ async function createWindow() {
     console.error('Failed to register token:', error);
   }
 
+  // Development modunda
   if (process.env.VITE_DEV_SERVER_URL) {
-    await mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
-    mainWindow.webContents.openDevTools();
+    console.log('Loading dev server URL:', process.env.VITE_DEV_SERVER_URL);
+    try {
+      await mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
+      mainWindow.webContents.openDevTools();
+    } catch (error) {
+      console.error('Failed to load dev server URL:', error);
+      // Fallback to local file if dev server fails
+      await mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
+    }
   } else {
-    await mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
+    // Production modunda
+    const indexPath = join(__dirname, '../renderer/index.html');
+    console.log('Loading production index file:', indexPath);
+    await mainWindow.loadFile(indexPath);
   }
 
   // IPC handler for getDeviceInfo
@@ -41,9 +52,18 @@ async function createWindow() {
     console.log('IPC: Returning device info');
     return deviceService.getDeviceInfo();
   });
+
+  // Debug için window yüklendiğinde
+  mainWindow.webContents.on('did-finish-load', () => {
+    console.log('Window loaded successfully');
+  });
 }
 
-app.whenReady().then(createWindow);
+// Uygulama hazır olduğunda pencereyi oluştur
+app.whenReady().then(() => {
+  console.log('App is ready, creating window...');
+  createWindow();
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -55,4 +75,13 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
+});
+
+// Hata ayıklama için process events
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+});
+
+process.on('unhandledRejection', (error) => {
+  console.error('Unhandled Rejection:', error);
 });
