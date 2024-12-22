@@ -5,17 +5,23 @@ const App = () => {
   const [deviceToken, setDeviceToken] = useState('Loading...');
 
   useEffect(() => {
-    // Burada WebSocket bağlantısı ve device token alma işlemleri yapılacak
-    const connectToServer = async () => {
+    const initializeApp = async () => {
       try {
-        setStatus('Connected');
-        setDeviceToken('DEMO-TOKEN-123');
+        // window.api global olarak tanımlanmış electron preload API'sini kullanıyoruz
+        const deviceInfo = await window.api.getDeviceInfo();
+        if (deviceInfo && deviceInfo.token) {
+          setDeviceToken(deviceInfo.token);
+          setStatus('Connected');
+        } else {
+          setStatus('No device token found');
+        }
       } catch (error) {
+        console.error('Failed to get device info:', error);
         setStatus('Connection failed');
       }
     };
 
-    connectToServer();
+    initializeApp();
   }, []);
 
   return (
