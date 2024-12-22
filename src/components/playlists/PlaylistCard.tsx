@@ -1,3 +1,4 @@
+import { memo } from "react";
 import { MoreVertical, Play, Pencil, Trash2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -20,7 +21,7 @@ interface PlaylistCardProps {
   onPlay: (id: string) => void;
 }
 
-export const PlaylistCard = ({ playlist, onDelete, onEdit, onPlay }: PlaylistCardProps) => {
+export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: PlaylistCardProps) => {
   return (
     <div
       className="border rounded-lg p-4 space-y-4 hover:shadow-md transition-shadow"
@@ -86,4 +87,6 @@ export const PlaylistCard = ({ playlist, onDelete, onEdit, onPlay }: PlaylistCar
       </div>
     </div>
   );
-};
+});
+
+PlaylistCard.displayName = 'PlaylistCard';

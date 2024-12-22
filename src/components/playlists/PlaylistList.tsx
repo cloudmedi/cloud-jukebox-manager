@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
@@ -11,7 +11,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { PlaylistCard } from "./PlaylistCard";
+import { VirtualizedPlaylistList } from "./VirtualizedPlaylistList";
 import { PlaylistPagination } from "./PlaylistPagination";
 
 interface Playlist {
@@ -35,12 +35,18 @@ export const PlaylistList = ({ playlists, onPlaylistUpdate }: PlaylistListProps)
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const totalPages = Math.ceil(playlists.length / ITEMS_PER_PAGE);
-  const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
-  const endIndex = startIndex + ITEMS_PER_PAGE;
-  const currentPlaylists = playlists.slice(startIndex, endIndex);
+  const totalPages = useMemo(() => 
+    Math.ceil(playlists.length / ITEMS_PER_PAGE), 
+    [playlists.length]
+  );
 
-  const handleDelete = async (id: string) => {
+  const currentPlaylists = useMemo(() => {
+    const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
+    const endIndex = startIndex + ITEMS_PER_PAGE;
+    return playlists.slice(startIndex, endIndex);
+  }, [playlists, currentPage]);
+
+  const handleDelete = useCallback(async (id: string) => {
     try {
       const response = await fetch(`http://localhost:5000/api/playlists/${id}`, {
         method: "DELETE",
@@ -64,17 +70,15 @@ export const PlaylistList = ({ playlists, onPlaylistUpdate }: PlaylistListProps)
         description: "Playlist silinirken bir hata oluştu",
       });
     }
-  };
+  }, [onPlaylistUpdate, toast]);
 
-  const handleEdit = (id: string) => {
-    // Edit functionality will be implemented later
+  const handleEdit = useCallback((id: string) => {
     console.log("Edit playlist:", id);
-  };
+  }, []);
 
-  const handlePlay = (id: string) => {
-    // Play functionality will be implemented later
+  const handlePlay = useCallback((id: string) => {
     console.log("Play playlist:", id);
-  };
+  }, []);
 
   if (!playlists?.length) {
     return (
@@ -90,21 +94,12 @@ export const PlaylistList = ({ playlists, onPlaylistUpdate }: PlaylistListProps)
 
   return (
     <div className="space-y-6">
-      <div 
-        className="grid gap-4 md:grid-cols-2 lg:grid-cols-3"
-        role="list"
-        aria-label="Playlist listesi"
-      >
-        {currentPlaylists.map((playlist) => (
-          <PlaylistCard
-            key={playlist._id}
-            playlist={playlist}
-            onDelete={setPlaylistToDelete}
-            onEdit={handleEdit}
-            onPlay={handlePlay}
-          />
-        ))}
-      </div>
+      <VirtualizedPlaylistList
+        playlists={currentPlaylists}
+        onDelete={setPlaylistToDelete}
+        onEdit={handleEdit}
+        onPlay={handlePlay}
+      />
 
       <PlaylistPagination
         currentPage={currentPage}
