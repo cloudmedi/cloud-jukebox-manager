@@ -1,4 +1,4 @@
-import { Home, Speaker, Calendar, Volume2, Upload, BarChart2 } from "lucide-react";
+import { Home, Speaker, List, Calendar, Volume2, Upload, BarChart2 } from "lucide-react";
 import {
   Sidebar as SidebarContainer,
   SidebarContent,
@@ -14,6 +14,7 @@ import { Link } from "react-router-dom";
 const menuItems = [
   { title: "Ana Sayfa", icon: Home, path: "/" },
   { title: "Cihaz Yönetimi", icon: Speaker, path: "/devices" },
+  { title: "Playlist Yönetimi", icon: List, path: "/playlists" },
   { title: "Zamanlama", icon: Calendar, path: "/schedule" },
   { title: "Anons Yönetimi", icon: Volume2, path: "/announcements" },
   { title: "Music Upload", icon: Upload, path: "/upload" },

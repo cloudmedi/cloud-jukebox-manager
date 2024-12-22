@@ -6,6 +6,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import MainLayout from "./components/layout/MainLayout";
 import Index from "./pages/Index";
 import Devices from "./pages/Devices";
+import Playlists from "./pages/Playlists";
 import Schedule from "./pages/Schedule";
 import Announcements from "./pages/Announcements";
 import Upload from "./pages/Upload";
@@ -23,6 +24,7 @@ const App = () => (
           <Routes>
             <Route path="/" element={<Index />} />
             <Route path="/devices" element={<Devices />} />
+            <Route path="/playlists" element={<Playlists />} />
             <Route path="/schedule" element={<Schedule />} />
             <Route path="/announcements" element={<Announcements />} />
             <Route path="/upload" element={<Upload />} />
