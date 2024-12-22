@@ -8,14 +8,27 @@ router.get('/', async (req, res) => {
     const skip = parseInt(req.query.skip) || 0;
     const limit = parseInt(req.query.limit) || 20;
 
+    // Token bilgilerini de getir
     const devices = await Device.find()
       .populate('activePlaylist')
       .populate('groupId')
+      .lean()
       .skip(skip)
       .limit(limit)
       .sort({ createdAt: -1 });
 
-    res.json(devices);
+    // Her cihaz için token bilgilerini al
+    const devicesWithInfo = await Promise.all(
+      devices.map(async (device) => {
+        const tokenInfo = await Token.findOne({ token: device.token }).lean();
+        return {
+          ...device,
+          deviceInfo: tokenInfo?.deviceInfo || null
+        };
+      })
+    );
+
+    res.json(devicesWithInfo);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
