@@ -1,25 +1,23 @@
 const { Howl } = require('howler');
-const Store = require('electron-store');
+const QueueManager = require('./audio/QueueManager');
+const PlaybackState = require('./audio/PlaybackState');
 
 class AudioPlayer {
   constructor() {
-    this.store = new Store();
+    this.queueManager = new QueueManager();
+    this.playbackState = new PlaybackState();
     this.currentSound = null;
     this.playlist = null;
-    this.currentIndex = 0;
     this.isPlaying = false;
     this.volume = 1.0;
-    this.queue = [];
   }
 
   loadPlaylist(playlist) {
     console.log('Loading playlist:', playlist);
     this.playlist = playlist;
-    this.currentIndex = 0;
-    this.queue = playlist.songs.filter(song => song.localPath);
-    console.log('Queue updated:', this.queue);
+    this.queueManager.setQueue(playlist.songs);
     
-    if (this.queue.length > 0) {
+    if (this.queueManager.getCurrentSong()) {
       this.loadCurrentSong();
     } else {
       console.log('No playable songs in playlist');
@@ -27,15 +25,14 @@ class AudioPlayer {
   }
 
   loadCurrentSong() {
-    if (!this.queue[this.currentIndex]) {
-      console.log('No song to load at index:', this.currentIndex);
+    const song = this.queueManager.getCurrentSong();
+    if (!song) {
+      console.log('No song to load');
       return;
     }
 
-    const song = this.queue[this.currentIndex];
     console.log('Loading song:', song);
 
-    // Mevcut ses dosyasını güvenli bir şekilde kaldır
     if (this.currentSound) {
       try {
         this.currentSound.stop();
@@ -46,17 +43,16 @@ class AudioPlayer {
       this.currentSound = null;
     }
 
+    if (!song.localPath) {
+      console.error('Song localPath is missing:', song);
+      this.playNext();
+      return;
+    }
+
+    const filePath = `file://${song.localPath.replace(/\\/g, '/')}`;
+    console.log('Playing file from:', filePath);
+
     try {
-      if (!song.localPath) {
-        console.error('Song localPath is missing:', song);
-        this.playNext();
-        return;
-      }
-
-      // Windows tarzı dosya yolunu düzelt ve file:// protokolünü ekle
-      const filePath = `file://${song.localPath.replace(/\\/g, '/')}`;
-      console.log('Playing file from:', filePath);
-
       this.currentSound = new Howl({
         src: [filePath],
         html5: true,
@@ -131,17 +127,17 @@ class AudioPlayer {
   }
 
   playNext() {
-    if (!this.queue || this.queue.length === 0) return;
-    
-    this.currentIndex = (this.currentIndex + 1) % this.queue.length;
-    this.loadCurrentSong();
+    const nextSong = this.queueManager.next();
+    if (nextSong) {
+      this.loadCurrentSong();
+    }
   }
 
   playPrevious() {
-    if (!this.queue || this.queue.length === 0) return;
-    
-    this.currentIndex = (this.currentIndex - 1 + this.queue.length) % this.queue.length;
-    this.loadCurrentSong();
+    const prevSong = this.queueManager.previous();
+    if (prevSong) {
+      this.loadCurrentSong();
+    }
   }
 
   setVolume(volume) {
@@ -152,42 +148,30 @@ class AudioPlayer {
   }
 
   shuffle() {
-    if (!this.queue || this.queue.length === 0) return;
-
-    for (let i = this.queue.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [this.queue[i], this.queue[j]] = [this.queue[j], this.queue[i]];
-    }
-
-    const currentSong = this.queue[this.currentIndex];
-    this.queue = [currentSong, ...this.queue.filter(s => s._id !== currentSong._id)];
-    this.currentIndex = 0;
+    this.queueManager.shuffle();
+    this.loadCurrentSong();
   }
 
   updatePlaybackState(state) {
-    const currentSong = this.queue[this.currentIndex];
-    const playbackState = {
+    this.playbackState.update(
       state,
-      currentSong,
-      playlist: this.playlist,
-      volume: this.volume * 100,
-      timestamp: new Date().toISOString()
-    };
-
-    this.store.set('playbackState', playbackState);
+      this.queueManager.getCurrentSong(),
+      this.playlist,
+      this.volume * 100
+    );
   }
 
   getCurrentState() {
     return {
       isPlaying: this.isPlaying,
-      currentSong: this.queue[this.currentIndex],
+      currentSong: this.queueManager.getCurrentSong(),
       playlist: this.playlist,
       volume: this.volume * 100
     };
   }
 
   restoreState() {
-    const state = this.store.get('playbackState');
+    const state = this.playbackState.restore();
     if (state && state.playlist) {
       this.loadPlaylist(state.playlist);
       this.setVolume(state.volume);
