@@ -1,19 +1,16 @@
 {
   "name": "cloud-jukebox-manager",
   "version": "1.0.0",
-  "description": "An Electron application with React and TypeScript",
+  "description": "An Electron application with React",
   "main": "./out/main/index.js",
   "author": "example.com",
   "homepage": "https://www.electronjs.org",
   "scripts": {
     "format": "prettier --write .",
-    "lint": "eslint . --ext .js,.jsx,.cjs,.mjs,.ts,.tsx,.cts,.mts --fix",
-    "typecheck:node": "tsc --noEmit -p tsconfig.node.json --composite false",
-    "typecheck:web": "tsc --noEmit -p tsconfig.web.json --composite false",
-    "typecheck": "npm run typecheck:node && npm run typecheck:web",
+    "lint": "eslint . --ext .js,.jsx,.cjs,.mjs",
     "start": "electron-vite preview",
     "dev": "electron-vite dev",
-    "build": "npm run typecheck && electron-vite build",
+    "build": "electron-vite build",
     "postinstall": "electron-builder install-app-deps",
     "build:win": "npm run build && electron-builder --win --config",
     "build:mac": "npm run build && electron-builder --mac --config",
@@ -25,11 +22,7 @@
     "electron-updater": "^6.1.1"
   },
   "devDependencies": {
-    "@electron-toolkit/tsconfig": "^1.0.1",
     "@electron/notarize": "^2.1.0",
-    "@types/node": "^18.17.5",
-    "@types/react": "^18.2.20",
-    "@types/react-dom": "^18.2.7",
     "@vitejs/plugin-react-swc": "^3.5.0",
     "electron": "^25.6.0",
     "electron-builder": "^24.6.3",
@@ -39,7 +32,6 @@
     "prettier": "^3.0.2",
     "react": "^18.2.0",
     "react-dom": "^18.2.0",
-    "typescript": "^5.1.6",
     "vite": "^4.4.9"
   }
 }
