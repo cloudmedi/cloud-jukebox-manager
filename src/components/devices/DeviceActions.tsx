@@ -17,18 +17,13 @@ import {
   MoreVertical,
 } from "lucide-react";
 import { useState } from "react";
-import { deviceService } from "@/services/deviceService";
+import { deviceService, Device } from "@/services/deviceService";
 import VolumeControlDialog from "./VolumeControlDialog";
 import GroupManagementDialog from "./GroupManagementDialog";
 import DeviceDetailsDialog from "./DeviceDetailsDialog";
 
 interface DeviceActionsProps {
-  device: {
-    _id: string;
-    isOnline: boolean;
-    volume: number;
-    groupId?: string | null;
-  };
+  device: Device;
 }
 
 const DeviceActions = ({ device }: DeviceActionsProps) => {
@@ -126,24 +121,22 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
 
       <Dialog open={isVolumeDialogOpen} onOpenChange={setIsVolumeDialogOpen}>
         <VolumeControlDialog
-          isOpen={isVolumeDialogOpen}
           currentVolume={device.volume}
           onVolumeChange={handleVolumeChange}
           onClose={() => setIsVolumeDialogOpen(false)}
         />
       </Dialog>
 
-      <Dialog open={isGroupDialogOpen} onOpenChange={setIsGroupDialogOpen}>
-        <GroupManagementDialog
-          currentGroupId={device.groupId}
-          onGroupChange={handleGroupChange}
-          onClose={() => setIsGroupDialogOpen(false)}
-        />
-      </Dialog>
+      <GroupManagementDialog
+        isOpen={isGroupDialogOpen}
+        currentGroupId={device.groupId}
+        onGroupChange={handleGroupChange}
+        onClose={() => setIsGroupDialogOpen(false)}
+      />
 
       {isDetailsDialogOpen && (
         <DeviceDetailsDialog
-          device={device as Device}
+          device={device}
           onClose={() => setIsDetailsDialogOpen(false)}
         />
       )}
