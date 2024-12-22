@@ -6,12 +6,10 @@ import * as si from 'systeminformation';
 let mainWindow: BrowserWindow | null = null;
 let ws: WebSocket | null = null;
 
-// 6 haneli token oluşturma fonksiyonu
 function generateToken(): string {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
-// Cihaz bilgilerini toplama fonksiyonu
 async function getDeviceInfo() {
   const cpu = await si.cpu();
   const os = await si.osInfo();
@@ -31,65 +29,78 @@ async function createWindow() {
     width: 900,
     height: 670,
     webPreferences: {
-      nodeIntegration: true,
+      nodeIntegration: false,
       contextIsolation: true,
       preload: join(__dirname, '../preload/index.js')
     },
     autoHideMenuBar: true
   });
 
-  if (process.env.NODE_ENV === 'development') {
-    const port = process.env.PORT || 5173;
-    await mainWindow.loadURL(`http://localhost:${port}`);
+  if (process.env.VITE_DEV_SERVER_URL) {
+    await mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
     mainWindow.webContents.openDevTools();
   } else {
-    await mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
+    await mainWindow.loadFile(join(__dirname, '../../dist/renderer/index.html'));
   }
-
-  // Cihaz bilgilerini topla ve WebSocket bağlantısını başlat
-  const deviceInfo = await getDeviceInfo();
-  initializeWebSocket(deviceInfo);
 }
+
+ipcMain.handle('get-device-info', async () => {
+  try {
+    return await getDeviceInfo();
+  } catch (error) {
+    console.error('Error getting device info:', error);
+    throw error;
+  }
+});
 
 function initializeWebSocket(deviceInfo: any) {
-  ws = new WebSocket('ws://localhost:5000');
+  try {
+    ws = new WebSocket('ws://localhost:5000');
 
-  ws.on('open', () => {
-    console.log('WebSocket bağlantısı kuruldu');
-    // Cihaz bilgilerini sunucuya gönder
-    ws.send(JSON.stringify({
-      type: 'device_connect',
-      data: deviceInfo
-    }));
-    
-    // Renderer process'e bağlantı durumunu bildir
-    mainWindow?.webContents.send('connection-status', 'connected');
-    mainWindow?.webContents.send('device-token', deviceInfo.token);
-  });
+    ws.on('open', () => {
+      console.log('WebSocket connection established');
+      if (ws?.readyState === WebSocket.OPEN) {
+        ws.send(JSON.stringify({
+          type: 'device_connect',
+          data: deviceInfo
+        }));
+        
+        mainWindow?.webContents.send('connection-status', 'connected');
+        mainWindow?.webContents.send('device-token', deviceInfo.token);
+      }
+    });
 
-  ws.on('message', (data) => {
-    try {
-      const message = JSON.parse(data.toString());
-      mainWindow?.webContents.send('ws-message', message);
-    } catch (error) {
-      console.error('WebSocket mesaj işleme hatası:', error);
-    }
-  });
+    ws.on('message', (data) => {
+      try {
+        const message = JSON.parse(data.toString());
+        mainWindow?.webContents.send('ws-message', message);
+      } catch (error) {
+        console.error('WebSocket message processing error:', error);
+      }
+    });
 
-  ws.on('close', () => {
-    console.log('WebSocket bağlantısı kapandı');
-    mainWindow?.webContents.send('connection-status', 'disconnected');
-    // 5 saniye sonra yeniden bağlanmayı dene
-    setTimeout(() => initializeWebSocket(deviceInfo), 5000);
-  });
+    ws.on('close', () => {
+      console.log('WebSocket connection closed');
+      mainWindow?.webContents.send('connection-status', 'disconnected');
+      setTimeout(() => initializeWebSocket(deviceInfo), 5000);
+    });
 
-  ws.on('error', (error) => {
-    console.error('WebSocket hatası:', error);
+    ws.on('error', (error) => {
+      console.error('WebSocket error:', error);
+      mainWindow?.webContents.send('connection-status', 'error');
+    });
+  } catch (error) {
+    console.error('WebSocket initialization error:', error);
     mainWindow?.webContents.send('connection-status', 'error');
-  });
+    setTimeout(() => initializeWebSocket(deviceInfo), 5000);
+  }
 }
 
-app.whenReady().then(createWindow);
+app.whenReady().then(async () => {
+  const deviceInfo = await getDeviceInfo();
+  await createWindow();
+  initializeWebSocket(deviceInfo);
+});
 
 app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
@@ -101,10 +112,4 @@ app.on('activate', () => {
   if (BrowserWindow.getAllWindows().length === 0) {
     createWindow();
   }
-});
-
-// IPC olayları
-ipcMain.on('get-device-info', async (event) => {
-  const deviceInfo = await getDeviceInfo();
-  event.reply('device-info', deviceInfo);
 });

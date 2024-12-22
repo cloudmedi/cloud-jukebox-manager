@@ -4,9 +4,9 @@ declare global {
   interface Window {
     electronAPI: {
       getDeviceInfo: () => Promise<any>;
-      onConnectionStatus: (callback: (status: string) => void) => void;
-      onDeviceToken: (callback: (token: string) => void) => void;
-      onWebSocketMessage: (callback: (message: any) => void) => void;
+      onConnectionStatus: (callback: (status: string) => void) => () => void;
+      onDeviceToken: (callback: (token: string) => void) => () => void;
+      onWebSocketMessage: (callback: (message: any) => void) => () => void;
     };
   }
 }
@@ -17,25 +17,27 @@ const App = () => {
   const [deviceInfo, setDeviceInfo] = useState<any>(null);
 
   useEffect(() => {
-    // Bağlantı durumu değişikliklerini dinle
-    window.electronAPI.onConnectionStatus((status) => {
+    const cleanup1 = window.electronAPI.onConnectionStatus((status) => {
       setConnectionStatus(status);
     });
 
-    // Cihaz token'ını dinle
-    window.electronAPI.onDeviceToken((token) => {
+    const cleanup2 = window.electronAPI.onDeviceToken((token) => {
       setDeviceToken(token);
     });
 
-    // WebSocket mesajlarını dinle
-    window.electronAPI.onWebSocketMessage((message) => {
+    const cleanup3 = window.electronAPI.onWebSocketMessage((message) => {
       console.log('Received message:', message);
     });
 
-    // Cihaz bilgilerini al
     window.electronAPI.getDeviceInfo().then((info) => {
       setDeviceInfo(info);
     });
+
+    return () => {
+      cleanup1();
+      cleanup2();
+      cleanup3();
+    };
   }, []);
 
   return (

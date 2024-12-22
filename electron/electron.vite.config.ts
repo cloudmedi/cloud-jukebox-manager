@@ -16,17 +16,22 @@ export default defineConfig({
   preload: {
     build: {
       outDir: 'dist-electron/preload',
-      rollupOptions: {
-        input: {
-          index: resolve(__dirname, 'src/preload/index.ts'),
-        },
+    },
+    resolve: {
+      alias: {
+        '@': resolve(__dirname, 'src'),
       },
     },
   },
   renderer: {
     root: resolve(__dirname, 'src/renderer'),
     build: {
-      outDir: 'dist-electron/renderer',
+      outDir: 'dist/renderer',
+    },
+    resolve: {
+      alias: {
+        '@': resolve(__dirname, 'src'),
+      },
     },
     plugins: [react()],
   },
