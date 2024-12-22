@@ -30,11 +30,21 @@ class AudioPlayer {
     const song = this.queue[this.currentIndex];
     console.log('Loading song:', song);
     
+    // Mevcut ses dosyasını güvenli bir şekilde kaldır
     if (this.currentSound) {
-      this.currentSound.unload();
+      try {
+        this.currentSound.unload();
+      } catch (error) {
+        console.error('Error unloading current sound:', error);
+      }
     }
 
     try {
+      if (!song.localPath) {
+        console.error('Song localPath is missing:', song);
+        return;
+      }
+
       // Dosya yolunu file:// protokolü ile başlayacak şekilde düzenle
       const filePath = `file://${song.localPath}`.replace(/\\/g, '/');
       console.log('Playing file from:', filePath);
