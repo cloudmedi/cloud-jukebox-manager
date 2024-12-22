@@ -28,15 +28,12 @@ class WebSocketService {
       
       // Kuyruktaki mesajları gönder
       this.flushMessageQueue();
-      
-      // Yarım kalan indirmeleri devam ettir
-      PlaylistService.resumeIncompleteDownloads(this.ws);
     });
 
     this.ws.on('message', (data) => {
       try {
         const message = JSON.parse(data);
-        console.log('Alınan mesaj:', message); // Debug için log ekledik
+        console.log('Alınan mesaj:', message);
         this.handleMessage(message);
       } catch (error) {
         console.error('Message parsing error:', error);
@@ -62,13 +59,16 @@ class WebSocketService {
     this.sendMessage(authMessage);
   }
 
-  handleMessage(message) {
-    console.log('Mesaj işleniyor:', message.type); // Debug için log ekledik
+  async handleMessage(message) {
+    console.log('Mesaj işleniyor:', message.type);
     
     switch (message.type) {
       case 'playlist':
-        console.log('Playlist mesajı alındı:', message); // Debug için log ekledik
-        PlaylistService.handlePlaylistMessage(message.data, this.ws);
+        try {
+          await PlaylistService.handlePlaylistMessage(message, this.ws);
+        } catch (error) {
+          console.error('Playlist işleme hatası:', error);
+        }
         break;
         
       case 'command':

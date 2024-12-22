@@ -1,66 +1,36 @@
 const { app } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
-const { ensureDirectoryExists, createFullUrl, downloadFile } = require('./downloadUtils');
+const axios = require('axios');
+const fs = require('fs');
 
 class PlaylistService {
   constructor() {
     this.store = new Store();
     this.downloadPath = path.join(app.getPath('userData'), 'downloads');
-    ensureDirectoryExists(this.downloadPath);
+    this.ensureDirectoryExists(this.downloadPath);
   }
 
-  async downloadSong(song, playlistPath, baseUrl, ws) {
-    const songPath = path.join(playlistPath, `${song._id}.mp3`);
-    
-    try {
-      const fullUrl = createFullUrl(baseUrl, song.filePath);
-      console.log('Downloading song from URL:', fullUrl);
-      
-      await downloadFile(fullUrl, songPath, (progress) => {
-        if (ws) {
-          ws.send(JSON.stringify({
-            type: 'downloadProgress',
-            songId: song._id,
-            progress
-          }));
-        }
-      });
-      
-      this.store.set(`download.${song._id}`, {
-        status: 'completed',
-        path: songPath
-      });
-
-      return { success: true, path: songPath };
-    } catch (error) {
-      console.error(`Şarkı indirme hatası (${song.name}):`, error);
-      this.store.set(`download.${song._id}`, {
-        status: 'error',
-        error: error.message
-      });
-
-      if (ws) {
-        ws.send(JSON.stringify({
-          type: 'error',
-          songId: song._id,
-          error: error.message
-        }));
-      }
-
-      return { success: false, error: error.message };
+  ensureDirectoryExists(dir) {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
   }
 
   async handlePlaylistMessage(message, ws) {
     console.log('Playlist mesajı alındı:', message);
     
+    if (!message || !message.data) {
+      console.error('Geçersiz playlist mesajı:', message);
+      return;
+    }
+    
+    const playlist = message.data;
+    console.log('Playlist mesajı işleniyor:', playlist);
+    
     try {
-      const playlist = message.data;
-      console.log('Playlist mesajı işleniyor:', playlist);
-      
       const playlistPath = path.join(this.downloadPath, playlist._id);
-      ensureDirectoryExists(playlistPath);
+      this.ensureDirectoryExists(playlistPath);
       
       console.log('Playlist indirme başlatılıyor:', playlist._id);
       
@@ -76,13 +46,33 @@ class PlaylistService {
         const song = playlist.songs[i];
         console.log(`Şarkı indiriliyor (${i + 1}/${playlist.songs.length}):`, song.name);
         
-        const result = await this.downloadSong(song, playlistPath, playlist.baseUrl, ws);
+        const songPath = path.join(playlistPath, `${song._id}.mp3`);
+        const fullUrl = `${playlist.baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
         
-        if (result.success) {
+        try {
+          await this.downloadFile(fullUrl, songPath, (progress) => {
+            if (ws) {
+              ws.send(JSON.stringify({
+                type: 'downloadProgress',
+                songId: song._id,
+                progress
+              }));
+            }
+          });
+          
           // Başarılı indirmeleri kaydet
           const downloadState = this.store.get(`download.${playlist._id}`);
           downloadState.completedSongs.push(song._id);
           this.store.set(`download.${playlist._id}`, downloadState);
+        } catch (error) {
+          console.error(`Şarkı indirme hatası (${song.name}):`, error);
+          if (ws) {
+            ws.send(JSON.stringify({
+              type: 'error',
+              songId: song._id,
+              error: error.message
+            }));
+          }
         }
 
         // İlerleme durumunu gönder
@@ -120,6 +110,33 @@ class PlaylistService {
       }
       throw error;
     }
+  }
+
+  async downloadFile(url, filePath, onProgress) {
+    const response = await axios({
+      url,
+      method: 'GET',
+      responseType: 'stream'
+    });
+
+    const writer = fs.createWriteStream(filePath);
+    const totalLength = response.headers['content-length'];
+
+    response.data.pipe(writer);
+
+    if (onProgress && totalLength) {
+      let downloaded = 0;
+      response.data.on('data', (chunk) => {
+        downloaded += chunk.length;
+        const progress = Math.round((downloaded * 100) / totalLength);
+        onProgress(progress);
+      });
+    }
+
+    return new Promise((resolve, reject) => {
+      writer.on('finish', resolve);
+      writer.on('error', reject);
+    });
   }
 }
 
