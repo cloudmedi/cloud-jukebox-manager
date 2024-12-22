@@ -8,13 +8,14 @@ import { useToast } from "@/hooks/use-toast";
 import { DeviceSearch } from "./device-playback/DeviceSearch";
 import { DateTimeRangePicker } from "./device-playback/DateTimeRangePicker";
 import { PlaybackTable } from "./device-playback/PlaybackTable";
+import { DateRange } from "react-day-picker";
 
 export default function DevicePlaybackReport() {
   const { toast } = useToast();
   const [selectedDevice, setSelectedDevice] = useState<string>("");
-  const [dateRange, setDateRange] = useState({
+  const [dateRange, setDateRange] = useState<DateRange>({
     from: new Date(),
-    to: addDays(new Date(), 7),
+    to: addDays(new Date(), 7)
   });
   const [timeRange, setTimeRange] = useState({
     startTime: "00:00",
@@ -35,17 +36,25 @@ export default function DevicePlaybackReport() {
   const { data: playbackData, isLoading: playbackLoading } = useQuery({
     queryKey: ["device-playback", selectedDevice, dateRange, timeRange],
     queryFn: async () => {
-      if (!selectedDevice) return null;
+      if (!selectedDevice || !dateRange.from || !dateRange.to) return null;
       const response = await fetch(
         `http://localhost:5000/api/stats/device-playback?deviceId=${selectedDevice}&from=${dateRange.from.toISOString()}&to=${dateRange.to.toISOString()}&startTime=${timeRange.startTime}&endTime=${timeRange.endTime}`
       );
       if (!response.ok) throw new Error("Çalma verileri yüklenemedi");
       return response.json();
     },
-    enabled: !!selectedDevice,
+    enabled: !!selectedDevice && !!dateRange.from && !!dateRange.to,
   });
 
+  const handleDateRangeChange = (range: DateRange | undefined) => {
+    if (range) {
+      setDateRange(range);
+    }
+  };
+
   const generatePDF = () => {
+    if (!dateRange.from || !dateRange.to) return;
+    
     const doc = new jsPDF();
     const deviceName = devices?.find((d) => d._id === selectedDevice)?.name || "Cihaz";
     
@@ -95,7 +104,7 @@ export default function DevicePlaybackReport() {
         <DateTimeRangePicker
           dateRange={dateRange}
           timeRange={timeRange}
-          onDateRangeChange={setDateRange}
+          onDateRangeChange={handleDateRangeChange}
           onTimeRangeChange={(type, value) =>
             setTimeRange(prev => ({ ...prev, [type]: value }))
           }
