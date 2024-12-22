@@ -79,7 +79,6 @@
     "music-metadata": "^8.1.4",
     "next-themes": "^0.3.0",
     "node-id3": "^0.2.6",
-    "os-utils": "^0.0.14",
     "prettier": "^3.4.2",
     "react": "^18.3.1",
     "react-day-picker": "^8.10.1",
