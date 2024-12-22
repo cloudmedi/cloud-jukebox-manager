@@ -14,6 +14,7 @@
         "src/renderer/*"
       ]
     },
+    "moduleResolution": "node16",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true
   }
