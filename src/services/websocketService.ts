@@ -1,81 +1,97 @@
 class WebSocketService {
   private ws: WebSocket | null = null;
-  private token: string | null = null;
+  private token: string;
   private reconnectAttempts = 0;
   private maxReconnectAttempts = 5;
-  private reconnectTimeout: NodeJS.Timeout | null = null;
+  private reconnectTimeout = 5000;
+  private connected = false;
 
-  constructor() {
-    this.connect = this.connect.bind(this);
-    this.handleOpen = this.handleOpen.bind(this);
-    this.handleMessage = this.handleMessage.bind(this);
-    this.handleClose = this.handleClose.bind(this);
-    this.handleError = this.handleError.bind(this);
-  }
-
-  connect(token: string) {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      console.log('WebSocket already connected');
-      return;
-    }
-
+  constructor(token: string) {
     this.token = token;
-    this.ws = new WebSocket(`ws://localhost:5000?token=${token}`);
-    
-    this.ws.addEventListener('open', this.handleOpen);
-    this.ws.addEventListener('message', this.handleMessage);
-    this.ws.addEventListener('close', this.handleClose);
-    this.ws.addEventListener('error', this.handleError);
+    this.connect();
   }
 
-  private handleOpen() {
-    console.log('WebSocket connected');
-    this.reconnectAttempts = 0;
-  }
+  private connect() {
+    try {
+      this.ws = new WebSocket(`ws://localhost:5000?token=${this.token}`);
+      
+      this.ws.onopen = () => {
+        console.log('WebSocket bağlantısı kuruldu');
+        this.reconnectAttempts = 0;
+        this.connected = true;
+      };
 
-  private handleMessage(event: MessageEvent) {
-    const data = JSON.parse(event.data);
-    console.log('Received message:', data);
-  }
+      this.ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        this.handleMessage(data);
+      };
 
-  private handleClose() {
-    console.log('WebSocket disconnected');
-    this.attemptReconnect();
-  }
+      this.ws.onclose = () => {
+        console.log('WebSocket bağlantısı kapandı');
+        this.connected = false;
+        this.handleReconnect();
+      };
 
-  private handleError(error: Event) {
-    console.error('WebSocket error:', error);
-  }
-
-  private attemptReconnect() {
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.log('Max reconnection attempts reached');
-      return;
+      this.ws.onerror = (error) => {
+        console.error('WebSocket hatası:', error);
+        this.connected = false;
+      };
+    } catch (error) {
+      console.error('WebSocket bağlantı hatası:', error);
+      this.connected = false;
     }
+  }
 
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-    }
+  public isConnected(): boolean {
+    return this.connected && this.ws?.readyState === WebSocket.OPEN;
+  }
 
-    this.reconnectTimeout = setTimeout(() => {
+  private handleReconnect() {
+    if (this.reconnectAttempts < this.maxReconnectAttempts) {
       this.reconnectAttempts++;
-      console.log(`Attempting to reconnect... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
-      if (this.token) {
-        this.connect(this.token);
-      }
-    }, 5000);
+      console.log(`Yeniden bağlanmaya çalışılıyor... (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+      
+      setTimeout(() => {
+        this.connect();
+      }, this.reconnectTimeout);
+    }
   }
 
-  disconnect() {
+  private handleMessage(data: any) {
+    console.log('Gelen mesaj:', data);
+    switch (data.type) {
+      case 'PLAY':
+        // Müzik çalma işlemleri
+        break;
+      case 'STOP':
+        // Müzik durdurma işlemleri
+        break;
+      case 'VOLUME':
+        // Ses seviyesi ayarlama
+        break;
+      case 'PLAYLIST_UPDATE':
+        // Playlist güncelleme
+        break;
+      default:
+        console.log('Bilinmeyen mesaj tipi:', data.type);
+    }
+  }
+
+  public sendMessage(type: string, payload: any) {
+    if (this.isConnected()) {
+      this.ws?.send(JSON.stringify({ type, payload }));
+    } else {
+      console.error('WebSocket bağlantısı kapalı, mesaj gönderilemedi');
+    }
+  }
+
+  public disconnect() {
     if (this.ws) {
       this.ws.close();
       this.ws = null;
+      this.connected = false;
     }
-  }
-
-  isConnected(): boolean {
-    return this.ws?.readyState === WebSocket.OPEN;
   }
 }
 
-export const websocketService = new WebSocketService();
+export default WebSocketService;

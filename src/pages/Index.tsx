@@ -1,9 +1,11 @@
-import DeviceRegistration from "@/components/device/DeviceRegistration";
+import { DeviceRegistration } from "@/components/device/DeviceRegistration";
 
 const Index = () => {
   return (
-    <div className="container mx-auto p-4">
-      <h1 className="text-2xl font-bold mb-4">Cloud Media Player</h1>
+    <div className="container mx-auto py-8">
+      <h1 className="text-3xl font-bold text-center mb-8">
+        Cloud Jukebox Manager
+      </h1>
       <DeviceRegistration />
     </div>
   );
