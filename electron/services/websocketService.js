@@ -3,7 +3,7 @@ const WebSocket = require('ws');
 class WebSocketService {
   constructor() {
     this.ws = null;
-    this.reconnectInterval = 5000; // 5 saniye
+    this.reconnectInterval = 5000;
     this.isConnecting = false;
   }
 
@@ -11,35 +11,39 @@ class WebSocketService {
     if (this.isConnecting) return;
     this.isConnecting = true;
 
+    console.log('WebSocket bağlantısı başlatılıyor...');
     this.ws = new WebSocket('ws://localhost:5000');
 
     this.ws.on('open', () => {
-      console.log('WebSocket bağlantısı kuruldu');
+      console.log('WebSocket bağlantısı başarıyla kuruldu');
       this.isConnecting = false;
       
       // Token ile kimlik doğrulama
-      this.ws.send(JSON.stringify({
+      const authMessage = {
         type: 'auth',
         token: token
-      }));
+      };
+      console.log('Kimlik doğrulama mesajı gönderiliyor:', authMessage);
+      this.ws.send(JSON.stringify(authMessage));
 
       // Bağlantı kurulduktan sonra bir süre bekleyip online durumunu bildir
       setTimeout(() => {
-        this.sendStatus({
+        const statusMessage = {
           type: 'status',
           isOnline: true
-        });
-        console.log('Online durumu gönderildi');
+        };
+        console.log('Online durum mesajı gönderiliyor:', statusMessage);
+        this.sendStatus(statusMessage);
       }, 1000);
     });
 
     this.ws.on('message', (data) => {
       try {
         const message = JSON.parse(data);
-        console.log('Alınan mesaj:', message);
+        console.log('Sunucudan gelen mesaj:', message);
         this.handleMessage(message);
       } catch (error) {
-        console.error('Message parsing error:', error);
+        console.error('Mesaj işleme hatası:', error);
       }
     });
 
@@ -50,80 +54,85 @@ class WebSocketService {
     });
 
     this.ws.on('error', (error) => {
-      console.error('WebSocket error:', error);
+      console.error('WebSocket hatası:', error);
       this.isConnecting = false;
     });
   }
 
   handleMessage(message) {
+    console.log('Mesaj işleniyor:', message);
+    
     switch (message.type) {
       case 'auth':
-        console.log('Authentication status:', message.status);
+        console.log('Kimlik doğrulama durumu:', message.status);
         break;
       
       case 'command':
+        console.log('Komut alındı:', message);
         this.handleCommand(message);
         break;
 
       default:
-        console.log('Unknown message type:', message.type);
+        console.log('Bilinmeyen mesaj tipi:', message.type);
     }
   }
 
   handleCommand(message) {
+    console.log('Komut işleniyor:', message);
+    
     switch (message.command) {
       case 'restart':
-        // Electron uygulamasını yeniden başlat
+        console.log('Yeniden başlatma komutu alındı');
         require('electron').app.relaunch();
         require('electron').app.exit(0);
         break;
 
       case 'setVolume':
-        // Sistem ses seviyesini ayarla
+        console.log('Ses seviyesi değiştirme komutu alındı:', message.volume);
         this.setSystemVolume(message.volume);
         break;
 
       default:
-        console.log('Unknown command:', message.command);
+        console.log('Bilinmeyen komut:', message.command);
     }
   }
 
   async setSystemVolume(volume) {
     try {
-      // Platform'a göre ses ayarı
+      console.log('Sistem ses seviyesi ayarlanıyor:', volume);
       const platform = process.platform;
       
       if (platform === 'win32') {
-        // Windows için
+        console.log('Windows için ses ayarı yapılıyor');
         const { exec } = require('child_process');
         exec(`powershell -c "$volume = ${volume}/100; $obj = New-Object -ComObject WScript.Shell; $obj.SendKeys([char]175);"`);
       } else if (platform === 'darwin') {
-        // macOS için
+        console.log('MacOS için ses ayarı yapılıyor');
         const { exec } = require('child_process');
         exec(`osascript -e "set volume output volume ${volume}"`);
       } else if (platform === 'linux') {
-        // Linux için
+        console.log('Linux için ses ayarı yapılıyor');
         const { exec } = require('child_process');
         exec(`amixer -D pulse sset Master ${volume}%`);
       }
 
-      // Ses seviyesi değişikliğini backend'e bildir
-      this.sendStatus({
+      const statusMessage = {
         type: 'volume',
         volume: volume
-      });
-      console.log('Ses seviyesi güncellendi:', volume);
+      };
+      console.log('Ses seviyesi değişikliği bildiriliyor:', statusMessage);
+      this.sendStatus(statusMessage);
     } catch (error) {
-      console.error('Set volume error:', error);
+      console.error('Ses seviyesi ayarlama hatası:', error);
     }
   }
 
   sendStatus(status) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      console.log('Status gönderiliyor:', status);
+      console.log('Durum mesajı gönderiliyor:', status);
       this.ws.send(JSON.stringify(status));
     } else {
-      console.log('WebSocket bağlantısı kapalı, status gönderilemedi');
+      console.log('WebSocket bağlantısı kapalı, durum mesajı gönderilemedi');
     }
   }
 
@@ -131,13 +140,13 @@ class WebSocketService {
     if (this.ws) {
       console.log('Uygulama kapatılıyor, offline durumu gönderiliyor');
       
-      // Uygulama kapatılmadan önce offline durumunu bildir
-      this.sendStatus({
+      const offlineMessage = {
         type: 'status',
         isOnline: false
-      });
+      };
+      console.log('Offline durum mesajı gönderiliyor:', offlineMessage);
+      this.sendStatus(offlineMessage);
       
-      // Bağlantının kapanması için biraz bekle
       setTimeout(() => {
         this.ws.close();
         this.ws = null;
