@@ -7,12 +7,13 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 
-interface DeviceGroupFormProps {
-  onSubmit: (data: { name: string; devices: string[] }) => void;
-  onCancel: () => void;
+export interface DeviceGroupFormProps {
+  onSubmit?: (data: { name: string; devices: string[] }) => void;
+  onCancel?: () => void;
+  onSuccess: () => void;
 }
 
-export const DeviceGroupForm = ({ onSubmit, onCancel }: DeviceGroupFormProps) => {
+export const DeviceGroupForm = ({ onSubmit, onCancel, onSuccess }: DeviceGroupFormProps) => {
   const [groupName, setGroupName] = useState("");
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedDevices, setSelectedDevices] = useState<string[]>([]);
@@ -39,12 +40,28 @@ export const DeviceGroupForm = ({ onSubmit, onCancel }: DeviceGroupFormProps) =>
     );
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    onSubmit({
-      name: groupName,
-      devices: selectedDevices
-    });
+    try {
+      const response = await fetch('http://localhost:5000/api/device-groups', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          name: groupName,
+          devices: selectedDevices
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error('Grup oluşturulurken bir hata oluştu');
+      }
+
+      onSuccess();
+    } catch (error) {
+      console.error('Error:', error);
+    }
   };
 
   return (
