@@ -1,5 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,16 +13,27 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { useToast } from "@/hooks/use-toast";
+import { DialogTitle } from "@/components/ui/dialog";
+
+const formSchema = z.object({
+  name: z.string().min(1, "Cihaz adı zorunludur"),
+  location: z.string().min(1, "Konum zorunludur"),
+  volume: z.number().min(0).max(100).default(50),
+});
+
+type FormData = z.infer<typeof formSchema>;
 
 interface DeviceFormProps {
   onSuccess?: () => void;
-  initialData?: any;
-}
-
-interface FormData {
-  name: string;
-  location: string;
+  initialData?: Partial<FormData>;
 }
 
 const DeviceForm = ({ onSuccess, initialData }: DeviceFormProps) => {
@@ -29,9 +42,11 @@ const DeviceForm = ({ onSuccess, initialData }: DeviceFormProps) => {
   const queryClient = useQueryClient();
 
   const form = useForm<FormData>({
-    defaultValues: initialData || {
-      name: "",
-      location: "",
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      name: initialData?.name || "",
+      location: initialData?.location || "",
+      volume: initialData?.volume || 50,
     },
   });
 
@@ -78,41 +93,67 @@ const DeviceForm = ({ onSuccess, initialData }: DeviceFormProps) => {
   };
 
   return (
-    <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-        <FormField
-          control={form.control}
-          name="name"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Cihaz Adı</FormLabel>
-              <FormControl>
-                <Input placeholder="Örn: Mağaza-1" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+    <>
+      <DialogTitle className="text-xl font-semibold mb-4">
+        Yeni Cihaz Ekle
+      </DialogTitle>
+      <Form {...form}>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Cihaz Adı</FormLabel>
+                <FormControl>
+                  <Input placeholder="Örn: Mağaza-1" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <FormField
-          control={form.control}
-          name="location"
-          render={({ field }) => (
-            <FormItem>
-              <FormLabel>Konum</FormLabel>
-              <FormControl>
-                <Input placeholder="Örn: İstanbul" {...field} />
-              </FormControl>
-              <FormMessage />
-            </FormItem>
-          )}
-        />
+          <FormField
+            control={form.control}
+            name="location"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Konum</FormLabel>
+                <FormControl>
+                  <Input placeholder="Örn: İstanbul" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
-        <Button type="submit" className="w-full" disabled={isSubmitting}>
-          {isSubmitting ? "Ekleniyor..." : "Cihaz Ekle"}
-        </Button>
-      </form>
-    </Form>
+          <FormField
+            control={form.control}
+            name="volume"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Ses Seviyesi</FormLabel>
+                <FormControl>
+                  <Input
+                    type="number"
+                    min={0}
+                    max={100}
+                    placeholder="50"
+                    {...field}
+                    onChange={(e) => field.onChange(Number(e.target.value))}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <Button type="submit" className="w-full" disabled={isSubmitting}>
+            {isSubmitting ? "Ekleniyor..." : "Cihaz Ekle"}
+          </Button>
+        </form>
+      </Form>
+    </>
   );
 };
 
