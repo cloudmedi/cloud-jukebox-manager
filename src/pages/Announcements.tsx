@@ -21,7 +21,12 @@ const Announcements = () => {
           <AnnouncementList />
         </TabsContent>
         <TabsContent value="create" className="space-y-4">
-          <AnnouncementForm />
+          <AnnouncementForm 
+            announcement={null} 
+            onSuccess={() => {
+              // Optional: Add any success handling here
+            }} 
+          />
         </TabsContent>
       </Tabs>
     </div>
