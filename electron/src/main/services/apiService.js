@@ -24,6 +24,7 @@ class ApiService {
         return validationResponse;
       }
 
+      console.log('Registering new token with device info:', deviceInfo);
       const response = await axios.post(`${API_URL}/tokens`, {
         token: deviceInfo.token,
         deviceInfo: {
@@ -37,6 +38,7 @@ class ApiService {
           osVersion: deviceInfo.osVersion
         }
       });
+      console.log('Token registration response:', response.data);
       return response.data;
     } catch (error) {
       console.error('Token registration error:', error);
@@ -49,6 +51,7 @@ class ApiService {
       const response = await axios.get(`${API_URL}/tokens/validate/${token}`);
       return response.data;
     } catch (error) {
+      console.error('Token validation error:', error);
       return null;
     }
   }
