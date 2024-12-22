@@ -1,33 +1,31 @@
-const { defineConfig } = require('electron-vite');
-const { resolve } = require('path');
-const react = require('@vitejs/plugin-react-swc');
+import { defineConfig } from 'electron-vite';
+import { resolve } from 'path';
+import react from '@vitejs/plugin-react-swc';
 
-module.exports = defineConfig({
+export default defineConfig({
   main: {
     build: {
-      outDir: 'dist-electron/main',
       rollupOptions: {
-        input: {
-          index: resolve(__dirname, 'src/main/index.ts'),
-        },
-      },
-    },
+        external: ['electron']
+      }
+    }
   },
   preload: {
     build: {
-      outDir: 'dist-electron/preload',
       rollupOptions: {
-        input: {
-          index: resolve(__dirname, 'src/preload/index.ts'),
-        },
-      },
-    },
+        external: ['electron']
+      }
+    }
   },
   renderer: {
     root: resolve(__dirname, 'src/renderer'),
     build: {
-      outDir: 'dist-electron/renderer',
+      rollupOptions: {
+        input: {
+          index: resolve(__dirname, 'src/renderer/index.html')
+        }
+      }
     },
-    plugins: [react()],
-  },
+    plugins: [react()]
+  }
 });
