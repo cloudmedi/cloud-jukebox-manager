@@ -16,7 +16,6 @@ class AudioPlayer {
     console.log('Loading playlist:', playlist);
     this.playlist = playlist;
     this.currentIndex = 0;
-    // Sadece localPath'i olan şarkıları kuyruğa ekle
     this.queue = playlist.songs.filter(song => song.localPath);
     console.log('Queue updated:', this.queue);
     
@@ -35,13 +34,16 @@ class AudioPlayer {
 
     const song = this.queue[this.currentIndex];
     console.log('Loading song:', song);
-    
+
+    // Mevcut ses dosyasını güvenli bir şekilde kaldır
     if (this.currentSound) {
       try {
+        this.currentSound.stop();
         this.currentSound.unload();
       } catch (error) {
-        console.error('Error unloading current sound:', error);
+        console.error('Error stopping current sound:', error);
       }
+      this.currentSound = null;
     }
 
     try {
@@ -51,25 +53,36 @@ class AudioPlayer {
         return;
       }
 
-      // Dosya yolunu file:// protokolü ile başlayacak şekilde düzenle
-      const filePath = `file://${song.localPath}`.replace(/\\/g, '/');
+      // Windows tarzı dosya yolunu düzelt ve file:// protokolünü ekle
+      const filePath = `file://${song.localPath.replace(/\\/g, '/')}`;
       console.log('Playing file from:', filePath);
 
       this.currentSound = new Howl({
         src: [filePath],
-        format: ['mp3'],
         html5: true,
+        format: ['mp3'],
         volume: this.volume,
+        xhr: {
+          method: 'GET',
+          headers: {
+            'Origin': 'electron://cloud-media-player'
+          }
+        },
         onload: () => {
           console.log('Song loaded successfully:', song.name);
+          if (this.isPlaying) {
+            this.currentSound.play();
+          }
         },
         onloaderror: (id, error) => {
           console.error('Song loading error:', error);
           console.error('Song path:', filePath);
+          this.currentSound = null;
           this.playNext();
         },
         onplay: () => {
           console.log('Song started playing:', song.name);
+          this.isPlaying = true;
           this.updatePlaybackState('playing');
         },
         onend: () => {
@@ -77,14 +90,17 @@ class AudioPlayer {
           this.playNext();
         },
         onpause: () => {
+          this.isPlaying = false;
           this.updatePlaybackState('paused');
         },
         onstop: () => {
+          this.isPlaying = false;
           this.updatePlaybackState('stopped');
         }
       });
     } catch (error) {
       console.error('Error creating Howl instance:', error);
+      this.currentSound = null;
       this.playNext();
     }
   }
@@ -96,12 +112,7 @@ class AudioPlayer {
       this.isPlaying = true;
     } else {
       console.log('No sound loaded to play');
-      // İlk şarkıyı yüklemeyi dene
       this.loadCurrentSong();
-      if (this.currentSound) {
-        this.currentSound.play();
-        this.isPlaying = true;
-      }
     }
   }
 
@@ -120,23 +131,17 @@ class AudioPlayer {
   }
 
   playNext() {
-    if (!this.playlist) return;
-
+    if (!this.queue || this.queue.length === 0) return;
+    
     this.currentIndex = (this.currentIndex + 1) % this.queue.length;
     this.loadCurrentSong();
-    if (this.isPlaying) {
-      this.play();
-    }
   }
 
   playPrevious() {
-    if (!this.playlist) return;
-
+    if (!this.queue || this.queue.length === 0) return;
+    
     this.currentIndex = (this.currentIndex - 1 + this.queue.length) % this.queue.length;
     this.loadCurrentSong();
-    if (this.isPlaying) {
-      this.play();
-    }
   }
 
   setVolume(volume) {
@@ -147,15 +152,13 @@ class AudioPlayer {
   }
 
   shuffle() {
-    if (!this.playlist) return;
+    if (!this.queue || this.queue.length === 0) return;
 
-    // Fisher-Yates shuffle
     for (let i = this.queue.length - 1; i > 0; i--) {
       const j = Math.floor(Math.random() * (i + 1));
       [this.queue[i], this.queue[j]] = [this.queue[j], this.queue[i]];
     }
 
-    // Mevcut şarkıyı başa al
     const currentSong = this.queue[this.currentIndex];
     this.queue = [currentSong, ...this.queue.filter(s => s._id !== currentSong._id)];
     this.currentIndex = 0;
