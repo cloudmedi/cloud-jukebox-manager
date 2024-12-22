@@ -28,13 +28,11 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
-  // Services'leri app hazır olduktan sonra başlat
   deviceService = new DeviceService();
   apiService = new ApiService();
   
   createWindow();
 
-  // IPC handlers'ı app hazır olduktan sonra kaydet
   ipcMain.handle('get-device-info', () => {
     return deviceService.getDeviceInfo();
   });

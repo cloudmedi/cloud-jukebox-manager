@@ -3,7 +3,6 @@ import react from '@vitejs/plugin-react'
 import path from 'path'
 import { copyFileSync, mkdirSync } from 'fs'
 
-// Helper function to copy services
 function copyServices() {
   return {
     name: 'copy-services',
@@ -11,14 +10,12 @@ function copyServices() {
       const servicesDir = path.join(__dirname, 'src/main/services')
       const outDir = path.join(__dirname, 'out/main/services')
       
-      // Create services directory in output if it doesn't exist
       try {
         mkdirSync(outDir, { recursive: true })
       } catch (err) {
         if (err.code !== 'EEXIST') throw err
       }
 
-      // Copy service files
       copyFileSync(
         path.join(servicesDir, 'apiService.js'),
         path.join(outDir, 'apiService.js')
@@ -37,6 +34,9 @@ export default defineConfig({
     build: {
       outDir: 'out/main',
       rollupOptions: {
+        input: {
+          index: path.join(__dirname, 'src/main/index.js')
+        },
         external: [
           'electron',
           'electron-store',
@@ -44,17 +44,7 @@ export default defineConfig({
           'path',
           'axios',
           'systeminformation',
-          'uuid',
-          'sonner',
-          'node-fetch',
-          'fs-extra',
-          'crypto',
-          'clsx',
-          'tailwind-merge',
-          'lucide-react',
-          'bufferutil',
-          'utf-8-validate',
-          'ws'
+          'uuid'
         ]
       }
     }
@@ -67,18 +57,8 @@ export default defineConfig({
   renderer: {
     root: '.',
     build: {
-      outDir: 'out/renderer',
-      rollupOptions: {
-        input: {
-          index: path.join(__dirname, 'index.html')
-        }
-      }
+      outDir: 'out/renderer'
     },
-    plugins: [react()],
-    resolve: {
-      alias: {
-        '@': path.resolve(__dirname, 'src')
-      }
-    }
+    plugins: [react()]
   }
 })
