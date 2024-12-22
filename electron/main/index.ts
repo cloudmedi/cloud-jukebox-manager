@@ -63,10 +63,12 @@ function initializeWebSocket(deviceInfo: any) {
 
   ws.on('open', () => {
     console.log('WebSocket bağlantısı kuruldu');
-    ws?.send(JSON.stringify({
-      type: 'device_connect',
-      data: deviceInfo
-    }));
+    if (ws) {
+      ws.send(JSON.stringify({
+        type: 'device_connect',
+        data: deviceInfo
+      }));
+    }
     
     mainWindow?.webContents.send('connection-status', 'connected');
     mainWindow?.webContents.send('device-token', deviceInfo.token);
