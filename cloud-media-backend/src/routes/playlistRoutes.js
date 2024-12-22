@@ -75,11 +75,15 @@ router.post('/', upload.single('artwork'), async (req, res) => {
 });
 
 // Playlist güncelle
-router.patch('/:id', async (req, res) => {
+router.patch('/:id', upload.single('artwork'), async (req, res) => {
   try {
     const playlist = await Playlist.findById(req.params.id);
     if (!playlist) {
       return res.status(404).json({ message: 'Playlist bulunamadı' });
+    }
+
+    if (req.file) {
+      playlist.artwork = `/uploads/playlists/${req.file.filename}`;
     }
 
     Object.keys(req.body).forEach(key => {

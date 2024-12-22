@@ -35,14 +35,22 @@ export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: Playli
     onPlay(playlist._id);
   };
 
+  const handleCardClick = () => {
+    handlePlay();
+  };
+
   return (
-    <Card className="group overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 w-[200px]">
+    <Card 
+      className="group overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 w-[200px] cursor-pointer"
+      onClick={handleCardClick}
+    >
       <CardHeader className="relative aspect-square p-0">
         {playlist.artwork ? (
           <img
             src={`http://localhost:5000${playlist.artwork}`}
             alt={playlist.name}
             className="h-[200px] w-[200px] object-cover transition-transform duration-300 group-hover:scale-105"
+            loading="lazy"
           />
         ) : (
           <div className="flex h-[200px] w-[200px] items-center justify-center bg-gradient-to-br from-sidebar-primary/20 to-sidebar-accent/20">
@@ -57,7 +65,10 @@ export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: Playli
             "absolute bottom-4 right-4 opacity-0 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0 translate-y-4",
             "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 h-10 w-10"
           )}
-          onClick={handlePlay}
+          onClick={(e) => {
+            e.stopPropagation();
+            handlePlay();
+          }}
         >
           <Play className="h-5 w-5" />
         </Button>
