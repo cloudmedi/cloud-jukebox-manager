@@ -46,6 +46,7 @@ export const DeviceGroupForm = ({ group, onSuccess }: DeviceGroupFormProps) => {
     },
   });
 
+  // Seçili cihazların detaylı bilgilerini getir
   const { data: selectedDevicesData } = useQuery({
     queryKey: ["selected-devices", selectedDevices],
     queryFn: async () => {
@@ -60,6 +61,7 @@ export const DeviceGroupForm = ({ group, onSuccess }: DeviceGroupFormProps) => {
     enabled: selectedDevices.length > 0,
   });
 
+  // Seçili olmayan ve arama kriterine uyan cihazları filtrele
   const filteredDevices = devices?.filter((device: Device) =>
     device.name.toLowerCase().includes(searchQuery.toLowerCase()) &&
     !selectedDevices.includes(device._id)
@@ -100,7 +102,7 @@ export const DeviceGroupForm = ({ group, onSuccess }: DeviceGroupFormProps) => {
   };
 
   const removeDevice = (deviceId: string) => {
-    setSelectedDevices(selectedDevices.filter(id => id !== deviceId));
+    setSelectedDevices(prev => prev.filter(id => id !== deviceId));
   };
 
   return (
@@ -129,15 +131,16 @@ export const DeviceGroupForm = ({ group, onSuccess }: DeviceGroupFormProps) => {
           />
         </div>
 
+        {/* Seçili cihazları göster */}
         {selectedDevicesData && selectedDevicesData.length > 0 && (
           <div>
             <Label>Seçili Cihazlar</Label>
-            <div className="flex flex-wrap gap-2 mt-2">
+            <div className="flex flex-wrap gap-2 mt-2 p-2 border rounded-md">
               {selectedDevicesData.map((device: Device) => (
                 <Badge 
                   key={device._id} 
                   variant="secondary"
-                  className="flex items-center gap-1"
+                  className="flex items-center gap-1 px-2 py-1"
                 >
                   {device.name}
                   <X
