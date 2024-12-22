@@ -8,6 +8,7 @@ import { useQueryClient } from "@tanstack/react-query";
 import { BasicInfoForm } from "./form/BasicInfoForm";
 import { ArtworkUpload } from "./form/ArtworkUpload";
 import { SongSelector } from "./form/SongSelector";
+import { Save } from "lucide-react";
 
 const MAX_FILE_SIZE = 5000000;
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -57,7 +58,7 @@ export const PlaylistForm = ({
       name: "",
       description: "",
       songs: [],
-      artwork: null,
+      artwork: undefined,
       isShuffled: false,
     },
   });
@@ -107,12 +108,15 @@ export const PlaylistForm = ({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
-        <BasicInfoForm form={form} />
-        <ArtworkUpload form={form} />
-        <SongSelector form={form} />
+        <div className="grid gap-8 p-6 border rounded-lg bg-card">
+          <BasicInfoForm form={form} />
+          <ArtworkUpload form={form} />
+          <SongSelector form={form} />
+        </div>
         
-        <Button type="submit" className="w-full">
-          {isEditing ? "Güncelle" : "Oluştur"}
+        <Button type="submit" className="w-full" size="lg">
+          <Save className="mr-2 h-5 w-5" />
+          {isEditing ? "Güncelle" : "Playlist Oluştur"}
         </Button>
       </form>
     </Form>
