@@ -39,7 +39,7 @@ function updateUI(info) {
     .map(([key, value]) => `<p><strong>${key}:</strong> ${value}</p>`)
     .join('');
   
-  document.getElementById('device-info').innerHTML += deviceInfoHtml;
+  document.getElementById('device-info').innerHTML = deviceInfoHtml;
 }
 
 // Sayfa yüklendiğinde başlat

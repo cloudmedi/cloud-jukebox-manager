@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 const store = new Store();
+const websocketService = require('./services/websocketService');
 
 let mainWindow;
 
@@ -21,11 +22,18 @@ function createWindow() {
   if (process.env.NODE_ENV === 'development') {
     mainWindow.webContents.openDevTools();
   }
+
+  // Kayıtlı cihaz bilgilerini al ve WebSocket bağlantısını başlat
+  const deviceInfo = store.get('deviceInfo');
+  if (deviceInfo && deviceInfo.token) {
+    websocketService.connect(deviceInfo.token);
+  }
 }
 
 app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
+  websocketService.disconnect();
   if (process.platform !== 'darwin') {
     app.quit();
   }
@@ -40,6 +48,12 @@ app.on('activate', () => {
 // Device bilgilerini kaydetme
 ipcMain.handle('save-device-info', async (event, deviceInfo) => {
   store.set('deviceInfo', deviceInfo);
+  
+  // WebSocket bağlantısını başlat
+  if (deviceInfo.token) {
+    websocketService.connect(deviceInfo.token);
+  }
+  
   return deviceInfo;
 });
 
