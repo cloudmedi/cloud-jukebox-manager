@@ -26,6 +26,11 @@ export default defineConfig({
         }
       }
     },
+    resolve: {
+      alias: {
+        '@': resolve(__dirname, 'src/renderer')
+      }
+    },
     plugins: [react()]
   }
 });

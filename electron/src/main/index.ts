@@ -1,20 +1,22 @@
 import { app, BrowserWindow } from 'electron';
 import { join } from 'path';
 
+let mainWindow: BrowserWindow | null = null;
+
 async function createWindow() {
-  const mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
+  mainWindow = new BrowserWindow({
+    width: 900,
+    height: 670,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: true,
-      preload: join(__dirname, '../preload/index.js'),
+      preload: join(__dirname, '../preload/index.js')
     },
+    autoHideMenuBar: true
   });
 
-  if (process.env.NODE_ENV === 'development') {
-    const port = process.env.PORT || 5173;
-    await mainWindow.loadURL(`http://localhost:${port}`);
+  if (process.env.VITE_DEV_SERVER_URL) {
+    await mainWindow.loadURL(process.env.VITE_DEV_SERVER_URL);
     mainWindow.webContents.openDevTools();
   } else {
     await mainWindow.loadFile(join(__dirname, '../renderer/index.html'));
