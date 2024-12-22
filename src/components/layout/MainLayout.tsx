@@ -10,7 +10,7 @@ export const MainLayout = () => {
   
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-background">
+      <div className="main-layout min-h-screen flex w-full bg-background" data-player-visible={showPlayer}>
         <Sidebar />
         <div className="flex-1 flex flex-col">
           <Header />

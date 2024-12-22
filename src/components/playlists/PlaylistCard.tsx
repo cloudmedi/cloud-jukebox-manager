@@ -26,30 +26,30 @@ interface PlaylistCardProps {
 
 export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: PlaylistCardProps) => {
   return (
-    <Card className="group overflow-hidden transition-all duration-300 hover:shadow-lg">
+    <Card className="group overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
       <CardHeader className="relative aspect-square p-0">
         {playlist.artwork ? (
           <img
             src={`http://localhost:5000${playlist.artwork}`}
             alt={playlist.name}
-            className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
+            className="h-[300px] w-[300px] object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
-          <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-purple-500/10 to-blue-500/10">
-            <Music2 className="h-24 w-24 text-muted-foreground/40" />
+          <div className="flex h-[300px] w-[300px] items-center justify-center bg-gradient-to-br from-sidebar-primary/20 to-sidebar-accent/20">
+            <Music2 className="h-32 w-32 text-muted-foreground/40" />
           </div>
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
+        <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
         <Button
           variant="secondary"
           size="icon"
           className={cn(
-            "absolute bottom-4 right-4 opacity-0 transition-all duration-300 group-hover:opacity-100",
-            "bg-white/90 backdrop-blur-sm hover:bg-white"
+            "absolute bottom-4 right-4 opacity-0 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0 translate-y-4",
+            "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 h-12 w-12"
           )}
           onClick={() => onPlay(playlist._id)}
         >
-          <Play className="h-5 w-5 text-primary" />
+          <Play className="h-6 w-6" />
         </Button>
       </CardHeader>
       

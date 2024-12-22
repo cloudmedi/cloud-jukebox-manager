@@ -27,7 +27,7 @@ interface PlaylistListProps {
   onPlaylistUpdate: () => void;
 }
 
-const ITEMS_PER_PAGE = 6;
+const ITEMS_PER_PAGE = 8;
 
 export const PlaylistList = ({ playlists, onPlaylistUpdate }: PlaylistListProps) => {
   const [playlistToDelete, setPlaylistToDelete] = useState<string | null>(null);
@@ -77,6 +77,11 @@ export const PlaylistList = ({ playlists, onPlaylistUpdate }: PlaylistListProps)
   }, []);
 
   const handlePlay = useCallback((id: string) => {
+    // Show player in MainLayout
+    const mainLayout = document.querySelector('.main-layout');
+    if (mainLayout) {
+      mainLayout.setAttribute('data-player-visible', 'true');
+    }
     console.log("Play playlist:", id);
   }, []);
 
@@ -99,7 +104,7 @@ export const PlaylistList = ({ playlists, onPlaylistUpdate }: PlaylistListProps)
 
   return (
     <div className="space-y-8">
-      <div className="grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-8 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {currentPlaylists.map((playlist) => (
           <PlaylistCard
             key={playlist._id}
