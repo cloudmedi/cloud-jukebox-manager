@@ -13,7 +13,7 @@ export default defineConfig({
     electron([
       {
         // Main process
-        entry: 'electron/main/index.ts',
+        entry: 'electron/src/main.ts',
         vite: {
           build: {
             outDir: 'dist-electron/main'
@@ -22,7 +22,7 @@ export default defineConfig({
       },
       {
         // Preload process
-        entry: 'electron/preload/index.ts',
+        entry: 'electron/src/preload.ts',
         vite: {
           build: {
             outDir: 'dist-electron/preload'
