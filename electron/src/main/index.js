@@ -1,11 +1,12 @@
+"use strict";
 const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const DeviceService = require('./services/deviceService');
 const ApiService = require('./services/apiService');
 
 let mainWindow;
-const deviceService = new DeviceService();
-const apiService = new ApiService();
+let deviceService;
+let apiService;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -27,7 +28,20 @@ function createWindow() {
 }
 
 app.whenReady().then(() => {
+  // Services'leri app hazır olduktan sonra başlat
+  deviceService = new DeviceService();
+  apiService = new ApiService();
+  
   createWindow();
+
+  // IPC handlers'ı app hazır olduktan sonra kaydet
+  ipcMain.handle('get-device-info', () => {
+    return deviceService.getDeviceInfo();
+  });
+
+  ipcMain.handle('api-request', async (event, { method, endpoint, data }) => {
+    return apiService.makeRequest(method, endpoint, data);
+  });
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
@@ -40,13 +54,4 @@ app.on('window-all-closed', () => {
   if (process.platform !== 'darwin') {
     app.quit();
   }
-});
-
-// IPC handlers
-ipcMain.handle('get-device-info', () => {
-  return deviceService.getDeviceInfo();
-});
-
-ipcMain.handle('api-request', async (event, { method, endpoint, data }) => {
-  return apiService.makeRequest(method, endpoint, data);
 });

@@ -1,10 +1,9 @@
+"use strict";
 const Store = require('electron-store');
 const os = require('os');
 const { v4: uuidv4 } = require('uuid');
 
 class DeviceService {
-  static instance = null;
-  
   constructor() {
     try {
       console.log('Initializing DeviceService...');
@@ -19,14 +18,6 @@ class DeviceService {
       console.error('Failed to initialize store:', error);
       throw new Error('Store initialization failed');
     }
-  }
-
-  static getInstance() {
-    if (!DeviceService.instance) {
-      console.log('Creating new DeviceService instance');
-      DeviceService.instance = new DeviceService();
-    }
-    return DeviceService.instance;
   }
 
   initializeDeviceInfo() {
