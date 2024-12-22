@@ -7,7 +7,6 @@ export class ApiService {
   private static instance: ApiService;
 
   private constructor() {
-    // Axios default headers
     axios.defaults.headers.common['Content-Type'] = 'application/json';
   }
 
@@ -20,7 +19,15 @@ export class ApiService {
 
   async registerToken(deviceInfo: DeviceInfo): Promise<any> {
     try {
-      console.log('Registering token with device info:', deviceInfo);
+      // Önce token'ı validate edelim
+      const validationResponse = await this.validateToken(deviceInfo.token);
+      if (validationResponse) {
+        console.log('Token already exists, using existing token');
+        return validationResponse;
+      }
+
+      // Token yoksa yeni kayıt yapalım
+      console.log('Registering new token with device info:', deviceInfo);
       const response = await axios.post(`${API_URL}/tokens`, {
         token: deviceInfo.token,
         deviceInfo: {
@@ -42,13 +49,13 @@ export class ApiService {
     }
   }
 
-  async validateToken(token: string): Promise<boolean> {
+  async validateToken(token: string): Promise<any> {
     try {
       const response = await axios.get(`${API_URL}/tokens/validate/${token}`);
-      return response.status === 200;
+      return response.data;
     } catch (error) {
       console.error('Token validation error:', error);
-      return false;
+      return null;
     }
   }
 }

@@ -42,10 +42,13 @@ export class DeviceService {
     if (this.deviceToken) return this.deviceToken;
     
     const token = Math.floor(100000 + Math.random() * 900000).toString();
+    this.setToken(token);
+    return token;
+  }
+
+  setToken(token: string): void {
     this.deviceToken = token;
     this.store.set('deviceToken', token);
-    
-    return token;
   }
 
   getDeviceInfo(): DeviceInfo {
