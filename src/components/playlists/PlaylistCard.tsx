@@ -8,6 +8,7 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 
 interface PlaylistCardProps {
@@ -18,6 +19,7 @@ interface PlaylistCardProps {
     songs: any[];
     totalDuration?: number;
     artwork?: string;
+    genre?: string;
   };
   onDelete: (id: string) => void;
   onEdit: (id: string) => void;
@@ -26,17 +28,17 @@ interface PlaylistCardProps {
 
 export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: PlaylistCardProps) => {
   return (
-    <Card className="group overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+    <Card className="group overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 w-[200px]">
       <CardHeader className="relative aspect-square p-0">
         {playlist.artwork ? (
           <img
             src={`http://localhost:5000${playlist.artwork}`}
             alt={playlist.name}
-            className="h-[300px] w-[300px] object-cover transition-transform duration-300 group-hover:scale-105"
+            className="h-[200px] w-[200px] object-cover transition-transform duration-300 group-hover:scale-105"
           />
         ) : (
-          <div className="flex h-[300px] w-[300px] items-center justify-center bg-gradient-to-br from-sidebar-primary/20 to-sidebar-accent/20">
-            <Music2 className="h-32 w-32 text-muted-foreground/40" />
+          <div className="flex h-[200px] w-[200px] items-center justify-center bg-gradient-to-br from-sidebar-primary/20 to-sidebar-accent/20">
+            <Music2 className="h-24 w-24 text-muted-foreground/40" />
           </div>
         )}
         <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
@@ -45,23 +47,25 @@ export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: Playli
           size="icon"
           className={cn(
             "absolute bottom-4 right-4 opacity-0 transition-all duration-300 group-hover:opacity-100 group-hover:translate-y-0 translate-y-4",
-            "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 h-12 w-12"
+            "bg-sidebar-primary text-sidebar-primary-foreground hover:bg-sidebar-primary/90 h-10 w-10"
           )}
           onClick={() => onPlay(playlist._id)}
         >
-          <Play className="h-6 w-6" />
+          <Play className="h-5 w-5" />
         </Button>
       </CardHeader>
       
-      <CardContent className="space-y-3 p-6">
+      <CardContent className="space-y-2 p-4">
         <div className="flex items-start justify-between">
-          <div className="space-y-1">
-            <h3 className="line-clamp-1 text-xl font-semibold tracking-tight">
+          <div className="space-y-1 flex-1">
+            <h3 className="line-clamp-1 text-base font-semibold tracking-tight">
               {playlist.name}
             </h3>
-            <p className="line-clamp-2 text-sm text-muted-foreground">
-              {playlist.description || "Açıklama yok"}
-            </p>
+            {playlist.genre && (
+              <Badge variant="secondary" className="text-xs">
+                {playlist.genre}
+              </Badge>
+            )}
           </div>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
@@ -93,9 +97,9 @@ export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: Playli
           </DropdownMenu>
         </div>
 
-        <div className="flex items-center justify-between border-t pt-4 text-sm text-muted-foreground">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
           <div className="flex items-center gap-1">
-            <Music2 className="h-4 w-4" />
+            <Music2 className="h-3 w-3" />
             <span>{playlist.songs?.length || 0} şarkı</span>
           </div>
           <span>
