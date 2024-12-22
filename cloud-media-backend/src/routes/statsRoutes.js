@@ -3,8 +3,8 @@ const router = express.Router();
 const Device = require('../models/Device');
 const Playlist = require('../models/Playlist');
 const PlaylistSchedule = require('../models/PlaylistSchedule');
+const mongoose = require('mongoose');
 
-// Cihaz istatistiklerini getir
 router.get('/devices', async (req, res) => {
   try {
     const totalDevices = await Device.countDocuments();
@@ -119,6 +119,61 @@ router.get('/performance', async (req, res) => {
       }
     });
   } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Cihaz çalma verilerini getir
+router.get('/device-playback', async (req, res) => {
+  try {
+    const { deviceId, from, to, startTime, endTime } = req.query;
+
+    if (!deviceId || !from || !to || !startTime || !endTime) {
+      return res.status(400).json({ 
+        message: "Gerekli parametreler eksik" 
+      });
+    }
+
+    // Tarih aralığını oluştur
+    const fromDate = new Date(from);
+    const toDate = new Date(to);
+
+    // Saat bilgilerini parse et
+    const [startHour, startMinute] = startTime.split(':').map(Number);
+    const [endHour, endMinute] = endTime.split(':').map(Number);
+
+    // Başlangıç ve bitiş zamanlarını ayarla
+    fromDate.setHours(startHour, startMinute, 0);
+    toDate.setHours(endHour, endMinute, 59);
+
+    // Örnek veri - gerçek uygulamada bu veriler veritabanından gelecek
+    const mockPlaybackData = [
+      {
+        songName: "Test Şarkı 1",
+        artist: "Sanatçı 1",
+        playCount: 15,
+        totalDuration: 3600, // saniye cinsinden
+        lastPlayed: new Date(fromDate.getTime() + Math.random() * (toDate.getTime() - fromDate.getTime()))
+      },
+      {
+        songName: "Test Şarkı 2",
+        artist: "Sanatçı 2",
+        playCount: 10,
+        totalDuration: 2400,
+        lastPlayed: new Date(fromDate.getTime() + Math.random() * (toDate.getTime() - fromDate.getTime()))
+      },
+      {
+        songName: "Test Şarkı 3",
+        artist: "Sanatçı 3",
+        playCount: 8,
+        totalDuration: 1800,
+        lastPlayed: new Date(fromDate.getTime() + Math.random() * (toDate.getTime() - fromDate.getTime()))
+      }
+    ];
+
+    res.json(mockPlaybackData);
+  } catch (error) {
+    console.error('Device playback stats error:', error);
     res.status(500).json({ message: error.message });
   }
 });
