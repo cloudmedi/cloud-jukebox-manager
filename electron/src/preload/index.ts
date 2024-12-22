@@ -1,9 +1,6 @@
 import { contextBridge, ipcRenderer } from 'electron';
 
-// Expose protected methods that allow the renderer process to use
-// the ipcRenderer without exposing the entire object
 contextBridge.exposeInMainWorld('api', {
-  // Add any methods you want to expose to the renderer here
   send: (channel: string, data: any) => {
     ipcRenderer.send(channel, data);
   },
@@ -15,10 +12,17 @@ contextBridge.exposeInMainWorld('api', {
   },
   removeAllListeners: (channel: string) => {
     ipcRenderer.removeAllListeners(channel);
+  },
+  // Cihaz bilgileri için özel metodlar
+  getDeviceInfo: () => {
+    return new Promise((resolve) => {
+      ipcRenderer.once('device-info', (_, info) => resolve(info));
+      ipcRenderer.send('get-device-info');
+    });
   }
 });
 
-// For TypeScript support
+// TypeScript için global tip tanımlaması
 declare global {
   interface Window {
     api: {
@@ -26,6 +30,7 @@ declare global {
       receive: (channel: string, func: Function) => void;
       invoke: (channel: string, data: any) => Promise<any>;
       removeAllListeners: (channel: string) => void;
+      getDeviceInfo: () => Promise<any>;
     };
   }
 }
