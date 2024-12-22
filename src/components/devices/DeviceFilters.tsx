@@ -23,12 +23,13 @@ export const DeviceFilters = ({
   setIsFormOpen,
 }: DeviceFiltersProps) => {
   return (
-    <div className="flex items-center justify-between w-full mb-4">
-      <div className="flex gap-2">
+    <div className="flex items-center justify-between gap-2 w-full mb-4">
+      <h2 className="text-3xl font-bold tracking-tight">Cihaz Yönetimi</h2>
+      <div className="flex items-center gap-2">
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
             <Button variant="outline" size="default">
-              <Filter className="mr-2 h-4 w-4" />
+              <Filter className="h-4 w-4" />
               Filtrele
             </Button>
           </DropdownMenuTrigger>
@@ -53,19 +54,19 @@ export const DeviceFilters = ({
             </DropdownMenuCheckboxItem>
           </DropdownMenuContent>
         </DropdownMenu>
+        
+        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+          <DialogTrigger asChild>
+            <Button size="default">
+              <Plus className="h-4 w-4" />
+              Yeni Cihaz
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DeviceForm onSuccess={() => setIsFormOpen(false)} />
+          </DialogContent>
+        </Dialog>
       </div>
-      
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogTrigger asChild>
-          <Button size="lg" className="bg-primary hover:bg-primary/90">
-            <Plus className="mr-2 h-5 w-5" />
-            Yeni Cihaz Ekle
-          </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DeviceForm onSuccess={() => setIsFormOpen(false)} />
-        </DialogContent>
-      </Dialog>
     </div>
   );
 };
