@@ -8,6 +8,7 @@
   "compilerOptions": {
     "composite": true,
     "types": ["electron-vite/node"],
+    "module": "Node16",
     "moduleResolution": "node16",
     "esModuleInterop": true,
     "allowSyntheticDefaultImports": true
