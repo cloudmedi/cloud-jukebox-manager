@@ -75,8 +75,7 @@ class WebSocketService {
     switch (message.command) {
       case 'restart':
         console.log('Yeniden başlatma komutu alındı');
-        require('electron').app.relaunch();
-        require('electron').app.exit(0);
+        this.handleRestart();
         break;
 
       case 'setVolume':
@@ -87,6 +86,21 @@ class WebSocketService {
       default:
         console.log('Bilinmeyen komut:', message.command);
     }
+  }
+
+  handleRestart() {
+    const { app } = require('electron');
+    
+    // Önce mevcut uygulamayı kapat
+    app.once('will-quit', () => {
+      // Uygulama kapandıktan sonra yeni örneği başlat
+      setTimeout(() => {
+        app.relaunch();
+      }, 1000);
+    });
+    
+    // Uygulamayı kapat
+    app.quit();
   }
 
   async setSystemVolume(volume) {
