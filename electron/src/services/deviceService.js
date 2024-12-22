@@ -1,23 +1,11 @@
 const { v4: uuidv4 } = require('uuid');
 const os = require('os');
-
-let Store;
-
-// Dynamic import for electron-store
-import('electron-store').then(module => {
-  Store = module.default;
-}).catch(err => {
-  console.error('Failed to load electron-store:', err);
-});
+const Store = require('electron-store');
 
 class DeviceService {
   static instance = null;
 
   constructor() {
-    if (!Store) {
-      throw new Error('electron-store module not loaded');
-    }
-    
     this.store = new Store({
       name: 'device-config'
     });
