@@ -18,6 +18,7 @@ app.use('/api/device-groups', require('./routes/deviceGroupRoutes'));
 app.use('/api/playlists', require('./routes/playlistRoutes'));
 app.use('/api/songs', require('./routes/songRoutes'));
 app.use('/api/announcements', require('./routes/announcementRoutes'));
+app.use('/api/playlist-schedules', require('./routes/playlistScheduleRoutes'));
 
 const PORT = process.env.PORT || 5000;
 
