@@ -1,8 +1,19 @@
 const os = require('os');
-const Store = require('electron-store');
+let Store;
+
+// Dynamic import for electron-store
+import('electron-store').then(module => {
+  Store = module.default;
+}).catch(err => {
+  console.error('Failed to load electron-store:', err);
+});
 
 class DeviceService {
   constructor() {
+    if (!Store) {
+      throw new Error('electron-store module not loaded');
+    }
+    
     this.store = new Store({
       name: 'device-config'
     });
