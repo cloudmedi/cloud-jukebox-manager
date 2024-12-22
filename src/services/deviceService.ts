@@ -11,6 +11,7 @@ export interface Device {
   isOnline: boolean;
   volume: number;
   lastSeen: string;
+  createdAt: string;
   activePlaylist: {
     _id: string;
     name: string;

@@ -126,6 +126,7 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
 
       <Dialog open={isVolumeDialogOpen} onOpenChange={setIsVolumeDialogOpen}>
         <VolumeControlDialog
+          isOpen={isVolumeDialogOpen}
           currentVolume={device.volume}
           onVolumeChange={handleVolumeChange}
           onClose={() => setIsVolumeDialogOpen(false)}
@@ -134,7 +135,6 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
 
       <Dialog open={isGroupDialogOpen} onOpenChange={setIsGroupDialogOpen}>
         <GroupManagementDialog
-          deviceId={device._id}
           currentGroupId={device.groupId}
           onGroupChange={handleGroupChange}
           onClose={() => setIsGroupDialogOpen(false)}
@@ -143,7 +143,7 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
 
       {isDetailsDialogOpen && (
         <DeviceDetailsDialog
-          device={device as any} // Type assertion needed because we're passing the full device object
+          device={device as Device}
           onClose={() => setIsDetailsDialogOpen(false)}
         />
       )}

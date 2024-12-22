@@ -1,20 +1,13 @@
 import { useState } from "react";
 import { useInfiniteQuery } from "@tanstack/react-query";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Table, TableBody } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Plus, Loader2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogTrigger } from "@/components/ui/dialog";
 import { Device } from "@/services/deviceService";
+import { DeviceTableHeader } from "./DeviceTableHeader";
+import { DeviceTableRow } from "./DeviceTableRow";
 import DeviceForm from "./DeviceForm";
-import DeviceActions from "./DeviceActions";
 
 const LIMIT = 20;
 
@@ -33,24 +26,15 @@ const DeviceList = () => {
     queryFn: async ({ pageParam = 0 }) => {
       const response = await fetch(`http://localhost:5000/api/devices?skip=${pageParam}&limit=${LIMIT}`);
       if (!response.ok) throw new Error("Cihazlar yüklenirken bir hata oluştu");
-      return response.json();
+      return response.json() as Promise<Device[]>;
     },
-    getNextPageParam: (lastPage, pages) => {
+    initialPageParam: 0,
+    getNextPageParam: (lastPage: Device[], pages) => {
       return lastPage.length === LIMIT ? pages.length * LIMIT : undefined;
     },
   });
 
   const devices = data?.pages.flat() || [];
-
-  const formatDate = (date: string) => {
-    return new Date(date).toLocaleString('tr-TR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
 
   if (isLoading) {
     return (
@@ -80,55 +64,10 @@ const DeviceList = () => {
 
       <div className="rounded-md border">
         <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Cihaz Adı</TableHead>
-              <TableHead>Token</TableHead>
-              <TableHead>Konum</TableHead>
-              <TableHead>IP Adresi</TableHead>
-              <TableHead>Durum</TableHead>
-              <TableHead>Playlist</TableHead>
-              <TableHead>Ses</TableHead>
-              <TableHead>Son Görülme</TableHead>
-              <TableHead className="text-right">İşlemler</TableHead>
-            </TableRow>
-          </TableHeader>
+          <DeviceTableHeader />
           <TableBody>
             {devices.map((device: Device) => (
-              <TableRow key={device._id}>
-                <TableCell className="font-medium">{device.name}</TableCell>
-                <TableCell>{device.token}</TableCell>
-                <TableCell>{device.location}</TableCell>
-                <TableCell>{device.ipAddress || "-"}</TableCell>
-                <TableCell>
-                  <Badge
-                    variant={device.isOnline ? "success" : "secondary"}
-                    className="flex w-fit items-center gap-1"
-                  >
-                    {device.isOnline ? "Çevrimiçi" : "Çevrimdışı"}
-                  </Badge>
-                </TableCell>
-                <TableCell>
-                  {device.activePlaylist ? (
-                    <Badge variant="outline">
-                      {device.activePlaylist.name}
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary">
-                      Playlist Yok
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span>{device.volume}%</span>
-                  </div>
-                </TableCell>
-                <TableCell>{formatDate(device.lastSeen)}</TableCell>
-                <TableCell className="text-right">
-                  <DeviceActions device={device} />
-                </TableCell>
-              </TableRow>
+              <DeviceTableRow key={device._id} device={device} />
             ))}
           </TableBody>
         </Table>
