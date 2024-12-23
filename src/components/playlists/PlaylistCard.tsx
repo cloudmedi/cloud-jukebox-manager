@@ -2,7 +2,6 @@ import { memo } from "react";
 import { Music2 } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
 
 interface PlaylistCardProps {
   playlist: {
@@ -14,9 +13,12 @@ interface PlaylistCardProps {
     artwork?: string;
     genre?: string;
   };
+  onDelete?: (id: string) => void;
+  onEdit?: (id: string) => void;
+  onPlay?: (id: string) => void;
 }
 
-export const PlaylistCard = memo(({ playlist }: PlaylistCardProps) => {
+export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: PlaylistCardProps) => {
   return (
     <Card 
       className="group overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 w-[200px]"
