@@ -1,7 +1,7 @@
 const os = require('os');
 
 function getDeviceInfo() {
-  return {
+  const deviceInfo = {
     hostname: os.hostname(),
     platform: os.platform(),
     arch: os.arch(),
@@ -14,10 +14,15 @@ function getDeviceInfo() {
       .map(ni => ni.address),
     osVersion: os.release()
   };
+  
+  console.log('Device info collected:', deviceInfo);
+  return deviceInfo;
 }
 
 function generateToken() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  const token = Math.floor(100000 + Math.random() * 900000).toString();
+  console.log('Generated new token:', token);
+  return token;
 }
 
 module.exports = {

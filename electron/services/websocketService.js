@@ -17,7 +17,10 @@ class WebSocketService {
     this.addMessageHandler('auth', (message) => {
       console.log('Auth message received:', message);
       if (message.success) {
+        console.log('Authentication successful, saving token:', message.token);
         store.set('deviceInfo', { token: message.token });
+      } else {
+        console.error('Authentication failed:', message);
       }
     });
 
@@ -52,29 +55,30 @@ class WebSocketService {
   connect() {
     const deviceInfo = store.get('deviceInfo');
     if (!deviceInfo || !deviceInfo.token) {
-      console.log('No device info found');
+      console.log('No device info found, deviceInfo:', deviceInfo);
       return;
     }
 
+    console.log('Attempting WebSocket connection with token:', deviceInfo.token);
     this.ws = new WebSocket('ws://localhost:5000');
 
     this.ws.on('open', () => {
-      console.log('WebSocket connected');
+      console.log('WebSocket connected successfully');
       this.sendAuth(deviceInfo.token);
     });
 
     this.ws.on('message', (data) => {
       try {
         const message = JSON.parse(data);
-        console.log('Received message:', message);
+        console.log('Received WebSocket message:', message);
         this.handleMessage(message);
       } catch (error) {
-        console.error('Error parsing message:', error);
+        console.error('Error parsing WebSocket message:', error);
       }
     });
 
     this.ws.on('close', () => {
-      console.log('WebSocket disconnected, reconnecting...');
+      console.log('WebSocket disconnected, reconnecting in 5 seconds...');
       setTimeout(() => this.connect(), 5000);
     });
 
@@ -84,6 +88,7 @@ class WebSocketService {
   }
 
   sendAuth(token) {
+    console.log('Sending auth message with token:', token);
     this.sendMessage({
       type: 'auth',
       token: token
