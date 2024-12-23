@@ -4,11 +4,11 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 import { Music } from "lucide-react";
+import websocketService from "@/services/websocketService";
 
 interface BulkPlaylistDialogProps {
   open: boolean;
@@ -33,28 +33,64 @@ export const BulkPlaylistDialog = ({
     enabled: open,
   });
 
-  const handleSelectPlaylist = async (playlistId: string) => {
+  const { data: devices } = useQuery({
+    queryKey: ["devices"],
+    queryFn: async () => {
+      const response = await fetch("http://localhost:5000/api/devices");
+      if (!response.ok) throw new Error("Cihazlar yüklenemedi");
+      return response.json();
+    },
+    enabled: open,
+  });
+
+  const handleSelectPlaylist = async (playlist: any) => {
     try {
-      const response = await fetch("http://localhost:5000/api/devices/bulk/playlist", {
+      // Get tokens for selected device IDs
+      const selectedDevices = devices.filter((device: any) => 
+        deviceIds.includes(device._id)
+      );
+
+      const deviceTokens = selectedDevices.map((device: any) => device.token);
+
+      // Send playlist to each device via WebSocket
+      deviceTokens.forEach(token => {
+        websocketService.sendMessage({
+          type: 'playlist',
+          action: 'send',
+          playlist: {
+            _id: playlist._id,
+            name: playlist.name,
+            artwork: playlist.artwork,
+            songs: playlist.songs.map((song: any) => ({
+              _id: song._id,
+              name: song.name,
+              artist: song.artist,
+              filePath: song.filePath,
+              duration: song.duration
+            }))
+          },
+          token
+        });
+      });
+
+      // Also update the database
+      await fetch("http://localhost:5000/api/devices/bulk/playlist", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
           deviceIds,
-          playlistId,
+          playlistId: playlist._id,
         }),
       });
 
-      if (!response.ok) {
-        throw new Error("Playlist atanamadı");
-      }
-
-      toast.success("Playlist başarıyla atandı");
+      toast.success("Playlist başarıyla gönderiliyor");
       onSuccess();
       onOpenChange(false);
     } catch (error) {
-      toast.error("İşlem başarısız oldu");
+      console.error('Playlist gönderme hatası:', error);
+      toast.error("Playlist gönderilemedi");
     }
   };
 
@@ -79,7 +115,7 @@ export const BulkPlaylistDialog = ({
               {playlists?.map((playlist: any) => (
                 <button
                   key={playlist._id}
-                  onClick={() => handleSelectPlaylist(playlist._id)}
+                  onClick={() => handleSelectPlaylist(playlist)}
                   className="flex items-center gap-3 w-full p-3 rounded-lg hover:bg-accent transition-colors"
                 >
                   <div className="w-10 h-10 rounded bg-muted flex items-center justify-center">
