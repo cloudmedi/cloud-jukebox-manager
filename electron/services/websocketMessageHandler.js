@@ -21,11 +21,11 @@ class WebSocketMessageHandler {
 
     switch (message.command) {
       case 'play':
-        playbackStateManager.savePlaybackState(true, message.playlistId);
+        playbackStateManager.savePlaybackState(true);
         mainWindow.webContents.send('toggle-playback');
         break;
       case 'pause':
-        playbackStateManager.savePlaybackState(false, message.playlistId);
+        playbackStateManager.savePlaybackState(false);
         mainWindow.webContents.send('toggle-playback');
         break;
       case 'setVolume':

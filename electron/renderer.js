@@ -1,14 +1,65 @@
-const { ipcRenderer } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu } = require('electron');
+const path = require('path');
 const Store = require('electron-store');
 const store = new Store();
-const AudioEventHandler = require('./services/audio/AudioEventHandler');
-const playbackStateManager = require('./services/audio/PlaybackStateManager');
+const websocketService = require('./services/websocketService');
+require('./services/audioService');
 
-const audio = document.getElementById('audioPlayer');
-const audioHandler = new AudioEventHandler(audio);
+let mainWindow;
+let tray = null;
 
-// Initialize volume
-audio.volume = 0.7; // 70%
+function createWindow() {
+  mainWindow = new BrowserWindow({
+    width: 400,
+    height: 300,
+    minWidth: 400,
+    minHeight: 300,
+    maxWidth: 400,
+    maxHeight: 300,
+    resizable: false,
+    backgroundColor: '#1a1b1e',
+    titleBarStyle: 'hidden',
+    frame: false,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+      webSecurity: false
+    }
+  });
+
+  mainWindow.loadFile('index.html');
+  
+  if (process.env.NODE_ENV === 'development') {
+    mainWindow.webContents.openDevTools();
+  }
+
+  // Pencere kapatıldığında sistem tepsisine küçült
+  mainWindow.on('close', function (event) {
+    if (!app.isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+      if (tray === null) {
+        createTray();
+      }
+    }
+    return false;
+  });
+
+  // Uygulama başladığında son kaydedilen playlist'i kontrol et
+  const deviceInfo = store.get('deviceInfo');
+  if (deviceInfo && deviceInfo.token) {
+    websocketService.connect(deviceInfo.token);
+    
+    const playlists = store.get('playlists', []);
+    if (playlists.length > 0) {
+      const lastPlaylist = playlists[playlists.length - 1];
+      console.log('Starting last saved playlist:', lastPlaylist.name);
+      mainWindow.webContents.on('did-finish-load', () => {
+        mainWindow.webContents.send('auto-play-playlist', lastPlaylist);
+      });
+    }
+  }
+}
 
 // Auto-play playlist
 ipcRenderer.on('auto-play-playlist', (event, playlist) => {
@@ -28,205 +79,86 @@ ipcRenderer.on('auto-play-playlist', (event, playlist) => {
   }
 });
 
-// Close button event listener
-document.getElementById('closeButton').addEventListener('click', () => {
-    window.close();
-});
-
-// Volume control from WebSocket
-ipcRenderer.on('set-volume', (event, volume) => {
-  console.log('Setting volume to:', volume);
-  if (audio) {
-    const normalizedVolume = volume / 100;
-    audio.volume = normalizedVolume;
-    ipcRenderer.send('volume-changed', volume);
-  }
-});
-
-// Restart playback from WebSocket
-ipcRenderer.on('restart-playback', () => {
-  console.log('Restarting playback');
-  if (audio) {
-    audio.currentTime = 0;
-    audio.play().catch(err => console.error('Playback error:', err));
-  }
-});
-
-// Toggle playback from WebSocket
-ipcRenderer.on('toggle-playback', () => {
-  console.log('Toggle playback, current state:', audio.paused);
-  if (audio) {
-    if (audio.paused) {
-      audio.play()
-        .then(() => {
-          console.log('Playback started successfully');
-          playbackStateManager.savePlaybackState(true);
-          ipcRenderer.send('playback-status-changed', true);
-        })
-        .catch(err => {
-          console.error('Playback error:', err);
-          ipcRenderer.send('playback-status-changed', false);
-        });
-    } else {
-      audio.pause();
-      console.log('Playback paused');
-      playbackStateManager.savePlaybackState(false);
-      ipcRenderer.send('playback-status-changed', false);
-    }
-  }
-});
-
-// Otomatik playlist başlatma
-ipcRenderer.on('auto-play-playlist', (event, playlist) => {
-  console.log('Auto-playing playlist:', playlist);
-  if (playlist && playlist.songs && playlist.songs.length > 0) {
-    const shouldAutoPlay = playbackStateManager.getPlaybackState();
-    displayPlaylists();
+function createTray() {
+  try {
+    // Tray ikonu oluştur
+    const iconPath = path.join(__dirname, 'icon.png');
+    console.log('Tray icon path:', iconPath);
     
-    if (shouldAutoPlay) {
-      console.log('Auto-playing based on saved state');
-      ipcRenderer.invoke('play-playlist', playlist);
-    } else {
-      console.log('Not auto-playing due to saved state');
-      // Playlist'i yükle ama oynatma
-      ipcRenderer.invoke('load-playlist', playlist);
-    }
-  }
-});
-
-function displayPlaylists() {
-  const playlists = store.get('playlists', []);
-  const playlistContainer = document.getElementById('playlistContainer');
-  
-  if (!playlistContainer) {
-    console.error('Playlist container not found');
-    return;
-  }
-  
-  playlistContainer.innerHTML = '';
-  
-  // Son playlist'i göster
-  const lastPlaylist = playlists[playlists.length - 1];
-  if (lastPlaylist) {
-    const playlistElement = document.createElement('div');
-    playlistElement.className = 'playlist-item';
-    playlistElement.innerHTML = `
-      <div class="playlist-info">
-        ${lastPlaylist.artwork ? 
-          `<img src="${lastPlaylist.artwork}" alt="${lastPlaylist.name}" class="playlist-artwork"/>` :
-          '<div class="playlist-artwork-placeholder"></div>'
+    tray = new Tray(iconPath);
+    
+    // Tray menüsünü oluştur
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: 'Show App',
+        click: function() {
+          mainWindow.show();
+          mainWindow.focus(); // Pencereyi ön plana getir
         }
-        <div class="playlist-details">
-          <h3>${lastPlaylist.name}</h3>
-          <p>${lastPlaylist.songs[0]?.artist || 'Unknown Artist'}</p>
-          <p>${lastPlaylist.songs[0]?.name || 'No songs'}</p>
-        </div>
-      </div>
-    `;
-    
-    playlistContainer.appendChild(playlistElement);
-    console.log('Displayed playlist:', lastPlaylist.name);
-  }
-}
-
-function deleteOldPlaylists() {
-  const playlists = store.get('playlists', []);
-  
-  // Son playlist hariç tüm playlistleri sil
-  if (playlists.length > 1) {
-    const latestPlaylist = playlists[playlists.length - 1];
-    
-    // Eski playlistlerin şarkı dosyalarını ve klasörlerini sil
-    playlists.slice(0, -1).forEach(playlist => {
-      playlist.songs.forEach(song => {
-        if (song.localPath) {
-          try {
-            // Şarkı dosyasını sil
-            fs.unlinkSync(song.localPath);
-            console.log(`Deleted song file: ${song.localPath}`);
-            
-            // Şarkının bulunduğu klasörü bul
-            const playlistDir = path.dirname(song.localPath);
-            
-            // Klasördeki tüm dosyaları sil
-            const files = fs.readdirSync(playlistDir);
-            files.forEach(file => {
-              const filePath = path.join(playlistDir, file);
-              fs.unlinkSync(filePath);
-              console.log(`Deleted file: ${filePath}`);
-            });
-            
-            // Boş klasörü sil
-            fs.rmdirSync(playlistDir);
-            console.log(`Deleted playlist directory: ${playlistDir}`);
-          } catch (error) {
-            console.error(`Error deleting files/directory: ${error}`);
-          }
+      },
+      {
+        label: 'Close',
+        click: function() {
+          app.isQuitting = true;
+          app.quit();
         }
-      });
+      }
+    ]);
+
+    // Tray ayarlarını yap
+    tray.setToolTip('Cloud Media Player');
+    tray.setContextMenu(contextMenu);
+
+    // Tray ikonuna çift tıklandığında uygulamayı göster
+    tray.on('double-click', () => {
+      mainWindow.show();
+      mainWindow.focus(); // Pencereyi ön plana getir
     });
     
-    // Store'u güncelle, sadece son playlisti tut
-    store.set('playlists', [latestPlaylist]);
-    console.log('Kept only the latest playlist:', latestPlaylist.name);
+    // Tray ikonuna tek tıklandığında uygulamayı göster
+    tray.on('click', () => {
+      mainWindow.show();
+      mainWindow.focus(); // Pencereyi ön plana getir
+    });
+    
+    console.log('Tray created successfully');
+  } catch (error) {
+    console.error('Error creating tray:', error);
   }
 }
 
-// WebSocket mesaj dinleyicileri
-ipcRenderer.on('playlist-received', (event, playlist) => {
-  console.log('New playlist received:', playlist);
-  
-  const playlists = store.get('playlists', []);
-  const existingIndex = playlists.findIndex(p => p._id === playlist._id);
-  
-  if (existingIndex !== -1) {
-    playlists[existingIndex] = playlist;
-  } else {
-    playlists.push(playlist);
-  }
-  
-  store.set('playlists', playlists);
-  
-  const shouldAutoPlay = playbackStateManager.getPlaybackState();
-  if (shouldAutoPlay) {
-    console.log('Auto-playing new playlist:', playlist);
-    ipcRenderer.invoke('play-playlist', playlist);
-  } else {
-    console.log('Loading new playlist without auto-play');
-    ipcRenderer.invoke('load-playlist', playlist);
-  }
-  
-  deleteOldPlaylists();
-  displayPlaylists();
-  
-  new Notification('Yeni Playlist', {
-    body: `${playlist.name} playlist'i başarıyla indirildi.`
-  });
+app.whenReady().then(() => {
+  createWindow();
+  createTray(); // Uygulama başladığında tray'i oluştur
 });
 
-// Audio event listeners
-audio.addEventListener('ended', () => {
-  console.log('Song ended, playing next');
-  ipcRenderer.invoke('song-ended');
-});
-
-ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
-  console.log('Updating player with song:', currentSong);
-  if (currentSong && currentSong.localPath) {
-    const normalizedPath = currentSong.localPath.replace(/\\/g, '/');
-    audio.src = normalizedPath;
-    audio.play().catch(err => console.error('Playback error:', err));
-    
-    // Şarkı değiştiğinde görsel bilgileri güncelle
-    displayPlaylists();
+app.on('window-all-closed', () => {
+  websocketService.disconnect();
+  if (process.platform !== 'darwin') {
+    app.quit();
   }
 });
 
-// İlk yüklemede playlistleri göster
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('DOM loaded, displaying playlists');
-  displayPlaylists();
+app.on('activate', () => {
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  }
 });
 
-// Diğer event listener'lar
+app.on('before-quit', () => {
+  app.isQuitting = true;
+});
 
+ipcMain.handle('save-device-info', async (event, deviceInfo) => {
+  store.set('deviceInfo', deviceInfo);
+  
+  if (deviceInfo.token) {
+    websocketService.connect(deviceInfo.token);
+  }
+  
+  return deviceInfo;
+});
+
+ipcMain.handle('get-device-info', async () => {
+  return store.get('deviceInfo');
+});
