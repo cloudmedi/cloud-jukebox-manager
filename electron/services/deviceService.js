@@ -1,9 +1,5 @@
 const os = require('os');
 
-function generateToken() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
 function getDeviceInfo() {
   return {
     hostname: os.hostname(),
@@ -18,6 +14,10 @@ function getDeviceInfo() {
       .map(ni => ni.address),
     osVersion: os.release()
   };
+}
+
+function generateToken() {
+  return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 module.exports = {

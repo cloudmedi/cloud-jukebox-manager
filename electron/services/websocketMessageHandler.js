@@ -1,4 +1,4 @@
-const { BrowserWindow } = require('electron');
+const { BrowserWindow, app } = require('electron');
 const { downloadFile } = require('./downloadUtils');
 const Store = require('electron-store');
 const path = require('path');
@@ -12,8 +12,8 @@ class WebSocketMessageHandler {
   }
 
   initializeHandlers() {
-    this.handlers.set('auth', this.handleAuth.bind(this));
     this.handlers.set('playlist', this.handlePlaylist.bind(this));
+    this.handlers.set('command', this.handleCommand.bind(this));
   }
 
   async handleMessage(message) {
@@ -35,15 +35,8 @@ class WebSocketMessageHandler {
     }
   }
 
-  handleAuth(message) {
-    console.log('Auth message received:', message);
-    if (message.status === 'success') {
-      this.sendToRenderer('auth-success', message.deviceInfo);
-    }
-  }
-
   async handlePlaylist(message) {
-    console.log('Playlist message received:', message);
+    console.log('Handling playlist:', message);
     const mainWindow = BrowserWindow.getAllWindows()[0];
     if (!mainWindow) return;
 
@@ -54,7 +47,7 @@ class WebSocketMessageHandler {
     }
 
     // Playlist için indirme klasörünü oluştur
-    const userDataPath = require('electron').app.getPath('userData');
+    const userDataPath = app.getPath('userData');
     const playlistDir = path.join(
       userDataPath,
       'downloads',
@@ -73,7 +66,7 @@ class WebSocketMessageHandler {
       songs: []
     };
 
-    // Her şarkıyı indir
+    // Her şarkıyı indir ve localPath'leri ekle
     for (const song of playlist.songs) {
       try {
         console.log('Processing song:', song);
@@ -93,6 +86,7 @@ class WebSocketMessageHandler {
           });
         });
 
+        // Şarkıyı localPath ile birlikte playlist'e ekle
         storedPlaylist.songs.push({
           ...song,
           localPath
@@ -107,9 +101,15 @@ class WebSocketMessageHandler {
       }
     }
 
+    console.log('Storing playlist with localPaths:', storedPlaylist);
+
     // Playlist'i store'a kaydet ve UI'ı güncelle
-    this.store.set(`playlists.${playlist._id}`, storedPlaylist);
     mainWindow.webContents.send('playlist-received', storedPlaylist);
+  }
+
+  handleCommand(message) {
+    console.log('Handling command:', message);
+    // Command işleme mantığı buraya gelecek
   }
 
   sendToRenderer(channel, data) {

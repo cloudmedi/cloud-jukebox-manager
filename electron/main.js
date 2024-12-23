@@ -3,8 +3,6 @@ const path = require('path');
 const Store = require('electron-store');
 const store = new Store();
 const websocketService = require('./services/websocketService');
-const { generateToken, getDeviceInfo } = require('./services/deviceService');
-const { registerToken } = require('./services/apiService');
 const playbackStateManager = require('./services/audio/PlaybackStateManager');
 require('./services/audioService');
 
@@ -54,37 +52,7 @@ function createTray() {
   }
 }
 
-async function initializeDevice() {
-  let deviceInfo = store.get('deviceInfo');
-  
-  if (!deviceInfo || !deviceInfo.token) {
-    console.log('No device info found, generating new token...');
-    try {
-      // Token üret
-      const token = generateToken();
-      // Cihaz bilgilerini al
-      const systemInfo = getDeviceInfo();
-      
-      // Token'ı backend'e kaydet
-      await registerToken(token, systemInfo);
-      
-      // Local storage'a kaydet
-      deviceInfo = {
-        token,
-        ...systemInfo
-      };
-      store.set('deviceInfo', deviceInfo);
-      
-      console.log('New device registered with token:', token);
-    } catch (error) {
-      console.error('Error initializing device:', error);
-    }
-  }
-  
-  return deviceInfo;
-}
-
-async function createWindow() {
+function createWindow() {
   mainWindow = new BrowserWindow({
     width: 400,
     height: 300,
@@ -120,9 +88,7 @@ async function createWindow() {
     return false;
   });
 
-  // İlk başlatmada cihaz bilgilerini kontrol et ve gerekirse token üret
-  const deviceInfo = await initializeDevice();
-  
+  const deviceInfo = store.get('deviceInfo');
   if (deviceInfo && deviceInfo.token) {
     websocketService.connect(deviceInfo.token);
     
