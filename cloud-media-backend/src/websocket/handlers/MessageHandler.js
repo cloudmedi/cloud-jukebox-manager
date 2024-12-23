@@ -36,21 +36,12 @@ class MessageHandler {
         }));
         break;
 
+      case 'playlistStatus':
+        await this.playlistHandler.handlePlaylistStatus(data, ws.deviceToken);
+        break;
+
       default:
         console.log('Unknown message type:', data.type);
-        break;
-    }
-  }
-
-  async handleDeviceMessage(token, data) {
-    console.log('Device message received:', data);
-
-    switch (data.type) {
-      case 'playlistStatus':
-        await this.playlistHandler.handlePlaylistStatus(data, token);
-        break;
-      default:
-        console.log('Unknown device message type:', data.type);
         break;
     }
   }
