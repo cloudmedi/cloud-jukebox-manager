@@ -10,6 +10,18 @@ const audioHandler = new AudioEventHandler(audio);
 // Initialize volume
 audio.volume = 0.7; // 70%
 
+// Display token
+function displayToken() {
+    const deviceInfo = store.get('deviceInfo');
+    const tokenElement = document.getElementById('tokenValue');
+    
+    if (deviceInfo && deviceInfo.token) {
+        tokenElement.textContent = deviceInfo.token;
+    } else {
+        tokenElement.textContent = 'Token bulunamadı';
+    }
+}
+
 // Close button event listener
 document.getElementById('closeButton').addEventListener('click', () => {
     window.close();
@@ -208,8 +220,9 @@ ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
   }
 });
 
-// İlk yüklemede playlistleri göster
+// İlk yüklemede token'ı göster
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('DOM loaded, displaying playlists');
-  displayPlaylists();
+    console.log('DOM loaded, displaying token and playlists');
+    displayToken();
+    displayPlaylists();
 });
