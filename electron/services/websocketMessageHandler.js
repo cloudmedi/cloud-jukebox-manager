@@ -58,7 +58,7 @@ class WebSocketMessageHandler {
       fs.mkdirSync(playlistDir, { recursive: true });
     }
 
-    // Playlist'i store'a kaydet
+    // Store'a kaydedilecek playlist objesi
     const storedPlaylist = {
       _id: playlist._id,
       name: playlist.name,
@@ -66,7 +66,7 @@ class WebSocketMessageHandler {
       songs: []
     };
 
-    // Her şarkıyı indir
+    // Her şarkıyı indir ve localPath'leri ekle
     for (const song of playlist.songs) {
       try {
         console.log('Processing song:', song);
@@ -100,6 +100,8 @@ class WebSocketMessageHandler {
         });
       }
     }
+
+    console.log('Storing playlist with localPaths:', storedPlaylist);
 
     // Playlist'i store'a kaydet
     const playlists = this.store.get('playlists', []);
