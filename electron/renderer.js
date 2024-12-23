@@ -11,7 +11,33 @@ const audioHandler = new AudioEventHandler(audio);
 // Initialize volume
 audio.volume = 0.7; // 70%
 
-// WebSocket message handler
+// Token display management
+function displayToken(token) {
+  const tokenContainer = document.getElementById('tokenContainer');
+  if (tokenContainer) {
+    tokenContainer.innerHTML = `
+      <div class="token-display p-4 bg-gray-800 rounded-lg text-white text-center">
+        <h2 class="text-lg font-semibold mb-2">Cihaz Token</h2>
+        <p class="text-3xl font-bold mb-2">${token}</p>
+        <p class="text-sm text-gray-400">Bu token'ı Cloud Media Manager'da cihaz eklerken kullanın</p>
+      </div>
+    `;
+  }
+}
+
+// Get and display initial token
+ipcRenderer.invoke('get-device-token').then(token => {
+  if (token) {
+    displayToken(token);
+  }
+});
+
+// Listen for token updates
+ipcRenderer.on('update-token', (event, token) => {
+  displayToken(token);
+});
+
+// WebSocket message handlers
 ipcRenderer.on('ws-message', (event, message) => {
   webSocketMessageHandler.handleMessage(message);
 });

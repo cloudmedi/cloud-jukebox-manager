@@ -80,7 +80,7 @@ const DeviceForm = ({ onSuccess }: DeviceFormProps) => {
       queryClient.invalidateQueries({ queryKey: ["devices"] });
       toast({
         title: "Başarılı!",
-        description: "Cihaz başarıyla eklendi.",
+        description: "Cihaz başarıyla eklendi. Şimdi bir playlist atayabilirsiniz.",
       });
       onSuccess?.();
     },
@@ -111,20 +111,6 @@ const DeviceForm = ({ onSuccess }: DeviceFormProps) => {
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
           <FormField
             control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Cihaz Adı</FormLabel>
-                <FormControl>
-                  <Input placeholder="Örn: Mağaza-1" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
             name="token"
             render={({ field }) => (
               <FormItem>
@@ -153,6 +139,20 @@ const DeviceForm = ({ onSuccess }: DeviceFormProps) => {
                       }
                     }}
                   />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="name"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Cihaz Adı</FormLabel>
+                <FormControl>
+                  <Input placeholder="Örn: Mağaza-1" {...field} />
                 </FormControl>
                 <FormMessage />
               </FormItem>

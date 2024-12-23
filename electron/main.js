@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Tray, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const Store = require('electron-store');
 const store = new Store();
 const websocketService = require('./services/websocketService');
@@ -7,30 +7,28 @@ const apiService = require('./services/apiService');
 require('./services/audioService');
 
 let mainWindow;
-let tray = null;
 
 async function initializeDevice() {
   try {
-    const deviceInfo = store.get('deviceInfo');
-    console.log('Checking device info:', deviceInfo);
+    // Token kontrolü
+    let token = deviceService.getStoredToken();
+    console.log('Checking stored token:', token);
     
-    if (!deviceInfo || !deviceInfo.token) {
-      console.log('No device info found, generating new token...');
-      const token = deviceService.generateToken();
-      const systemInfo = deviceService.getDeviceInfo();
-      
-      console.log('Registering token with backend...', token);
-      await apiService.registerToken(token, systemInfo);
-      
-      store.set('deviceInfo', { token });
-      console.log('Device info saved:', { token });
+    if (!token) {
+      console.log('No token found, generating new token...');
+      token = await deviceService.generateAndRegisterToken();
+      console.log('New token generated and registered:', token);
     }
 
-    // Token varsa veya yeni oluşturulduysa WebSocket bağlantısını başlat
-    const currentToken = deviceInfo?.token || store.get('deviceInfo')?.token;
-    if (currentToken) {
-      console.log('Connecting to WebSocket with token:', currentToken);
-      websocketService.connect(currentToken);
+    // WebSocket bağlantısını başlat
+    if (token) {
+      console.log('Connecting to WebSocket with token:', token);
+      websocketService.connect(token);
+    }
+
+    // Ana pencereye token'ı gönder
+    if (mainWindow) {
+      mainWindow.webContents.send('update-token', token);
     }
   } catch (error) {
     console.error('Error initializing device:', error);
@@ -84,53 +82,9 @@ function createWindow() {
   }
 }
 
-function createTray() {
-  try {
-    const iconPath = path.join(__dirname, 'icon.png');
-    console.log('Tray icon path:', iconPath);
-    
-    tray = new Tray(iconPath);
-    
-    const contextMenu = Menu.buildFromTemplate([
-      {
-        label: 'Show App',
-        click: function() {
-          mainWindow.show();
-          mainWindow.focus();
-        }
-      },
-      {
-        label: 'Close',
-        click: function() {
-          app.isQuitting = true;
-          app.quit();
-        }
-      }
-    ]);
-
-    tray.setToolTip('Cloud Media Player');
-    tray.setContextMenu(contextMenu);
-
-    tray.on('double-click', () => {
-      mainWindow.show();
-      mainWindow.focus();
-    });
-    
-    tray.on('click', () => {
-      mainWindow.show();
-      mainWindow.focus();
-    });
-    
-    console.log('Tray created successfully');
-  } catch (error) {
-    console.error('Error creating tray:', error);
-  }
-}
-
 app.whenReady().then(async () => {
   await initializeDevice();
   createWindow();
-  createTray();
 });
 
 app.on('window-all-closed', () => {
@@ -150,16 +104,11 @@ app.on('before-quit', () => {
   app.isQuitting = true;
 });
 
-ipcMain.handle('save-device-info', async (event, deviceInfo) => {
-  store.set('deviceInfo', deviceInfo);
-  
-  if (deviceInfo.token) {
-    websocketService.connect(deviceInfo.token);
-  }
-  
-  return deviceInfo;
+// IPC handlers for token management
+ipcMain.handle('get-device-token', async () => {
+  return deviceService.getStoredToken();
 });
 
-ipcMain.handle('get-device-info', async () => {
-  return store.get('deviceInfo');
+ipcMain.handle('regenerate-token', async () => {
+  return await deviceService.generateAndRegisterToken();
 });
