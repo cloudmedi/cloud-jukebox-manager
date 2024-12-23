@@ -60,7 +60,7 @@ class WebSocketMessageHandler {
     const playlistContainer = document.getElementById('playlistContainer');
     if (playlistContainer) {
       playlistContainer.innerHTML = `
-        <div class="device-info p-4 bg-gray-100 rounded-lg">
+        <div class="device-info p-4 bg-gray-800 rounded-lg text-white">
           <h2 class="text-lg font-semibold mb-2">Cihaz Bilgileri</h2>
           <p class="text-sm">Token: ${deviceInfo.token}</p>
         </div>
@@ -87,19 +87,8 @@ class WebSocketMessageHandler {
     const playlist = message.data;
     console.log('Received playlist:', playlist.name);
 
-    const playlists = playlistManager.getPlaylists();
-    const existingIndex = playlists.findIndex(p => p._id === playlist._id);
-
-    if (existingIndex !== -1) {
-      playlists[existingIndex] = playlist;
-    } else {
-      playlists.push(playlist);
-    }
-
-    playlistManager.store.set('playlists', playlists);
-    console.log('Playlist saved to store');
-
-    // Notify renderer about new playlist
+    // Playlist'i kaydet ve renderer'a bildir
+    playlistManager.savePlaylist(playlist);
     ipcRenderer.send('playlist-updated', playlist);
   }
 }
