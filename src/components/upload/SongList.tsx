@@ -25,14 +25,17 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { usePlayer } from "@/components/layout/MainLayout";
 import SongEditDialog from "./SongEditDialog";
 import { Song } from "@/types/song";
+import websocketService from "@/services/websocketService";
 
 const SongList = () => {
   const { toast } = useToast();
   const [selectedGenre, setSelectedGenre] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
   const [editingSong, setEditingSong] = useState<Song | null>(null);
+  const { setShowPlayer } = usePlayer();
 
   const { data: songs = [], isLoading, refetch } = useQuery<Song[]>({
     queryKey: ["songs"],
@@ -83,8 +86,26 @@ const SongList = () => {
   };
 
   const handlePlay = (song: Song) => {
-    // Mevcut audio player sistemini kullanarak şarkıyı çal
-    console.log("Playing song:", song);
+    // Player'ı göster
+    setShowPlayer(true);
+
+    // WebSocket üzerinden şarkıyı çal
+    websocketService.sendMessage({
+      type: 'command',
+      command: 'play',
+      data: {
+        songId: song._id,
+        name: song.name,
+        artist: song.artist,
+        filePath: song.filePath,
+        duration: song.duration
+      }
+    });
+
+    toast({
+      title: "Şarkı Çalınıyor",
+      description: `${song.name} - ${song.artist}`,
+    });
   };
 
   if (isLoading) {
