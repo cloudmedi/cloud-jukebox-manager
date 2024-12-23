@@ -4,10 +4,12 @@ const playbackStateManager = require('./audio/PlaybackStateManager');
 class WebSocketMessageHandler {
   handleMessage(message) {
     console.log('Received WebSocket message:', message);
+    const mainWindow = BrowserWindow.getAllWindows()[0];
+    if (!mainWindow) return;
     
     switch (message.type) {
       case 'command':
-        this.handleCommand(message);
+        this.handleCommand(message, mainWindow);
         break;
       default:
         console.log('Unknown message type:', message.type);
@@ -15,10 +17,7 @@ class WebSocketMessageHandler {
     }
   }
 
-  handleCommand(message) {
-    const mainWindow = BrowserWindow.getAllWindows()[0];
-    if (!mainWindow) return;
-
+  handleCommand(message, mainWindow) {
     switch (message.command) {
       case 'play':
         playbackStateManager.savePlaybackState(true, message.playlistId);

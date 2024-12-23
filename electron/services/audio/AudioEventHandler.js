@@ -30,6 +30,13 @@ class AudioEventHandler {
       playbackStateManager.savePlaybackState(false, this.currentPlaylistId);
       ipcRenderer.send('playback-status-changed', false);
     });
+
+    // Hata durumunda playback durumunu güncelle
+    this.audio.addEventListener('error', () => {
+      console.error('Audio error occurred');
+      playbackStateManager.savePlaybackState(false, this.currentPlaylistId);
+      ipcRenderer.send('playback-status-changed', false);
+    });
   }
 }
 
