@@ -1,38 +1,26 @@
 import { useEffect, useRef, useState } from "react";
-import { usePlaybackStore } from "@/store/playbackStore";
-import { Button } from "@/components/ui/button";
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
 import { Slider } from "@/components/ui/slider";
-import { Music, Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
+import { usePlaybackStore } from "@/store/playbackStore";
+import { Song } from "@/types/song";
 import { formatDuration } from "@/lib/utils";
 
-const Player = () => {
+export const Player = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [volume, setVolume] = useState(1);
   const [isMuted, setIsMuted] = useState(false);
-
-  const { currentSong, isPlaying, play, pause, next, previous } = usePlaybackStore();
+  
+  const { currentSong, queue, setCurrentSong } = usePlaybackStore();
 
   useEffect(() => {
     if (currentSong && audioRef.current) {
       audioRef.current.src = `http://localhost:5000/${currentSong.filePath}`;
-      audioRef.current.load();
-      if (isPlaying) {
-        audioRef.current.play();
-      }
+      audioRef.current.play().catch(console.error);
     }
   }, [currentSong]);
-
-  useEffect(() => {
-    if (audioRef.current) {
-      if (isPlaying) {
-        audioRef.current.play();
-      } else {
-        audioRef.current.pause();
-      }
-    }
-  }, [isPlaying]);
 
   const handleTimeUpdate = () => {
     if (audioRef.current) {
@@ -41,137 +29,145 @@ const Player = () => {
     }
   };
 
-  const handleSliderChange = (value: number[]) => {
+  const handlePlayPause = () => {
     if (audioRef.current) {
-      audioRef.current.currentTime = value[0];
-      setCurrentTime(value[0]);
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play().catch(console.error);
+      }
+      setIsPlaying(!isPlaying);
     }
   };
 
   const handleVolumeChange = (value: number[]) => {
+    const newVolume = value[0];
+    setVolume(newVolume);
     if (audioRef.current) {
-      const newVolume = value[0];
       audioRef.current.volume = newVolume;
-      setVolume(newVolume);
-      setIsMuted(newVolume === 0);
+    }
+    if (newVolume === 0) {
+      setIsMuted(true);
+    } else {
+      setIsMuted(false);
     }
   };
 
   const toggleMute = () => {
     if (audioRef.current) {
       const newMutedState = !isMuted;
-      audioRef.current.volume = newMutedState ? 0 : volume;
       setIsMuted(newMutedState);
+      audioRef.current.volume = newMutedState ? 0 : volume;
     }
   };
 
-  const handleEnded = () => {
-    next();
+  const handleNext = () => {
+    if (queue.length > 0) {
+      const currentIndex = queue.findIndex(song => song._id === currentSong?._id);
+      const nextSong = queue[(currentIndex + 1) % queue.length];
+      setCurrentSong(nextSong);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (queue.length > 0) {
+      const currentIndex = queue.findIndex(song => song._id === currentSong?._id);
+      const prevSong = queue[(currentIndex - 1 + queue.length) % queue.length];
+      setCurrentSong(prevSong);
+    }
   };
 
   if (!currentSong) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-background border-t p-4">
-      <audio
-        ref={audioRef}
-        onTimeUpdate={handleTimeUpdate}
-        onEnded={handleEnded}
-      />
-      
-      <div className="max-w-7xl mx-auto grid grid-cols-3 gap-4">
-        {/* Song Info */}
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center overflow-hidden">
+    <div className="fixed bottom-0 left-0 right-0 bg-background border-t">
+      <div className="container flex items-center justify-between h-20">
+        <div className="flex items-center gap-4">
+          <div className="w-12 h-12 bg-muted rounded-md overflow-hidden">
             {currentSong.artwork ? (
-              <img 
+              <img
                 src={`http://localhost:5000${currentSong.artwork}`}
                 alt={currentSong.name}
                 className="w-full h-full object-cover"
               />
             ) : (
-              <Music className="h-6 w-6 text-muted-foreground" />
+              <div className="w-full h-full bg-muted flex items-center justify-center">
+                <span className="text-2xl">🎵</span>
+              </div>
             )}
           </div>
           <div>
-            <p className="font-medium">{currentSong.name}</p>
+            <h3 className="font-medium">{currentSong.name}</h3>
             <p className="text-sm text-muted-foreground">{currentSong.artist}</p>
           </div>
         </div>
 
-        {/* Controls */}
-        <div className="flex flex-col items-center gap-2">
+        <div className="flex flex-col items-center gap-2 flex-1 max-w-xl">
           <div className="flex items-center gap-4">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={previous}
+            <button
+              onClick={handlePrevious}
+              className="p-2 hover:bg-accent rounded-full"
             >
               <SkipBack className="h-5 w-5" />
-            </Button>
-            
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={isPlaying ? pause : play}
-              className="h-10 w-10"
+            </button>
+            <button
+              onClick={handlePlayPause}
+              className="p-3 hover:bg-accent rounded-full"
             >
               {isPlaying ? (
-                <Pause className="h-5 w-5" />
+                <Pause className="h-6 w-6" />
               ) : (
-                <Play className="h-5 w-5" />
+                <Play className="h-6 w-6" />
               )}
-            </Button>
-
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={next}
+            </button>
+            <button
+              onClick={handleNext}
+              className="p-2 hover:bg-accent rounded-full"
             >
               <SkipForward className="h-5 w-5" />
-            </Button>
+            </button>
           </div>
-
-          <div className="w-full flex items-center gap-2">
-            <span className="text-sm text-muted-foreground w-12 text-right">
-              {formatDuration(currentTime)}
-            </span>
+          <div className="w-full flex items-center gap-2 text-sm">
+            <span className="w-12 text-right">{formatDuration(currentTime)}</span>
             <Slider
               value={[currentTime]}
-              min={0}
-              max={duration || 100}
+              max={duration}
               step={1}
-              onValueChange={handleSliderChange}
-              className="w-full"
+              onValueChange={(value) => {
+                if (audioRef.current) {
+                  audioRef.current.currentTime = value[0];
+                }
+              }}
+              className="flex-1"
             />
-            <span className="text-sm text-muted-foreground w-12">
-              {formatDuration(duration)}
-            </span>
+            <span className="w-12">{formatDuration(duration)}</span>
           </div>
         </div>
 
-        {/* Volume */}
-        <div className="flex items-center justify-end gap-2">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={toggleMute}
-          >
+        <div className="flex items-center gap-2 w-36">
+          <button onClick={toggleMute} className="p-2 hover:bg-accent rounded-full">
             {isMuted ? (
               <VolumeX className="h-5 w-5" />
             ) : (
               <Volume2 className="h-5 w-5" />
             )}
-          </Button>
+          </button>
           <Slider
             value={[isMuted ? 0 : volume]}
-            min={0}
             max={1}
             step={0.1}
             onValueChange={handleVolumeChange}
-            className="w-32"
+            className="flex-1"
           />
         </div>
+
+        <audio
+          ref={audioRef}
+          onTimeUpdate={handleTimeUpdate}
+          onEnded={handleNext}
+          onPlay={() => setIsPlaying(true)}
+          onPause={() => setIsPlaying(false)}
+        />
       </div>
     </div>
   );

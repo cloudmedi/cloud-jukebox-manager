@@ -116,7 +116,7 @@ const SongList = () => {
     );
   }
 
-  const uniqueGenres = ["All", ...Array.from(new Set(songs.map(song => song.genre)))].sort();
+  const uniqueGenres = ["All", ...Array.from(new Set(songs.map((song: Song) => song.genre)))].sort();
 
   return (
     <div className="space-y-4">
