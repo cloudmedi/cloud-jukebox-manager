@@ -18,10 +18,12 @@ const albumArtwork = document.getElementById('albumArtwork');
 
 // Add volume control IPC listener
 ipcRenderer.on('set-volume', (event, volume) => {
+  console.log('Received volume change command:', volume);
   if (audio && !isNaN(volume)) {
-    currentVolume = volume;
-    audio.volume = volume;
+    currentVolume = volume / 100; // Convert to 0-1 range
+    audio.volume = currentVolume;
     updateVolumeUI();
+    console.log('Volume updated to:', volume);
   }
 });
 
