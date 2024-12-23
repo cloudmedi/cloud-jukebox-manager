@@ -2,6 +2,8 @@ const { ipcRenderer } = require('electron');
 const Store = require('electron-store');
 const store = new Store();
 const audio = document.getElementById('audioPlayer');
+const fs = require('fs');
+const path = require('path');
 
 // Initialize volume
 audio.volume = 0.7; // 70%
@@ -37,6 +39,33 @@ function displayPlaylists() {
   });
 }
 
+function deleteOldPlaylists() {
+  const playlists = store.get('playlists', []);
+  
+  // Son playlist hariç tüm playlistleri sil
+  if (playlists.length > 1) {
+    const latestPlaylist = playlists[playlists.length - 1];
+    
+    // Eski playlistlerin şarkı dosyalarını sil
+    playlists.slice(0, -1).forEach(playlist => {
+      playlist.songs.forEach(song => {
+        if (song.localPath) {
+          try {
+            fs.unlinkSync(song.localPath);
+            console.log(`Deleted song file: ${song.localPath}`);
+          } catch (error) {
+            console.error(`Error deleting song file: ${error}`);
+          }
+        }
+      });
+    });
+    
+    // Store'u güncelle, sadece son playlisti tut
+    store.set('playlists', [latestPlaylist]);
+    console.log('Kept only the latest playlist:', latestPlaylist.name);
+  }
+}
+
 // WebSocket mesaj dinleyicileri
 ipcRenderer.on('playlist-received', (event, playlist) => {
   console.log('New playlist received:', playlist);
@@ -55,16 +84,19 @@ ipcRenderer.on('playlist-received', (event, playlist) => {
   // Store'u güncelle
   store.set('playlists', playlists);
   
-  // UI'ı hemen güncelle
-  displayPlaylists();
-  
   // Yeni playlist'i hemen çal
   console.log('Auto-playing new playlist:', playlist);
   ipcRenderer.invoke('play-playlist', playlist);
   
+  // Eski playlistleri ve şarkıları sil
+  deleteOldPlaylists();
+  
+  // UI'ı hemen güncelle
+  displayPlaylists();
+  
   // Bildirim göster
   new Notification('Yeni Playlist', {
-    body: `${playlist.name} playlist'i başarıyla indirildi ve çalınıyor.`
+    body: `${playlist.name} playlist'i başarıyla indirildi ve çalınıyor. Eski playlist'ler silindi.`
   });
 });
 
