@@ -88,15 +88,16 @@ router.delete('/:id', async (req, res) => {
     );
 
     // WebSocket üzerinden cihaza playlist temizleme komutu gönder
-    if (device.isOnline) {
+    if (device.isOnline && req.wss) {
       req.wss.sendToDevice(device.token, {
         type: 'command',
         command: 'clearPlaylists'
       });
     }
 
-    // Sonra cihazı sil
-    await device.remove();
+    // Cihazı sil (remove() yerine deleteOne() kullan)
+    await Device.deleteOne({ _id: device._id });
+    
     res.json({ message: 'Cihaz silindi' });
   } catch (error) {
     console.error('Device deletion error:', error);
