@@ -2,10 +2,10 @@ import { usePlaybackStore } from "@/store/playbackStore";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
-import { useEffect, useState } from "react";
+import { useState } from "react";
 import { Song } from "@/types/song";
 
-export const Player = () => {
+const Player = () => {
   const { 
     currentSong,
     isPlaying,
@@ -141,3 +141,5 @@ export const Player = () => {
     </div>
   );
 };
+
+export default Player;

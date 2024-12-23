@@ -29,7 +29,8 @@ const SongList = () => {
     },
   });
 
-  const genres = ["All", ...new Set(songs.map((song) => song.genre))].sort();
+  const genres = Array.from(new Set(songs.map((song: Song) => song.genre))).sort();
+  const allGenres = ["All", ...genres];
 
   const filteredSongs = songs?.filter((song) => {
     const matchesGenre = selectedGenre === "All" || song.genre === selectedGenre;
@@ -92,7 +93,7 @@ const SongList = () => {
           onSearchChange={setSearchTerm}
           selectedGenre={selectedGenre}
           onGenreChange={setSelectedGenre}
-          genres={genres}
+          genres={allGenres}
         />
         {selectedSongs.length > 0 && (
           <div className="flex gap-2">
