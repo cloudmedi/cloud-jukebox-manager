@@ -26,18 +26,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import SongEditDialog from "./SongEditDialog";
-
-interface Song {
-  _id: string;
-  name: string;
-  artist: string;
-  genre: string;
-  album?: string;
-  year?: number;
-  language?: string;
-  duration: number;
-  createdAt: string;
-}
+import { Song } from "@/types/song";
 
 const SongList = () => {
   const { toast } = useToast();
@@ -45,20 +34,18 @@ const SongList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingSong, setEditingSong] = useState<Song | null>(null);
 
-  const { data: songs = [], isLoading, refetch } = useQuery({
+  const { data: songs = [], isLoading, refetch } = useQuery<Song[]>({
     queryKey: ["songs"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/songs");
       if (!response.ok) throw new Error("Failed to fetch songs");
-      const data: Song[] = await response.json();
-      return data;
+      return response.json();
     },
   });
 
-  // Mevcut türleri dinamik olarak al ve string[] tipinde olduğunu belirt
-  const genres: string[] = ["All", ...new Set(songs.map((song: Song) => song.genre))].sort();
+  const genres = ["All", ...new Set(songs.map((song) => song.genre))].sort();
 
-  const filteredSongs = songs?.filter((song: Song) => {
+  const filteredSongs = songs?.filter((song) => {
     const matchesGenre = selectedGenre === "All" || song.genre === selectedGenre;
     const matchesSearch =
       song.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -93,6 +80,11 @@ const SongList = () => {
         description: "Şarkı silinirken bir hata oluştu",
       });
     }
+  };
+
+  const handlePlay = (song: Song) => {
+    // Mevcut audio player sistemini kullanarak şarkıyı çal
+    console.log("Playing song:", song);
   };
 
   if (isLoading) {
@@ -137,11 +129,21 @@ const SongList = () => {
             </TableRow>
           </TableHeader>
           <TableBody>
-            {filteredSongs?.map((song: Song) => (
+            {filteredSongs?.map((song) => (
               <TableRow key={song._id}>
                 <TableCell>
                   <div className="flex items-center gap-2">
-                    <Music className="h-4 w-4 text-primary" />
+                    <div className="relative group">
+                      <div className="w-8 h-8 bg-muted rounded-md flex items-center justify-center">
+                        <Music className="h-4 w-4 text-muted-foreground" />
+                      </div>
+                      <button
+                        onClick={() => handlePlay(song)}
+                        className="absolute inset-0 bg-black/60 rounded-md opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
+                      >
+                        <Play className="h-4 w-4 text-white" />
+                      </button>
+                    </div>
                     {song.name}
                   </div>
                 </TableCell>
@@ -160,10 +162,6 @@ const SongList = () => {
                       </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                      <DropdownMenuItem>
-                        <Play className="mr-2 h-4 w-4" />
-                        Oynat
-                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => setEditingSong(song)}>
                         <Pencil className="mr-2 h-4 w-4" />
                         Düzenle
