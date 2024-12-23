@@ -17,6 +17,8 @@ interface GroupManagementDialogProps {
   onGroupChange: (groupId: string | null) => Promise<void>;
 }
 
+const API_URL = 'http://localhost:5000/api';
+
 const GroupManagementDialog = ({
   isOpen,
   onClose,
@@ -33,9 +35,17 @@ const GroupManagementDialog = ({
   const { data: groups = [] } = useQuery({
     queryKey: ["device-groups"],
     queryFn: async () => {
-      const response = await fetch("http://localhost:5000/api/device-groups");
-      if (!response.ok) throw new Error("Gruplar yüklenemedi");
-      return response.json();
+      try {
+        const response = await fetch(`${API_URL}/device-groups`);
+        if (!response.ok) throw new Error("Gruplar yüklenemedi");
+        return response.json();
+      } catch (error) {
+        console.error("Grup yükleme hatası:", error);
+        toast("Hata", {
+          description: "Gruplar yüklenirken bir hata oluştu",
+        });
+        return [];
+      }
     },
   });
 
@@ -43,9 +53,12 @@ const GroupManagementDialog = ({
     try {
       setIsSaving(true);
       await onGroupChange(selectedGroupId);
+      onClose();
     } catch (error) {
       console.error("Grup güncelleme hatası:", error);
-      toast.error("Grup güncellenirken bir hata oluştu");
+      toast("Hata", {
+        description: "Grup güncellenirken bir hata oluştu",
+      });
     } finally {
       setIsSaving(false);
     }

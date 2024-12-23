@@ -1,4 +1,4 @@
-import { toast } from "@/components/ui/use-toast";
+import { toast } from "sonner";
 
 const API_URL = 'http://localhost:5000/api';
 
@@ -41,14 +41,11 @@ export const deviceService = {
       
       if (!response.ok) throw new Error('Cihaz yeniden başlatılamadı');
       
-      toast({
-        title: "Başarılı",
+      toast("Başarılı", {
         description: "Cihaz yeniden başlatılıyor",
       });
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Hata",
+      toast("Hata", {
         description: "Cihaz yeniden başlatılamadı",
       });
       throw error;
@@ -67,14 +64,11 @@ export const deviceService = {
       
       if (!response.ok) throw new Error('Cihaz durumu değiştirilemedi');
       
-      toast({
-        title: "Başarılı",
+      toast("Başarılı", {
         description: `Cihaz ${!currentState ? 'açılıyor' : 'kapatılıyor'}`,
       });
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Hata",
+      toast("Hata", {
         description: "Cihaz durumu değiştirilemedi",
       });
       throw error;
@@ -93,14 +87,11 @@ export const deviceService = {
       
       if (!response.ok) throw new Error('Ses seviyesi ayarlanamadı');
       
-      toast({
-        title: "Başarılı",
+      toast("Başarılı", {
         description: "Ses seviyesi güncellendi",
       });
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Hata",
+      toast("Hata", {
         description: "Ses seviyesi ayarlanamadı",
       });
       throw error;
@@ -125,11 +116,15 @@ export const deviceService = {
       const data = await response.json();
       console.log('Group update response:', data);
       
-      toast.success('Cihaz grubu güncellendi');
+      toast("Başarılı", {
+        description: "Cihaz grubu güncellendi",
+      });
     } catch (error) {
       console.error('Group update error:', error);
-      toast.error('Grup güncellenemedi');
-      throw error; // Hata fırlatılıyor ki üst katmanda yakalanabilsin
+      toast("Hata", {
+        description: "Grup güncellenemedi",
+      });
+      throw error;
     }
   },
 
@@ -141,14 +136,11 @@ export const deviceService = {
       
       if (!response.ok) throw new Error('Cihaz silinemedi');
       
-      toast({
-        title: "Başarılı",
+      toast("Başarılı", {
         description: "Cihaz silindi",
       });
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Hata",
+      toast("Hata", {
         description: "Cihaz silinemedi",
       });
       throw error;

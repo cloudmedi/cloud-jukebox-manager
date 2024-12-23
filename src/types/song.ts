@@ -5,7 +5,7 @@ export interface Song {
   genre: string;
   album?: string;
   duration: number;
-  artwork?: string;
+  artwork: string | null;
   filePath: string;
   localPath?: string;
   createdAt: string;
