@@ -1,3 +1,4 @@
+const WebSocket = require('ws');
 const Store = require('electron-store');
 const path = require('path');
 const fs = require('fs');
@@ -12,7 +13,7 @@ class PlaylistService {
 
   initializeDownloadPath() {
     try {
-      this.downloadPath = path.join(process.env.APPDATA || process.env.HOME, 'cloud-media-player', 'playlists');
+      this.downloadPath = path.join(app.getPath('userData'), 'downloads');
       console.log('Download path:', this.downloadPath);
       this.ensureDirectoryExists(this.downloadPath);
     } catch (error) {
@@ -33,12 +34,15 @@ class PlaylistService {
     }
   }
 
-  async handlePlaylistMessage(message) {
+  async handlePlaylistMessage(message, ws) {
     console.log('Playlist mesajı alındı:', message);
     
     if (!message || !message.data) {
       console.error('Geçersiz playlist mesajı:', message);
-      websocketService.updatePlaylistStatus('error', message.data?._id);
+      websocketService.sendMessage({
+        type: 'playlistStatus',
+        status: 'error'
+      });
       return;
     }
     
@@ -50,8 +54,20 @@ class PlaylistService {
       this.ensureDirectoryExists(playlistPath);
       
       console.log('Playlist indirme başlatılıyor:', playlist._id);
-      websocketService.updatePlaylistStatus('loading', playlist._id);
       
+      // İndirme başladığında durumu güncelle
+      websocketService.sendMessage({
+        type: 'playlistStatus',
+        status: 'loading',
+        playlistId: playlist._id
+      });
+      
+      this.store.set(`download.${playlist._id}`, {
+        status: 'downloading',
+        progress: 0,
+        completedSongs: []
+      });
+
       for (let i = 0; i < playlist.songs.length; i++) {
         const song = playlist.songs[i];
         console.log(`Şarkı indiriliyor (${i + 1}/${playlist.songs.length}):`, song.name);
@@ -60,32 +76,66 @@ class PlaylistService {
           const songPath = path.join(playlistPath, `${song._id}.mp3`);
           const fullUrl = `${playlist.baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
           
-          await this.downloadFile(fullUrl, songPath);
+          await this.downloadFile(fullUrl, songPath, (progress) => {
+            if (ws) {
+              ws.send(JSON.stringify({
+                type: 'downloadProgress',
+                songId: song._id,
+                songName: song.name,
+                progress,
+              }));
+            }
+          });
+          
           playlist.songs[i] = {
             ...song,
             localPath: songPath
           };
           
+          const downloadState = this.store.get(`download.${playlist._id}`);
+          downloadState.completedSongs.push(song._id);
+          this.store.set(`download.${playlist._id}`, downloadState);
+          
         } catch (error) {
           console.error(`Şarkı indirme hatası (${song.name}):`, error);
-          websocketService.updatePlaylistStatus('error', playlist._id);
+          websocketService.sendMessage({
+            type: 'playlistStatus',
+            status: 'error',
+            playlistId: playlist._id
+          });
           return;
         }
       }
 
       // Tüm şarkılar başarıyla indirildi
-      websocketService.updatePlaylistStatus('loaded', playlist._id);
+      this.store.set(`download.${playlist._id}`, {
+        status: 'completed',
+        progress: 100,
+        completedSongs: playlist.songs.map(s => s._id)
+      });
+
+      // İndirme tamamlandığında durumu güncelle
+      websocketService.sendMessage({
+        type: 'playlistStatus',
+        status: 'loaded',
+        playlistId: playlist._id
+      });
+      
       console.log('Playlist başarıyla indirildi:', playlist._id);
 
       return true;
     } catch (error) {
       console.error('Playlist indirme hatası:', error);
-      websocketService.updatePlaylistStatus('error', playlist._id);
+      websocketService.sendMessage({
+        type: 'playlistStatus',
+        status: 'error',
+        playlistId: playlist._id
+      });
       throw error;
     }
   }
 
-  async downloadFile(url, filePath) {
+  async downloadFile(url, filePath, onProgress) {
     const response = await axios({
       url,
       method: 'GET',
@@ -93,8 +143,21 @@ class PlaylistService {
     });
 
     const writer = fs.createWriteStream(filePath);
+    const totalLength = response.headers['content-length'];
+
+    console.log('Dosya indirme başladı:', filePath);
+    console.log('Toplam boyut:', totalLength);
 
     response.data.pipe(writer);
+
+    if (onProgress && totalLength) {
+      let downloaded = 0;
+      response.data.on('data', (chunk) => {
+        downloaded += chunk.length;
+        const progress = Math.round((downloaded * 100) / totalLength);
+        onProgress(progress);
+      });
+    }
 
     return new Promise((resolve, reject) => {
       writer.on('finish', () => {
