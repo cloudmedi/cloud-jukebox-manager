@@ -2,12 +2,7 @@ const Store = require('electron-store');
 
 class PlaybackStateManager {
   constructor() {
-    if (PlaybackStateManager.instance) {
-      return PlaybackStateManager.instance;
-    }
-    
     this.store = new Store();
-    PlaybackStateManager.instance = this;
   }
 
   savePlaybackState(isPlaying) {
@@ -30,8 +25,4 @@ class PlaybackStateManager {
   }
 }
 
-// Singleton instance'ı oluştur ve export et
-const instance = new PlaybackStateManager();
-Object.freeze(instance);
-
-module.exports = instance;
+module.exports = PlaybackStateManager;
