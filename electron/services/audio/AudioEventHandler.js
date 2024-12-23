@@ -4,7 +4,12 @@ const playbackStateManager = require('./PlaybackStateManager');
 class AudioEventHandler {
   constructor(audio) {
     this.audio = audio;
+    this.currentPlaylistId = null;
     this.setupEventListeners();
+  }
+
+  setCurrentPlaylistId(playlistId) {
+    this.currentPlaylistId = playlistId;
   }
 
   setupEventListeners() {
@@ -15,13 +20,13 @@ class AudioEventHandler {
 
     this.audio.addEventListener('play', () => {
       console.log('Audio started playing');
-      playbackStateManager.savePlaybackState(true);
+      playbackStateManager.savePlaybackState(true, this.currentPlaylistId);
       ipcRenderer.send('playback-status-changed', true);
     });
 
     this.audio.addEventListener('pause', () => {
       console.log('Audio paused');
-      playbackStateManager.savePlaybackState(false);
+      playbackStateManager.savePlaybackState(false, this.currentPlaylistId);
       ipcRenderer.send('playback-status-changed', false);
     });
   }
