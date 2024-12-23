@@ -2,56 +2,100 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Music Player</title>
+    <title>Cloud Jukebox</title>
     <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
-    <div class="player">
-        <audio id="audioPlayer"></audio>
-        
-        <div class="song-info">
-            <h3 class="song-title">No song playing</h3>
-            <p class="artist">Unknown Artist</p>
-            <p class="song-path"></p>
-        </div>
-
-        <div class="controls">
-            <button id="prevButton">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polygon points="19 20 9 12 19 4 19 20"></polygon>
-                    <line x1="5" y1="19" x2="5" y2="5"></line>
-                </svg>
-            </button>
-            
-            <button id="playButton">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polygon points="5 3 19 12 5 21 5 3"></polygon>
-                </svg>
-            </button>
-            
-            <button id="nextButton">
-                <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <polygon points="5 4 15 12 5 20 5 4"></polygon>
-                    <line x1="19" y1="5" x2="19" y2="19"></line>
-                </svg>
-            </button>
-        </div>
-
-        <div class="progress">
-            <span id="currentTime">0:00</span>
-            <div class="progress-bar">
-                <div id="progressBar"></div>
-            </div>
-            <span id="duration">0:00</span>
-        </div>
-
-        <div class="download-progress" style="display: none;">
-            <div class="download-progress-text">İndiriliyor: 0%</div>
-            <div class="download-progress-container">
-                <div class="download-progress-bar"></div>
+    <div class="title-bar">
+        <div class="title-bar-controls">
+            <div class="window-title">Cloud Jukebox</div>
+            <div class="window-controls">
+                <button id="minimizeButton" class="window-control">─</button>
+                <button id="maximizeButton" class="window-control">□</button>
+                <button id="closeButton" class="window-control">×</button>
             </div>
         </div>
     </div>
+
+    <div class="main-container">
+        <div class="sidebar">
+            <div class="playlist-section">
+                <h2>Playlists</h2>
+                <div id="playlistContainer" class="playlist-container">
+                    <!-- Playlists will be dynamically added here -->
+                </div>
+            </div>
+        </div>
+
+        <div class="content">
+            <div class="now-playing-section">
+                <div class="artwork-container">
+                    <img id="albumArtwork" src="placeholder-artwork.png" alt="Album Artwork">
+                </div>
+                
+                <div class="song-info">
+                    <h3 class="song-title">No song playing</h3>
+                    <p class="artist">Unknown Artist</p>
+                    <p class="song-path"></p>
+                </div>
+
+                <div class="player-controls">
+                    <div class="main-controls">
+                        <button id="prevButton" class="control-button">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="19 20 9 12 19 4 19 20"></polygon>
+                                <line x1="5" y1="19" x2="5" y2="5"></line>
+                            </svg>
+                        </button>
+                        
+                        <button id="playButton" class="control-button play-button">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                            </svg>
+                        </button>
+                        
+                        <button id="nextButton" class="control-button">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="5 4 15 12 5 20 5 4"></polygon>
+                                <line x1="19" y1="5" x2="19" y2="19"></line>
+                            </svg>
+                        </button>
+                    </div>
+
+                    <div class="progress-container">
+                        <span id="currentTime" class="time">0:00</span>
+                        <div class="progress-bar">
+                            <div id="progressBar" class="progress"></div>
+                        </div>
+                        <span id="duration" class="time">0:00</span>
+                    </div>
+
+                    <div class="volume-control">
+                        <button id="volumeButton" class="control-button">
+                            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+                                <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+                                <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+                            </svg>
+                        </button>
+                        <div class="volume-slider">
+                            <div id="volumeBar" class="volume-progress"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="download-progress" style="display: none;">
+        <div class="download-progress-text">İndiriliyor: 0%</div>
+        <div class="download-progress-container">
+            <div class="download-progress-bar"></div>
+        </div>
+    </div>
+
+    <audio id="audioPlayer"></audio>
     <script src="renderer.js"></script>
 </body>
 </html>

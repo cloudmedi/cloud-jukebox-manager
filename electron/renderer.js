@@ -12,9 +12,32 @@ const songPath = document.querySelector('.song-path');
 const downloadProgress = document.querySelector('.download-progress');
 const downloadProgressBar = document.querySelector('.download-progress-bar');
 const downloadProgressText = document.querySelector('.download-progress-text');
+const volumeBar = document.getElementById('volumeBar');
+const volumeButton = document.getElementById('volumeButton');
+const albumArtwork = document.getElementById('albumArtwork');
+
+// Window controls
+document.getElementById('minimizeButton').addEventListener('click', () => {
+    ipcRenderer.send('minimize-window');
+});
+
+document.getElementById('maximizeButton').addEventListener('click', () => {
+    ipcRenderer.send('maximize-window');
+});
+
+document.getElementById('closeButton').addEventListener('click', () => {
+    ipcRenderer.send('close-window');
+});
 
 let isPlaying = false;
 let playPromise = null;
+let isDraggingProgress = false;
+let isDraggingVolume = false;
+let currentVolume = 0.7; // 70%
+
+// Initialize volume
+audio.volume = currentVolume;
+updateVolumeUI();
 
 // Play/Pause toggle
 playButton.addEventListener('click', () => {
@@ -51,6 +74,7 @@ audio.addEventListener('play', () => {
             <rect x="14" y="4" width="4" height="16"></rect>
         </svg>
     `;
+    playButton.classList.add('playing');
 });
 
 audio.addEventListener('pause', () => {
@@ -61,25 +85,107 @@ audio.addEventListener('pause', () => {
             <polygon points="5 3 19 12 5 21 5 3"></polygon>
         </svg>
     `;
+    playButton.classList.remove('playing');
 });
 
 // Progress bar updates
 audio.addEventListener('timeupdate', () => {
-    const progress = (audio.currentTime / audio.duration) * 100;
-    progressBar.style.width = progress + '%';
-    currentTimeSpan.textContent = formatTime(audio.currentTime);
+    if (!isDraggingProgress) {
+        const progress = (audio.currentTime / audio.duration) * 100;
+        progressBar.style.width = progress + '%';
+        currentTimeSpan.textContent = formatTime(audio.currentTime);
+    }
 });
 
 audio.addEventListener('loadedmetadata', () => {
     durationSpan.textContent = formatTime(audio.duration);
 });
 
-// Click on progress bar to seek
-document.querySelector('.progress').addEventListener('click', (e) => {
-    const rect = e.target.getBoundingClientRect();
+// Progress bar interaction
+const progressContainer = document.querySelector('.progress-bar');
+progressContainer.addEventListener('mousedown', (e) => {
+    isDraggingProgress = true;
+    updateProgressFromMouse(e);
+});
+
+document.addEventListener('mousemove', (e) => {
+    if (isDraggingProgress) {
+        updateProgressFromMouse(e);
+    }
+});
+
+document.addEventListener('mouseup', () => {
+    if (isDraggingProgress) {
+        isDraggingProgress = false;
+    }
+});
+
+function updateProgressFromMouse(e) {
+    const rect = progressContainer.getBoundingClientRect();
     const pos = (e.clientX - rect.left) / rect.width;
     audio.currentTime = pos * audio.duration;
+    progressBar.style.width = (pos * 100) + '%';
+}
+
+// Volume control
+const volumeContainer = document.querySelector('.volume-slider');
+volumeContainer.addEventListener('mousedown', (e) => {
+    isDraggingVolume = true;
+    updateVolumeFromMouse(e);
 });
+
+document.addEventListener('mousemove', (e) => {
+    if (isDraggingVolume) {
+        updateVolumeFromMouse(e);
+    }
+});
+
+document.addEventListener('mouseup', () => {
+    isDraggingVolume = false;
+});
+
+volumeButton.addEventListener('click', toggleMute);
+
+function updateVolumeFromMouse(e) {
+    const rect = volumeContainer.getBoundingClientRect();
+    const pos = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    currentVolume = pos;
+    audio.volume = pos;
+    updateVolumeUI();
+}
+
+function toggleMute() {
+    audio.muted = !audio.muted;
+    updateVolumeUI();
+}
+
+function updateVolumeUI() {
+    const effectiveVolume = audio.muted ? 0 : currentVolume;
+    volumeBar.style.width = (effectiveVolume * 100) + '%';
+    
+    volumeButton.innerHTML = getVolumeIcon(effectiveVolume);
+}
+
+function getVolumeIcon(volume) {
+    if (volume === 0) {
+        return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <line x1="23" y1="9" x2="17" y2="15"></line>
+            <line x1="17" y1="9" x2="23" y2="15"></line>
+        </svg>`;
+    } else if (volume < 0.5) {
+        return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+        </svg>`;
+    } else {
+        return `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <polygon points="11 5 6 9 2 9 2 15 6 15 11 19 11 5"></polygon>
+            <path d="M15.54 8.46a5 5 0 0 1 0 7.07"></path>
+            <path d="M19.07 4.93a10 10 0 0 1 0 14.14"></path>
+        </svg>`;
+    }
+}
 
 // Format time in minutes:seconds
 function formatTime(seconds) {
@@ -95,6 +201,15 @@ ipcRenderer.on('update-player', (event, song) => {
         songTitle.textContent = song.name;
         artistName.textContent = song.artist;
         songPath.textContent = song.localPath;
+        
+        // Update artwork
+        if (song.artwork) {
+            albumArtwork.src = song.artwork;
+            albumArtwork.classList.remove('loading');
+        } else {
+            albumArtwork.src = 'placeholder-artwork.png';
+            albumArtwork.classList.add('loading');
+        }
         
         if (playPromise !== null) {
             playPromise
