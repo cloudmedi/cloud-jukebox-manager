@@ -1,7 +1,5 @@
 const WebSocket = require('ws');
 const Store = require('electron-store');
-const { BrowserWindow } = require('electron');
-const playlistHandler = require('./playlist/PlaylistHandler');
 const store = new Store();
 
 class WebSocketService {
@@ -9,7 +7,6 @@ class WebSocketService {
     this.ws = null;
     this.messageHandlers = new Map();
     this.setupHandlers();
-    this.connect();
   }
 
   setupHandlers() {
@@ -52,19 +49,18 @@ class WebSocketService {
     });
   }
 
-  connect() {
-    const deviceInfo = store.get('deviceInfo');
-    if (!deviceInfo || !deviceInfo.token) {
-      console.log('No device info found, deviceInfo:', deviceInfo);
+  connect(token) {
+    if (!token) {
+      console.error('Cannot connect: No token provided');
       return;
     }
 
-    console.log('Attempting WebSocket connection with token:', deviceInfo.token);
+    console.log('Attempting WebSocket connection with token:', token);
     this.ws = new WebSocket('ws://localhost:5000');
 
     this.ws.on('open', () => {
-      console.log('WebSocket connected successfully');
-      this.sendAuth(deviceInfo.token);
+      console.log('WebSocket connected successfully, sending auth message');
+      this.sendAuth(token);
     });
 
     this.ws.on('message', (data) => {
@@ -79,12 +75,20 @@ class WebSocketService {
 
     this.ws.on('close', () => {
       console.log('WebSocket disconnected, reconnecting in 5 seconds...');
-      setTimeout(() => this.connect(), 5000);
+      setTimeout(() => this.connect(token), 5000);
     });
 
     this.ws.on('error', (error) => {
       console.error('WebSocket error:', error);
     });
+  }
+
+  disconnect() {
+    if (this.ws) {
+      console.log('Disconnecting WebSocket');
+      this.ws.close();
+      this.ws = null;
+    }
   }
 
   sendAuth(token) {
@@ -93,14 +97,6 @@ class WebSocketService {
       type: 'auth',
       token: token
     });
-  }
-
-  sendMessage(message) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message));
-    } else {
-      console.error('WebSocket connection not ready');
-    }
   }
 
   handleMessage(message) {
@@ -118,6 +114,14 @@ class WebSocketService {
 
   removeMessageHandler(type) {
     this.messageHandlers.delete(type);
+  }
+
+  sendMessage(message) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(message));
+    } else {
+      console.error('WebSocket connection not ready');
+    }
   }
 }
 

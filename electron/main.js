@@ -1,5 +1,4 @@
 const { app, BrowserWindow, ipcMain, Tray, Menu } = require('electron');
-const path = require('path');
 const Store = require('electron-store');
 const store = new Store();
 const websocketService = require('./services/websocketService');
@@ -13,17 +12,25 @@ let tray = null;
 async function initializeDevice() {
   try {
     const deviceInfo = store.get('deviceInfo');
+    console.log('Checking device info:', deviceInfo);
     
     if (!deviceInfo || !deviceInfo.token) {
       console.log('No device info found, generating new token...');
       const token = deviceService.generateToken();
       const systemInfo = deviceService.getDeviceInfo();
       
-      console.log('Registering token with backend...');
+      console.log('Registering token with backend...', token);
       await apiService.registerToken(token, systemInfo);
       
       store.set('deviceInfo', { token });
       console.log('Device info saved:', { token });
+    }
+
+    // Token varsa veya yeni oluşturulduysa WebSocket bağlantısını başlat
+    const currentToken = deviceInfo?.token || store.get('deviceInfo')?.token;
+    if (currentToken) {
+      console.log('Connecting to WebSocket with token:', currentToken);
+      websocketService.connect(currentToken);
     }
   } catch (error) {
     console.error('Error initializing device:', error);
@@ -65,23 +72,31 @@ function createWindow() {
     }
     return false;
   });
+
+  // Son kaydedilen playlist'i kontrol et ve yükle
+  const playlists = store.get('playlists', []);
+  if (playlists.length > 0) {
+    const lastPlaylist = playlists[playlists.length - 1];
+    console.log('Starting last saved playlist:', lastPlaylist.name);
+    mainWindow.webContents.on('did-finish-load', () => {
+      mainWindow.webContents.send('auto-play-playlist', lastPlaylist);
+    });
+  }
 }
 
 function createTray() {
   try {
-    // Tray ikonu oluştur
     const iconPath = path.join(__dirname, 'icon.png');
     console.log('Tray icon path:', iconPath);
     
     tray = new Tray(iconPath);
     
-    // Tray menüsünü oluştur
     const contextMenu = Menu.buildFromTemplate([
       {
         label: 'Show App',
         click: function() {
           mainWindow.show();
-          mainWindow.focus(); // Pencereyi ön plana getir
+          mainWindow.focus();
         }
       },
       {
@@ -93,20 +108,17 @@ function createTray() {
       }
     ]);
 
-    // Tray ayarlarını yap
     tray.setToolTip('Cloud Media Player');
     tray.setContextMenu(contextMenu);
 
-    // Tray ikonuna çift tıklandığında uygulamayı göster
     tray.on('double-click', () => {
       mainWindow.show();
-      mainWindow.focus(); // Pencereyi ön plana getir
+      mainWindow.focus();
     });
     
-    // Tray ikonuna tek tıklandığında uygulamayı göster
     tray.on('click', () => {
       mainWindow.show();
-      mainWindow.focus(); // Pencereyi ön plana getir
+      mainWindow.focus();
     });
     
     console.log('Tray created successfully');
