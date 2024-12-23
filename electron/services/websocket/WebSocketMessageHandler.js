@@ -1,18 +1,23 @@
 const { ipcRenderer } = require('electron');
 const Store = require('electron-store');
 const store = new Store();
+const PlaylistHandler = require('../playlist/PlaylistHandler');
 const playlistManager = require('../playlist/PlaylistManager');
 
 class WebSocketMessageHandler {
-  handleMessage(message) {
-    console.log('Received WebSocket message:', message);
+  constructor() {
+    this.playlistHandler = new PlaylistHandler();
+  }
+
+  async handleMessage(message) {
+    console.log('Handling WebSocket message:', message);
 
     switch (message.type) {
       case 'command':
         this.handleCommand(message);
         break;
       case 'playlist':
-        this.handlePlaylist(message);
+        await this.handlePlaylist(message);
         break;
       default:
         console.log('Unhandled message type:', message.type);
@@ -38,34 +43,35 @@ class WebSocketMessageHandler {
     }
   }
 
-  handleClearPlaylists() {
-    console.log('Clearing all playlists...');
-    
-    // Tüm playlistleri temizle
-    playlistManager.clearPlaylists();
-    store.delete('playlists');
-    
-    // Renderer process'e bildir
-    ipcRenderer.send('playlists-cleared');
-    
-    // Token'ı göster
-    const deviceInfo = store.get('deviceInfo');
-    if (deviceInfo?.token) {
-      console.log('Current device token:', deviceInfo.token);
-      this.displayDeviceInfo(deviceInfo);
+  async handlePlaylist(message) {
+    try {
+      console.log('Playlist message received:', message);
+      
+      if (!message.data) {
+        console.error('Invalid playlist message:', message);
+        return;
+      }
+
+      const playlist = message.data;
+      console.log('Processing playlist:', playlist.name);
+
+      // PlaylistHandler'ı kullanarak playlist'i işle
+      const updatedPlaylist = await this.playlistHandler.handlePlaylist(playlist);
+      
+      // Playlist'i kaydet ve renderer'a bildir
+      playlistManager.savePlaylist(updatedPlaylist);
+      ipcRenderer.send('playlist-updated', updatedPlaylist);
+      
+    } catch (error) {
+      console.error('Error handling playlist message:', error);
     }
   }
 
-  displayDeviceInfo(deviceInfo) {
-    const playlistContainer = document.getElementById('playlistContainer');
-    if (playlistContainer) {
-      playlistContainer.innerHTML = `
-        <div class="device-info p-4 bg-gray-800 rounded-lg text-white">
-          <h2 class="text-lg font-semibold mb-2">Cihaz Bilgileri</h2>
-          <p class="text-sm">Token: ${deviceInfo.token}</p>
-        </div>
-      `;
-    }
+  handleClearPlaylists() {
+    console.log('Clearing all playlists...');
+    playlistManager.clearPlaylists();
+    store.delete('playlists');
+    ipcRenderer.send('playlists-cleared');
   }
 
   handleSetVolume(volume) {
@@ -77,20 +83,6 @@ class WebSocketMessageHandler {
     console.log('Play/Pause command:', command);
     ipcRenderer.send('toggle-playback');
   }
-
-  handlePlaylist(message) {
-    if (!message.data) {
-      console.error('Invalid playlist message:', message);
-      return;
-    }
-
-    const playlist = message.data;
-    console.log('Received playlist:', playlist.name);
-
-    // Playlist'i kaydet ve renderer'a bildir
-    playlistManager.savePlaylist(playlist);
-    ipcRenderer.send('playlist-updated', playlist);
-  }
 }
 
-module.exports = new WebSocketMessageHandler();
+module.exports = WebSocketMessageHandler;
