@@ -1,6 +1,6 @@
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Power, Music, Check, Loader, AlertCircle, Play, Pause } from "lucide-react";
+import { Power, Music, Check, Loader, AlertCircle } from "lucide-react";
 import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
 import { Device } from "@/services/deviceService";
 import DeviceActions from "./DeviceActions";
@@ -69,39 +69,6 @@ export const DeviceTableRow = ({ device, style }: DeviceTableRowProps) => {
     }
   };
 
-  const getPlaybackStatusBadge = () => {
-    if (!device.currentSong) {
-      return (
-        <Badge variant="secondary" className="flex items-center gap-1">
-          <Pause className="h-3 w-3" />
-          Çalma Durdu
-        </Badge>
-      );
-    }
-
-    return (
-      <Tooltip>
-        <TooltipTrigger>
-          <Badge 
-            variant={device.isPlaying ? "success" : "secondary"} 
-            className="flex items-center gap-1"
-          >
-            {device.isPlaying ? (
-              <Play className="h-3 w-3" />
-            ) : (
-              <Pause className="h-3 w-3" />
-            )}
-            {device.isPlaying ? "Çalıyor" : "Duraklatıldı"}
-          </Badge>
-        </TooltipTrigger>
-        <TooltipContent>
-          <p className="font-medium">{device.currentSong.name}</p>
-          <p className="text-sm text-muted-foreground">{device.currentSong.artist}</p>
-        </TooltipContent>
-      </Tooltip>
-    );
-  };
-
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleString('tr-TR', {
       day: '2-digit',
@@ -128,7 +95,6 @@ export const DeviceTableRow = ({ device, style }: DeviceTableRowProps) => {
         </Badge>
       </TableCell>
       <TableCell>{getPlaylistStatusBadge()}</TableCell>
-      <TableCell>{getPlaybackStatusBadge()}</TableCell>
       <TableCell>
         <div className="flex items-center gap-2">
           <span>{device.volume}%</span>

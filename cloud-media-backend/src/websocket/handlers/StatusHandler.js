@@ -5,7 +5,7 @@ class StatusHandler {
     this.wss = wss;
   }
 
-  async handlePlaybackStatus(token, message) {
+  async handlePlaylistStatus(token, message) {
     try {
       const device = await Device.findOne({ token });
       if (!device) {
@@ -13,16 +13,22 @@ class StatusHandler {
         return;
       }
 
+      // Playlist durumunu güncelle
+      await Device.findByIdAndUpdate(device._id, {
+        playlistStatus: message.status
+      });
+
       // Admin paneline bildir
       this.wss.broadcastToAdmins({
         type: 'deviceStatus',
         token: token,
-        isPlaying: message.status === 'playing'
+        playlistStatus: message.status,
+        playlistId: message.playlistId
       });
 
-      console.log(`Updated playback status for device ${token} to ${message.status}`);
+      console.log(`Updated playlist status for device ${token} to ${message.status}`);
     } catch (error) {
-      console.error('Error handling playback status:', error);
+      console.error('Error handling playlist status:', error);
     }
   }
 
@@ -40,33 +46,6 @@ class StatusHandler {
       });
     } catch (error) {
       console.error('Error handling online status:', error);
-    }
-  }
-
-  async handlePlaylistStatus(token, message) {
-    try {
-      console.log('Handling playlist status update:', message, 'for device:', token);
-      
-      const { status, playlistId } = message;
-      const device = await Device.findOne({ token });
-      
-      if (device) {
-        await Device.findByIdAndUpdate(device._id, {
-          playlistStatus: status
-        });
-        
-        this.wss.broadcastToAdmins({
-          type: 'deviceStatus',
-          token: token,
-          playlistStatus: status
-        });
-        
-        console.log(`Updated playlist status for device ${token} to ${status}`);
-      } else {
-        console.error('Device not found for token:', token);
-      }
-    } catch (error) {
-      console.error('Error updating playlist status:', error);
     }
   }
 }
