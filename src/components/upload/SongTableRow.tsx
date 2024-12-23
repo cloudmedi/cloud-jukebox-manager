@@ -1,13 +1,10 @@
-import { Music, MoreVertical, PlayCircle, Pencil, Trash, Plus } from "lucide-react";
+import { Music, MoreVertical, PlayCircle, Pencil, Trash } from "lucide-react";
 import { TableCell, TableRow } from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
-  DropdownMenuSub,
-  DropdownMenuSubTrigger,
-  DropdownMenuSubContent,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -108,44 +105,15 @@ export const SongTableRow = ({ song, onEdit, onDelete, allSongs }: SongTableRowP
                 <Music className="h-6 w-6 text-muted-foreground" />
               )}
             </div>
-            <div className="absolute inset-0 bg-black/60 rounded-md opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+            <div className="absolute inset-0 bg-black/60 rounded-md opacity-0 group-hover:opacity-100 transition-opacity">
               <Button
                 variant="ghost"
-                size="icon"
-                className="text-white hover:text-white hover:bg-white/20"
+                size="sm"
+                className="absolute inset-0 w-full h-full text-white hover:text-white hover:bg-white/20"
                 onClick={handlePlay}
               >
                 <PlayCircle className="h-6 w-6" />
               </Button>
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="text-white hover:text-white hover:bg-white/20"
-                  >
-                    <Plus className="h-6 w-6" />
-                  </Button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <DropdownMenuSub>
-                    <DropdownMenuSubTrigger>
-                      <Plus className="mr-2 h-4 w-4" />
-                      Playliste Ekle
-                    </DropdownMenuSubTrigger>
-                    <DropdownMenuSubContent>
-                      {playlists.map((playlist: any) => (
-                        <DropdownMenuItem
-                          key={playlist._id}
-                          onClick={() => handleAddToPlaylist(playlist._id)}
-                        >
-                          {playlist.name}
-                        </DropdownMenuItem>
-                      ))}
-                    </DropdownMenuSubContent>
-                  </DropdownMenuSub>
-                </DropdownMenuContent>
-              </DropdownMenu>
             </div>
           </div>
           <div>
@@ -168,16 +136,37 @@ export const SongTableRow = ({ song, onEdit, onDelete, allSongs }: SongTableRowP
               <MoreVertical className="h-4 w-4" />
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuItem onClick={handlePlay}>
+              Oynat
+            </DropdownMenuItem>
+            {playlists.length > 0 && (
+              <>
+                <DropdownMenuItem className="p-0">
+                  <div className="w-full px-2 py-1.5 text-sm">
+                    <div className="font-medium mb-1">Playliste Ekle</div>
+                    <div className="space-y-1">
+                      {playlists.map((playlist: any) => (
+                        <div
+                          key={playlist._id}
+                          onClick={() => handleAddToPlaylist(playlist._id)}
+                          className="px-2 py-1 text-sm rounded-sm hover:bg-accent hover:text-accent-foreground cursor-pointer"
+                        >
+                          {playlist.name}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </DropdownMenuItem>
+              </>
+            )}
             <DropdownMenuItem onClick={() => onEdit(song)}>
-              <Pencil className="mr-2 h-4 w-4" />
               Düzenle
             </DropdownMenuItem>
             <DropdownMenuItem
               className="text-destructive"
               onClick={() => onDelete(song._id)}
             >
-              <Trash className="mr-2 h-4 w-4" />
               Sil
             </DropdownMenuItem>
           </DropdownMenuContent>
