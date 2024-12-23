@@ -63,12 +63,6 @@ const SongList = () => {
     }
   };
 
-  const uniqueGenres = ["All"];
-  if (songs && songs.length > 0) {
-    const genres = new Set(songs.filter(song => song && song.genre).map(song => song.genre));
-    uniqueGenres.push(...Array.from(genres).sort());
-  }
-
   if (error) {
     return (
       <div className="p-4 text-center text-red-500">
@@ -113,7 +107,7 @@ const SongList = () => {
           onSearchChange={setSearchTerm}
           selectedGenre={selectedGenre}
           onGenreChange={setSelectedGenre}
-          genres={uniqueGenres}
+          genres={["All"]}
         />
         <div className="text-center py-8 text-muted-foreground">
           Henüz hiç şarkı yüklenmemiş veya arama kriterlerine uygun şarkı bulunamadı.
@@ -121,6 +115,8 @@ const SongList = () => {
       </div>
     );
   }
+
+  const uniqueGenres = ["All", ...Array.from(new Set(songs.map(song => song.genre)))].sort();
 
   return (
     <div className="space-y-4">
