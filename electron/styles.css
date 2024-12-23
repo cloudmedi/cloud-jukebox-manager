@@ -172,3 +172,28 @@ body {
         opacity: 1;
     }
 }
+
+.now-playing {
+    background: rgba(0, 0, 0, 0.05);
+    padding: 1rem;
+    margin: 1rem 0;
+    border-radius: 8px;
+    display: none;
+}
+
+.song-info {
+    text-align: center;
+}
+
+.song-title {
+    font-size: 1.2rem;
+    font-weight: bold;
+    margin: 0;
+    color: #333;
+}
+
+.song-artist {
+    font-size: 1rem;
+    color: #666;
+    margin: 0.5rem 0 0 0;
+}
