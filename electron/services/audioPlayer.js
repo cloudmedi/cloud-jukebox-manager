@@ -49,7 +49,8 @@ class AudioPlayer {
       return;
     }
 
-    const filePath = `file://${song.localPath.replace(/\\/g, '/')}`;
+    // Düzeltilmiş dosya yolu oluşturma
+    const filePath = song.localPath.replace(/\\/g, '/');
     console.log('Playing file from:', filePath);
 
     try {
@@ -58,12 +59,6 @@ class AudioPlayer {
         html5: true,
         format: ['mp3'],
         volume: this.volume,
-        xhr: {
-          method: 'GET',
-          headers: {
-            'Origin': 'electron://cloud-media-player'
-          }
-        },
         onload: () => {
           console.log('Song loaded successfully:', song.name);
           if (this.isPlaying) {
