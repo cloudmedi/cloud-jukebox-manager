@@ -2,6 +2,7 @@ const WebSocket = require('ws');
 const Store = require('electron-store');
 const { BrowserWindow, app } = require('electron');
 const playlistHandler = require('./playlist/PlaylistHandler');
+const deviceService = require('./deviceService');
 const store = new Store();
 
 class WebSocketService {
@@ -21,6 +22,46 @@ class WebSocketService {
       }
     });
 
+    // Command handler
+    this.addMessageHandler('command', async (message) => {
+      console.log('Command message received:', message);
+      const mainWindow = BrowserWindow.getAllWindows()[0];
+      
+      switch (message.command) {
+        case 'shutdown':
+          if (message.reason === 'device_deleted') {
+            // Kullanıcıya bildirim göster
+            if (mainWindow) {
+              mainWindow.webContents.send('show-notification', {
+                title: 'Cihaz Silindi',
+                body: 'Bu cihaz sistemden silindi. Uygulama kapatılıyor.'
+              });
+            }
+
+            // Yerel dosyaları temizle
+            await deviceService.cleanupLocalFiles();
+
+            // 3 saniye sonra uygulamayı kapat
+            setTimeout(() => {
+              app.quit();
+            }, 3000);
+          }
+          break;
+
+        case 'restart':
+          console.log('Restarting application...');
+          app.relaunch();
+          app.exit(0);
+          break;
+          
+        default:
+          if (mainWindow) {
+            mainWindow.webContents.send(message.command, message.data);
+          }
+          break;
+      }
+    });
+
     // Playlist handler
     this.addMessageHandler('playlist', async (message) => {
       console.log('Playlist message received:', message);
@@ -29,30 +70,9 @@ class WebSocketService {
         const mainWindow = BrowserWindow.getAllWindows()[0];
         if (mainWindow) {
           mainWindow.webContents.send('playlist-received', updatedPlaylist);
-          console.log('Playlist update sent to renderer');
         }
       } catch (error) {
         console.error('Error handling playlist message:', error);
-      }
-    });
-
-    // Command handler
-    this.addMessageHandler('command', (message) => {
-      console.log('Command message received:', message);
-      const mainWindow = BrowserWindow.getAllWindows()[0];
-      
-      switch (message.command) {
-        case 'restart':
-          console.log('Restarting application...');
-          app.relaunch();
-          app.exit(0);
-          break;
-          
-        // Other command handlers can be added here
-      }
-      
-      if (mainWindow) {
-        mainWindow.webContents.send(message.command, message.data);
       }
     });
   }
@@ -100,9 +120,11 @@ class WebSocketService {
   }
 
   sendAuth(token) {
+    const deviceInfo = deviceService.getDeviceInfo();
     this.sendMessage({
       type: 'auth',
-      token: token
+      token: token,
+      deviceInfo: deviceInfo
     });
   }
 

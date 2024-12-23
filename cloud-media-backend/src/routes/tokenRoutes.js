@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Token = require('../models/Token');
+const Notification = require('../models/Notification');
 
 // Token oluştur
 router.post('/', async (req, res) => {
@@ -36,6 +37,13 @@ router.get('/validate/:token', async (req, res) => {
     if (deviceInfo) {
       const isMatch = compareDeviceInfo(token.deviceInfo, deviceInfo);
       if (!isMatch) {
+        // Şüpheli durumu logla
+        await new Notification({
+          type: 'system',
+          title: 'Şüpheli Token Kullanımı',
+          message: `Token ${token.token} farklı bir cihazda kullanılmaya çalışıldı`,
+        }).save();
+
         console.warn('Device info mismatch for token:', token.token);
         return res.status(403).json({ 
           message: 'Bu token başka bir cihaz için oluşturulmuş',
@@ -64,6 +72,13 @@ router.patch('/:token/use', async (req, res) => {
     if (deviceInfo) {
       const isMatch = compareDeviceInfo(token.deviceInfo, deviceInfo);
       if (!isMatch) {
+        // Şüpheli durumu logla
+        await new Notification({
+          type: 'system',
+          title: 'Şüpheli Token Kullanımı',
+          message: `Token ${token.token} farklı bir cihazda kullanılmaya çalışıldı`,
+        }).save();
+
         console.warn('Device info mismatch for token:', token.token);
         return res.status(403).json({ 
           message: 'Bu token başka bir cihaz için oluşturulmuş',
@@ -104,7 +119,7 @@ router.patch('/:token/release', async (req, res) => {
 
 // Sistem bilgilerini karşılaştır
 function compareDeviceInfo(savedInfo, currentInfo) {
-  // Temel sistem bilgilerini karşılaştır
+  // Kritik sistem bilgilerini karşılaştır
   const criticalFields = ['hostname', 'platform', 'arch', 'cpus'];
   
   for (const field of criticalFields) {

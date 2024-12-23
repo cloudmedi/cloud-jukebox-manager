@@ -2,6 +2,7 @@ const express = require('express');
 const router = express.Router();
 const Device = require('../models/Device');
 const Token = require('../models/Token');
+const Notification = require('../models/Notification');
 const fs = require('fs');
 const path = require('path');
 
@@ -69,6 +70,13 @@ router.delete('/:id', async (req, res) => {
       { token: device.token },
       { $set: { isUsed: false } }
     );
+
+    // Bildirim oluştur
+    await new Notification({
+      type: 'device',
+      title: 'Cihaz Silindi',
+      message: `${device.name} cihazı silindi`
+    }).save();
 
     // WebSocket üzerinden cihaza kapanma sinyali gönder
     if (req.wss) {
