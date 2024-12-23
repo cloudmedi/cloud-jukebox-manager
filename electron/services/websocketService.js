@@ -61,6 +61,10 @@ class WebSocketService {
     this.ws.on('open', () => {
       console.log('WebSocket connected');
       this.sendAuth(deviceInfo.token);
+      const mainWindow = BrowserWindow.getAllWindows()[0];
+      if (mainWindow) {
+        mainWindow.webContents.send('websocket-status', true);
+      }
     });
 
     this.ws.on('message', (data) => {
@@ -75,6 +79,10 @@ class WebSocketService {
 
     this.ws.on('close', () => {
       console.log('WebSocket disconnected, reconnecting...');
+      const mainWindow = BrowserWindow.getAllWindows()[0];
+      if (mainWindow) {
+        mainWindow.webContents.send('websocket-status', false);
+      }
       setTimeout(() => this.connect(), 5000);
     });
 

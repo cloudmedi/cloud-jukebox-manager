@@ -3,6 +3,7 @@ const Store = require('electron-store');
 const store = new Store();
 const AudioEventHandler = require('./services/audio/AudioEventHandler');
 const playbackStateManager = require('./services/audio/PlaybackStateManager');
+const UIManager = require('./services/ui/UIManager');
 
 const audio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(audio);
@@ -15,14 +16,29 @@ document.getElementById('closeButton').addEventListener('click', () => {
     window.close();
 });
 
+// WebSocket bağlantı durumu
+ipcRenderer.on('websocket-status', (event, isConnected) => {
+    UIManager.updateConnectionStatus(isConnected);
+});
+
+// İndirme progress
+ipcRenderer.on('download-progress', (event, { songName, progress }) => {
+    UIManager.showDownloadProgress(progress, songName);
+});
+
+// Hata mesajları
+ipcRenderer.on('error', (event, message) => {
+    UIManager.showError(message);
+});
+
 // Volume control from WebSocket
 ipcRenderer.on('set-volume', (event, volume) => {
-  console.log('Setting volume to:', volume);
-  if (audio) {
-    const normalizedVolume = volume / 100;
-    audio.volume = normalizedVolume;
-    ipcRenderer.send('volume-changed', volume);
-  }
+    console.log('Setting volume to:', volume);
+    if (audio) {
+        const normalizedVolume = volume / 100;
+        audio.volume = normalizedVolume;
+        ipcRenderer.send('volume-changed', volume);
+    }
 });
 
 // Restart playback from WebSocket
@@ -209,3 +225,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Diğer event listener'lar
+
