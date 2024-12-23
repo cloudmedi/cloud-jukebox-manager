@@ -29,6 +29,7 @@ class AudioService {
     });
 
     ipcMain.handle('next-song', () => {
+      console.log('Next song requested');
       if (this.playlist && this.playlist.songs.length > 0) {
         this.currentIndex = (this.currentIndex + 1) % this.playlist.songs.length;
         this.playCurrentSong();
@@ -36,6 +37,7 @@ class AudioService {
     });
 
     ipcMain.handle('prev-song', () => {
+      console.log('Previous song requested');
       if (this.playlist && this.playlist.songs.length > 0) {
         this.currentIndex = (this.currentIndex - 1 + this.playlist.songs.length) % this.playlist.songs.length;
         this.playCurrentSong();
@@ -61,7 +63,6 @@ class AudioService {
       this.currentSound.unload();
     }
 
-    // Doğrudan server'dan şarkıyı çal
     const serverUrl = 'http://localhost:5000';
     const songUrl = `${serverUrl}/${song.filePath.replace(/\\/g, '/')}`;
     console.log('Playing from URL:', songUrl);
@@ -79,9 +80,13 @@ class AudioService {
       },
       onloaderror: (id, err) => {
         console.error('Error loading song:', err);
+        // Hata durumunda sonraki şarkıya geç
+        this.next();
       },
       onplayerror: (id, err) => {
         console.error('Error playing song:', err);
+        // Çalma hatası durumunda sonraki şarkıya geç
+        this.next();
       }
     });
 
@@ -89,6 +94,7 @@ class AudioService {
   }
 
   next() {
+    console.log('Playing next song');
     if (this.playlist && this.playlist.songs.length > 0) {
       this.currentIndex = (this.currentIndex + 1) % this.playlist.songs.length;
       this.playCurrentSong();

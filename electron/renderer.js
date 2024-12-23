@@ -15,12 +15,18 @@ document.getElementById('playButton').addEventListener('click', () => {
 
 // Previous track
 document.getElementById('prevButton').addEventListener('click', () => {
-    ipcRenderer.invoke('prev-song');
+    console.log('Previous button clicked');
+    ipcRenderer.invoke('prev-song').catch(err => {
+        console.error('Error invoking prev-song:', err);
+    });
 });
 
 // Next track
 document.getElementById('nextButton').addEventListener('click', () => {
-    ipcRenderer.invoke('next-song');
+    console.log('Next button clicked');
+    ipcRenderer.invoke('next-song').catch(err => {
+        console.error('Error invoking next-song:', err);
+    });
 });
 
 // Update play button icon
@@ -45,6 +51,14 @@ audio.addEventListener('pause', () => {
 audio.addEventListener('timeupdate', () => {
     const progress = (audio.currentTime / audio.duration) * 100;
     document.getElementById('progressBar').style.width = progress + '%';
+    
+    // Şarkı sonuna yaklaşıldığında kontrol et
+    if (audio.duration > 0 && audio.currentTime >= audio.duration - 0.5) {
+        console.log('Song near end, requesting next song');
+        ipcRenderer.invoke('next-song').catch(err => {
+            console.error('Error invoking next-song near end:', err);
+        });
+    }
 });
 
 // Download progress handling
@@ -130,37 +144,3 @@ function updatePlayer(song) {
         audio.play().catch(err => console.error('Playback error:', err));
     }
 }
-
-// Previous track
-document.getElementById('prevButton').addEventListener('click', () => {
-    ipcRenderer.invoke('prev-song');
-});
-
-// Next track
-document.getElementById('nextButton').addEventListener('click', () => {
-    ipcRenderer.invoke('next-song');
-});
-
-// Update play button icon
-audio.addEventListener('play', () => {
-    document.getElementById('playButton').innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="6" y="4" width="4" height="16"></rect>
-            <rect x="14" y="4" width="4" height="16"></rect>
-        </svg>
-    `;
-});
-
-audio.addEventListener('pause', () => {
-    document.getElementById('playButton').innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polygon points="5 3 19 12 5 21 5 3"></polygon>
-        </svg>
-    `;
-});
-
-// Progress bar updates
-audio.addEventListener('timeupdate', () => {
-    const progress = (audio.currentTime / audio.duration) * 100;
-    document.getElementById('progressBar').style.width = progress + '%';
-});
