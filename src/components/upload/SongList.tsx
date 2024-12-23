@@ -88,8 +88,15 @@ const SongList = () => {
     }
   }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage, ref]);
 
-  const allSongs = data?.pages.flatMap((page) => page.songs) ?? [];
-  const uniqueGenres = ["All", ...new Set(allSongs.map((song) => song.genre))].filter(Boolean).sort();
+  // Güvenli bir şekilde songs dizisini al
+  const allSongs = data?.pages?.flatMap((page) => page.songs) ?? [];
+  
+  // Güvenli bir şekilde uniqueGenres hesapla
+  const uniqueGenres = ["All"];
+  if (allSongs.length > 0) {
+    const genres = new Set(allSongs.map(song => song?.genre).filter(Boolean));
+    uniqueGenres.push(...Array.from(genres).sort());
+  }
 
   if (isLoading) {
     return (
