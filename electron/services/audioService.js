@@ -2,11 +2,14 @@ const { ipcMain } = require('electron');
 const Store = require('electron-store');
 const store = new Store();
 const websocketService = require('./websocketService');
-const PlaybackManager = require('./audio/PlaybackManager');
 
 class AudioService {
   constructor() {
-    this.playbackManager = new PlaybackManager();
+    this.currentSound = null;
+    this.playlist = null;
+    this.currentIndex = 0;
+    this.queue = [];
+    this.isPlaying = false;
     this.setupIpcHandlers();
     this.setupWebSocketHandlers();
   }
@@ -34,46 +37,53 @@ class AudioService {
   }
 
   handleVolumeChange(volume) {
+    console.log('Setting volume to:', volume);
     const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
     if (mainWindow) {
       mainWindow.webContents.send('set-volume', volume);
     }
   }
 
+  handleRestart() {
+    console.log('Restarting application...');
+    app.relaunch();
+    app.exit(0);
+  }
+
   handlePlay() {
-    console.log('Play command received, current state:', this.playbackManager.isPlaying);
-    if (!this.playbackManager.isPlaying) {
+    console.log('Play command received, current state:', this.isPlaying);
+    if (!this.isPlaying) {
       const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
       if (mainWindow) {
         mainWindow.webContents.send('toggle-playback');
-        this.playbackManager.isPlaying = true;
-        this.sendPlaybackStatus('playing');
+        this.isPlaying = true;
+        this.sendPlaybackStatus();
       }
     } else {
       console.log('Already playing, ignoring play command');
-      this.sendPlaybackStatus('playing');
+      this.sendPlaybackStatus();
     }
   }
 
   handlePause() {
-    console.log('Pause command received, current state:', this.playbackManager.isPlaying);
-    if (this.playbackManager.isPlaying) {
+    console.log('Pause command received, current state:', this.isPlaying);
+    if (this.isPlaying) {
       const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
       if (mainWindow) {
         mainWindow.webContents.send('toggle-playback');
-        this.playbackManager.isPlaying = false;
-        this.sendPlaybackStatus('paused');
+        this.isPlaying = false;
+        this.sendPlaybackStatus();
       }
     } else {
       console.log('Already paused, ignoring pause command');
-      this.sendPlaybackStatus('paused');
+      this.sendPlaybackStatus();
     }
   }
 
-  sendPlaybackStatus(status) {
+  sendPlaybackStatus() {
     websocketService.sendMessage({
       type: 'playbackStatus',
-      status: status
+      status: this.isPlaying ? 'playing' : 'paused'
     });
   }
 
@@ -82,7 +92,7 @@ class AudioService {
       console.log('Playing playlist:', playlist);
       
       // Mevcut çalan playlist'i durdur
-      if (this.playbackManager.isPlaying) {
+      if (this.isPlaying) {
         event.sender.send('toggle-playback');
       }
       
@@ -90,7 +100,7 @@ class AudioService {
       this.queue = [...playlist.songs];
       this.playlist = playlist;
       this.currentIndex = 0;
-      this.playbackManager.isPlaying = true;
+      this.isPlaying = true;
       
       // İlk şarkıyı çal
       const firstSong = this.queue[this.currentIndex];
@@ -115,7 +125,7 @@ class AudioService {
       this.queue = [...playlist.songs];
       this.playlist = playlist;
       this.currentIndex = 0;
-      this.playbackManager.isPlaying = false;
+      this.isPlaying = false;
       
       const firstSong = this.queue[this.currentIndex];
       if (firstSong) {
@@ -134,7 +144,7 @@ class AudioService {
     });
 
     ipcMain.handle('play-pause', (event) => {
-      this.playbackManager.isPlaying = !this.playbackManager.isPlaying;
+      this.isPlaying = !this.isPlaying;
       event.sender.send('toggle-playback');
       return true;
     });
