@@ -4,11 +4,9 @@ class WebSocketService {
   private messageHandlers: Map<string, Set<(data: any) => void>> = new Map();
   private reconnectTimeout: NodeJS.Timeout | null = null;
   private isConnecting: boolean = false;
-  private pingInterval: NodeJS.Timeout | null = null;
 
   private constructor() {
     this.connect();
-    this.setupPing();
   }
 
   public static getInstance(): WebSocketService {
@@ -16,15 +14,6 @@ class WebSocketService {
       WebSocketService.instance = new WebSocketService();
     }
     return WebSocketService.instance;
-  }
-
-  private setupPing() {
-    // Her 30 saniyede bir ping gönder
-    this.pingInterval = setInterval(() => {
-      if (this.ws?.readyState === WebSocket.OPEN) {
-        this.ws.send(JSON.stringify({ type: 'ping' }));
-      }
-    }, 30000);
   }
 
   private connect() {
@@ -53,7 +42,6 @@ class WebSocketService {
     this.ws.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);
-        if (message.type === 'pong') return; // Ping-pong yanıtlarını işleme
         this.handleMessage(message);
       } catch (error) {
         console.error('Message parsing error:', error);
@@ -91,6 +79,8 @@ class WebSocketService {
           console.error(`Handler error for message type ${message.type}:`, error);
         }
       });
+    } else {
+      console.log('Unhandled message type:', message.type);
     }
   }
 
@@ -112,7 +102,7 @@ class WebSocketService {
   }
 
   public sendMessage(message: any) {
-    if (this.ws?.readyState === WebSocket.OPEN) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message));
     } else {
       console.error('WebSocket bağlantısı kurulamadı, yeniden bağlanılıyor...');
@@ -128,10 +118,6 @@ class WebSocketService {
     if (this.reconnectTimeout) {
       clearTimeout(this.reconnectTimeout);
       this.reconnectTimeout = null;
-    }
-    if (this.pingInterval) {
-      clearInterval(this.pingInterval);
-      this.pingInterval = null;
     }
     this.messageHandlers.clear();
     this.isConnecting = false;
