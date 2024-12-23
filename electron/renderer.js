@@ -5,7 +5,6 @@ const AudioEventHandler = require('./services/audio/AudioEventHandler');
 const playbackStateManager = require('./services/audio/PlaybackStateManager');
 const UIManager = require('./services/ui/UIManager');
 const deviceService = require('./services/deviceService');
-require('./services/commands/CommandHandler');
 
 const audio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(audio);
