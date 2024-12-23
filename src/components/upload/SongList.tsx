@@ -89,7 +89,35 @@ const SongList = () => {
   }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage, ref]);
 
   const allSongs = data?.pages.flatMap((page) => page.songs) ?? [];
-  const uniqueGenres = ["All", ...new Set(allSongs.map((song) => song.genre))].sort();
+  const uniqueGenres = ["All", ...new Set(allSongs.map((song) => song.genre))].filter(Boolean).sort();
+
+  if (isLoading) {
+    return (
+      <div className="space-y-4">
+        <SongFilters
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          selectedGenre={selectedGenre}
+          onGenreChange={setSelectedGenre}
+          genres={["All"]}
+        />
+        <div className="rounded-md border">
+          <Table>
+            <SongTableHeader />
+            <TableBody>
+              {Array.from({ length: ITEMS_PER_PAGE }).map((_, index) => (
+                <tr key={index}>
+                  <td colSpan={7} className="p-2">
+                    <Skeleton className="h-12 w-full" />
+                  </td>
+                </tr>
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-4">
@@ -111,25 +139,15 @@ const SongList = () => {
         <Table>
           <SongTableHeader />
           <TableBody>
-            {isLoading ? (
-              Array.from({ length: ITEMS_PER_PAGE }).map((_, index) => (
-                <tr key={index}>
-                  <td colSpan={7} className="p-2">
-                    <Skeleton className="h-12 w-full" />
-                  </td>
-                </tr>
-              ))
-            ) : (
-              allSongs.map((song) => (
-                <SongTableRow
-                  key={song._id}
-                  song={song}
-                  onEdit={setEditingSong}
-                  onDelete={handleDelete}
-                  allSongs={allSongs}
-                />
-              ))
-            )}
+            {allSongs.map((song) => (
+              <SongTableRow
+                key={song._id}
+                song={song}
+                onEdit={setEditingSong}
+                onDelete={handleDelete}
+                allSongs={allSongs}
+              />
+            ))}
           </TableBody>
         </Table>
 
