@@ -8,6 +8,7 @@ import { SongTableRow } from "./SongTableRow";
 import { SongFilters } from "./SongFilters";
 import { Button } from "@/components/ui/button";
 import { ChevronLeft, ChevronRight } from "lucide-react";
+import { Skeleton } from "@/components/ui/skeleton";
 
 interface SongResponse {
   songs: Song[];
@@ -55,10 +56,6 @@ const SongList = () => {
     setCurrentPage(newPage);
   };
 
-  if (isLoading) {
-    return <div>Yükleniyor...</div>;
-  }
-
   return (
     <div className="space-y-4">
       <SongFilters
@@ -73,7 +70,16 @@ const SongList = () => {
         <Table>
           <SongTableHeader />
           <TableBody>
-            {data?.songs.map((song) => (
+            {isLoading ? (
+              // Loading skeleton
+              Array.from({ length: limit }).map((_, index) => (
+                <tr key={index}>
+                  <td colSpan={7} className="p-2">
+                    <Skeleton className="h-12 w-full" />
+                  </td>
+                </tr>
+              ))
+            ) : data?.songs?.map((song) => (
               <SongTableRow
                 key={song._id}
                 song={song}
@@ -89,7 +95,7 @@ const SongList = () => {
       {/* Pagination Controls */}
       <div className="flex items-center justify-between">
         <div className="text-sm text-muted-foreground">
-          Toplam {data?.totalSongs} şarkı, Sayfa {data?.currentPage} / {data?.totalPages}
+          Toplam {data?.totalSongs || 0} şarkı, Sayfa {data?.currentPage || 1} / {data?.totalPages || 1}
         </div>
         <div className="flex gap-2">
           <Button
