@@ -3,14 +3,12 @@ const Store = require('electron-store');
 class PlaybackStateManager {
   constructor() {
     this.store = new Store();
-    console.log('PlaybackStateManager initialized');
   }
 
   savePlaybackState(isPlaying, playlistId = null) {
-    const currentState = this.getPlaybackState();
     const state = {
       isPlaying,
-      playlistId: playlistId || currentState.playlistId,
+      playlistId,
       timestamp: new Date().toISOString()
     };
     
@@ -21,11 +19,10 @@ class PlaybackStateManager {
   getPlaybackState() {
     const state = this.store.get('playbackState');
     console.log('Getting playback state:', state);
-    return state || { isPlaying: false, playlistId: null };
+    return state || { isPlaying: false };
   }
 
   clearPlaybackState() {
-    console.log('Clearing playback state');
     this.store.delete('playbackState');
   }
 }
