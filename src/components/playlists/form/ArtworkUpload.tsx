@@ -31,7 +31,7 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
     fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -55,18 +55,27 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
       return;
     }
 
-    const formData = new FormData();
-    formData.append('artwork', file);
+    try {
+      const formData = new FormData();
+      formData.append('artwork', file);
 
-    form.setValue("artwork", e.target.files as FileList, {
-      shouldValidate: true,
-      shouldDirty: true,
-    });
+      form.setValue("artwork", e.target.files as FileList, {
+        shouldValidate: true,
+        shouldDirty: true,
+      });
 
-    toast({
-      title: "Başarılı",
-      description: "Kapak resmi başarıyla yüklendi.",
-    });
+      toast({
+        title: "Başarılı",
+        description: "Kapak resmi başarıyla yüklendi.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Kapak resmi yüklenirken bir hata oluştu.",
+      });
+      console.error('Artwork upload error:', error);
+    }
   };
 
   return (

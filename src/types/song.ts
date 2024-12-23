@@ -9,4 +9,6 @@ export interface Song {
   duration: number;
   status?: 'active' | 'inactive';
   createdAt?: string;
+  year?: number;
+  language?: string;
 }
