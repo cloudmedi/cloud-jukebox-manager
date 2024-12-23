@@ -1,4 +1,4 @@
-const { ipcMain, app } = require('electron');
+const { ipcMain } = require('electron');
 const Store = require('electron-store');
 const store = new Store();
 const websocketService = require('./websocketService');
@@ -112,6 +112,29 @@ class AudioService {
         });
 
         // Playlist durumunu güncelle
+        websocketService.sendMessage({
+          type: 'playlistStatus',
+          status: 'loaded',
+          playlistId: playlist._id
+        });
+      }
+    });
+
+    ipcMain.handle('load-playlist', async (event, playlist) => {
+      console.log('Loading playlist without auto-play:', playlist);
+      this.queue = [...playlist.songs];
+      this.playlist = playlist;
+      this.currentIndex = 0;
+      this.isPlaying = false;
+      
+      const firstSong = this.queue[this.currentIndex];
+      if (firstSong) {
+        event.sender.send('update-player', {
+          playlist: this.playlist,
+          currentSong: firstSong,
+          isPlaying: false
+        });
+
         websocketService.sendMessage({
           type: 'playlistStatus',
           status: 'loaded',

@@ -1,17 +1,19 @@
 const { ipcRenderer } = require('electron');
 const Store = require('electron-store');
 const store = new Store();
+const AudioEventHandler = require('./services/audio/AudioEventHandler');
+const playbackStateManager = require('./services/audio/PlaybackStateManager');
+
 const audio = document.getElementById('audioPlayer');
-const fs = require('fs');
-const path = require('path');
+const audioHandler = new AudioEventHandler(audio);
+
+// Initialize volume
+audio.volume = 0.7; // 70%
 
 // Close button event listener
 document.getElementById('closeButton').addEventListener('click', () => {
     window.close();
 });
-
-// Initialize volume
-audio.volume = 0.7; // 70%
 
 // Volume control from WebSocket
 ipcRenderer.on('set-volume', (event, volume) => {
@@ -58,8 +60,17 @@ ipcRenderer.on('toggle-playback', () => {
 ipcRenderer.on('auto-play-playlist', (event, playlist) => {
   console.log('Auto-playing playlist:', playlist);
   if (playlist && playlist.songs && playlist.songs.length > 0) {
-    displayPlaylists(); // Görsel bilgileri güncelle
-    ipcRenderer.invoke('play-playlist', playlist);
+    const shouldAutoPlay = playbackStateManager.getPlaybackState();
+    displayPlaylists();
+    
+    if (shouldAutoPlay) {
+      console.log('Auto-playing based on saved state');
+      ipcRenderer.invoke('play-playlist', playlist);
+    } else {
+      console.log('Not auto-playing due to saved state');
+      // Playlist'i yükle ama oynatma
+      ipcRenderer.invoke('load-playlist', playlist);
+    }
   }
 });
 
@@ -145,33 +156,31 @@ function deleteOldPlaylists() {
 ipcRenderer.on('playlist-received', (event, playlist) => {
   console.log('New playlist received:', playlist);
   
-  // Mevcut playlistleri al
   const playlists = store.get('playlists', []);
-  
-  // Eğer playlist zaten varsa güncelle, yoksa ekle
   const existingIndex = playlists.findIndex(p => p._id === playlist._id);
+  
   if (existingIndex !== -1) {
     playlists[existingIndex] = playlist;
   } else {
     playlists.push(playlist);
   }
   
-  // Store'u güncelle
   store.set('playlists', playlists);
   
-  // Yeni playlist'i hemen çal
-  console.log('Auto-playing new playlist:', playlist);
-  ipcRenderer.invoke('play-playlist', playlist);
+  const shouldAutoPlay = playbackStateManager.getPlaybackState();
+  if (shouldAutoPlay) {
+    console.log('Auto-playing new playlist:', playlist);
+    ipcRenderer.invoke('play-playlist', playlist);
+  } else {
+    console.log('Loading new playlist without auto-play');
+    ipcRenderer.invoke('load-playlist', playlist);
+  }
   
-  // Eski playlistleri ve şarkıları sil
   deleteOldPlaylists();
-  
-  // UI'ı hemen güncelle
   displayPlaylists();
   
-  // Bildirim göster
   new Notification('Yeni Playlist', {
-    body: `${playlist.name} playlist'i başarıyla indirildi ve çalınıyor.`
+    body: `${playlist.name} playlist'i başarıyla indirildi.`
   });
 });
 
