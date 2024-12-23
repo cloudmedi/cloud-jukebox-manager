@@ -1,4 +1,4 @@
-const { ipcMain } = require('electron');
+const { ipcMain, app } = require('electron');
 const Store = require('electron-store');
 const store = new Store();
 const websocketService = require('./websocketService');
@@ -46,8 +46,10 @@ class AudioService {
 
   handleRestart() {
     console.log('Restarting application...');
-    app.relaunch();
-    app.exit(0);
+    setTimeout(() => {
+      app.relaunch();
+      app.exit(0);
+    }, 1000);
   }
 
   handlePlay() {
