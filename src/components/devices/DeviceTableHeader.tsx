@@ -10,6 +10,7 @@ export const DeviceTableHeader = () => {
         <TableHead>IP Adresi</TableHead>
         <TableHead>Durum</TableHead>
         <TableHead>Playlist Durumu</TableHead>
+        <TableHead>Çalma Durumu</TableHead>
         <TableHead>Ses Seviyesi</TableHead>
         <TableHead>Son Görülme</TableHead>
         <TableHead className="text-right">İşlemler</TableHead>
