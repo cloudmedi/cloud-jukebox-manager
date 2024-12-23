@@ -35,6 +35,12 @@ class PlaylistHandler {
           const deviceWs = this.wss.findDeviceWebSocket(device.token);
           
           if (deviceWs) {
+            // Önce cihazın durumunu 'loading' olarak güncelle
+            await Device.findByIdAndUpdate(deviceId, {
+              activePlaylist: playlist._id,
+              playlistStatus: 'loading'
+            });
+
             // Playlist'i cihaza gönder
             deviceWs.send(JSON.stringify({
               type: 'playlist',
@@ -44,14 +50,12 @@ class PlaylistHandler {
               }
             }));
 
-            // Device'ın aktif playlist'ini güncelle
-            await Device.findByIdAndUpdate(deviceId, {
-              activePlaylist: playlist._id,
-              playlistStatus: 'loading'
-            });
-
             console.log(`Playlist sent to device: ${device.token}`);
           } else {
+            // Bağlantı yoksa hata durumuna güncelle
+            await Device.findByIdAndUpdate(deviceId, {
+              playlistStatus: 'error'
+            });
             console.log(`Device not connected: ${device.token}`);
           }
         }
