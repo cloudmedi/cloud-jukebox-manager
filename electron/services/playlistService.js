@@ -1,4 +1,4 @@
-const { app } = require('electron');
+const WebSocket = require('ws');
 const Store = require('electron-store');
 const path = require('path');
 const fs = require('fs');
