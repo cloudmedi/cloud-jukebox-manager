@@ -109,7 +109,7 @@ const SongList = ({
   return (
     <div className="space-y-4">
       {selectedSongs.length > 0 && (
-        <div className="flex items-center gap-4">
+        <div className="flex items-center justify-end gap-4">
           <Button onClick={handleCreatePlaylist} variant="default">
             <Plus className="h-4 w-4 mr-2" />
             Yeni Playlist Oluştur
