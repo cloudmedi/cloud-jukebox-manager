@@ -19,7 +19,6 @@ class AudioPlayer {
 
     this.audio.addEventListener('error', (e) => {
       console.error('Audio error:', e);
-      // Hata durumunda da sonraki şarkıya geç
       this.playNext();
     });
 
@@ -35,13 +34,10 @@ class AudioPlayer {
       this.updatePlaybackState('paused');
     });
 
-    // Şarkı süresini kontrol et
     this.audio.addEventListener('timeupdate', () => {
-      // Şarkı sonuna yaklaşıldığında kontrol et
       if (this.audio.duration > 0 && 
           this.audio.currentTime >= this.audio.duration - 0.5) {
         console.log('Song near end, preparing next');
-        // Sonraki şarkıyı hazırla
         const nextSong = this.queueManager.peekNext();
         if (nextSong) {
           console.log('Preloading next song:', nextSong.name);
@@ -81,7 +77,6 @@ class AudioPlayer {
       const normalizedPath = path.normalize(song.localPath);
       console.log('Playing file from:', normalizedPath);
       
-      // Yeni şarkıyı yüklemeden önce eski şarkıyı durdur
       this.audio.pause();
       this.audio.currentTime = 0;
       
@@ -94,9 +89,10 @@ class AudioPlayer {
         if (this.isPlaying) {
           this.audio.play().catch(error => {
             console.error('Error playing audio:', error);
+            this.playNext(); // Hata durumunda sonraki şarkıya geç
           });
         }
-      }, { once: true }); // Event listener'ı bir kez çalıştır
+      });
       
     } catch (error) {
       console.error('Error loading song:', error);
@@ -109,6 +105,7 @@ class AudioPlayer {
     if (this.audio.src) {
       this.audio.play().catch(error => {
         console.error('Error playing audio:', error);
+        this.playNext();
       });
       this.isPlaying = true;
     } else {
