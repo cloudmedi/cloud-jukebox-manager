@@ -1,27 +1,18 @@
 import { useState } from "react";
-import { Song } from "@/types/song";
 import { SongTableHeader } from "./SongTableHeader";
 import { SongTableRow } from "./SongTableRow";
 import { Table, TableBody } from "@/components/ui/table";
 
-interface SongListProps {
-  songs: Song[];
-  onDelete: (songId: string) => Promise<void>;
-  onEdit?: (song: Song) => void;
-  selectedSongs?: string[];
-  onSelect?: (songId: string) => void;
-}
-
-export const SongList = ({
+const SongList = ({
   songs,
   onDelete,
   onEdit,
   selectedSongs = [],
   onSelect,
-}: SongListProps) => {
+}) => {
   const [sortConfig, setSortConfig] = useState({
-    key: "name" as keyof Song,
-    direction: "asc" as "asc" | "desc",
+    key: "name",
+    direction: "asc",
   });
 
   const sortedSongs = [...songs].sort((a, b) => {
@@ -39,7 +30,7 @@ export const SongList = ({
     return 0;
   });
 
-  const handleSort = (key: keyof Song) => {
+  const handleSort = (key) => {
     setSortConfig((current) => ({
       key,
       direction:
@@ -73,3 +64,5 @@ export const SongList = ({
     </div>
   );
 };
+
+export default SongList;
