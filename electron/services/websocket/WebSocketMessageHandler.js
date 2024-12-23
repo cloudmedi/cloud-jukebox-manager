@@ -1,11 +1,11 @@
+const { ipcRenderer } = require('electron');
+const Store = require('electron-store');
+const store = new Store();
 const playlistManager = require('../playlist/PlaylistManager');
 
 class WebSocketMessageHandler {
   handleMessage(message) {
-    if (!message || !message.type) {
-      console.error('Invalid message format:', message);
-      return;
-    }
+    console.log('Received WebSocket message:', message);
 
     switch (message.type) {
       case 'command':
@@ -21,41 +21,61 @@ class WebSocketMessageHandler {
 
   handleCommand(message) {
     console.log('Handling command:', message);
-    
+
     switch (message.command) {
       case 'clearPlaylists':
-        console.log('Clearing all playlists');
-        playlistManager.clearPlaylists();
-        break;
-      case 'restart':
-        console.log('Restarting application');
-        require('electron').app.relaunch();
-        require('electron').app.exit(0);
+        this.handleClearPlaylists();
         break;
       case 'setVolume':
-        console.log('Setting volume to:', message.volume);
-        if (typeof message.volume === 'number' && message.volume >= 0 && message.volume <= 100) {
-          const audio = document.getElementById('audioPlayer');
-          if (audio) {
-            audio.volume = message.volume / 100;
-          }
-        }
+        this.handleSetVolume(message.volume);
         break;
       case 'play':
-        console.log('Playing audio');
-        const audioPlay = document.getElementById('audioPlayer');
-        if (audioPlay) {
-          audioPlay.play().catch(err => console.error('Play error:', err));
-        }
-        break;
       case 'pause':
-        console.log('Pausing audio');
-        const audioPause = document.getElementById('audioPlayer');
-        if (audioPause) {
-          audioPause.pause();
-        }
+        this.handlePlayPause(message.command);
         break;
+      default:
+        console.log('Unknown command:', message.command);
     }
+  }
+
+  handleClearPlaylists() {
+    console.log('Clearing all playlists...');
+    
+    // Tüm playlistleri temizle
+    playlistManager.clearPlaylists();
+    store.delete('playlists');
+    
+    // Renderer process'e bildir
+    ipcRenderer.send('playlists-cleared');
+    
+    // Token'ı göster
+    const deviceInfo = store.get('deviceInfo');
+    if (deviceInfo?.token) {
+      console.log('Current device token:', deviceInfo.token);
+      this.displayDeviceInfo(deviceInfo);
+    }
+  }
+
+  displayDeviceInfo(deviceInfo) {
+    const playlistContainer = document.getElementById('playlistContainer');
+    if (playlistContainer) {
+      playlistContainer.innerHTML = `
+        <div class="device-info p-4 bg-gray-100 rounded-lg">
+          <h2 class="text-lg font-semibold mb-2">Cihaz Bilgileri</h2>
+          <p class="text-sm">Token: ${deviceInfo.token}</p>
+        </div>
+      `;
+    }
+  }
+
+  handleSetVolume(volume) {
+    console.log('Setting volume:', volume);
+    ipcRenderer.send('set-volume', volume);
+  }
+
+  handlePlayPause(command) {
+    console.log('Play/Pause command:', command);
+    ipcRenderer.send('toggle-playback');
   }
 
   handlePlaylist(message) {
@@ -80,7 +100,7 @@ class WebSocketMessageHandler {
     console.log('Playlist saved to store');
 
     // Notify renderer about new playlist
-    require('electron').ipcRenderer.send('playlist-updated', playlist);
+    ipcRenderer.send('playlist-updated', playlist);
   }
 }
 

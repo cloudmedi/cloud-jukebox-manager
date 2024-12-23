@@ -23,8 +23,26 @@ ipcRenderer.on('playlists-cleared', () => {
     audio.pause();
     audio.src = '';
   }
-  displayPlaylists();
+  
+  // Cihaz bilgilerini göster
+  const deviceInfo = store.get('deviceInfo');
+  if (deviceInfo?.token) {
+    console.log('Displaying device info after clearing playlists');
+    displayDeviceInfo(deviceInfo);
+  }
 });
+
+function displayDeviceInfo(deviceInfo) {
+  const playlistContainer = document.getElementById('playlistContainer');
+  if (playlistContainer) {
+    playlistContainer.innerHTML = `
+      <div class="device-info p-4 bg-gray-100 rounded-lg">
+        <h2 class="text-lg font-semibold mb-2">Cihaz Bilgileri</h2>
+        <p class="text-sm">Token: ${deviceInfo.token}</p>
+      </div>
+    `;
+  }
+}
 
 // Auto-play playlist
 ipcRenderer.on('auto-play-playlist', (event, playlist) => {

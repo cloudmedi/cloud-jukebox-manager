@@ -1,53 +1,58 @@
 const Store = require('electron-store');
-const fs = require('fs');
-const path = require('path');
+const store = new Store();
 
 class PlaylistManager {
   constructor() {
-    this.store = new Store();
-  }
-
-  getPlaylists() {
-    return this.store.get('playlists', []);
+    this.store = store;
   }
 
   clearPlaylists() {
+    console.log('Clearing all playlists from store');
+    store.delete('playlists');
+    return true;
+  }
+
+  getPlaylists() {
+    return store.get('playlists', []);
+  }
+
+  savePlaylist(playlist) {
     const playlists = this.getPlaylists();
+    const existingIndex = playlists.findIndex(p => p._id === playlist._id);
+
+    if (existingIndex !== -1) {
+      playlists[existingIndex] = playlist;
+    } else {
+      playlists.push(playlist);
+    }
+
+    store.set('playlists', playlists);
+    return playlist;
+  }
+
+  removePlaylist(playlistId) {
+    const playlists = this.getPlaylists();
+    const filteredPlaylists = playlists.filter(p => p._id !== playlistId);
+    store.set('playlists', filteredPlaylists);
+    return true;
+  }
+
+  getPlaylistById(playlistId) {
+    const playlists = this.getPlaylists();
+    return playlists.find(p => p._id === playlistId);
+  }
+
+  updatePlaylistStatus(playlistId, status) {
+    const playlists = this.getPlaylists();
+    const playlist = playlists.find(p => p._id === playlistId);
     
-    // Playlist dosyalarını ve klasörlerini sil
-    playlists.forEach(playlist => {
-      playlist.songs.forEach(song => {
-        if (song.localPath) {
-          try {
-            // Şarkı dosyasını sil
-            fs.unlinkSync(song.localPath);
-            console.log(`Deleted song file: ${song.localPath}`);
-            
-            // Şarkının bulunduğu klasörü bul ve sil
-            const playlistDir = path.dirname(song.localPath);
-            if (fs.existsSync(playlistDir)) {
-              const files = fs.readdirSync(playlistDir);
-              files.forEach(file => {
-                const filePath = path.join(playlistDir, file);
-                fs.unlinkSync(filePath);
-              });
-              fs.rmdirSync(playlistDir);
-              console.log(`Deleted playlist directory: ${playlistDir}`);
-            }
-          } catch (error) {
-            console.error(`Error deleting files/directory: ${error}`);
-          }
-        }
-      });
-    });
-
-    // Store'u temizle
-    this.store.delete('playlists');
-    console.log('All playlists cleared from store');
-
-    // Renderer'a playlist'lerin temizlendiğini bildir
-    const { ipcRenderer } = require('electron');
-    ipcRenderer.send('playlists-cleared');
+    if (playlist) {
+      playlist.status = status;
+      store.set('playlists', playlists);
+      return playlist;
+    }
+    
+    return null;
   }
 }
 
