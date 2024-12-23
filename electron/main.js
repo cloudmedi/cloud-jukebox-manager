@@ -3,10 +3,54 @@ const path = require('path');
 const Store = require('electron-store');
 const store = new Store();
 const websocketService = require('./services/websocketService');
+const playbackStateManager = require('./services/audio/PlaybackStateManager');
 require('./services/audioService');
 
 let mainWindow;
 let tray = null;
+
+function createTray() {
+  try {
+    const iconPath = path.join(__dirname, 'icon.png');
+    console.log('Tray icon path:', iconPath);
+    
+    tray = new Tray(iconPath);
+    
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: 'Show App',
+        click: function() {
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      },
+      {
+        label: 'Close',
+        click: function() {
+          app.isQuitting = true;
+          app.quit();
+        }
+      }
+    ]);
+
+    tray.setToolTip('Cloud Media Player');
+    tray.setContextMenu(contextMenu);
+
+    tray.on('double-click', () => {
+      mainWindow.show();
+      mainWindow.focus();
+    });
+    
+    tray.on('click', () => {
+      mainWindow.show();
+      mainWindow.focus();
+    });
+    
+    console.log('Tray created successfully');
+  } catch (error) {
+    console.error('Error creating tray:', error);
+  }
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -33,7 +77,6 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   }
 
-  // Pencere kapatıldığında sistem tepsisine küçült
   mainWindow.on('close', function (event) {
     if (!app.isQuitting) {
       event.preventDefault();
@@ -45,7 +88,6 @@ function createWindow() {
     return false;
   });
 
-  // Uygulama başladığında son kaydedilen playlist'i kontrol et
   const deviceInfo = store.get('deviceInfo');
   if (deviceInfo && deviceInfo.token) {
     websocketService.connect(deviceInfo.token);
@@ -54,58 +96,17 @@ function createWindow() {
     if (playlists.length > 0) {
       const lastPlaylist = playlists[playlists.length - 1];
       console.log('Starting last saved playlist:', lastPlaylist.name);
+      
+      const shouldAutoPlay = playbackStateManager.getPlaybackState();
+      console.log('Should auto-play:', shouldAutoPlay);
+      
       mainWindow.webContents.on('did-finish-load', () => {
-        mainWindow.webContents.send('auto-play-playlist', lastPlaylist);
+        mainWindow.webContents.send('auto-play-playlist', {
+          playlist: lastPlaylist,
+          shouldAutoPlay: shouldAutoPlay
+        });
       });
     }
-  }
-}
-
-function createTray() {
-  try {
-    // Tray ikonu oluştur
-    const iconPath = path.join(__dirname, 'icon.png');
-    console.log('Tray icon path:', iconPath);
-    
-    tray = new Tray(iconPath);
-    
-    // Tray menüsünü oluştur
-    const contextMenu = Menu.buildFromTemplate([
-      {
-        label: 'Show App',
-        click: function() {
-          mainWindow.show();
-          mainWindow.focus(); // Pencereyi ön plana getir
-        }
-      },
-      {
-        label: 'Close',
-        click: function() {
-          app.isQuitting = true;
-          app.quit();
-        }
-      }
-    ]);
-
-    // Tray ayarlarını yap
-    tray.setToolTip('Cloud Media Player');
-    tray.setContextMenu(contextMenu);
-
-    // Tray ikonuna çift tıklandığında uygulamayı göster
-    tray.on('double-click', () => {
-      mainWindow.show();
-      mainWindow.focus(); // Pencereyi ön plana getir
-    });
-    
-    // Tray ikonuna tek tıklandığında uygulamayı göster
-    tray.on('click', () => {
-      mainWindow.show();
-      mainWindow.focus(); // Pencereyi ön plana getir
-    });
-    
-    console.log('Tray created successfully');
-  } catch (error) {
-    console.error('Error creating tray:', error);
   }
 }
 

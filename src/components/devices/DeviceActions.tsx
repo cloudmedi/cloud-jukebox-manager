@@ -6,7 +6,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import { Dialog } from "@/components/ui/dialog";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Power,
   RefreshCcw,
@@ -15,6 +20,8 @@ import {
   Info,
   Trash2,
   MoreVertical,
+  Play,
+  Pause,
 } from "lucide-react";
 import { useState } from "react";
 import { deviceService, Device } from "@/services/deviceService";
@@ -47,6 +54,20 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
     } catch (error) {
       console.error('Restart error:', error);
       toast.error('Yeniden başlatma komutu gönderilemedi');
+    }
+  };
+
+  const handlePlayPause = async () => {
+    try {
+      websocketService.sendMessage({
+        type: 'command',
+        token: device.token,
+        command: device.isPlaying ? 'pause' : 'play'
+      });
+      toast.success(`${device.isPlaying ? 'Durdurma' : 'Oynatma'} komutu gönderildi`);
+    } catch (error) {
+      console.error('Play/Pause error:', error);
+      toast.error('Komut gönderilemedi');
     }
   };
 
@@ -105,6 +126,14 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={handlePlayPause}>
+            {device.isPlaying ? (
+              <Pause className="mr-2 h-4 w-4" />
+            ) : (
+              <Play className="mr-2 h-4 w-4" />
+            )}
+            {device.isPlaying ? 'Durdur' : 'Oynat'}
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={handlePowerToggle}>
             <Power className="mr-2 h-4 w-4" />
             {device.isOnline ? 'Kapat' : 'Aç'}
@@ -133,11 +162,13 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
       </DropdownMenu>
 
       <Dialog open={isVolumeDialogOpen} onOpenChange={setIsVolumeDialogOpen}>
-        <VolumeControlDialog
-          currentVolume={device.volume}
-          onVolumeChange={handleVolumeChange}
-          onClose={() => setIsVolumeDialogOpen(false)}
-        />
+        <DialogContent>
+          <VolumeControlDialog
+            currentVolume={device.volume}
+            onVolumeChange={handleVolumeChange}
+            onClose={() => setIsVolumeDialogOpen(false)}
+          />
+        </DialogContent>
       </Dialog>
 
       <GroupManagementDialog

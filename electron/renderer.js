@@ -1,17 +1,19 @@
 const { ipcRenderer } = require('electron');
 const Store = require('electron-store');
 const store = new Store();
+const AudioEventHandler = require('./services/audio/AudioEventHandler');
+const playbackStateManager = require('./services/audio/PlaybackStateManager');
+
 const audio = document.getElementById('audioPlayer');
-const fs = require('fs');
-const path = require('path');
+const audioHandler = new AudioEventHandler(audio);
+
+// Initialize volume
+audio.volume = 0.7; // 70%
 
 // Close button event listener
 document.getElementById('closeButton').addEventListener('click', () => {
     window.close();
 });
-
-// Initialize volume
-audio.volume = 0.7; // 70%
 
 // Volume control from WebSocket
 ipcRenderer.on('set-volume', (event, volume) => {
@@ -19,7 +21,6 @@ ipcRenderer.on('set-volume', (event, volume) => {
   if (audio) {
     const normalizedVolume = volume / 100;
     audio.volume = normalizedVolume;
-    // Ses seviyesi değişikliğini WebSocket'e bildir
     ipcRenderer.send('volume-changed', volume);
   }
 });
@@ -33,12 +34,45 @@ ipcRenderer.on('restart-playback', () => {
   }
 });
 
+// Toggle playback from WebSocket
+ipcRenderer.on('toggle-playback', () => {
+  console.log('Toggle playback, current state:', audio.paused);
+  if (audio) {
+    if (audio.paused) {
+      audio.play()
+        .then(() => {
+          console.log('Playback started successfully');
+          playbackStateManager.savePlaybackState(true);
+          ipcRenderer.send('playback-status-changed', true);
+        })
+        .catch(err => {
+          console.error('Playback error:', err);
+          playbackStateManager.savePlaybackState(false);
+          ipcRenderer.send('playback-status-changed', false);
+        });
+    } else {
+      audio.pause();
+      console.log('Playback paused');
+      playbackStateManager.savePlaybackState(false);
+      ipcRenderer.send('playback-status-changed', false);
+    }
+  }
+});
+
 // Otomatik playlist başlatma
-ipcRenderer.on('auto-play-playlist', (event, playlist) => {
-  console.log('Auto-playing playlist:', playlist);
+ipcRenderer.on('auto-play-playlist', (event, { playlist, shouldAutoPlay }) => {
+  console.log('Auto-playing playlist:', playlist, 'Should auto-play:', shouldAutoPlay);
   if (playlist && playlist.songs && playlist.songs.length > 0) {
-    displayPlaylists(); // Görsel bilgileri güncelle
-    ipcRenderer.invoke('play-playlist', playlist);
+    displayPlaylists();
+    
+    if (shouldAutoPlay) {
+      console.log('Auto-playing based on saved state');
+      ipcRenderer.invoke('play-playlist', playlist);
+    } else {
+      console.log('Not auto-playing due to saved state');
+      // Playlist'i yükle ama oynatma
+      ipcRenderer.invoke('load-playlist', playlist);
+    }
   }
 });
 
@@ -124,33 +158,31 @@ function deleteOldPlaylists() {
 ipcRenderer.on('playlist-received', (event, playlist) => {
   console.log('New playlist received:', playlist);
   
-  // Mevcut playlistleri al
   const playlists = store.get('playlists', []);
-  
-  // Eğer playlist zaten varsa güncelle, yoksa ekle
   const existingIndex = playlists.findIndex(p => p._id === playlist._id);
+  
   if (existingIndex !== -1) {
     playlists[existingIndex] = playlist;
   } else {
     playlists.push(playlist);
   }
   
-  // Store'u güncelle
   store.set('playlists', playlists);
   
-  // Yeni playlist'i hemen çal
-  console.log('Auto-playing new playlist:', playlist);
-  ipcRenderer.invoke('play-playlist', playlist);
+  const shouldAutoPlay = playbackStateManager.getPlaybackState();
+  if (shouldAutoPlay) {
+    console.log('Auto-playing new playlist:', playlist);
+    ipcRenderer.invoke('play-playlist', playlist);
+  } else {
+    console.log('Loading new playlist without auto-play');
+    ipcRenderer.invoke('load-playlist', playlist);
+  }
   
-  // Eski playlistleri ve şarkıları sil
   deleteOldPlaylists();
-  
-  // UI'ı hemen güncelle
   displayPlaylists();
   
-  // Bildirim göster
   new Notification('Yeni Playlist', {
-    body: `${playlist.name} playlist'i başarıyla indirildi ve çalınıyor.`
+    body: `${playlist.name} playlist'i başarıyla indirildi.`
   });
 });
 
@@ -165,7 +197,11 @@ ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
   if (currentSong && currentSong.localPath) {
     const normalizedPath = currentSong.localPath.replace(/\\/g, '/');
     audio.src = normalizedPath;
-    audio.play().catch(err => console.error('Playback error:', err));
+    
+    const shouldAutoPlay = playbackStateManager.getPlaybackState();
+    if (shouldAutoPlay) {
+      audio.play().catch(err => console.error('Playback error:', err));
+    }
     
     // Şarkı değiştiğinde görsel bilgileri güncelle
     displayPlaylists();
@@ -176,13 +212,4 @@ ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM loaded, displaying playlists');
   displayPlaylists();
-});
-
-// Diğer event listener'lar
-ipcRenderer.on('toggle-playback', () => {
-  if (audio.paused) {
-    audio.play().catch(err => console.error('Play error:', err));
-  } else {
-    audio.pause();
-  }
 });
