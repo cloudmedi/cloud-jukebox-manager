@@ -1,8 +1,7 @@
-const { app } = require('electron');
+const QueueManager = require('./audio/QueueManager');
+const PlaybackState = require('./audio/PlaybackState');
 const path = require('path');
 const Store = require('electron-store');
-const axios = require('axios');
-const fs = require('fs');
 const audioPlayer = require('./audioPlayer');
 
 class PlaylistService {
@@ -74,11 +73,13 @@ class PlaylistService {
         
         try {
           await this.downloadFile(fullUrl, songPath, (progress) => {
+            // İndirme ilerlemesini renderer'a gönder
             if (ws) {
               ws.send(JSON.stringify({
                 type: 'downloadProgress',
                 songId: song._id,
-                progress
+                progress,
+                songName: song.name
               }));
             }
           });
@@ -106,12 +107,13 @@ class PlaylistService {
           }
         }
 
-        // İlerleme durumunu gönder
+        // Toplam ilerleme durumunu gönder
         if (ws) {
           ws.send(JSON.stringify({
             type: 'downloadProgress',
             playlistId: playlist._id,
-            progress: Math.round(((i + 1) / playlist.songs.length) * 100)
+            progress: Math.round(((i + 1) / playlist.songs.length) * 100),
+            songName: song.name
           }));
         }
       }

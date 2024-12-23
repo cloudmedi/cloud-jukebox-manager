@@ -9,6 +9,9 @@ const durationSpan = document.getElementById('duration');
 const songTitle = document.querySelector('.song-title');
 const artistName = document.querySelector('.artist');
 const songPath = document.querySelector('.song-path');
+const downloadProgress = document.querySelector('.download-progress');
+const downloadProgressBar = document.querySelector('.download-progress-bar');
+const downloadProgressText = document.querySelector('.download-progress-text');
 
 let isPlaying = false;
 let playPromise = null;
@@ -105,6 +108,22 @@ ipcRenderer.on('update-player', (event, song) => {
             audio.src = song.localPath;
             playPromise = audio.play();
             playPromise.catch(err => console.error('Playback error:', err));
+        }
+    }
+});
+
+// Handle download progress updates
+ipcRenderer.on('download-progress', (event, data) => {
+    console.log('Download progress:', data);
+    if (data.progress !== undefined) {
+        downloadProgress.style.display = 'block';
+        downloadProgressBar.style.width = `${data.progress}%`;
+        downloadProgressText.textContent = `İndiriliyor: ${data.songName || 'Şarkı'} (${Math.round(data.progress)}%)`;
+        
+        if (data.progress === 100) {
+            setTimeout(() => {
+                downloadProgress.style.display = 'none';
+            }, 2000);
         }
     }
 });
