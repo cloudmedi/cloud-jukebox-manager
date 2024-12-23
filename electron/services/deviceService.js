@@ -1,5 +1,27 @@
+const fs = require('fs').promises;
+const path = require('path');
+const { app } = require('electron');
+const Store = require('electron-store');
+const store = new Store();
 const os = require('os');
-const apiService = require('./apiService');
+
+async function cleanupLocalFiles() {
+  try {
+    // Uygulama veri dizinini al
+    const appDataPath = app.getPath('userData');
+    
+    // Playlist ve şarkı dosyalarını temizle
+    const downloadPath = path.join(appDataPath, 'downloads');
+    await fs.rm(downloadPath, { recursive: true, force: true });
+    
+    // Store'u temizle
+    store.clear();
+    
+    console.log('Local files cleaned up successfully');
+  } catch (error) {
+    console.error('Error cleaning up local files:', error);
+  }
+}
 
 function getDeviceInfo() {
   return {
@@ -17,25 +39,7 @@ function getDeviceInfo() {
   };
 }
 
-function generateToken() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
-async function registerDeviceToken() {
-  const token = generateToken();
-  const deviceInfo = getDeviceInfo();
-  
-  try {
-    await apiService.registerToken(token, deviceInfo);
-    return token;
-  } catch (error) {
-    console.error('Error registering device token:', error);
-    throw error;
-  }
-}
-
 module.exports = {
-  getDeviceInfo,
-  generateToken,
-  registerDeviceToken
+  cleanupLocalFiles,
+  getDeviceInfo
 };

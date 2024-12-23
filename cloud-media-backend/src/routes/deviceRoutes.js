@@ -2,33 +2,14 @@ const express = require('express');
 const router = express.Router();
 const Device = require('../models/Device');
 const Token = require('../models/Token');
+const fs = require('fs');
+const path = require('path');
 
+// Cihazları listele
 router.get('/', async (req, res) => {
   try {
-    const skip = parseInt(req.query.skip) || 0;
-    const limit = parseInt(req.query.limit) || 20;
-
-    const devices = await Device.find()
-      .populate('activePlaylist')
-      .populate('groupId')
-      .lean()
-      .skip(skip)
-      .limit(limit)
-      .sort({ createdAt: -1 });
-
-    const devicesWithInfo = await Promise.all(
-      devices.map(async (device) => {
-        const tokenInfo = await Token.findOne({ token: device.token }).lean();
-        return {
-          ...device,
-          deviceInfo: tokenInfo?.deviceInfo || null,
-          // Eğer activePlaylist yoksa playlistStatus null olmalı
-          playlistStatus: device.activePlaylist ? device.playlistStatus : null
-        };
-      })
-    );
-
-    res.json(devicesWithInfo);
+    const devices = await Device.find().populate('activePlaylist').lean();
+    res.json(devices);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -89,9 +70,19 @@ router.delete('/:id', async (req, res) => {
       { $set: { isUsed: false } }
     );
 
-    // Sonra cihazı sil - device.remove() yerine deleteOne() kullan
+    // WebSocket üzerinden cihaza kapanma sinyali gönder
+    if (req.wss) {
+      req.wss.sendToDevice(device.token, {
+        type: 'command',
+        command: 'shutdown',
+        reason: 'device_deleted'
+      });
+    }
+
+    // Cihazı sil
     await Device.deleteOne({ _id: device._id });
     
+    console.log('Device deleted successfully:', device._id);
     res.json({ message: 'Cihaz silindi' });
   } catch (error) {
     console.error('Device deletion error:', error);
