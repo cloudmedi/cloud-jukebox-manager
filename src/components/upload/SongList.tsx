@@ -24,13 +24,11 @@ const SongList = () => {
         if (searchTerm) params.append("search", searchTerm);
         if (selectedGenre !== "All") params.append("genre", selectedGenre);
 
-        console.log("Fetching songs with params:", params.toString());
         const response = await fetch(`http://localhost:5000/api/songs?${params.toString()}`);
         
         if (!response.ok) throw new Error("Failed to fetch songs");
         const data = await response.json();
-        console.log("Fetched songs data:", data);
-        return data;
+        return data as { songs: Song[] };
       } catch (error) {
         console.error("Error fetching songs:", error);
         throw error;
