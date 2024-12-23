@@ -78,7 +78,7 @@ const SongList = () => {
 
       <div className="rounded-md border">
         <Table>
-          <SongTableHeader showCheckbox={true} />
+          <SongTableHeader showCheckbox={true} allSongs={filteredSongs} />
           <TableBody>
             {filteredSongs?.map((song) => (
               <SongTableRow
