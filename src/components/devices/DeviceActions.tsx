@@ -7,6 +7,12 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Power,
   RefreshCcw,
   Volume2,
@@ -156,11 +162,13 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
       </DropdownMenu>
 
       <Dialog open={isVolumeDialogOpen} onOpenChange={setIsVolumeDialogOpen}>
-        <VolumeControlDialog
-          currentVolume={device.volume}
-          onVolumeChange={handleVolumeChange}
-          onClose={() => setIsVolumeDialogOpen(false)}
-        />
+        <DialogContent>
+          <VolumeControlDialog
+            currentVolume={device.volume}
+            onVolumeChange={handleVolumeChange}
+            onClose={() => setIsVolumeDialogOpen(false)}
+          />
+        </DialogContent>
       </Dialog>
 
       <GroupManagementDialog
