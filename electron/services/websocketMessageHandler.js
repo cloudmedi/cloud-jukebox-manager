@@ -5,12 +5,18 @@ const path = require('path');
 class WebSocketMessageHandler {
   constructor() {
     this.handlers = new Map();
+    this.mainWindow = null;
     this.initializeHandlers();
   }
 
   initializeHandlers() {
-    this.handlers.set('playlist', this.handlePlaylist.bind(this));
-    this.handlers.set('command', this.handleCommand.bind(this));
+    // Handler fonksiyonlarını this bağlamıyla bağlayalım
+    this.handlePlaylist = this.handlePlaylist.bind(this);
+    this.handleCommand = this.handleCommand.bind(this);
+
+    // Şimdi Map'e ekleyelim
+    this.handlers.set('playlist', this.handlePlaylist);
+    this.handlers.set('command', this.handleCommand);
   }
 
   async handleMessage(message) {
@@ -83,6 +89,11 @@ class WebSocketMessageHandler {
         });
       }
     }
+  }
+
+  handleCommand(message) {
+    console.log('Handling command:', message);
+    // Command işleme mantığı buraya gelecek
   }
 
   sendToRenderer(channel, data) {
