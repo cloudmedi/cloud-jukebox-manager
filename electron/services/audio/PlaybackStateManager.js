@@ -23,6 +23,7 @@ class PlaybackStateManager {
   }
 
   clearPlaybackState() {
+    console.log('Clearing playback state');
     this.store.delete('playbackState');
   }
 }

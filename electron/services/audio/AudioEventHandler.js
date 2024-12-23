@@ -31,11 +31,19 @@ class AudioEventHandler {
       ipcRenderer.send('playback-status-changed', false);
     });
 
-    // Hata durumunda playback durumunu güncelle
-    this.audio.addEventListener('error', () => {
-      console.error('Audio error occurred');
+    this.audio.addEventListener('error', (error) => {
+      console.error('Audio error occurred:', error);
       playbackStateManager.savePlaybackState(false, this.currentPlaylistId);
       ipcRenderer.send('playback-status-changed', false);
+    });
+
+    this.audio.addEventListener('loadstart', () => {
+      console.log('Audio loading started');
+      const playbackState = playbackStateManager.getPlaybackState();
+      if (playbackState.isPlaying && playbackState.playlistId === this.currentPlaylistId) {
+        console.log('Auto-playing based on saved state');
+        this.audio.play().catch(err => console.error('Auto-play error:', err));
+      }
     });
   }
 }

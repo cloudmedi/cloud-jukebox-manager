@@ -11,6 +11,12 @@ class WebSocketMessageHandler {
       case 'command':
         this.handleCommand(message, mainWindow);
         break;
+      case 'playlist':
+        this.handlePlaylist(message, mainWindow);
+        break;
+      case 'initialState':
+        this.handleInitialState(message, mainWindow);
+        break;
       default:
         console.log('Unknown message type:', message.type);
         break;
@@ -39,6 +45,22 @@ class WebSocketMessageHandler {
         console.log('Unknown command:', message.command);
         break;
     }
+  }
+
+  handlePlaylist(message, mainWindow) {
+    const playbackState = playbackStateManager.getPlaybackState();
+    console.log('Handling playlist with current state:', playbackState);
+    
+    // Yeni playlist geldiğinde mevcut durumu kontrol et
+    mainWindow.webContents.send('playlist-received', {
+      ...message.data,
+      autoPlay: playbackState.isPlaying && playbackState.playlistId === message.data._id
+    });
+  }
+
+  handleInitialState(message, mainWindow) {
+    console.log('Handling initial state:', message);
+    mainWindow.webContents.send('initial-state', message);
   }
 }
 

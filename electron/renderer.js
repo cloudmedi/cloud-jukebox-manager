@@ -11,23 +11,20 @@ const audioHandler = new AudioEventHandler(audio);
 audio.volume = 0.7; // 70%
 
 // Auto-play playlist
-ipcRenderer.on('auto-play-playlist', (event, playlist) => {
-  console.log('Auto-playing playlist:', playlist);
+ipcRenderer.on('playlist-received', (event, playlist) => {
+  console.log('Playlist received:', playlist);
   if (playlist && playlist.songs && playlist.songs.length > 0) {
-    const playbackState = playbackStateManager.getPlaybackState();
     audioHandler.setCurrentPlaylistId(playlist._id);
     
-    // Eğer playlist ID'leri eşleşiyorsa ve çalma durumu true ise çal
-    const shouldAutoPlay = playbackState.playlistId === playlist._id && 
-                         playbackState.isPlaying === true;
+    const playbackState = playbackStateManager.getPlaybackState();
+    console.log('Current playback state:', playbackState);
     
-    console.log('Should auto-play:', shouldAutoPlay, 'Playback state:', playbackState);
-    
-    if (shouldAutoPlay) {
+    // Playlist ID'leri eşleşiyorsa ve çalma durumu true ise çal
+    if (playbackState.isPlaying && playbackState.playlistId === playlist._id) {
       console.log('Auto-playing based on saved state');
       ipcRenderer.invoke('play-playlist', playlist);
     } else {
-      console.log('Not auto-playing due to saved state');
+      console.log('Loading playlist without auto-play');
       ipcRenderer.invoke('load-playlist', playlist);
     }
   }
