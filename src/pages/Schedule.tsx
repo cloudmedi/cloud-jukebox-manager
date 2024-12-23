@@ -5,7 +5,7 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import { Button } from "@/components/ui/button";
 import { Calendar, List } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { PlaylistScheduleForm } from "@/components/schedule/PlaylistScheduleForm";
 import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
@@ -27,7 +27,18 @@ const Schedule = () => {
   });
 
   const handleDateSelect = (selectInfo: any) => {
-    setSelectedDate(selectInfo.start);
+    const selectedDate = new Date(selectInfo.start);
+    // Seçilen tarihin saat bilgisini koru
+    const hours = selectedDate.getHours();
+    const minutes = selectedDate.getMinutes();
+    
+    // Eğer saat 0:00 ise, varsayılan olarak şu anki saati kullan
+    if (hours === 0 && minutes === 0) {
+      const now = new Date();
+      selectedDate.setHours(now.getHours(), now.getMinutes());
+    }
+    
+    setSelectedDate(selectedDate);
     setIsDialogOpen(true);
   };
 
@@ -95,6 +106,9 @@ const Schedule = () => {
           select={handleDateSelect}
           height="auto"
           locale="tr"
+          slotMinTime="00:00:00"
+          slotMaxTime="24:00:00"
+          allDaySlot={false}
           eventContent={(eventInfo) => {
             return (
               <div className="p-1">
@@ -114,6 +128,9 @@ const Schedule = () => {
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Playlist Zamanla</DialogTitle>
+            <DialogDescription>
+              Seçilen tarih: {selectedDate ? format(selectedDate, "dd MMM yyyy HH:mm", { locale: tr }) : ""}
+            </DialogDescription>
           </DialogHeader>
           <PlaylistScheduleForm 
             initialDate={selectedDate} 
