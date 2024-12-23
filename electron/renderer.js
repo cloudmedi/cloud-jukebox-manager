@@ -2,7 +2,6 @@ const { ipcRenderer } = require('electron');
 const audio = document.getElementById('audioPlayer');
 require('./services/playlistHandler');
 
-// Audio player UI controls and event listeners
 let isPlaying = false;
 let playPromise = null;
 let currentVolume = 0.7; // 70%
@@ -60,7 +59,7 @@ audio.addEventListener('timeupdate', () => {
 // Handle playlist messages from main process
 ipcRenderer.on('update-player', (event, song) => {
     if (song) {
-        console.log('Received song:', song);
+        console.log('Received song for playback:', song);
         const songTitle = document.querySelector('.song-title');
         const artistName = document.querySelector('.artist');
         const songPath = document.querySelector('.song-path');
@@ -91,7 +90,7 @@ ipcRenderer.on('download-progress', (event, data) => {
     const downloadProgressText = document.querySelector('.download-progress-text');
 
     if (data.error) {
-        showDownloadError(data.error, data.songName);
+        console.error('Download error:', data.error);
         downloadProgress.style.display = 'none';
     } else if (data.progress !== undefined) {
         downloadProgress.style.display = 'block';

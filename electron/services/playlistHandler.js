@@ -10,22 +10,31 @@ class PlaylistHandler {
 
   setupListeners() {
     ipcRenderer.on('play-playlist', async (event, playlist) => {
-      console.log('Playlist received:', playlist);
+      console.log('Received playlist for processing:', playlist);
       await this.handlePlaylist(playlist);
     });
   }
 
   async handlePlaylist(playlist) {
     try {
+      // Playlist için indirme klasörünü oluştur
       const playlistDir = path.join(process.env.APPDATA || process.env.HOME, 'cloud-media-player', 'playlists', playlist._id);
       
       if (!fs.existsSync(playlistDir)) {
         fs.mkdirSync(playlistDir, { recursive: true });
       }
 
+      console.log('Processing songs:', playlist.songs);
+
       for (const song of playlist.songs) {
         const songPath = path.join(playlistDir, `${song._id}.mp3`);
-        const songUrl = `${playlist.baseUrl}/${song.filePath}`;
+        const songUrl = `${playlist.baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
+
+        console.log('Downloading song:', {
+          name: song.name,
+          url: songUrl,
+          path: songPath
+        });
 
         // İndirme durumunu bildir
         ipcRenderer.send('download-progress', {

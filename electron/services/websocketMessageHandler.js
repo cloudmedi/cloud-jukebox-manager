@@ -52,7 +52,18 @@ class WebSocketMessageHandler {
     console.log('Handling playlist:', message);
     const mainWindow = BrowserWindow.getAllWindows()[0];
     if (mainWindow) {
-      mainWindow.webContents.send('play-playlist', message.data);
+      // Playlist verilerini renderer process'e gönder
+      const playlistData = {
+        ...message.data,
+        songs: message.data.songs.map(song => ({
+          _id: song._id,
+          name: song.name,
+          artist: song.artist,
+          filePath: song.filePath,
+          duration: song.duration
+        }))
+      };
+      mainWindow.webContents.send('play-playlist', playlistData);
     }
   }
 
