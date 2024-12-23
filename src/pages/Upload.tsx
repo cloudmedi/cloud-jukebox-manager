@@ -6,9 +6,12 @@ import { useToast } from "@/hooks/use-toast";
 import { Song } from "@/types/song";
 import SongEditDialog from "@/components/upload/SongEditDialog";
 import { Loader2 } from "lucide-react";
+import { SongFilters } from "@/components/upload/SongFilters";
 
 const Upload = () => {
   const [editingSong, setEditingSong] = useState<Song | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedGenre, setSelectedGenre] = useState("all");
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -45,6 +48,17 @@ const Upload = () => {
     }
   };
 
+  // Filtreleme işlemi
+  const filteredSongs = songs.filter((song) => {
+    const matchesSearch = song.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+                         song.artist.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesGenre = selectedGenre === "all" || song.genre === selectedGenre;
+    return matchesSearch && matchesGenre;
+  });
+
+  // Benzersiz türleri al
+  const genres = ["all", ...new Set(songs.map(song => song.genre))];
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[50vh]">
@@ -66,8 +80,16 @@ const Upload = () => {
         onUploadComplete={() => queryClient.invalidateQueries({ queryKey: ["songs"] })} 
       />
       
+      <SongFilters
+        searchTerm={searchTerm}
+        onSearchChange={setSearchTerm}
+        selectedGenre={selectedGenre}
+        onGenreChange={setSelectedGenre}
+        genres={genres}
+      />
+
       <SongList 
-        songs={songs} 
+        songs={filteredSongs} 
         onDelete={handleDelete}
         onEdit={(song) => setEditingSong(song)}
       />
