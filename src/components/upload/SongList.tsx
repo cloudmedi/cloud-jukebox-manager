@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Table, TableBody } from "@/components/ui/table";
 import SongEditDialog from "./SongEditDialog";
@@ -16,7 +16,7 @@ const SongList = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: songs = [], isLoading, error, refetch } = useQuery({
+  const { data: songsData, isLoading, error } = useQuery({
     queryKey: ["songs", searchTerm, selectedGenre],
     queryFn: async () => {
       try {
@@ -30,13 +30,15 @@ const SongList = () => {
         if (!response.ok) throw new Error("Failed to fetch songs");
         const data = await response.json();
         console.log("Fetched songs data:", data);
-        return data.songs || [];
+        return data;
       } catch (error) {
         console.error("Error fetching songs:", error);
         throw error;
       }
     }
   });
+
+  const songs = songsData?.songs || [];
 
   const handleDelete = async (id: string) => {
     try {
@@ -125,15 +127,9 @@ const SongList = () => {
     <div className="space-y-4">
       <SongFilters
         searchTerm={searchTerm}
-        onSearchChange={(value) => {
-          setSearchTerm(value);
-          refetch();
-        }}
+        onSearchChange={setSearchTerm}
         selectedGenre={selectedGenre}
-        onGenreChange={(value) => {
-          setSelectedGenre(value);
-          refetch();
-        }}
+        onGenreChange={setSelectedGenre}
         genres={uniqueGenres}
       />
 
