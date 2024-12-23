@@ -14,15 +14,6 @@ interface SongSelectorProps {
 }
 
 export const SongSelector = ({ form }: SongSelectorProps) => {
-  const { data: songs = [], isLoading } = useQuery({
-    queryKey: ["songs"],
-    queryFn: async () => {
-      const response = await fetch("http://localhost:5000/api/songs");
-      if (!response.ok) throw new Error("Şarkılar yüklenemedi");
-      return response.json();
-    },
-  });
-
   const { selectedSongs } = useSelectedSongsStore();
 
   // Form değerlerini seçili şarkılarla güncelle
@@ -33,15 +24,15 @@ export const SongSelector = ({ form }: SongSelectorProps) => {
     }
   }, [selectedSongs, form]);
 
-  if (isLoading) {
+  if (selectedSongs.length === 0) {
     return (
       <div className="space-y-6">
         <div className="flex items-center gap-2 pb-2 border-b">
           <Music4 className="h-5 w-5" />
-          <h2 className="text-lg font-semibold">Şarkılar</h2>
+          <h2 className="text-lg font-semibold">Seçili Şarkılar</h2>
         </div>
         <div className="h-[300px] flex items-center justify-center">
-          <p className="text-muted-foreground">Şarkılar yükleniyor...</p>
+          <p className="text-muted-foreground">Henüz şarkı seçilmedi</p>
         </div>
       </div>
     );
@@ -56,17 +47,17 @@ export const SongSelector = ({ form }: SongSelectorProps) => {
           <div className="space-y-6">
             <div className="flex items-center gap-2 pb-2 border-b">
               <Music4 className="h-5 w-5" />
-              <h2 className="text-lg font-semibold">Şarkılar</h2>
+              <h2 className="text-lg font-semibold">Seçili Şarkılar</h2>
             </div>
 
             <FormDescription className="mb-4">
-              Playlistinize eklemek istediğiniz şarkıları seçin
+              Upload sayfasından seçtiğiniz şarkılar:
             </FormDescription>
 
             <Card>
               <ScrollArea className="h-[300px] p-4">
                 <div className="space-y-4">
-                  {songs.map((song: any) => (
+                  {selectedSongs.map((song) => (
                     <div
                       key={song._id}
                       className="flex items-center space-x-3 rounded-lg p-2 hover:bg-accent"
