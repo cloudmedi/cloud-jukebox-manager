@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Table, TableBody } from "@/components/ui/table";
 import SongEditDialog from "./SongEditDialog";
 import { Song } from "@/types/song";
@@ -14,7 +14,6 @@ const SongList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingSong, setEditingSong] = useState<Song | null>(null);
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const { data: songsData, isLoading, error } = useQuery({
     queryKey: ["songs", searchTerm, selectedGenre],
@@ -53,6 +52,7 @@ const SongList = () => {
         description: "Şarkı başarıyla silindi",
       });
       
+      // Invalidate and refetch
       queryClient.invalidateQueries({ queryKey: ["songs"] });
     } catch (error) {
       toast({

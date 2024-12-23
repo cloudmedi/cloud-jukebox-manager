@@ -4,9 +4,8 @@ import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { Music, Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
 import { formatDuration } from "@/lib/utils";
-import { cn } from "@/lib/utils";
 
-export const Player = () => {
+const Player = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -177,3 +176,5 @@ export const Player = () => {
     </div>
   );
 };
+
+export default Player;
