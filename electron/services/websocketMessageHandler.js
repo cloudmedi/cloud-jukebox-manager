@@ -1,5 +1,6 @@
-const { app, BrowserWindow } = require('electron');
-const { ipcMain } = require('electron');
+const { BrowserWindow } = require('electron');
+const { downloadFile } = require('./downloadUtils');
+const path = require('path');
 
 class WebSocketMessageHandler {
   constructor() {
@@ -8,9 +9,8 @@ class WebSocketMessageHandler {
   }
 
   initializeHandlers() {
-    this.handlers.set('command', this.handleCommand.bind(this));
     this.handlers.set('playlist', this.handlePlaylist.bind(this));
-    this.handlers.set('volume', this.handleVolume.bind(this));
+    this.handlers.set('command', this.handleCommand.bind(this));
   }
 
   async handleMessage(message) {
@@ -18,60 +18,77 @@ class WebSocketMessageHandler {
     const handler = this.handlers.get(message.type);
     
     if (handler) {
-      await handler(message);
+      try {
+        await handler(message);
+      } catch (error) {
+        console.error('Message handling error:', error);
+        this.sendToRenderer('error', {
+          type: 'error',
+          message: error.message
+        });
+      }
     } else {
       console.warn('No handler found for message type:', message.type);
-    }
-  }
-
-  async handleCommand(message) {
-    console.log('Handling command:', message);
-    const mainWindow = BrowserWindow.getAllWindows()[0];
-    
-    if (!mainWindow) {
-      console.error('No window found');
-      return;
-    }
-
-    switch (message.command) {
-      case 'restart':
-        console.log('Restarting application...');
-        app.relaunch();
-        app.exit(0);
-        break;
-      case 'setVolume':
-        console.log('Setting volume to:', message.volume);
-        mainWindow.webContents.send('set-volume', message.volume);
-        break;
-      default:
-        console.warn('Unknown command:', message.command);
     }
   }
 
   async handlePlaylist(message) {
     console.log('Handling playlist:', message);
     const mainWindow = BrowserWindow.getAllWindows()[0];
-    if (mainWindow) {
-      // Playlist verilerini renderer process'e gönder
-      const playlistData = {
-        ...message.data,
-        songs: message.data.songs.map(song => ({
-          _id: song._id,
-          name: song.name,
-          artist: song.artist,
-          filePath: song.filePath,
-          duration: song.duration
-        }))
-      };
-      mainWindow.webContents.send('play-playlist', playlistData);
+    if (!mainWindow) return;
+
+    const playlist = message.data;
+    if (!playlist || !playlist.songs) {
+      console.error('Invalid playlist data:', playlist);
+      return;
+    }
+
+    // Playlist bilgisini renderer'a gönder
+    mainWindow.webContents.send('playlist-info', {
+      id: playlist._id,
+      name: playlist.name,
+      artwork: playlist.artwork
+    });
+
+    // Her şarkıyı indir
+    for (const song of playlist.songs) {
+      try {
+        console.log('Processing song:', song);
+        const songUrl = `${playlist.baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
+        const filename = `${song._id}${path.extname(song.filePath)}`;
+
+        mainWindow.webContents.send('download-progress', {
+          songName: song.name,
+          progress: 0
+        });
+
+        const localPath = await downloadFile(songUrl, filename, (progress) => {
+          mainWindow.webContents.send('download-progress', {
+            songName: song.name,
+            progress
+          });
+        });
+
+        // İndirilen şarkı bilgisini renderer'a gönder
+        mainWindow.webContents.send('song-downloaded', {
+          ...song,
+          localPath
+        });
+
+      } catch (error) {
+        console.error(`Error downloading song ${song.name}:`, error);
+        mainWindow.webContents.send('download-error', {
+          songName: song.name,
+          error: error.message
+        });
+      }
     }
   }
 
-  async handleVolume(message) {
-    console.log('Handling volume:', message);
+  sendToRenderer(channel, data) {
     const mainWindow = BrowserWindow.getAllWindows()[0];
     if (mainWindow) {
-      mainWindow.webContents.send('set-volume', message.volume);
+      mainWindow.webContents.send(channel, data);
     }
   }
 }

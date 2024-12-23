@@ -1,42 +1,66 @@
-const fs = require('fs');
 const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
+const { app } = require('electron');
 
-const downloadFile = async (url, filePath, onProgress) => {
-  const response = await axios({
-    url,
-    method: 'GET',
-    responseType: 'stream'
-  });
+const ensureDirectoryExists = (dir) => {
+  if (!fs.existsSync(dir)) {
+    fs.mkdirSync(dir, { recursive: true });
+  }
+};
 
-  const writer = fs.createWriteStream(filePath);
-  const totalLength = response.headers['content-length'];
+const getDownloadPath = () => {
+  const userDataPath = app.getPath('userData');
+  return path.join(userDataPath, 'downloads');
+};
 
-  console.log('Starting download:', url);
-  console.log('Total size:', totalLength);
+const downloadFile = async (url, filename, onProgress) => {
+  try {
+    console.log('Downloading file:', url);
+    const downloadPath = getDownloadPath();
+    ensureDirectoryExists(downloadPath);
 
-  response.data.pipe(writer);
+    const filePath = path.join(downloadPath, filename);
+    const writer = fs.createWriteStream(filePath);
 
-  if (onProgress && totalLength) {
+    const response = await axios({
+      url,
+      method: 'GET',
+      responseType: 'stream'
+    });
+
+    const totalLength = response.headers['content-length'];
+    console.log('Total file size:', totalLength);
+
     let downloaded = 0;
     response.data.on('data', (chunk) => {
       downloaded += chunk.length;
       const progress = Math.round((downloaded * 100) / totalLength);
-      onProgress(progress);
+      if (onProgress) {
+        onProgress(progress);
+      }
     });
-  }
 
-  return new Promise((resolve, reject) => {
-    writer.on('finish', () => {
-      console.log('Download completed:', filePath);
-      resolve();
+    response.data.pipe(writer);
+
+    return new Promise((resolve, reject) => {
+      writer.on('finish', () => {
+        console.log('Download completed:', filePath);
+        resolve(filePath);
+      });
+      writer.on('error', (err) => {
+        console.error('Download error:', err);
+        reject(err);
+      });
     });
-    writer.on('error', (err) => {
-      console.error('Download error:', err);
-      reject(err);
-    });
-  });
+  } catch (error) {
+    console.error('Download failed:', error);
+    throw error;
+  }
 };
 
 module.exports = {
-  downloadFile
+  downloadFile,
+  getDownloadPath,
+  ensureDirectoryExists
 };
