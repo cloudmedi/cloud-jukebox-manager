@@ -17,7 +17,7 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
   const [deviceSearch, setDeviceSearch] = useState("");
   const [groupSearch, setGroupSearch] = useState("");
 
-  const { data: devices = [], isError: isDevicesError } = useQuery({
+  const { data: devices = [], isLoading: isDevicesLoading } = useQuery({
     queryKey: ["devices"],
     queryFn: async () => {
       try {
@@ -29,10 +29,11 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
         console.error("Cihaz yükleme hatası:", error);
         return [];
       }
-    }
+    },
+    initialData: [] // Başlangıç değeri olarak boş dizi
   });
 
-  const { data: groups = [], isError: isGroupsError } = useQuery({
+  const { data: groups = [], isLoading: isGroupsLoading } = useQuery({
     queryKey: ["device-groups"],
     queryFn: async () => {
       try {
@@ -44,25 +45,25 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
         console.error("Grup yükleme hatası:", error);
         return [];
       }
-    }
+    },
+    initialData: [] // Başlangıç değeri olarak boş dizi
   });
 
-  const filteredDevices = devices && Array.isArray(devices) ? devices.filter((device: any) =>
+  const filteredDevices = devices?.filter((device: any) =>
     device?.name?.toLowerCase().includes(deviceSearch.toLowerCase()) ||
     device?.location?.toLowerCase().includes(deviceSearch.toLowerCase())
-  ) : [];
+  ) || [];
 
-  const filteredGroups = groups && Array.isArray(groups) ? groups.filter((group: any) =>
+  const filteredGroups = groups?.filter((group: any) =>
     group?.name?.toLowerCase().includes(groupSearch.toLowerCase())
-  ) : [];
+  ) || [];
 
-  if (isDevicesError || isGroupsError) {
+  if (isDevicesLoading || isGroupsLoading) {
     return (
-      <Alert variant="destructive">
-        <AlertDescription>
-          Veriler yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.
-        </AlertDescription>
-      </Alert>
+      <div className="space-y-4">
+        <div className="h-[40px] bg-muted animate-pulse rounded-md" />
+        <div className="h-[40px] bg-muted animate-pulse rounded-md" />
+      </div>
     );
   }
 
