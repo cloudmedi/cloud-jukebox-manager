@@ -1,48 +1,42 @@
-const axios = require('axios');
 const fs = require('fs');
-const path = require('path');
-
-const ensureDirectoryExists = (dir) => {
-  if (!fs.existsSync(dir)) {
-    fs.mkdirSync(dir, { recursive: true });
-  }
-};
-
-const createFullUrl = (baseUrl, filePath) => {
-  // Windows tarzı dosya yollarını URL formatına dönüştür
-  const normalizedPath = filePath.replace(/\\/g, '/');
-  return `${baseUrl}/${normalizedPath}`;
-};
+const axios = require('axios');
 
 const downloadFile = async (url, filePath, onProgress) => {
-  const dir = path.dirname(filePath);
-  ensureDirectoryExists(dir);
-
   const response = await axios({
     url,
     method: 'GET',
-    responseType: 'stream',
-    onDownloadProgress: (progressEvent) => {
-      if (onProgress && progressEvent.total) {
-        const progress = Math.round(
-          (progressEvent.loaded * 100) / progressEvent.total
-        );
-        onProgress(progress);
-      }
-    }
+    responseType: 'stream'
   });
 
   const writer = fs.createWriteStream(filePath);
+  const totalLength = response.headers['content-length'];
+
+  console.log('Starting download:', url);
+  console.log('Total size:', totalLength);
+
   response.data.pipe(writer);
 
+  if (onProgress && totalLength) {
+    let downloaded = 0;
+    response.data.on('data', (chunk) => {
+      downloaded += chunk.length;
+      const progress = Math.round((downloaded * 100) / totalLength);
+      onProgress(progress);
+    });
+  }
+
   return new Promise((resolve, reject) => {
-    writer.on('finish', resolve);
-    writer.on('error', reject);
+    writer.on('finish', () => {
+      console.log('Download completed:', filePath);
+      resolve();
+    });
+    writer.on('error', (err) => {
+      console.error('Download error:', err);
+      reject(err);
+    });
   });
 };
 
 module.exports = {
-  ensureDirectoryExists,
-  createFullUrl,
   downloadFile
 };
