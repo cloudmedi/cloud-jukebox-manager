@@ -3,28 +3,25 @@ const path = require('path');
 const Store = require('electron-store');
 const store = new Store();
 const websocketService = require('./services/websocketService');
-const PlaybackStateManager = require('./services/audio/PlaybackStateManager');
+const playbackStateManager = require('./services/audio/PlaybackStateManager');
 require('./services/audioService');
 
 let mainWindow;
 let tray = null;
-const playbackStateManager = new PlaybackStateManager();
 
 function createTray() {
   try {
-    // Tray ikonu oluştur
     const iconPath = path.join(__dirname, 'icon.png');
     console.log('Tray icon path:', iconPath);
     
     tray = new Tray(iconPath);
     
-    // Tray menüsünü oluştur
     const contextMenu = Menu.buildFromTemplate([
       {
         label: 'Show App',
         click: function() {
           mainWindow.show();
-          mainWindow.focus(); // Pencereyi ön plana getir
+          mainWindow.focus();
         }
       },
       {
@@ -36,20 +33,17 @@ function createTray() {
       }
     ]);
 
-    // Tray ayarlarını yap
     tray.setToolTip('Cloud Media Player');
     tray.setContextMenu(contextMenu);
 
-    // Tray ikonuna çift tıklandığında uygulamayı göster
     tray.on('double-click', () => {
       mainWindow.show();
-      mainWindow.focus(); // Pencereyi ön plana getir
+      mainWindow.focus();
     });
     
-    // Tray ikonuna tek tıklandığında uygulamayı göster
     tray.on('click', () => {
       mainWindow.show();
-      mainWindow.focus(); // Pencereyi ön plana getir
+      mainWindow.focus();
     });
     
     console.log('Tray created successfully');
