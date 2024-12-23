@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useCallback } from 'react';
 import { useQueryClient } from "@tanstack/react-query";
 import {
   DropdownMenu,
@@ -29,30 +29,27 @@ interface DeviceActionsProps {
 const DeviceActions = ({ device }: DeviceActionsProps) => {
   const queryClient = useQueryClient();
 
+  const handleVolumeChange = useCallback((data: any) => {
+    if (data.deviceId === device._id) {
+      queryClient.invalidateQueries({ queryKey: ['devices'] });
+    }
+  }, [device._id, queryClient]);
+
+  const handlePlaybackChange = useCallback((data: any) => {
+    if (data.deviceId === device._id) {
+      queryClient.invalidateQueries({ queryKey: ['devices'] });
+    }
+  }, [device._id, queryClient]);
+
   useEffect(() => {
-    // WebSocket message handlers
-    const handleVolumeChange = (data: any) => {
-      if (data.deviceId === device._id) {
-        queryClient.invalidateQueries({ queryKey: ['devices'] });
-      }
-    };
-
-    const handlePlaybackChange = (data: any) => {
-      if (data.deviceId === device._id) {
-        queryClient.invalidateQueries({ queryKey: ['devices'] });
-      }
-    };
-
-    // Add handlers
     websocketService.addMessageHandler('volumeChange', handleVolumeChange);
     websocketService.addMessageHandler('playbackChange', handlePlaybackChange);
 
-    // Cleanup
     return () => {
       websocketService.removeMessageHandler('volumeChange', handleVolumeChange);
       websocketService.removeMessageHandler('playbackChange', handlePlaybackChange);
     };
-  }, [device._id, queryClient]);
+  }, [handleVolumeChange, handlePlaybackChange]);
 
   const handleAction = async (action: string) => {
     try {
