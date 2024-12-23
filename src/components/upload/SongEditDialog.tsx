@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogDescription,
 } from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
 import {
@@ -34,18 +35,34 @@ interface SongEditDialogProps {
   onOpenChange: (open: boolean) => void;
 }
 
-const genres = ["Pop", "Rock", "Jazz", "Classical", "Electronic", "Other"];
+const genres = ["Pop", "Rock", "Jazz", "Classical", "Electronic", "Christmas", "Chill Out", "Other"];
 
 const SongEditDialog = ({ song, open, onOpenChange }: SongEditDialogProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [formData, setFormData] = useState<Partial<Song>>(song || {});
+  const [formData, setFormData] = useState<Partial<Song>>({});
+
+  // Şarkı verisi değiştiğinde form verilerini güncelle
+  useEffect(() => {
+    if (song) {
+      setFormData({
+        name: song.name,
+        artist: song.artist,
+        genre: song.genre,
+        album: song.album || "",
+        year: song.year || undefined,
+        language: song.language || ""
+      });
+    }
+  }, [song]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
+    if (!song?._id) return;
+
     try {
-      const response = await fetch(`http://localhost:5000/api/songs/${song?._id}`, {
+      const response = await fetch(`http://localhost:5000/api/songs/${song._id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
@@ -76,6 +93,9 @@ const SongEditDialog = ({ song, open, onOpenChange }: SongEditDialogProps) => {
       <DialogContent>
         <DialogHeader>
           <DialogTitle>Şarkı Bilgilerini Düzenle</DialogTitle>
+          <DialogDescription>
+            Şarkı bilgilerini güncellemek için aşağıdaki formu kullanın.
+          </DialogDescription>
         </DialogHeader>
         <form onSubmit={handleSubmit} className="space-y-4">
           <div className="space-y-2">
