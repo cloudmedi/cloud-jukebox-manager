@@ -19,7 +19,6 @@ ipcRenderer.on('set-volume', (event, volume) => {
   if (audio) {
     const normalizedVolume = volume / 100;
     audio.volume = normalizedVolume;
-    // Ses seviyesi değişikliğini WebSocket'e bildir
     ipcRenderer.send('volume-changed', volume);
   }
 });
@@ -30,6 +29,28 @@ ipcRenderer.on('restart-playback', () => {
   if (audio) {
     audio.currentTime = 0;
     audio.play().catch(err => console.error('Playback error:', err));
+  }
+});
+
+// Toggle playback from WebSocket
+ipcRenderer.on('toggle-playback', () => {
+  console.log('Toggle playback, current state:', audio.paused);
+  if (audio) {
+    if (audio.paused) {
+      audio.play()
+        .then(() => {
+          console.log('Playback started successfully');
+          ipcRenderer.send('playback-status-changed', true);
+        })
+        .catch(err => {
+          console.error('Playback error:', err);
+          ipcRenderer.send('playback-status-changed', false);
+        });
+    } else {
+      audio.pause();
+      console.log('Playback paused');
+      ipcRenderer.send('playback-status-changed', false);
+    }
   }
 });
 
@@ -179,10 +200,3 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Diğer event listener'lar
-ipcRenderer.on('toggle-playback', () => {
-  if (audio.paused) {
-    audio.play().catch(err => console.error('Play error:', err));
-  } else {
-    audio.pause();
-  }
-});

@@ -24,6 +24,12 @@ class AudioService {
         case 'restart':
           this.handleRestart();
           break;
+        case 'play':
+          this.handlePlay();
+          break;
+        case 'pause':
+          this.handlePause();
+          break;
         default:
           console.log('Unknown command:', message.command);
       }
@@ -42,6 +48,43 @@ class AudioService {
     console.log('Restarting application...');
     app.relaunch();
     app.exit(0);
+  }
+
+  handlePlay() {
+    console.log('Play command received, current state:', this.isPlaying);
+    if (!this.isPlaying) {
+      const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
+      if (mainWindow) {
+        mainWindow.webContents.send('toggle-playback');
+        this.isPlaying = true;
+        this.sendPlaybackStatus();
+      }
+    } else {
+      console.log('Already playing, ignoring play command');
+      this.sendPlaybackStatus();
+    }
+  }
+
+  handlePause() {
+    console.log('Pause command received, current state:', this.isPlaying);
+    if (this.isPlaying) {
+      const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
+      if (mainWindow) {
+        mainWindow.webContents.send('toggle-playback');
+        this.isPlaying = false;
+        this.sendPlaybackStatus();
+      }
+    } else {
+      console.log('Already paused, ignoring pause command');
+      this.sendPlaybackStatus();
+    }
+  }
+
+  sendPlaybackStatus() {
+    websocketService.sendMessage({
+      type: 'playbackStatus',
+      status: this.isPlaying ? 'playing' : 'paused'
+    });
   }
 
   setupIpcHandlers() {
