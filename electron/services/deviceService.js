@@ -22,7 +22,7 @@ async function cleanupLocalFiles() {
     console.log('Local files cleaned up successfully');
   } catch (error) {
     console.error('Error cleaning up local files:', error);
-    throw error;
+    throw error; // Hata yönetimi için hatayı yukarı fırlat
   }
 }
 
