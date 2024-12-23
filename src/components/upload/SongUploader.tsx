@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState } from "react";
 import { Upload, Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useToast } from "@/components/ui/use-toast";
@@ -7,11 +7,24 @@ import { Progress } from "@/components/ui/progress";
 const SongUploader = ({ onUploadComplete }: { onUploadComplete: () => void }) => {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [totalFiles, setTotalFiles] = useState(0);
-  const [uploadedFiles, setUploadedFiles] = useState(0);
   const { toast } = useToast();
 
-  const uploadFile = useCallback(async (file: File) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith('audio/')) {
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Lütfen geçerli bir ses dosyası seçin",
+      });
+      return;
+    }
+
+    setUploading(true);
+    setProgress(0);
+
     const formData = new FormData();
     formData.append('file', file);
 
@@ -24,68 +37,22 @@ const SongUploader = ({ onUploadComplete }: { onUploadComplete: () => void }) =>
       if (!response.ok) throw new Error('Upload failed');
 
       const data = await response.json();
-      console.log('Uploaded file:', data);
-      return data;
-    } catch (error) {
-      console.error('File upload error:', error);
-      throw error;
-    }
-  }, []);
-
-  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const files = Array.from(event.target.files || []);
-    if (files.length === 0) return;
-
-    setUploading(true);
-    setProgress(0);
-    setTotalFiles(files.length);
-    setUploadedFiles(0);
-
-    const invalidFiles = files.filter(file => !file.type.startsWith('audio/'));
-    if (invalidFiles.length > 0) {
-      toast({
-        variant: "destructive",
-        title: "Hata",
-        description: "Lütfen sadece ses dosyaları seçin",
-      });
-      setUploading(false);
-      return;
-    }
-
-    try {
-      for (let i = 0; i < files.length; i++) {
-        try {
-          await uploadFile(files[i]);
-          setUploadedFiles(prev => prev + 1);
-          setProgress(((i + 1) / files.length) * 100);
-        } catch (error) {
-          console.error(`Error uploading ${files[i].name}:`, error);
-          toast({
-            variant: "destructive",
-            title: "Yükleme Hatası",
-            description: `${files[i].name} yüklenirken hata oluştu`,
-          });
-        }
-      }
-
+      
       toast({
         title: "Başarılı",
-        description: `${uploadedFiles} dosya başarıyla yüklendi`,
+        description: "Şarkı başarıyla yüklendi",
       });
       
       onUploadComplete();
     } catch (error) {
-      console.error('Bulk upload error:', error);
       toast({
         variant: "destructive",
         title: "Hata",
-        description: "Dosyalar yüklenirken bir hata oluştu",
+        description: "Şarkı yüklenirken bir hata oluştu",
       });
     } finally {
       setUploading(false);
       setProgress(0);
-      setTotalFiles(0);
-      setUploadedFiles(0);
     }
   };
 
@@ -116,7 +83,6 @@ const SongUploader = ({ onUploadComplete }: { onUploadComplete: () => void }) =>
             id="file-upload"
             type="file"
             accept="audio/*"
-            multiple
             className="hidden"
             onChange={handleFileChange}
             disabled={uploading}
@@ -128,7 +94,7 @@ const SongUploader = ({ onUploadComplete }: { onUploadComplete: () => void }) =>
         <div className="space-y-2">
           <Progress value={progress} className="w-full" />
           <p className="text-sm text-muted-foreground">
-            Yükleniyor... {uploadedFiles}/{totalFiles} dosya ({Math.round(progress)}%)
+            Yükleniyor... {progress}%
           </p>
         </div>
       )}

@@ -1,114 +1,70 @@
-const WebSocket = require('ws');
-
 class WebSocketService {
-  constructor() {
-    this.ws = null;
-    this.reconnectInterval = 5000;
-    this.isConnecting = false;
-    this.token = null;
-    this.messageQueue = [];
-    this.maxRetries = 5;
-    this.retryCount = 0;
+  private static instance: WebSocketService;
+  private ws: WebSocket | null = null;
+  private messageHandlers: Map<string, (data: any) => void> = new Map();
+
+  private constructor() {
+    this.connect();
   }
 
-  connect(token) {
-    if (this.isConnecting) return;
-    this.isConnecting = true;
-    this.token = token;
-
-    console.log('WebSocket bağlantısı başlatılıyor...');
-    
-    try {
-      this.ws = new WebSocket('ws://localhost:5000');
-
-      this.ws.on('open', () => {
-        console.log('WebSocket bağlantısı başarıyla kuruldu');
-        this.isConnecting = false;
-        this.retryCount = 0;
-        
-        // Token ile kimlik doğrulama
-        this.sendAuthMessage();
-        
-        // Kuyruktaki mesajları gönder
-        while (this.messageQueue.length > 0) {
-          const message = this.messageQueue.shift();
-          this.sendMessage(message);
-        }
-      });
-
-      this.ws.on('message', async (data) => {
-        try {
-          const message = JSON.parse(data);
-          console.log('Alınan mesaj:', message);
-          
-          if (message.type === 'playlist') {
-            const { ipcMain } = require('electron');
-            ipcMain.emit('play-playlist', null, message.data);
-          }
-          
-        } catch (error) {
-          console.error('Message parsing error:', error);
-        }
-      });
-
-      this.ws.on('close', () => {
-        console.log('WebSocket bağlantısı kapandı');
-        this.isConnecting = false;
-        
-        if (this.retryCount < this.maxRetries) {
-          console.log(`Yeniden bağlanılıyor... (Deneme ${this.retryCount + 1}/${this.maxRetries})`);
-          this.retryCount++;
-          setTimeout(() => this.connect(this.token), this.reconnectInterval);
-        } else {
-          console.error('Maksimum yeniden bağlanma denemesi aşıldı');
-        }
-      });
-
-      this.ws.on('error', (error) => {
-        console.error('WebSocket error:', error);
-        if (!this.ws || this.ws.readyState === WebSocket.CLOSED) {
-          this.isConnecting = false;
-        }
-      });
-    } catch (error) {
-      console.error('WebSocket bağlantı hatası:', error);
-      this.isConnecting = false;
+  public static getInstance(): WebSocketService {
+    if (!WebSocketService.instance) {
+      WebSocketService.instance = new WebSocketService();
     }
+    return WebSocketService.instance;
   }
 
-  sendAuthMessage() {
-    const authMessage = {
-      type: 'auth',
-      token: this.token
+  private connect() {
+    this.ws = new WebSocket('ws://localhost:5000/admin');
+
+    this.ws.onopen = () => {
+      console.log('Admin WebSocket bağlantısı kuruldu');
     };
-    this.sendMessage(authMessage);
+
+    this.ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        this.handleMessage(message);
+      } catch (error) {
+        console.error('Message parsing error:', error);
+      }
+    };
+
+    this.ws.onclose = () => {
+      console.log('WebSocket bağlantısı kapandı, yeniden bağlanılıyor...');
+      setTimeout(() => this.connect(), 5000);
+    };
+
+    this.ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
   }
 
-  sendMessage(message) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      try {
-        this.ws.send(JSON.stringify(message));
-        return true;
-      } catch (error) {
-        console.error('Mesaj gönderme hatası:', error);
-        this.messageQueue.push(message);
-        return false;
-      }
+  private handleMessage(message: any) {
+    const handler = this.messageHandlers.get(message.type);
+    if (handler) {
+      handler(message);
     } else {
-      console.log('WebSocket bağlı değil, mesaj kuyruğa ekleniyor');
-      this.messageQueue.push(message);
-      return false;
+      console.log('Unhandled message type:', message.type);
     }
   }
 
-  disconnect() {
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
-      this.messageQueue = [];
-      this.retryCount = 0;
+  public addMessageHandler(type: string, handler: (data: any) => void) {
+    this.messageHandlers.set(type, handler);
+  }
+
+  public removeMessageHandler(type: string) {
+    this.messageHandlers.delete(type);
+  }
+
+  public sendMessage(message: any) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(message));
+    } else {
+      console.error('WebSocket bağlantısı kurulamadı');
     }
   }
 }
 
-module.exports = new WebSocketService();
+const websocketService = WebSocketService.getInstance();
+export default websocketService;
