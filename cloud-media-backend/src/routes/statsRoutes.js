@@ -3,6 +3,8 @@ const router = express.Router();
 const Device = require('../models/Device');
 const Playlist = require('../models/Playlist');
 const PlaylistSchedule = require('../models/PlaylistSchedule');
+const PlaybackHistory = require('../models/PlaybackHistory');
+const ErrorLog = require('../models/ErrorLog');
 const mongoose = require('mongoose');
 
 router.get('/devices', async (req, res) => {
@@ -186,6 +188,81 @@ router.get('/device-playback', async (req, res) => {
     res.json(playbackData);
   } catch (error) {
     console.error('Device playback stats error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Uptime istatistiklerini getir
+router.get('/uptime', async (req, res) => {
+  try {
+    const { deviceId, period } = req.query;
+    const now = new Date();
+    let startDate;
+
+    switch (period) {
+      case 'day':
+        startDate = new Date(now.setDate(now.getDate() - 1));
+        break;
+      case 'week':
+        startDate = new Date(now.setDate(now.getDate() - 7));
+        break;
+      case 'month':
+        startDate = new Date(now.setMonth(now.getMonth() - 1));
+        break;
+      default:
+        startDate = new Date(now.setDate(now.getDate() - 7));
+    }
+
+    const device = await Device.findById(deviceId);
+    if (!device) {
+      return res.status(404).json({ message: 'Cihaz bulunamadı' });
+    }
+
+    // Son görülme ve çevrimiçi durumu
+    const uptimeData = {
+      deviceName: device.name,
+      lastSeen: device.lastSeen,
+      isOnline: device.isOnline,
+      currentUptime: device.isOnline ? new Date() - device.lastSeen : 0,
+      totalUptime: 0,
+      uptimePercentage: 0
+    };
+
+    res.json(uptimeData);
+  } catch (error) {
+    console.error('Uptime stats error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Hata loglarını getir
+router.get('/error-logs', async (req, res) => {
+  try {
+    const { deviceId, type, from, to, limit = 100 } = req.query;
+    const query = {};
+
+    if (deviceId) {
+      query.deviceId = deviceId;
+    }
+
+    if (type) {
+      query.type = type;
+    }
+
+    if (from || to) {
+      query.timestamp = {};
+      if (from) query.timestamp.$gte = new Date(from);
+      if (to) query.timestamp.$lte = new Date(to);
+    }
+
+    const logs = await ErrorLog.find(query)
+      .sort({ timestamp: -1 })
+      .limit(Number(limit))
+      .populate('deviceId', 'name location');
+
+    res.json(logs);
+  } catch (error) {
+    console.error('Error logs fetch error:', error);
     res.status(500).json({ message: error.message });
   }
 });
