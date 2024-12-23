@@ -1,6 +1,7 @@
 const { Howl } = require('howler');
 const QueueManager = require('./audio/QueueManager');
 const PlaybackState = require('./audio/PlaybackState');
+const path = require('path');
 
 class AudioPlayer {
   constructor() {
@@ -49,16 +50,17 @@ class AudioPlayer {
       return;
     }
 
-    // Düzeltilmiş dosya yolu oluşturma
-    const filePath = song.localPath.replace(/\\/g, '/');
-    console.log('Playing file from:', filePath);
+    // Normalize file path for Electron
+    const normalizedPath = path.normalize(song.localPath);
+    console.log('Playing file from:', normalizedPath);
 
     try {
       this.currentSound = new Howl({
-        src: [filePath],
-        html5: true,
+        src: [normalizedPath],
+        html5: false, // Native audio kullan
         format: ['mp3'],
         volume: this.volume,
+        autoplay: false,
         onload: () => {
           console.log('Song loaded successfully:', song.name);
           if (this.isPlaying) {
@@ -67,7 +69,7 @@ class AudioPlayer {
         },
         onloaderror: (id, error) => {
           console.error('Song loading error:', error);
-          console.error('Song path:', filePath);
+          console.error('Song path:', normalizedPath);
           this.currentSound = null;
           this.playNext();
         },
