@@ -12,7 +12,7 @@ import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { usePlayer } from "@/components/layout/MainLayout";
 import { SendPlaylistDialog } from "./SendPlaylistDialog";
-import { websocketService } from "@/services/websocketService";
+import websocketService from "@/services/websocketService";
 
 interface PlaylistCardProps {
   playlist: {

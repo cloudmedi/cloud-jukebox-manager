@@ -1,5 +1,3 @@
-import { toast } from "sonner";
-
 class WebSocketService {
   private static instance: WebSocketService;
   private ws: WebSocket | null = null;
@@ -21,7 +19,6 @@ class WebSocketService {
 
     this.ws.onopen = () => {
       console.log('Admin WebSocket bağlantısı kuruldu');
-      toast.success('Sunucu bağlantısı kuruldu');
     };
 
     this.ws.onmessage = (event) => {
@@ -35,13 +32,11 @@ class WebSocketService {
 
     this.ws.onclose = () => {
       console.log('WebSocket bağlantısı kapandı, yeniden bağlanılıyor...');
-      toast.error('Sunucu bağlantısı kesildi, yeniden bağlanılıyor...');
       setTimeout(() => this.connect(), 5000);
     };
 
     this.ws.onerror = (error) => {
       console.error('WebSocket error:', error);
-      toast.error('Sunucu bağlantısında hata oluştu');
     };
   }
 
@@ -66,9 +61,10 @@ class WebSocketService {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message));
     } else {
-      toast.error('Sunucu bağlantısı kurulamadı');
+      console.error('WebSocket bağlantısı kurulamadı');
     }
   }
 }
 
-export default WebSocketService.getInstance();
+const websocketService = WebSocketService.getInstance();
+export default websocketService;
