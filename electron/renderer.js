@@ -194,6 +194,54 @@ function formatTime(seconds) {
     return `${minutes}:${seconds.toString().padStart(2, '0')}`;
 }
 
+// İndirme hatası bildirimi için yeni fonksiyon
+function showDownloadError(error, songName) {
+    const errorDiv = document.createElement('div');
+    errorDiv.className = 'download-error';
+    errorDiv.innerHTML = `
+        <div class="error-content">
+            <div class="error-icon">❌</div>
+            <div class="error-message">
+                <strong>${songName || 'Şarkı'} indirilemedi</strong>
+                <p>${error}</p>
+            </div>
+            <button class="error-close">×</button>
+        </div>
+    `;
+
+    document.body.appendChild(errorDiv);
+
+    // 5 saniye sonra otomatik kaybol
+    setTimeout(() => {
+        errorDiv.remove();
+    }, 5000);
+
+    // Kapatma butonu işlevselliği
+    const closeButton = errorDiv.querySelector('.error-close');
+    closeButton.addEventListener('click', () => {
+        errorDiv.remove();
+    });
+}
+
+// İndirme ilerlemesi ve hata dinleyicisi
+ipcRenderer.on('download-progress', (event, data) => {
+    console.log('Download progress:', data);
+    if (data.error) {
+        showDownloadError(data.error, data.songName);
+        downloadProgress.style.display = 'none';
+    } else if (data.progress !== undefined) {
+        downloadProgress.style.display = 'block';
+        downloadProgressBar.style.width = `${data.progress}%`;
+        downloadProgressText.textContent = `İndiriliyor: ${data.songName || 'Şarkı'} (${Math.round(data.progress)}%)`;
+        
+        if (data.progress === 100) {
+            setTimeout(() => {
+                downloadProgress.style.display = 'none';
+            }, 2000);
+        }
+    }
+});
+
 // Handle playlist messages from main process
 ipcRenderer.on('update-player', (event, song) => {
     if (song) {
