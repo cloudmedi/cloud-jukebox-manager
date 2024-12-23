@@ -39,7 +39,10 @@ class PlaylistService {
     
     if (!message || !message.data) {
       console.error('Geçersiz playlist mesajı:', message);
-      websocketService.updatePlaylistStatus('error', message.data?._id);
+      websocketService.sendMessage({
+        type: 'playlistStatus',
+        status: 'error'
+      });
       return;
     }
     
@@ -53,7 +56,11 @@ class PlaylistService {
       console.log('Playlist indirme başlatılıyor:', playlist._id);
       
       // İndirme başladığında durumu güncelle
-      websocketService.updatePlaylistStatus('loading', playlist._id);
+      websocketService.sendMessage({
+        type: 'playlistStatus',
+        status: 'loading',
+        playlistId: playlist._id
+      });
       
       this.store.set(`download.${playlist._id}`, {
         status: 'downloading',
@@ -91,7 +98,11 @@ class PlaylistService {
           
         } catch (error) {
           console.error(`Şarkı indirme hatası (${song.name}):`, error);
-          websocketService.updatePlaylistStatus('error', playlist._id);
+          websocketService.sendMessage({
+            type: 'playlistStatus',
+            status: 'error',
+            playlistId: playlist._id
+          });
           return;
         }
       }
@@ -104,13 +115,22 @@ class PlaylistService {
       });
 
       // İndirme tamamlandığında durumu güncelle
-      websocketService.updatePlaylistStatus('loaded', playlist._id);
+      websocketService.sendMessage({
+        type: 'playlistStatus',
+        status: 'loaded',
+        playlistId: playlist._id
+      });
+      
       console.log('Playlist başarıyla indirildi:', playlist._id);
 
       return true;
     } catch (error) {
       console.error('Playlist indirme hatası:', error);
-      websocketService.updatePlaylistStatus('error', playlist._id);
+      websocketService.sendMessage({
+        type: 'playlistStatus',
+        status: 'error',
+        playlistId: playlist._id
+      });
       throw error;
     }
   }

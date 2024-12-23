@@ -37,6 +37,17 @@ export const DeviceList = () => {
           if (device.isOnline !== data.isOnline) {
             toast.info(`${device.name} ${data.isOnline ? 'çevrimiçi' : 'çevrimdışı'} oldu`);
           }
+          
+          // Playlist durumu değiştiğinde bildirim göster
+          if (data.playlistStatus && device.playlistStatus !== data.playlistStatus) {
+            const statusMessages = {
+              loading: 'yükleniyor',
+              loaded: 'yüklendi',
+              error: 'yüklenirken hata oluştu'
+            };
+            toast.info(`${device.name}: Playlist ${statusMessages[data.playlistStatus]}`);
+          }
+          
           return { ...device, ...data };
         }
         return device;
