@@ -1,42 +1,35 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Table, TableBody } from "@/components/ui/table";
 import SongEditDialog from "./SongEditDialog";
 import { Song } from "@/types/song";
 import { SongTableHeader } from "./SongTableHeader";
 import { SongTableRow } from "./SongTableRow";
 import { SongFilters } from "./SongFilters";
-import { useToast } from "@/hooks/use-toast";
-import { Skeleton } from "@/components/ui/skeleton";
 
 const SongList = () => {
   const [selectedGenre, setSelectedGenre] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
   const [editingSong, setEditingSong] = useState<Song | null>(null);
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
 
-  const { data: songsResponse, isLoading, error } = useQuery({
-    queryKey: ["songs", searchTerm, selectedGenre],
+  const { data: songs = [], isLoading, refetch } = useQuery<Song[]>({
+    queryKey: ["songs"],
     queryFn: async () => {
-      try {
-        const params = new URLSearchParams();
-        if (searchTerm) params.append("search", searchTerm);
-        if (selectedGenre !== "All") params.append("genre", selectedGenre);
-
-        const response = await fetch(`http://localhost:5000/api/songs?${params.toString()}`);
-        
-        if (!response.ok) throw new Error("Failed to fetch songs");
-        const data = await response.json();
-        return data as { songs: Song[] };
-      } catch (error) {
-        console.error("Error fetching songs:", error);
-        throw error;
-      }
-    }
+      const response = await fetch("http://localhost:5000/api/songs");
+      if (!response.ok) throw new Error("Failed to fetch songs");
+      return response.json() as Promise<Song[]>;
+    },
   });
 
-  const songs = songsResponse?.songs || [];
+  const genres = ["All", ...new Set(songs.map((song) => song.genre))].sort();
+
+  const filteredSongs = songs?.filter((song) => {
+    const matchesGenre = selectedGenre === "All" || song.genre === selectedGenre;
+    const matchesSearch =
+      song.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      song.artist.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesGenre && matchesSearch;
+  });
 
   const handleDelete = async (id: string) => {
     try {
@@ -45,76 +38,15 @@ const SongList = () => {
       });
 
       if (!response.ok) throw new Error("Failed to delete song");
-      
-      toast({
-        title: "Başarılı",
-        description: "Şarkı başarıyla silindi",
-      });
-      
-      queryClient.invalidateQueries({ queryKey: ["songs"] });
+      refetch();
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Hata",
-        description: "Şarkı silinirken bir hata oluştu",
-      });
+      console.error("Delete error:", error);
     }
   };
 
-  if (error) {
-    return (
-      <div className="p-4 text-center text-red-500">
-        Şarkılar yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.
-      </div>
-    );
-  }
-
   if (isLoading) {
-    return (
-      <div className="space-y-4">
-        <SongFilters
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          selectedGenre={selectedGenre}
-          onGenreChange={setSelectedGenre}
-          genres={["All"]}
-        />
-        <div className="rounded-md border">
-          <Table>
-            <SongTableHeader />
-            <TableBody>
-              {Array.from({ length: 5 }).map((_, index) => (
-                <tr key={index}>
-                  <td colSpan={7} className="p-2">
-                    <Skeleton className="h-12 w-full" />
-                  </td>
-                </tr>
-              ))}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-    );
+    return <div>Yükleniyor...</div>;
   }
-
-  if (!songs || songs.length === 0) {
-    return (
-      <div className="space-y-4">
-        <SongFilters
-          searchTerm={searchTerm}
-          onSearchChange={setSearchTerm}
-          selectedGenre={selectedGenre}
-          onGenreChange={setSelectedGenre}
-          genres={["All"]}
-        />
-        <div className="text-center py-8 text-muted-foreground">
-          Henüz hiç şarkı yüklenmemiş veya arama kriterlerine uygun şarkı bulunamadı.
-        </div>
-      </div>
-    );
-  }
-
-  const uniqueGenres = ["All", ...Array.from(new Set(songs.map((song: Song) => song.genre)))].sort();
 
   return (
     <div className="space-y-4">
@@ -123,20 +55,20 @@ const SongList = () => {
         onSearchChange={setSearchTerm}
         selectedGenre={selectedGenre}
         onGenreChange={setSelectedGenre}
-        genres={uniqueGenres}
+        genres={genres}
       />
 
       <div className="rounded-md border">
         <Table>
           <SongTableHeader />
           <TableBody>
-            {songs.map((song: Song) => (
+            {filteredSongs?.map((song) => (
               <SongTableRow
                 key={song._id}
                 song={song}
                 onEdit={setEditingSong}
                 onDelete={handleDelete}
-                allSongs={songs}
+                allSongs={filteredSongs}
               />
             ))}
           </TableBody>
