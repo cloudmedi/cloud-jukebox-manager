@@ -1,16 +1,13 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Plus, LayoutGrid, List } from "lucide-react";
+import { Plus, Music2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { PlaylistGrid } from "@/components/playlists/PlaylistGrid";
-import { PlaylistList } from "@/components/playlists/PlaylistList";
-import { useViewPreferencesStore } from "@/store/viewPreferencesStore";
+import { PlaylistCard } from "@/components/playlists/PlaylistCard";
 import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const { isGridView, toggleView } = useViewPreferencesStore();
 
   const { data: playlists, isLoading } = useQuery({
     queryKey: ["playlists"],
@@ -31,22 +28,17 @@ const Index = () => {
     );
   }
 
-  return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Playlistler</h2>
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" onClick={toggleView}>
-            {isGridView ? <List className="h-4 w-4" /> : <LayoutGrid className="h-4 w-4" />}
-          </Button>
+  if (!playlists?.length) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <h2 className="text-3xl font-bold tracking-tight">Ana Sayfa</h2>
           <Button onClick={() => navigate("/playlists/new")}>
             <Plus className="mr-2 h-4 w-4" />
             Yeni Playlist
           </Button>
         </div>
-      </div>
 
-      {!playlists?.length ? (
         <div 
           className="flex h-[400px] items-center justify-center rounded-lg border bg-muted/5 text-center"
           role="alert"
@@ -59,10 +51,25 @@ const Index = () => {
             </p>
           </div>
         </div>
-      ) : (
-        isGridView ? (
-          <PlaylistGrid 
-            playlists={playlists}
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-bold tracking-tight">Ana Sayfa</h2>
+        <Button onClick={() => navigate("/playlists/new")}>
+          <Plus className="mr-2 h-4 w-4" />
+          Yeni Playlist
+        </Button>
+      </div>
+
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-6 gap-4">
+        {playlists.map((playlist) => (
+          <PlaylistCard
+            key={playlist._id}
+            playlist={playlist}
             onDelete={(id) => {
               toast({
                 title: "Playlist silindi",
@@ -70,20 +77,12 @@ const Index = () => {
               });
             }}
             onEdit={(id) => navigate(`/playlists/${id}/edit`)}
-          />
-        ) : (
-          <PlaylistList 
-            playlists={playlists}
-            onDelete={(id) => {
-              toast({
-                title: "Playlist silindi",
-                description: "Playlist başarıyla silindi.",
-              });
+            onPlay={(id) => {
+              console.log("Playing playlist:", id);
             }}
-            onEdit={(id) => navigate(`/playlists/${id}/edit`)}
           />
-        )
-      )}
+        ))}
+      </div>
     </div>
   );
 };

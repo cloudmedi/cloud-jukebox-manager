@@ -25,13 +25,12 @@ interface Playlist {
 
 interface PlaylistListProps {
   playlists: Playlist[];
-  onDelete: (id: string) => void;
-  onEdit: (id: string) => void;
+  onPlaylistUpdate: () => void;
 }
 
 const ITEMS_PER_PAGE = 18;
 
-export const PlaylistList = ({ playlists, onDelete, onEdit }: PlaylistListProps) => {
+export const PlaylistList = ({ playlists, onPlaylistUpdate }: PlaylistListProps) => {
   const [playlistToDelete, setPlaylistToDelete] = useState<string | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const { toast } = useToast();
@@ -63,7 +62,7 @@ export const PlaylistList = ({ playlists, onDelete, onEdit }: PlaylistListProps)
         description: "Playlist başarıyla silindi",
       });
 
-      onDelete(id);
+      onPlaylistUpdate();
       setPlaylistToDelete(null);
     } catch (error) {
       toast({
@@ -72,7 +71,11 @@ export const PlaylistList = ({ playlists, onDelete, onEdit }: PlaylistListProps)
         description: "Playlist silinirken bir hata oluştu",
       });
     }
-  }, [onDelete, toast]);
+  }, [onPlaylistUpdate, toast]);
+
+  const handleEdit = useCallback((id: string) => {
+    console.log("Edit playlist:", id);
+  }, []);
 
   const handlePlay = useCallback((id: string) => {
     // Show player in MainLayout
@@ -108,7 +111,7 @@ export const PlaylistList = ({ playlists, onDelete, onEdit }: PlaylistListProps)
             key={playlist._id}
             playlist={playlist}
             onDelete={setPlaylistToDelete}
-            onEdit={onEdit}
+            onEdit={handleEdit}
             onPlay={handlePlay}
           />
         ))}
