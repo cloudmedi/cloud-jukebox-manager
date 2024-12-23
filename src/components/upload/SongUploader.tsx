@@ -10,50 +10,60 @@ const SongUploader = ({ onUploadComplete }: { onUploadComplete: () => void }) =>
   const { toast } = useToast();
 
   const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-
-    if (!file.type.startsWith('audio/')) {
-      toast({
-        variant: "destructive",
-        title: "Hata",
-        description: "Lütfen geçerli bir ses dosyası seçin",
-      });
-      return;
-    }
+    const files = event.target.files;
+    if (!files || files.length === 0) return;
 
     setUploading(true);
     setProgress(0);
 
-    const formData = new FormData();
-    formData.append('file', file);
+    const totalFiles = files.length;
+    let uploadedFiles = 0;
 
-    try {
-      const response = await fetch('http://localhost:5000/api/songs/upload', {
-        method: 'POST',
-        body: formData,
-      });
-
-      if (!response.ok) throw new Error('Upload failed');
-
-      const data = await response.json();
+    for (let i = 0; i < files.length; i++) {
+      const file = files[i];
       
-      toast({
-        title: "Başarılı",
-        description: "Şarkı başarıyla yüklendi",
-      });
-      
-      onUploadComplete();
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Hata",
-        description: "Şarkı yüklenirken bir hata oluştu",
-      });
-    } finally {
-      setUploading(false);
-      setProgress(0);
+      if (!file.type.startsWith('audio/')) {
+        toast({
+          variant: "destructive",
+          title: "Hata",
+          description: `${file.name} geçerli bir ses dosyası değil`,
+        });
+        continue;
+      }
+
+      const formData = new FormData();
+      formData.append('file', file);
+
+      try {
+        const response = await fetch('http://localhost:5000/api/songs/upload', {
+          method: 'POST',
+          body: formData,
+        });
+
+        if (!response.ok) throw new Error('Upload failed');
+
+        uploadedFiles++;
+        setProgress(Math.round((uploadedFiles / totalFiles) * 100));
+        
+        toast({
+          title: "Başarılı",
+          description: `${file.name} başarıyla yüklendi`,
+        });
+      } catch (error) {
+        toast({
+          variant: "destructive",
+          title: "Hata",
+          description: `${file.name} yüklenirken bir hata oluştu`,
+        });
+      }
     }
+
+    if (uploadedFiles > 0) {
+      onUploadComplete();
+    }
+    
+    setUploading(false);
+    setProgress(0);
   };
 
   return (
@@ -65,7 +75,7 @@ const SongUploader = ({ onUploadComplete }: { onUploadComplete: () => void }) =>
         <div>
           <h3 className="text-lg font-semibold">Şarkı Yükle</h3>
           <p className="text-sm text-muted-foreground">
-            MP3 formatında şarkılar yükleyebilirsiniz
+            Birden fazla MP3 dosyası seçebilirsiniz
           </p>
         </div>
       </div>
@@ -83,6 +93,7 @@ const SongUploader = ({ onUploadComplete }: { onUploadComplete: () => void }) =>
             id="file-upload"
             type="file"
             accept="audio/*"
+            multiple
             className="hidden"
             onChange={handleFileChange}
             disabled={uploading}
