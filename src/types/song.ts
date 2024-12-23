@@ -9,5 +9,4 @@ export interface Song {
   filePath: string;
   createdAt: string;
   updatedAt: string;
-  status?: 'active' | 'inactive';
 }
