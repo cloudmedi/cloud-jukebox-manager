@@ -10,12 +10,9 @@ export interface Device {
   activePlaylist: {
     _id: string;
     name: string;
-  } | null;
-  currentSong?: {
-    name: string;
-    artist: string;
-    duration: number;
-    playedAt: string;
+    songs: string[];
+    artwork: string | null;
+    status: string;
   } | null;
   playlistStatus: 'loaded' | 'loading' | 'error' | null;
   groupId: string | null;
@@ -29,8 +26,8 @@ export interface Device {
     cpus: string;
     totalMemory: string;
     freeMemory: string;
-    osVersion: string;
     networkInterfaces: string[];
+    osVersion: string;
   };
 }
 
@@ -39,6 +36,15 @@ export interface DeviceGroup {
   name: string;
   description?: string;
   devices: string[];
+}
+
+export interface Song {
+  _id: string;
+  name: string;
+  artist?: string;
+  artwork?: string | null;
+  filePath?: string;
+  localPath?: string;
 }
 
 // Device service functions
