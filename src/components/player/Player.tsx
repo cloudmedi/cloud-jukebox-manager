@@ -6,69 +6,62 @@ import { formatDuration } from "@/lib/utils";
 import { Song } from "@/types/song";
 
 export const Player = () => {
-  const { currentSong, isPlaying, queue } = usePlaybackStore((state) => ({
+  const { currentSong, isPlaying, play, pause } = usePlaybackStore((state) => ({
     currentSong: state.currentSong,
     isPlaying: state.isPlaying,
-    queue: state.queue,
+    play: state.play,
+    pause: state.pause
   }));
   
   const [sound, setSound] = useState<Howl | null>(null);
   const [progress, setProgress] = useState(0);
-  const [volume, setVolume] = useState(1);
   const [duration, setDuration] = useState(0);
   const progressInterval = useRef<number>();
 
-  useEffect(() => {
-    if (sound) {
-      sound.volume(volume);
+  // Cleanup function to prevent memory leaks
+  const cleanup = () => {
+    if (progressInterval.current) {
+      clearInterval(progressInterval.current);
     }
-  }, [sound, volume]);
+    if (sound) {
+      sound.unload();
+    }
+  };
+
+  useEffect(() => {
+    return () => cleanup();
+  }, []);
 
   useEffect(() => {
     if (currentSong) {
-      if (sound) {
-        sound.unload();
-      }
+      cleanup();
 
       const newSound = new Howl({
-        src: [currentSong.filePath],
+        src: [`http://localhost:5000${currentSong.filePath}`],
         html5: true,
         onload: () => {
           setDuration(newSound.duration());
         },
         onplay: () => {
-          usePlaybackStore.setState({ isPlaying: true });
           progressInterval.current = window.setInterval(() => {
             setProgress(newSound.seek());
           }, 1000);
         },
         onpause: () => {
-          usePlaybackStore.setState({ isPlaying: false });
           if (progressInterval.current) {
             clearInterval(progressInterval.current);
           }
         },
         onend: () => {
-          usePlaybackStore.setState({ isPlaying: false });
           if (progressInterval.current) {
             clearInterval(progressInterval.current);
           }
-          // Logic to play next song in queue
         },
       });
 
       setSound(newSound);
 
-      if (isPlaying) {
-        newSound.play();
-      }
-
-      return () => {
-        newSound.unload();
-        if (progressInterval.current) {
-          clearInterval(progressInterval.current);
-        }
-      };
+      return () => cleanup();
     }
   }, [currentSong]);
 
@@ -82,13 +75,17 @@ export const Player = () => {
     }
   }, [isPlaying, sound]);
 
+  const handlePlayPause = () => {
+    if (isPlaying) {
+      pause();
+    } else {
+      play();
+    }
+  };
+
   const artworkUrl = currentSong?.artwork 
     ? `http://localhost:5000${currentSong.artwork}`
     : '/placeholder.svg';
-
-  const handlePlayPause = () => {
-    usePlaybackStore.setState({ isPlaying: !isPlaying });
-  };
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-background border-t">
