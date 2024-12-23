@@ -68,6 +68,7 @@ const SongList = () => {
                 song={song}
                 onEdit={setEditingSong}
                 onDelete={handleDelete}
+                allSongs={filteredSongs}
               />
             ))}
           </TableBody>

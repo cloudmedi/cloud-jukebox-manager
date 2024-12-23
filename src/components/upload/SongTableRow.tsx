@@ -18,14 +18,16 @@ import { usePlayer } from "@/components/layout/MainLayout";
 interface SongTableRowProps {
   song: Song;
   onEdit: (song: Song) => void;
-  onDelete: (id: string) => void;
+  onDelete: (id: string) => Promise<void>;
+  allSongs: Song[];
 }
 
-export const SongTableRow = ({ song, onEdit, onDelete }: SongTableRowProps) => {
-  const setCurrentSong = usePlaybackStore((state) => state.setCurrentSong);
+export const SongTableRow = ({ song, onEdit, onDelete, allSongs }: SongTableRowProps) => {
+  const { setCurrentSong, setQueue } = usePlaybackStore();
   const { setShowPlayer } = usePlayer();
 
   const handlePlay = () => {
+    setQueue(allSongs);
     setCurrentSong(song);
     setShowPlayer(true);
   };
