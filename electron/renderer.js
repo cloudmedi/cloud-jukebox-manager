@@ -36,7 +36,7 @@ function displayDeviceInfo(deviceInfo) {
   const playlistContainer = document.getElementById('playlistContainer');
   if (playlistContainer) {
     playlistContainer.innerHTML = `
-      <div class="device-info p-4 bg-gray-100 rounded-lg">
+      <div class="device-info p-4 bg-gray-800 rounded-lg text-white">
         <h2 class="text-lg font-semibold mb-2">Cihaz Bilgileri</h2>
         <p class="text-sm">Token: ${deviceInfo.token}</p>
       </div>
@@ -129,10 +129,10 @@ function displayPlaylists() {
   // Eğer cihaz bilgisi yoksa
   if (!deviceInfo || !deviceInfo.token) {
     playlistContainer.innerHTML = `
-      <div class="no-device-info">
-        <h2>Hoş Geldiniz</h2>
-        <p>Cihaz henüz kaydedilmemiş. Lütfen cihazı kaydetmek için Cloud Media Manager uygulamasını kullanın.</p>
-        <p>Token: Bekleniyor...</p>
+      <div class="no-device-info p-4 bg-gray-800 rounded-lg text-white">
+        <h2 class="text-lg font-semibold mb-2">Hoş Geldiniz</h2>
+        <p class="text-sm mb-2">Cihaz henüz kaydedilmemiş. Lütfen cihazı kaydetmek için Cloud Media Manager uygulamasını kullanın.</p>
+        <p class="text-sm">Token: Bekleniyor...</p>
       </div>
     `;
     return;
@@ -141,10 +141,11 @@ function displayPlaylists() {
   // Eğer playlist yoksa
   if (!playlists.length) {
     playlistContainer.innerHTML = `
-      <div class="no-playlists">
-        <h2>Playlist Bulunamadı</h2>
-        <p>Henüz hiç playlist indirilmemiş.</p>
-        <p>Cloud Media Manager üzerinden bir playlist göndererek başlayabilirsiniz.</p>
+      <div class="no-playlists p-4 bg-gray-800 rounded-lg text-white">
+        <h2 class="text-lg font-semibold mb-2">Playlist Bulunamadı</h2>
+        <p class="text-sm mb-2">Henüz hiç playlist indirilmemiş.</p>
+        <p class="text-sm">Token: ${deviceInfo.token}</p>
+        <p class="text-sm mt-2">Cloud Media Manager üzerinden bir playlist göndererek başlayabilirsiniz.</p>
       </div>
     `;
     return;
@@ -156,16 +157,17 @@ function displayPlaylists() {
     const playlistElement = document.createElement('div');
     playlistElement.className = 'playlist-item';
     playlistElement.innerHTML = `
-      <div class="playlist-info">
+      <div class="playlist-info p-4 bg-gray-800 rounded-lg text-white">
         ${lastPlaylist.artwork ? 
-          `<img src="${lastPlaylist.artwork}" alt="${lastPlaylist.name}" class="playlist-artwork"/>` :
-          '<div class="playlist-artwork-placeholder"></div>'
+          `<img src="${lastPlaylist.artwork}" alt="${lastPlaylist.name}" class="playlist-artwork w-16 h-16 rounded mb-2"/>` :
+          '<div class="playlist-artwork-placeholder w-16 h-16 bg-gray-700 rounded mb-2"></div>'
         }
         <div class="playlist-details">
-          <h3>${lastPlaylist.name}</h3>
-          <p>${lastPlaylist.songs[0]?.artist || 'Unknown Artist'}</p>
-          <p>${lastPlaylist.songs[0]?.name || 'No songs'}</p>
+          <h3 class="font-semibold">${lastPlaylist.name}</h3>
+          <p class="text-sm text-gray-300">${lastPlaylist.songs[0]?.artist || 'Unknown Artist'}</p>
+          <p class="text-sm text-gray-300">${lastPlaylist.songs[0]?.name || 'No songs'}</p>
         </div>
+        <p class="text-sm mt-2 text-gray-400">Token: ${deviceInfo.token}</p>
       </div>
     `;
     
