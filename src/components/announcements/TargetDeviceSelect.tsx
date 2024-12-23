@@ -1,11 +1,10 @@
-import { FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
 import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { useState } from "react";
-import { Alert, AlertDescription } from "@/components/ui/alert";
 
 interface TargetDeviceSelectProps {
   form: any;
@@ -30,7 +29,7 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
         return [];
       }
     },
-    initialData: [] // Başlangıç değeri olarak boş dizi
+    initialData: []
   });
 
   const { data: groups = [], isLoading: isGroupsLoading } = useQuery({
@@ -46,7 +45,7 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
         return [];
       }
     },
-    initialData: [] // Başlangıç değeri olarak boş dizi
+    initialData: []
   });
 
   const filteredDevices = devices?.filter((device: any) =>

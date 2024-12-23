@@ -10,9 +10,19 @@ import { Song } from "@/types/song";
 interface SongTableHeaderProps {
   showCheckbox?: boolean;
   allSongs?: Song[];
+  sortConfig?: {
+    key: string;
+    direction: string;
+  };
+  onSort?: (key: string) => void;
 }
 
-export const SongTableHeader = ({ showCheckbox = false, allSongs = [] }: SongTableHeaderProps) => {
+export const SongTableHeader = ({ 
+  showCheckbox = false, 
+  allSongs = [],
+  sortConfig,
+  onSort 
+}: SongTableHeaderProps) => {
   const { selectedSongs, addSong, clearSelection } = useSelectedSongsStore();
 
   const handleSelectAll = (checked: boolean) => {
@@ -37,12 +47,12 @@ export const SongTableHeader = ({ showCheckbox = false, allSongs = [] }: SongTab
             />
           </TableHead>
         )}
-        <TableHead>Şarkı</TableHead>
-        <TableHead>Sanatçı</TableHead>
-        <TableHead>Tür</TableHead>
-        <TableHead>Albüm</TableHead>
-        <TableHead>Süre</TableHead>
-        <TableHead>Eklenme Tarihi</TableHead>
+        <TableHead onClick={() => onSort?.('name')} className="cursor-pointer">Şarkı</TableHead>
+        <TableHead onClick={() => onSort?.('artist')} className="cursor-pointer">Sanatçı</TableHead>
+        <TableHead onClick={() => onSort?.('genre')} className="cursor-pointer">Tür</TableHead>
+        <TableHead onClick={() => onSort?.('album')} className="cursor-pointer">Albüm</TableHead>
+        <TableHead onClick={() => onSort?.('duration')} className="cursor-pointer">Süre</TableHead>
+        <TableHead onClick={() => onSort?.('createdAt')} className="cursor-pointer">Eklenme Tarihi</TableHead>
         <TableHead className="w-[70px]"></TableHead>
       </TableRow>
     </TableHeader>

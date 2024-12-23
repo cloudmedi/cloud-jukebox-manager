@@ -6,7 +6,7 @@ import { Table, TableBody } from "@/components/ui/table";
 
 interface SongListProps {
   songs: Song[];
-  onDelete?: (songId: string) => void;
+  onDelete: (songId: string) => Promise<void>;
   onEdit?: (song: Song) => void;
   selectedSongs?: string[];
   onSelect?: (songId: string) => void;
@@ -54,6 +54,7 @@ export const SongList = ({
           sortConfig={sortConfig}
           onSort={handleSort}
           showSelect={!!onSelect}
+          allSongs={sortedSongs}
         />
         <TableBody>
           {sortedSongs.map((song) => (
