@@ -9,7 +9,7 @@ export interface Song {
   duration: number;
   createdAt: string;
   filePath: string;
-  artwork?: string | null;
+  artwork: string | null;
   status?: 'active' | 'inactive';
   localPath?: string;
 }
