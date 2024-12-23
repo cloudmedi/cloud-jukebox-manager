@@ -34,22 +34,35 @@ export const DeviceList = () => {
 
       const updatedDevices = currentDevices.map(device => {
         if (device.token === data.token) {
+          // Cihaz durumu değiştiğinde bildirim göster
           if (device.isOnline !== data.isOnline) {
             toast.info(`${device.name} ${data.isOnline ? 'çevrimiçi' : 'çevrimdışı'} oldu`);
           }
+          
+          // Playlist durumu değiştiğinde bildirim göster
+          if (data.playlistStatus && device.playlistStatus !== data.playlistStatus) {
+            const statusMessages = {
+              loading: 'yükleniyor',
+              loaded: 'yüklendi',
+              error: 'yüklenirken hata oluştu'
+            };
+            toast.info(`${device.name} cihazında playlist ${statusMessages[data.playlistStatus]}`);
+          }
+          
           return { ...device, ...data };
         }
         return device;
       });
 
       queryClient.setQueryData(['devices'], updatedDevices);
-      queryClient.invalidateQueries({ queryKey: ['devices'] });
     };
 
     websocketService.addMessageHandler('deviceStatus', handleDeviceStatus);
+    websocketService.addMessageHandler('playlistStatus', handleDeviceStatus);
 
     return () => {
       websocketService.removeMessageHandler('deviceStatus');
+      websocketService.removeMessageHandler('playlistStatus');
     };
   }, [queryClient]);
 

@@ -171,6 +171,17 @@ class WebSocketServer {
         });
         break;
 
+      case 'playlistStatus':
+        await Device.findByIdAndUpdate(device._id, {
+          playlistStatus: message.status
+        });
+        this.broadcastToAdmins({
+          type: 'deviceStatus',
+          token: token,
+          playlistStatus: message.status
+        });
+        break;
+
       case 'volume':
         await device.setVolume(message.volume);
         this.broadcastToAdmins({

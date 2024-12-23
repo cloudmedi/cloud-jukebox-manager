@@ -1,6 +1,4 @@
 const WebSocket = require('ws');
-const { ipcMain } = require('electron');
-const messageHandler = require('./websocketMessageHandler');
 
 class WebSocketService {
   constructor() {
@@ -24,11 +22,10 @@ class WebSocketService {
       this.sendAuthMessage();
     });
 
-    this.ws.on('message', async (data) => {
+    this.ws.on('message', (data) => {
       try {
         const message = JSON.parse(data);
         console.log('Alınan mesaj:', message);
-        await messageHandler.handleMessage(message);
       } catch (error) {
         console.error('Message parsing error:', error);
       }
@@ -70,13 +67,7 @@ class WebSocketService {
     });
     console.log('Playlist durumu güncellendi:', status);
   }
-
-  disconnect() {
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
-    }
-  }
 }
 
-module.exports = new WebSocketService();
+const websocketService = new WebSocketService();
+module.exports = websocketService;
