@@ -103,20 +103,8 @@ class WebSocketMessageHandler {
 
     console.log('Storing playlist with localPaths:', storedPlaylist);
 
-    // Playlist'i store'a kaydet
-    const playlists = this.store.get('playlists', []);
-    const existingIndex = playlists.findIndex(p => p._id === playlist._id);
-    
-    if (existingIndex !== -1) {
-      playlists[existingIndex] = storedPlaylist;
-    } else {
-      playlists.push(storedPlaylist);
-    }
-    
-    this.store.set('playlists', playlists);
-
-    // Renderer'a playlist hazır olduğunu bildir
-    mainWindow.webContents.send('playlist-ready', storedPlaylist);
+    // Playlist'i store'a kaydet ve UI'ı güncelle
+    mainWindow.webContents.send('playlist-received', storedPlaylist);
   }
 
   handleCommand(message) {

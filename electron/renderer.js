@@ -37,6 +37,33 @@ function displayPlaylists() {
   });
 }
 
+// WebSocket mesaj dinleyicileri
+ipcRenderer.on('playlist-received', (event, playlist) => {
+  console.log('New playlist received:', playlist);
+  
+  // Mevcut playlistleri al
+  const playlists = store.get('playlists', []);
+  
+  // Eğer playlist zaten varsa güncelle, yoksa ekle
+  const existingIndex = playlists.findIndex(p => p._id === playlist._id);
+  if (existingIndex !== -1) {
+    playlists[existingIndex] = playlist;
+  } else {
+    playlists.push(playlist);
+  }
+  
+  // Store'u güncelle
+  store.set('playlists', playlists);
+  
+  // UI'ı hemen güncelle
+  displayPlaylists();
+  
+  // Bildirim göster
+  new Notification('Yeni Playlist', {
+    body: `${playlist.name} playlist'i başarıyla indirildi.`
+  });
+});
+
 // Audio event listeners
 audio.addEventListener('ended', () => {
   console.log('Song ended, playing next');
@@ -79,12 +106,6 @@ document.getElementById('nextButton').addEventListener('click', () => {
 audio.addEventListener('timeupdate', () => {
   const progress = (audio.currentTime / audio.duration) * 100;
   document.getElementById('progressBar').style.width = progress + '%';
-});
-
-// WebSocket mesajlarını dinle
-ipcRenderer.on('playlist-received', (event, playlist) => {
-  console.log('Playlist received:', playlist);
-  displayPlaylists();
 });
 
 // İlk yüklemede playlistleri göster
