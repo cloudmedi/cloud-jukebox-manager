@@ -35,6 +35,27 @@ class WebSocketMessageHandler {
     }
   }
 
+  handleCommand(message) {
+    console.log('Handling command:', message);
+    const mainWindow = BrowserWindow.getAllWindows()[0];
+
+    switch (message.command) {
+      case 'restart':
+        console.log('Restarting application...');
+        setTimeout(() => {
+          app.relaunch();
+          app.exit(0);
+        }, 1000);
+        break;
+        
+      default:
+        if (mainWindow) {
+          mainWindow.webContents.send(message.command, message.data);
+        }
+        break;
+    }
+  }
+
   async handlePlaylist(message) {
     console.log('Handling playlist:', message);
     const mainWindow = BrowserWindow.getAllWindows()[0];
@@ -105,11 +126,6 @@ class WebSocketMessageHandler {
 
     // Playlist'i store'a kaydet ve UI'ı güncelle
     mainWindow.webContents.send('playlist-received', storedPlaylist);
-  }
-
-  handleCommand(message) {
-    console.log('Handling command:', message);
-    // Command işleme mantığı buraya gelecek
   }
 
   sendToRenderer(channel, data) {
