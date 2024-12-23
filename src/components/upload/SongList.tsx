@@ -65,6 +65,7 @@ export const SongList = ({
               onEdit={onEdit}
               isSelected={selectedSongs.includes(song._id)}
               onSelect={onSelect}
+              allSongs={sortedSongs}
             />
           ))}
         </TableBody>

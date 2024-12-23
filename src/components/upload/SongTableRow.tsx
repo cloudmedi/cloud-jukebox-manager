@@ -14,17 +14,26 @@ import { usePlaybackStore } from "@/store/playbackStore";
 import { usePlayer } from "@/components/layout/MainLayout";
 import { useSelectedSongsStore } from "@/store/selectedSongsStore";
 
-interface SongTableRowProps {
+export interface SongTableRowProps {
   song: Song;
-  onEdit: (song: Song) => void;
+  onEdit?: (song: Song) => void;
   onDelete: (id: string) => Promise<void>;
-  allSongs: Song[];
+  isSelected?: boolean;
+  onSelect?: (songId: string) => void;
+  allSongs?: Song[];
 }
 
-export const SongTableRow = ({ song, onEdit, onDelete, allSongs }: SongTableRowProps) => {
+export const SongTableRow = ({ 
+  song, 
+  onEdit, 
+  onDelete, 
+  isSelected,
+  onSelect,
+  allSongs = []
+}: SongTableRowProps) => {
   const { setCurrentSong, setQueue } = usePlaybackStore();
   const { setShowPlayer } = usePlayer();
-  const { addSong, removeSong, isSelected } = useSelectedSongsStore();
+  const { addSong, removeSong } = useSelectedSongsStore();
 
   const handlePlay = () => {
     setQueue(allSongs);
@@ -44,7 +53,7 @@ export const SongTableRow = ({ song, onEdit, onDelete, allSongs }: SongTableRowP
     <TableRow key={song._id}>
       <TableCell>
         <Checkbox
-          checked={isSelected(song._id)}
+          checked={isSelected}
           onCheckedChange={handleCheckboxChange}
           className="mr-2"
         />
@@ -95,7 +104,7 @@ export const SongTableRow = ({ song, onEdit, onDelete, allSongs }: SongTableRowP
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => onEdit(song)}>
+            <DropdownMenuItem onClick={() => onEdit?.(song)}>
               <Pencil className="mr-2 h-4 w-4" />
               Düzenle
             </DropdownMenuItem>

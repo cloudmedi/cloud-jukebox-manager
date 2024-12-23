@@ -1,13 +1,22 @@
 import { useState } from "react";
 import { SongList } from "@/components/upload/SongList";
 import SongUploader from "@/components/upload/SongUploader";
-import { useQueryClient } from "@tanstack/react-query";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
+import { Song } from "@/types/song";
 
 const Upload = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
-  const [songs, setSongs] = useState([]);
+
+  const { data: songs = [] } = useQuery<Song[]>({
+    queryKey: ["songs"],
+    queryFn: async () => {
+      const response = await fetch("http://localhost:5000/api/songs");
+      if (!response.ok) throw new Error("Failed to fetch songs");
+      return response.json();
+    },
+  });
 
   const handleUploadComplete = () => {
     queryClient.invalidateQueries({ queryKey: ["songs"] });
