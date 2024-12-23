@@ -82,8 +82,31 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     const newSong = await song.save();
     res.status(201).json(newSong);
   } catch (error) {
-    console.error('Hata:', error);
-    res.status(400).json({ message: error.message });
+    console.warn('Hata:', error);
+    // Eğer tür hatası varsa, dosyayı silmeden devam et
+    if (error.name === 'ValidationError' && error.errors.genre) {
+      try {
+        // Hata mesajından türü al ve yeni bir kayıt dene
+        const song = new Song({
+          name: title,
+          artist: artist,
+          genre: genre, // Orijinal türü kullan
+          album: album,
+          year: year,
+          filePath: req.file.path,
+          duration: duration,
+          createdBy: 'system'
+        });
+
+        const newSong = await song.save();
+        res.status(201).json(newSong);
+      } catch (retryError) {
+        console.error('Yeniden deneme hatası:', retryError);
+        res.status(400).json({ message: retryError.message });
+      }
+    } else {
+      res.status(400).json({ message: error.message });
+    }
   }
 });
 

@@ -14,7 +14,6 @@ const songSchema = new mongoose.Schema({
   genre: {
     type: String,
     required: [true, 'Tür zorunludur'],
-    enum: ['Pop', 'Rock', 'Jazz', 'Classical', 'Electronic', 'Other'],
     trim: true
   },
   album: {
