@@ -12,6 +12,9 @@ export const DeviceList = () => {
   const queryClient = useQueryClient();
   const [filterStatus, setFilterStatus] = useState<"all" | "online" | "offline">("all");
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [locationFilter, setLocationFilter] = useState("");
+  const [groupFilter, setGroupFilter] = useState("");
   
   const { data: devices, isLoading } = useQuery({
     queryKey: ['devices'],
@@ -62,8 +65,30 @@ export const DeviceList = () => {
   }, [queryClient]);
 
   const filteredDevices = devices?.filter((device: Device) => {
-    if (filterStatus === "all") return true;
-    return filterStatus === "online" ? device.isOnline : !device.isOnline;
+    // Durum filtresi
+    if (filterStatus !== "all" && device.isOnline !== (filterStatus === "online")) {
+      return false;
+    }
+
+    // Lokasyon filtresi
+    if (locationFilter && device.location !== locationFilter) {
+      return false;
+    }
+
+    // Grup filtresi
+    if (groupFilter && device.groupId !== groupFilter) {
+      return false;
+    }
+
+    // Arama filtresi
+    const searchLower = searchQuery.toLowerCase();
+    return (
+      !searchQuery ||
+      device.name.toLowerCase().includes(searchLower) ||
+      device.token.toLowerCase().includes(searchLower) ||
+      (device.ipAddress && device.ipAddress.toLowerCase().includes(searchLower)) ||
+      device.location.toLowerCase().includes(searchLower)
+    );
   });
 
   if (isLoading) {
@@ -81,6 +106,12 @@ export const DeviceList = () => {
         onFilterChange={setFilterStatus}
         isFormOpen={isFormOpen}
         setIsFormOpen={setIsFormOpen}
+        searchQuery={searchQuery}
+        setSearchQuery={setSearchQuery}
+        locationFilter={locationFilter}
+        setLocationFilter={setLocationFilter}
+        groupFilter={groupFilter}
+        setGroupFilter={setGroupFilter}
       />
       <div className="rounded-md border">
         <Table>
