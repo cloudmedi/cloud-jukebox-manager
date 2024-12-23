@@ -6,6 +6,46 @@ const playbackStateManager = require('./services/audio/PlaybackStateManager');
 
 const audio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(audio);
+const tokenDisplay = document.getElementById('tokenDisplay');
+const tokenStatus = document.getElementById('tokenStatus');
+
+// Token kontrolü ve görüntüleme
+async function checkAndDisplayToken() {
+  try {
+    tokenStatus.textContent = 'Token kontrol ediliyor...';
+    tokenStatus.className = 'text-yellow-500';
+
+    const deviceInfo = await ipcRenderer.invoke('check-token');
+    
+    if (deviceInfo && deviceInfo.token) {
+      tokenDisplay.textContent = `Token: ${deviceInfo.token}`;
+      tokenStatus.textContent = 'Token hazır';
+      tokenStatus.className = 'text-green-500';
+    }
+  } catch (error) {
+    tokenStatus.textContent = 'Token oluşturma hatası!';
+    tokenStatus.className = 'text-red-500';
+    console.error('Token error:', error);
+  }
+}
+
+// Token oluşturulduğunda
+ipcRenderer.on('token-created', (event, { token }) => {
+  tokenDisplay.textContent = `Yeni Token: ${token}`;
+  tokenStatus.textContent = 'Yeni token oluşturuldu';
+  tokenStatus.className = 'text-green-500';
+});
+
+// Token hatası
+ipcRenderer.on('token-error', (event, message) => {
+  tokenStatus.textContent = `Hata: ${message}`;
+  tokenStatus.className = 'text-red-500';
+});
+
+// İlk yüklemede token kontrolü yap
+document.addEventListener('DOMContentLoaded', () => {
+  checkAndDisplayToken();
+});
 
 // Initialize volume
 audio.volume = 0.7; // 70%

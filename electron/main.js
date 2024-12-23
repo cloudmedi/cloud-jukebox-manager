@@ -1,56 +1,12 @@
-const { app, BrowserWindow, ipcMain, Tray, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 const store = new Store();
 const websocketService = require('./services/websocketService');
+const { initializeTokenHandlers } = require('./services/tokenService');
 const playbackStateManager = require('./services/audio/PlaybackStateManager');
-require('./services/audioService');
 
 let mainWindow;
-let tray = null;
-
-function createTray() {
-  try {
-    const iconPath = path.join(__dirname, 'icon.png');
-    console.log('Tray icon path:', iconPath);
-    
-    tray = new Tray(iconPath);
-    
-    const contextMenu = Menu.buildFromTemplate([
-      {
-        label: 'Show App',
-        click: function() {
-          mainWindow.show();
-          mainWindow.focus();
-        }
-      },
-      {
-        label: 'Close',
-        click: function() {
-          app.isQuitting = true;
-          app.quit();
-        }
-      }
-    ]);
-
-    tray.setToolTip('Cloud Media Player');
-    tray.setContextMenu(contextMenu);
-
-    tray.on('double-click', () => {
-      mainWindow.show();
-      mainWindow.focus();
-    });
-    
-    tray.on('click', () => {
-      mainWindow.show();
-      mainWindow.focus();
-    });
-    
-    console.log('Tray created successfully');
-  } catch (error) {
-    console.error('Error creating tray:', error);
-  }
-}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -77,42 +33,18 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   }
 
-  mainWindow.on('close', function (event) {
-    if (!app.isQuitting) {
-      event.preventDefault();
-      mainWindow.hide();
-      if (tray === null) {
-        createTray();
-      }
-    }
-    return false;
-  });
+  // Token handler'ları başlat
+  initializeTokenHandlers(mainWindow);
 
+  // Mevcut token varsa WebSocket bağlantısını kur
   const deviceInfo = store.get('deviceInfo');
   if (deviceInfo && deviceInfo.token) {
     websocketService.connect(deviceInfo.token);
-    
-    const playlists = store.get('playlists', []);
-    if (playlists.length > 0) {
-      const lastPlaylist = playlists[playlists.length - 1];
-      console.log('Starting last saved playlist:', lastPlaylist.name);
-      
-      const shouldAutoPlay = playbackStateManager.getPlaybackState();
-      console.log('Should auto-play:', shouldAutoPlay);
-      
-      mainWindow.webContents.on('did-finish-load', () => {
-        mainWindow.webContents.send('auto-play-playlist', {
-          playlist: lastPlaylist,
-          shouldAutoPlay: shouldAutoPlay
-        });
-      });
-    }
   }
 }
 
 app.whenReady().then(() => {
   createWindow();
-  createTray(); // Uygulama başladığında tray'i oluştur
 });
 
 app.on('window-all-closed', () => {
@@ -138,8 +70,6 @@ ipcMain.handle('save-device-info', async (event, deviceInfo) => {
   if (deviceInfo.token) {
     websocketService.connect(deviceInfo.token);
   }
-  
-  return deviceInfo;
 });
 
 ipcMain.handle('get-device-info', async () => {
