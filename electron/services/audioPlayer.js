@@ -44,6 +44,9 @@ class AudioPlayer {
         }
       }
     });
+
+    // Uygulama başladığında durumu geri yükle
+    this.restoreState();
   }
 
   loadPlaylist(playlist) {
@@ -177,10 +180,16 @@ class AudioPlayer {
   restoreState() {
     const state = this.playbackState.restore();
     if (state && state.playlist) {
+      console.log('Restoring previous state:', state);
       this.loadPlaylist(state.playlist);
       this.setVolume(state.volume);
+      
+      // Eğer önceki durum 'playing' ise, otomatik başlat
       if (state.state === 'playing') {
-        this.play();
+        setTimeout(() => {
+          console.log('Auto-playing restored playlist');
+          this.play();
+        }, 1000); // Ses dosyasının yüklenmesi için kısa bir gecikme
       }
     }
   }
