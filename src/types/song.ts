@@ -7,6 +7,7 @@ export interface Song {
   duration: number;
   artwork?: string;
   filePath: string;
+  localPath?: string;
   createdAt: string;
   updatedAt: string;
   status?: 'active' | 'inactive';

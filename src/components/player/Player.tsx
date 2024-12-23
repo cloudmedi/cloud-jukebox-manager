@@ -1,9 +1,10 @@
 import { useState, useEffect, useRef } from "react";
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Music } from "lucide-react";
-import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
+import { Music } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { usePlaybackStore } from "@/store/playbackStore";
+import PlayerControls from "./PlayerControls";
+import VolumeControl from "./VolumeControl";
+import ProgressBar from "./ProgressBar";
 
 const Player = () => {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -18,7 +19,7 @@ const Player = () => {
 
   useEffect(() => {
     if (currentSong && audioRef.current) {
-      const audioPath = currentSong.filePath ? `http://localhost:5000/${currentSong.filePath}` : currentSong.localPath;
+      const audioPath = currentSong.localPath || (currentSong.filePath ? `http://localhost:5000/${currentSong.filePath}` : '');
       if (!audioPath) {
         console.error('No valid audio path found for song:', currentSong);
         return;
@@ -37,14 +38,8 @@ const Player = () => {
     const audio = audioRef.current;
     if (!audio) return;
 
-    const handleTimeUpdate = () => {
-      setProgress(audio.currentTime);
-    };
-
-    const handleLoadedMetadata = () => {
-      setDuration(audio.duration);
-    };
-
+    const handleTimeUpdate = () => setProgress(audio.currentTime);
+    const handleLoadedMetadata = () => setDuration(audio.duration);
     const handleEnded = () => {
       setIsPlaying(false);
       setProgress(0);
@@ -73,14 +68,6 @@ const Player = () => {
     }
   };
 
-  const handleNext = () => {
-    next();
-  };
-
-  const handlePrevious = () => {
-    previous();
-  };
-
   const handleVolumeChange = (value: number[]) => {
     if (audioRef.current) {
       setVolume(value[0]);
@@ -101,12 +88,6 @@ const Player = () => {
       audioRef.current.currentTime = value[0];
       setProgress(value[0]);
     }
-  };
-
-  const formatTime = (seconds: number) => {
-    const minutes = Math.floor(seconds / 60);
-    const remainingSeconds = Math.floor(seconds % 60);
-    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
   if (!currentSong) return null;
@@ -140,68 +121,25 @@ const Player = () => {
         </div>
         
         <div className={`flex flex-col items-center gap-2 ${isMobile ? 'w-full' : ''}`}>
-          <div className="flex items-center gap-4">
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="shrink-0"
-              onClick={handlePrevious}
-            >
-              <SkipBack className="h-5 w-5" />
-            </Button>
-            <Button 
-              variant="outline" 
-              size="icon" 
-              className="h-10 w-10 shrink-0"
-              onClick={handlePlayPause}
-            >
-              {isPlaying ? (
-                <Pause className="h-5 w-5" />
-              ) : (
-                <Play className="h-5 w-5" />
-              )}
-            </Button>
-            <Button 
-              variant="ghost" 
-              size="icon" 
-              className="shrink-0"
-              onClick={handleNext}
-            >
-              <SkipForward className="h-5 w-5" />
-            </Button>
-          </div>
-          <div className={`flex items-center gap-2 ${isMobile ? 'w-full' : 'w-96'}`}>
-            <span className="text-sm text-muted-foreground shrink-0">{formatTime(progress)}</span>
-            <Slider
-              value={[progress]}
-              onValueChange={handleSeek}
-              max={duration}
-              step={1}
-              className="w-full"
-            />
-            <span className="text-sm text-muted-foreground shrink-0">{formatTime(duration)}</span>
-          </div>
+          <PlayerControls
+            isPlaying={isPlaying}
+            onPlayPause={handlePlayPause}
+            onNext={next}
+            onPrevious={previous}
+          />
+          <ProgressBar
+            progress={progress}
+            duration={duration}
+            onSeek={handleSeek}
+          />
         </div>
         
         <div className={`flex items-center gap-2 ${isMobile ? 'w-full justify-end' : ''}`}>
-          <Button 
-            variant="ghost" 
-            size="icon"
-            onClick={toggleMute}
-            className="shrink-0"
-          >
-            {isMuted || volume === 0 ? (
-              <VolumeX className="h-5 w-5" />
-            ) : (
-              <Volume2 className="h-5 w-5" />
-            )}
-          </Button>
-          <Slider
-            value={[isMuted ? 0 : volume]}
-            onValueChange={handleVolumeChange}
-            max={100}
-            step={1}
-            className={`${isMobile ? 'w-32' : 'w-28'}`}
+          <VolumeControl
+            volume={volume}
+            isMuted={isMuted}
+            onVolumeChange={handleVolumeChange}
+            onToggleMute={toggleMute}
           />
         </div>
       </div>
