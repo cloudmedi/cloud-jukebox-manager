@@ -34,12 +34,10 @@ export const DeviceList = () => {
 
       const updatedDevices = currentDevices.map(device => {
         if (device.token === data.token) {
-          // Online durumu değiştiğinde bildirim göster
           if (device.isOnline !== data.isOnline) {
             toast.info(`${device.name} ${data.isOnline ? 'çevrimiçi' : 'çevrimdışı'} oldu`);
           }
           
-          // Playlist durumu değiştiğinde bildirim göster
           if (data.playlistStatus && device.playlistStatus !== data.playlistStatus) {
             toast.info(`${device.name} playlist durumu: ${data.playlistStatus}`);
           }
@@ -47,7 +45,6 @@ export const DeviceList = () => {
           return { 
             ...device, 
             ...data,
-            // Eğer playlistStatus gelmediyse mevcut durumu koru
             playlistStatus: data.playlistStatus || device.playlistStatus
           };
         }
