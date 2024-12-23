@@ -27,16 +27,37 @@ const upload = multer({
 });
 
 // Tüm şarkıları getir (sayfalama ile)
+
+// Tüm şarkıları getir (sayfalama, arama ve filtreleme ile)
 router.get('/', async (req, res) => {
   try {
     const page = parseInt(req.query.page) || 1;
     const limit = parseInt(req.query.limit) || 20;
+    const search = req.query.search || '';
+    const genre = req.query.genre || '';
     const skip = (page - 1) * limit;
 
-    const totalSongs = await Song.countDocuments();
+    let query = {};
+
+    // Arama filtresi
+    if (search) {
+      query = {
+        $or: [
+          { name: { $regex: search, $options: 'i' } },
+          { artist: { $regex: search, $options: 'i' } }
+        ]
+      };
+    }
+
+    // Tür filtresi
+    if (genre && genre !== 'All') {
+      query.genre = genre;
+    }
+
+    const totalSongs = await Song.countDocuments(query);
     const totalPages = Math.ceil(totalSongs / limit);
 
-    const songs = await Song.find()
+    const songs = await Song.find(query)
       .sort({ createdAt: -1 })
       .skip(skip)
       .limit(limit);
@@ -168,3 +189,4 @@ router.delete('/:id', async (req, res) => {
 });
 
 module.exports = router;
+

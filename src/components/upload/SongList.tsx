@@ -1,5 +1,5 @@
-import { useState, useRef, useCallback } from "react";
-import { useInfiniteQuery } from "@tanstack/react-query";
+import { useState, useCallback } from "react";
+import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
 import { Table, TableBody } from "@/components/ui/table";
 import SongEditDialog from "./SongEditDialog";
 import { Song } from "@/types/song";
@@ -18,10 +18,23 @@ const SongList = () => {
   const [editingSong, setEditingSong] = useState<Song | null>(null);
   const { toast } = useToast();
   const { ref, inView } = useInView();
+  const queryClient = useQueryClient();
 
   const fetchSongs = async ({ pageParam = 1 }) => {
+    const params = new URLSearchParams({
+      page: pageParam.toString(),
+      limit: ITEMS_PER_PAGE.toString(),
+    });
+
+    if (searchTerm) {
+      params.append("search", searchTerm);
+    }
+    if (selectedGenre !== "All") {
+      params.append("genre", selectedGenre);
+    }
+
     const response = await fetch(
-      `http://localhost:5000/api/songs?page=${pageParam}&limit=${ITEMS_PER_PAGE}`
+      `http://localhost:5000/api/songs?${params.toString()}`
     );
     if (!response.ok) throw new Error("Failed to fetch songs");
     return response.json();
@@ -33,10 +46,11 @@ const SongList = () => {
     fetchNextPage,
     hasNextPage,
     isFetchingNextPage,
+    refetch,
   } = useInfiniteQuery({
-    queryKey: ["songs"],
+    queryKey: ["songs", searchTerm, selectedGenre],
     queryFn: fetchSongs,
-    getNextPageParam: (lastPage) => 
+    getNextPageParam: (lastPage) =>
       lastPage.hasNextPage ? lastPage.currentPage + 1 : undefined,
     initialPageParam: 1,
   });
@@ -54,7 +68,6 @@ const SongList = () => {
         description: "Şarkı başarıyla silindi",
       });
       
-      // Invalidate and refetch
       queryClient.invalidateQueries({ queryKey: ["songs"] });
     } catch (error) {
       toast({
@@ -76,15 +89,22 @@ const SongList = () => {
   }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage, ref]);
 
   const allSongs = data?.pages.flatMap((page) => page.songs) ?? [];
+  const uniqueGenres = ["All", ...new Set(allSongs.map((song) => song.genre))].sort();
 
   return (
     <div className="space-y-4">
       <SongFilters
         searchTerm={searchTerm}
-        onSearchChange={setSearchTerm}
+        onSearchChange={(value) => {
+          setSearchTerm(value);
+          refetch();
+        }}
         selectedGenre={selectedGenre}
-        onGenreChange={setSelectedGenre}
-        genres={["All", ...new Set(allSongs.map((song) => song.genre))].sort()}
+        onGenreChange={(value) => {
+          setSelectedGenre(value);
+          refetch();
+        }}
+        genres={uniqueGenres}
       />
 
       <div className="rounded-md border">
@@ -100,7 +120,7 @@ const SongList = () => {
                 </tr>
               ))
             ) : (
-              allSongs.map((song, index) => (
+              allSongs.map((song) => (
                 <SongTableRow
                   key={song._id}
                   song={song}
