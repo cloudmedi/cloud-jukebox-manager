@@ -4,27 +4,53 @@
     <meta charset="UTF-8">
     <title>Cloud Media Player</title>
     <link rel="stylesheet" href="styles.css">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
 </head>
 <body>
     <div class="container">
-        <div class="player-content">
+        <div id="playlistContainer" class="playlist-container">
+            <!-- Playlistler buraya eklenecek -->
+        </div>
+        
+        <div class="player-container">
             <div class="artwork-container">
                 <div id="artworkPlaceholder" class="artwork-placeholder">
-                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="artwork-icon">
-                        <path d="M9 18V5l12-2v13"></path>
-                        <circle cx="6" cy="18" r="3"></circle>
-                        <circle cx="18" cy="16" r="3"></circle>
-                    </svg>
+                    <i class="fas fa-music"></i>
                 </div>
-                <img id="artworkImage" class="artwork-image" style="display: none;" />
+                <div class="artwork-overlay">
+                    <button id="playButton" class="play-button">
+                        <i class="fas fa-play"></i>
+                    </button>
+                </div>
             </div>
-            <div class="playlist-info">
-                <h2 id="playlistName" class="playlist-name">Playlist Name</h2>
-                <p id="artistName" class="artist-name">Artist Name</p>
-                <p id="songName" class="song-name">Song Name</p>
+
+            <div class="player-info">
+                <h2 id="playlistName" class="playlist-name"></h2>
+                <p id="currentSong" class="current-song"></p>
+            </div>
+
+            <div class="progress-container">
+                <div class="progress-bar">
+                    <div id="progressBar" class="progress"></div>
+                </div>
+                <div class="time-display">
+                    <span id="currentTime">0:00</span>
+                    <span id="duration">0:00</span>
+                </div>
+            </div>
+
+            <div class="controls">
+                <button id="prevButton" class="control-button">
+                    <i class="fas fa-step-backward"></i>
+                </button>
+                <button id="playPauseButton" class="control-button">
+                    <i class="fas fa-play"></i>
+                </button>
+                <button id="nextButton" class="control-button">
+                    <i class="fas fa-step-forward"></i>
+                </button>
             </div>
         </div>
-        <audio id="audioPlayer"></audio>
     </div>
     <script src="renderer.js"></script>
 </body>

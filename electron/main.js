@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Tray, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 const store = new Store();
@@ -6,115 +6,71 @@ const websocketService = require('./services/websocketService');
 require('./services/audioService');
 
 let mainWindow;
-let tray = null;
 
 function createWindow() {
-    mainWindow = new BrowserWindow({
-        width: 400,
-        height: 300,
-        resizable: false,
-        backgroundColor: '#1a1b1e',
-        webPreferences: {
-            nodeIntegration: true,
-            contextIsolation: false,
-            webSecurity: false
-        }
-    });
-
-    mainWindow.loadFile('index.html');
-    
-    // Remove menu bar
-    mainWindow.setMenuBarVisibility(false);
-
-    // Prevent window from closing when X button is clicked
-    mainWindow.on('close', function (event) {
-        if (!app.isQuitting) {
-            event.preventDefault();
-            mainWindow.hide();
-        }
-        return false;
-    });
-
-    const deviceInfo = store.get('deviceInfo');
-    if (deviceInfo && deviceInfo.token) {
-        websocketService.connect(deviceInfo.token);
-        
-        const playlists = store.get('playlists', []);
-        if (playlists.length > 0) {
-            const lastPlaylist = playlists[playlists.length - 1];
-            console.log('Starting last saved playlist:', lastPlaylist.name);
-            mainWindow.webContents.on('did-finish-load', () => {
-                mainWindow.webContents.send('auto-play-playlist', lastPlaylist);
-            });
-        }
+  mainWindow = new BrowserWindow({
+    width: 1200,
+    height: 800,
+    minWidth: 800,
+    minHeight: 600,
+    backgroundColor: '#1a1b1e',
+    titleBarStyle: 'hidden',
+    frame: false,
+    webPreferences: {
+      nodeIntegration: true,
+      contextIsolation: false,
+      webSecurity: false
     }
-}
+  });
 
-function createTray() {
-    // Tray ikonu oluştur
-    tray = new Tray(path.join(__dirname, 'icon.png'));
+  mainWindow.loadFile('index.html');
+  
+  if (process.env.NODE_ENV === 'development') {
+    mainWindow.webContents.openDevTools();
+  }
+
+  // Uygulama başladığında son kaydedilen playlist'i kontrol et
+  const deviceInfo = store.get('deviceInfo');
+  if (deviceInfo && deviceInfo.token) {
+    websocketService.connect(deviceInfo.token);
     
-    // Tray menüsünü oluştur
-    const contextMenu = Menu.buildFromTemplate([
-        {
-            label: 'Show App',
-            click: function() {
-                mainWindow.show();
-            }
-        },
-        {
-            label: 'Close',
-            click: function() {
-                app.isQuitting = true;
-                app.quit();
-            }
-        }
-    ]);
-
-    // Tray ayarlarını yap
-    tray.setToolTip('Cloud Media Player');
-    tray.setContextMenu(contextMenu);
-
-    // Çift tıklama ile pencereyi göster
-    tray.on('double-click', () => {
-        mainWindow.show();
-    });
+    // Son kaydedilen playlist'i kontrol et ve varsa otomatik başlat
+    const playlists = store.get('playlists', []);
+    if (playlists.length > 0) {
+      const lastPlaylist = playlists[playlists.length - 1];
+      console.log('Starting last saved playlist:', lastPlaylist.name);
+      mainWindow.webContents.on('did-finish-load', () => {
+        mainWindow.webContents.send('auto-play-playlist', lastPlaylist);
+      });
+    }
+  }
 }
 
-app.whenReady().then(() => {
-    createWindow();
-    createTray();
-});
+app.whenReady().then(createWindow);
 
-// Tüm pencereler kapandığında
 app.on('window-all-closed', () => {
-    if (!app.isQuitting) {
-        return false;
-    }
-    
-    websocketService.disconnect();
-    if (process.platform !== 'darwin') {
-        app.quit();
-    }
+  websocketService.disconnect();
+  if (process.platform !== 'darwin') {
+    app.quit();
+  }
 });
 
 app.on('activate', () => {
-    if (BrowserWindow.getAllWindows().length === 0) {
-        createWindow();
-    }
+  if (BrowserWindow.getAllWindows().length === 0) {
+    createWindow();
+  }
 });
 
-// Mevcut IPC handlers'ları koru
 ipcMain.handle('save-device-info', async (event, deviceInfo) => {
-    store.set('deviceInfo', deviceInfo);
-    
-    if (deviceInfo.token) {
-        websocketService.connect(deviceInfo.token);
-    }
-    
-    return deviceInfo;
+  store.set('deviceInfo', deviceInfo);
+  
+  if (deviceInfo.token) {
+    websocketService.connect(deviceInfo.token);
+  }
+  
+  return deviceInfo;
 });
 
 ipcMain.handle('get-device-info', async () => {
-    return store.get('deviceInfo');
+  return store.get('deviceInfo');
 });
