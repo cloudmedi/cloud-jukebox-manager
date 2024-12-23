@@ -64,8 +64,10 @@ const SongList = () => {
   } = useInfiniteQuery({
     queryKey: ["songs", searchTerm, selectedGenre],
     queryFn: fetchSongs,
-    getNextPageParam: (lastPage) =>
-      lastPage.hasNextPage ? lastPage.currentPage + 1 : undefined,
+    getNextPageParam: (lastPage) => {
+      if (!lastPage) return undefined;
+      return lastPage.hasNextPage ? lastPage.currentPage + 1 : undefined;
+    },
     initialPageParam: 1,
   });
 
@@ -101,10 +103,10 @@ const SongList = () => {
     }
   }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage, ref]);
 
-  // Safely get the songs array
+  // Safely get the songs array from all pages
   const allSongs = data?.pages?.flatMap((page) => page.songs || []) ?? [];
   
-  // Safely calculate unique genres
+  // Calculate unique genres from available songs
   const uniqueGenres = ["All"];
   if (allSongs && allSongs.length > 0) {
     const genres = new Set(allSongs.filter(song => song && song.genre).map(song => song.genre));
@@ -147,7 +149,7 @@ const SongList = () => {
     );
   }
 
-  if (allSongs.length === 0) {
+  if (!allSongs || allSongs.length === 0) {
     return (
       <div className="space-y-4">
         <SongFilters
@@ -184,7 +186,7 @@ const SongList = () => {
         <Table>
           <SongTableHeader />
           <TableBody>
-            {allSongs.map((song) => (
+            {allSongs.map((song: Song) => (
               song && <SongTableRow
                 key={song._id}
                 song={song}
@@ -196,7 +198,6 @@ const SongList = () => {
           </TableBody>
         </Table>
 
-        {/* Infinite scroll trigger */}
         <div
           ref={loadMoreRef}
           className="h-20 flex items-center justify-center"
