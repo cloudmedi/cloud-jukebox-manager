@@ -10,5 +10,4 @@ export interface Song {
   localPath?: string;
   createdAt: string;
   updatedAt: string;
-  status?: 'active' | 'inactive';
 }

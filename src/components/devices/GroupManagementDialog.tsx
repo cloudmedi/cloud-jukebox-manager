@@ -1,8 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { useQuery } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 interface Group {
@@ -17,7 +17,7 @@ interface GroupManagementDialogProps {
   onGroupChange: (groupId: string | null) => Promise<void>;
 }
 
-const API_URL = 'http://localhost:5000/api';
+const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
 
 const GroupManagementDialog = ({
   isOpen,
@@ -27,10 +27,6 @@ const GroupManagementDialog = ({
 }: GroupManagementDialogProps) => {
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(currentGroupId);
   const [isSaving, setIsSaving] = useState(false);
-
-  useEffect(() => {
-    setSelectedGroupId(currentGroupId);
-  }, [currentGroupId]);
 
   const { data: groups = [] } = useQuery({
     queryKey: ["device-groups"],

@@ -44,7 +44,7 @@ const Player = () => {
       console.log('Song ended, playing next');
       setIsPlaying(false);
       setProgress(0);
-      next(); // Şarkı bittiğinde sonraki şarkıya geç
+      next();
     };
 
     audio.addEventListener('timeupdate', handleTimeUpdate);
