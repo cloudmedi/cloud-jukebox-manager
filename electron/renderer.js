@@ -58,9 +58,13 @@ ipcRenderer.on('playlist-received', (event, playlist) => {
   // UI'ı hemen güncelle
   displayPlaylists();
   
+  // Yeni playlist'i hemen çal
+  console.log('Auto-playing new playlist:', playlist);
+  ipcRenderer.invoke('play-playlist', playlist);
+  
   // Bildirim göster
   new Notification('Yeni Playlist', {
-    body: `${playlist.name} playlist'i başarıyla indirildi.`
+    body: `${playlist.name} playlist'i başarıyla indirildi ve çalınıyor.`
   });
 });
 

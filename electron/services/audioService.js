@@ -15,12 +15,18 @@ class AudioService {
 
   setupIpcHandlers() {
     ipcMain.handle('play-playlist', async (event, playlist) => {
-      console.log('Playlist received:', playlist);
+      console.log('Playing new playlist:', playlist);
       
-      // Playlist'i queue'ya ekle
+      // Mevcut çalan playlist'i durdur
+      if (this.isPlaying) {
+        event.sender.send('toggle-playback');
+      }
+      
+      // Yeni playlist'i ayarla
       this.queue = [...playlist.songs];
       this.playlist = playlist;
       this.currentIndex = 0;
+      this.isPlaying = true;
       
       // İlk şarkıyı çal
       const firstSong = this.queue[this.currentIndex];
@@ -69,7 +75,6 @@ class AudioService {
       return false;
     });
 
-    // Şarkı bittiğinde otomatik olarak sonrakine geç
     ipcMain.handle('song-ended', (event) => {
       this.handleNextSong(event);
     });
