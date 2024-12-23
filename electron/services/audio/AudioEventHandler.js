@@ -10,6 +10,7 @@ class AudioEventHandler {
 
   setCurrentPlaylistId(playlistId) {
     this.currentPlaylistId = playlistId;
+    console.log('Current playlist ID set:', playlistId);
   }
 
   setupEventListeners() {

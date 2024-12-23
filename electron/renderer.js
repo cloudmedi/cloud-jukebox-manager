@@ -17,9 +17,9 @@ ipcRenderer.on('auto-play-playlist', (event, playlist) => {
     const playbackState = playbackStateManager.getPlaybackState();
     audioHandler.setCurrentPlaylistId(playlist._id);
     
-    // Eğer playlist ID'leri eşleşiyorsa, kaydedilen durumu kullan
-    const shouldAutoPlay = playbackState.playlistId === playlist._id ? 
-      playbackState.isPlaying : false; // Varsayılan olarak çalma
+    // Eğer playlist ID'leri eşleşiyorsa ve çalma durumu true ise çal
+    const shouldAutoPlay = playbackState.playlistId === playlist._id && 
+                         playbackState.isPlaying === true;
     
     console.log('Should auto-play:', shouldAutoPlay, 'Playback state:', playbackState);
     
