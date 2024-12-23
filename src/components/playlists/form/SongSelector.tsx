@@ -6,6 +6,8 @@ import { PlaylistFormValues } from "../PlaylistForm";
 import { Music2, Music4 } from "lucide-react";
 import { Card } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
+import { useSelectedSongsStore } from "@/store/selectedSongsStore";
+import { useEffect } from "react";
 
 interface SongSelectorProps {
   form: UseFormReturn<PlaylistFormValues>;
@@ -20,6 +22,16 @@ export const SongSelector = ({ form }: SongSelectorProps) => {
       return response.json();
     },
   });
+
+  const { selectedSongs } = useSelectedSongsStore();
+
+  // Form değerlerini seçili şarkılarla güncelle
+  useEffect(() => {
+    if (selectedSongs.length > 0) {
+      const selectedIds = selectedSongs.map(song => song._id);
+      form.setValue('songs', selectedIds);
+    }
+  }, [selectedSongs, form]);
 
   if (isLoading) {
     return (

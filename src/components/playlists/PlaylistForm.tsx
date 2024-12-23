@@ -9,6 +9,8 @@ import { BasicInfoForm } from "./form/BasicInfoForm";
 import { ArtworkUpload } from "./form/ArtworkUpload";
 import { SongSelector } from "./form/SongSelector";
 import { Save } from "lucide-react";
+import { useSelectedSongsStore } from "@/store/selectedSongsStore";
+import { useEffect } from "react";
 
 const MAX_FILE_SIZE = 5000000;
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -51,6 +53,7 @@ export const PlaylistForm = ({
 }: PlaylistFormProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { selectedSongs, clearSelection } = useSelectedSongsStore();
 
   const form = useForm<PlaylistFormValues>({
     resolver: zodResolver(playlistSchema),
@@ -62,6 +65,13 @@ export const PlaylistForm = ({
       isShuffled: false,
     },
   });
+
+  // Seçili şarkıları forma ekle
+  useEffect(() => {
+    if (selectedSongs.length > 0) {
+      form.setValue('songs', selectedSongs.map(song => song._id));
+    }
+  }, [selectedSongs, form]);
 
   const handleSubmit = async (data: PlaylistFormValues) => {
     try {
@@ -92,6 +102,9 @@ export const PlaylistForm = ({
         title: `Playlist ${isEditing ? "güncellendi" : "oluşturuldu"}`,
         description: "İşlem başarıyla tamamlandı",
       });
+
+      // Seçili şarkıları temizle
+      clearSelection();
 
       if (onSuccess) {
         onSuccess();
