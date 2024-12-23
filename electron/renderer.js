@@ -29,40 +29,6 @@ ipcRenderer.on('set-volume', (event, volume) => {
   }
 });
 
-// Restart playback from WebSocket
-ipcRenderer.on('restart-playback', () => {
-  console.log('Restarting playback');
-  if (audio) {
-    audio.currentTime = 0;
-    audio.play().catch(err => console.error('Playback error:', err));
-  }
-});
-
-// Toggle playback from WebSocket
-ipcRenderer.on('toggle-playback', () => {
-  console.log('Toggle playback, current state:', audio.paused);
-  if (audio) {
-    if (audio.paused) {
-      audio.play()
-        .then(() => {
-          console.log('Playback started successfully');
-          playbackStateManager.savePlaybackState(true);
-          ipcRenderer.send('playback-status-changed', true);
-        })
-        .catch(err => {
-          console.error('Playback error:', err);
-          playbackStateManager.savePlaybackState(false);
-          ipcRenderer.send('playback-status-changed', false);
-        });
-    } else {
-      audio.pause();
-      console.log('Playback paused');
-      playbackStateManager.savePlaybackState(false);
-      ipcRenderer.send('playback-status-changed', false);
-    }
-  }
-});
-
 // Playlist event handlers
 ipcRenderer.on('playlist-received', (event, playlist) => {
   console.log('New playlist received:', playlist);
@@ -90,10 +56,25 @@ ipcRenderer.on('playlist-received', (event, playlist) => {
     console.log('Loading new playlist without auto-play');
     ipcRenderer.invoke('load-playlist', playlist);
   }
+});
+
+// Download progress handler
+ipcRenderer.on('download-progress', (event, { songName, progress }) => {
+  const progressBar = document.querySelector('.download-progress');
+  const progressBarFill = document.querySelector('.download-progress-bar');
+  const progressText = document.querySelector('.download-progress-text');
   
-  new Notification('Yeni Playlist', {
-    body: `${playlist.name} playlist'i başarıyla indirildi.`
-  });
+  if (progressBar && progressBarFill && progressText) {
+    progressBar.style.display = 'block';
+    progressBarFill.style.width = `${progress}%`;
+    progressText.textContent = `${songName}: ${progress}%`;
+    
+    if (progress === 100) {
+      setTimeout(() => {
+        progressBar.style.display = 'none';
+      }, 2000);
+    }
+  }
 });
 
 // Audio event listeners

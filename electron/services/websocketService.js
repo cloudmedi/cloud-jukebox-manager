@@ -1,19 +1,25 @@
 const WebSocket = require('ws');
 const Store = require('electron-store');
-const store = new Store();
+const WebSocketMessageHandler = require('./websocketMessageHandler');
 
 class WebSocketService {
   constructor() {
     this.ws = null;
-    this.messageHandlers = new Map();
+    this.store = new Store();
+    this.messageHandler = new WebSocketMessageHandler();
     this.connect();
   }
 
   connect() {
-    const deviceInfo = store.get('deviceInfo');
+    const deviceInfo = this.store.get('deviceInfo');
     if (!deviceInfo || !deviceInfo.token) {
       console.log('No device info found');
       return;
+    }
+
+    if (this.ws) {
+      console.log('Closing existing connection');
+      this.ws.close();
     }
 
     this.ws = new WebSocket('ws://localhost:5000');
@@ -27,7 +33,7 @@ class WebSocketService {
       try {
         const message = JSON.parse(data);
         console.log('Received message:', message);
-        this.handleMessage(message);
+        this.messageHandler.handleMessage(message);
       } catch (error) {
         console.error('Error parsing message:', error);
       }
@@ -53,24 +59,9 @@ class WebSocketService {
   sendMessage(message) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message));
-    }
-  }
-
-  handleMessage(message) {
-    const handler = this.messageHandlers.get(message.type);
-    if (handler) {
-      handler(message);
     } else {
-      console.log('No handler for message type:', message.type);
+      console.error('WebSocket connection not ready');
     }
-  }
-
-  addMessageHandler(type, handler) {
-    this.messageHandlers.set(type, handler);
-  }
-
-  removeMessageHandler(type) {
-    this.messageHandlers.delete(type);
   }
 }
 
