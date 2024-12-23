@@ -38,10 +38,14 @@ function displayPlaylists() {
 }
 
 // Audio event listeners
+audio.addEventListener('ended', () => {
+  console.log('Song ended, playing next');
+  ipcRenderer.invoke('song-ended');
+});
+
 ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
   console.log('Updating player with song:', currentSong);
   if (currentSong && currentSong.localPath) {
-    // Windows yolunu URL formatına çevir
     const normalizedPath = currentSong.localPath.replace(/\\/g, '/');
     audio.src = normalizedPath;
     audio.play().catch(err => console.error('Playback error:', err));

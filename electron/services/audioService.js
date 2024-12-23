@@ -1,39 +1,53 @@
 const { ipcMain } = require('electron');
 const path = require('path');
+const Store = require('electron-store');
+const store = new Store();
 
 class AudioService {
   constructor() {
     this.currentSound = null;
     this.playlist = null;
     this.currentIndex = 0;
+    this.queue = [];
+    this.isPlaying = false;
     this.setupIpcHandlers();
   }
 
   setupIpcHandlers() {
     ipcMain.handle('play-playlist', async (event, playlist) => {
-      console.log('Received playlist:', playlist);
+      console.log('Playlist received:', playlist);
+      
+      // Playlist'i queue'ya ekle
+      this.queue = [...playlist.songs];
       this.playlist = playlist;
       this.currentIndex = 0;
       
-      // Playlist'i renderer process'e gönder
-      event.sender.send('update-player', {
-        playlist: this.playlist,
-        currentSong: this.playlist.songs[this.currentIndex]
-      });
+      // İlk şarkıyı çal
+      const firstSong = this.queue[this.currentIndex];
+      if (firstSong) {
+        event.sender.send('update-player', {
+          playlist: this.playlist,
+          currentSong: firstSong,
+          isPlaying: true
+        });
+      }
     });
 
     ipcMain.handle('play-pause', (event) => {
+      this.isPlaying = !this.isPlaying;
       event.sender.send('toggle-playback');
       return true;
     });
 
     ipcMain.handle('next-song', (event) => {
-      if (this.playlist && this.playlist.songs.length > 0) {
-        this.currentIndex = (this.currentIndex + 1) % this.playlist.songs.length;
-        const nextSong = this.playlist.songs[this.currentIndex];
+      if (this.queue.length > 0) {
+        this.currentIndex = (this.currentIndex + 1) % this.queue.length;
+        const nextSong = this.queue[this.currentIndex];
+        
         event.sender.send('update-player', {
           playlist: this.playlist,
-          currentSong: nextSong
+          currentSong: nextSong,
+          isPlaying: true
         });
         return true;
       }
@@ -41,17 +55,37 @@ class AudioService {
     });
 
     ipcMain.handle('prev-song', (event) => {
-      if (this.playlist && this.playlist.songs.length > 0) {
-        this.currentIndex = (this.currentIndex - 1 + this.playlist.songs.length) % this.playlist.songs.length;
-        const prevSong = this.playlist.songs[this.currentIndex];
+      if (this.queue.length > 0) {
+        this.currentIndex = (this.currentIndex - 1 + this.queue.length) % this.queue.length;
+        const prevSong = this.queue[this.currentIndex];
+        
         event.sender.send('update-player', {
           playlist: this.playlist,
-          currentSong: prevSong
+          currentSong: prevSong,
+          isPlaying: true
         });
         return true;
       }
       return false;
     });
+
+    // Şarkı bittiğinde otomatik olarak sonrakine geç
+    ipcMain.handle('song-ended', (event) => {
+      this.handleNextSong(event);
+    });
+  }
+
+  handleNextSong(event) {
+    if (this.queue.length > 0) {
+      this.currentIndex = (this.currentIndex + 1) % this.queue.length;
+      const nextSong = this.queue[this.currentIndex];
+      
+      event.sender.send('update-player', {
+        playlist: this.playlist,
+        currentSong: nextSong,
+        isPlaying: true
+      });
+    }
   }
 }
 
