@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Table, TableBody } from "@/components/ui/table";
-import { usePlayer } from "@/components/layout/MainLayout";
 import SongEditDialog from "./SongEditDialog";
 import { Song } from "@/types/song";
 import { SongTableHeader } from "./SongTableHeader";
@@ -13,12 +12,12 @@ const SongList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingSong, setEditingSong] = useState<Song | null>(null);
 
-  const { data: songs = [], isLoading, refetch } = useQuery({
+  const { data: songs = [], isLoading, refetch } = useQuery<Song[]>({
     queryKey: ["songs"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/songs");
       if (!response.ok) throw new Error("Failed to fetch songs");
-      return response.json();
+      return response.json() as Promise<Song[]>;
     },
   });
 
