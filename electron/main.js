@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 const store = new Store();
@@ -6,6 +6,7 @@ const websocketService = require('./services/websocketService');
 require('./services/audioService');
 
 let mainWindow;
+let tray = null;
 
 function createWindow() {
     mainWindow = new BrowserWindow({
@@ -25,6 +26,15 @@ function createWindow() {
     // Remove menu bar
     mainWindow.setMenuBarVisibility(false);
 
+    // Prevent window from closing when X button is clicked
+    mainWindow.on('close', function (event) {
+        if (!app.isQuitting) {
+            event.preventDefault();
+            mainWindow.hide();
+        }
+        return false;
+    });
+
     const deviceInfo = store.get('deviceInfo');
     if (deviceInfo && deviceInfo.token) {
         websocketService.connect(deviceInfo.token);
@@ -40,9 +50,48 @@ function createWindow() {
     }
 }
 
-app.whenReady().then(createWindow);
+function createTray() {
+    // Tray ikonu oluştur
+    tray = new Tray(path.join(__dirname, 'icon.png'));
+    
+    // Tray menüsünü oluştur
+    const contextMenu = Menu.buildFromTemplate([
+        {
+            label: 'Show App',
+            click: function() {
+                mainWindow.show();
+            }
+        },
+        {
+            label: 'Close',
+            click: function() {
+                app.isQuitting = true;
+                app.quit();
+            }
+        }
+    ]);
 
+    // Tray ayarlarını yap
+    tray.setToolTip('Cloud Media Player');
+    tray.setContextMenu(contextMenu);
+
+    // Çift tıklama ile pencereyi göster
+    tray.on('double-click', () => {
+        mainWindow.show();
+    });
+}
+
+app.whenReady().then(() => {
+    createWindow();
+    createTray();
+});
+
+// Tüm pencereler kapandığında
 app.on('window-all-closed', () => {
+    if (!app.isQuitting) {
+        return false;
+    }
+    
     websocketService.disconnect();
     if (process.platform !== 'darwin') {
         app.quit();
@@ -55,6 +104,7 @@ app.on('activate', () => {
     }
 });
 
+// Mevcut IPC handlers'ları koru
 ipcMain.handle('save-device-info', async (event, deviceInfo) => {
     store.set('deviceInfo', deviceInfo);
     
