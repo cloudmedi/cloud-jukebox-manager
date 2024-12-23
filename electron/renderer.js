@@ -33,9 +33,8 @@ ipcRenderer.on('auto-play-playlist', (event, playlist) => {
     const playbackState = playbackStateManager.getPlaybackState();
     audioHandler.setCurrentPlaylistId(playlist._id);
     
-    // Eğer playlist ID'leri eşleşiyorsa, kaydedilen durumu kullan
     const shouldAutoPlay = playbackState.playlistId === playlist._id ? 
-      playbackState.isPlaying : false; // Varsayılan olarak çalma
+      playbackState.isPlaying : false;
     
     console.log('Should auto-play:', shouldAutoPlay, 'Playback state:', playbackState);
     
@@ -97,25 +96,8 @@ ipcRenderer.on('toggle-playback', () => {
   }
 });
 
-// Otomatik playlist başlatma
-ipcRenderer.on('auto-play-playlist', (event, playlist) => {
-  console.log('Auto-playing playlist:', playlist);
-  if (playlist && playlist.songs && playlist.songs.length > 0) {
-    const shouldAutoPlay = playbackStateManager.getPlaybackState();
-    displayPlaylists();
-    
-    if (shouldAutoPlay) {
-      console.log('Auto-playing based on saved state');
-      ipcRenderer.invoke('play-playlist', playlist);
-    } else {
-      console.log('Not auto-playing due to saved state');
-      // Playlist'i yükle ama oynatma
-      ipcRenderer.invoke('load-playlist', playlist);
-    }
-  }
-});
-
 function displayPlaylists() {
+  const deviceInfo = store.get('deviceInfo');
   const playlists = store.get('playlists', []);
   const playlistContainer = document.getElementById('playlistContainer');
   
@@ -125,6 +107,30 @@ function displayPlaylists() {
   }
   
   playlistContainer.innerHTML = '';
+
+  // Eğer cihaz bilgisi yoksa
+  if (!deviceInfo || !deviceInfo.token) {
+    playlistContainer.innerHTML = `
+      <div class="no-device-info">
+        <h2>Hoş Geldiniz</h2>
+        <p>Cihaz henüz kaydedilmemiş. Lütfen cihazı kaydetmek için Cloud Media Manager uygulamasını kullanın.</p>
+        <p>Token: Bekleniyor...</p>
+      </div>
+    `;
+    return;
+  }
+
+  // Eğer playlist yoksa
+  if (!playlists.length) {
+    playlistContainer.innerHTML = `
+      <div class="no-playlists">
+        <h2>Playlist Bulunamadı</h2>
+        <p>Henüz hiç playlist indirilmemiş.</p>
+        <p>Cloud Media Manager üzerinden bir playlist göndererek başlayabilirsiniz.</p>
+      </div>
+    `;
+    return;
+  }
   
   // Son playlist'i göster
   const lastPlaylist = playlists[playlists.length - 1];
