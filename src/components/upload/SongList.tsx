@@ -1,5 +1,5 @@
 import { useState, useCallback } from "react";
-import { useInfiniteQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Table, TableBody } from "@/components/ui/table";
 import SongEditDialog from "./SongEditDialog";
 import { Song } from "@/types/song";
@@ -8,67 +8,34 @@ import { SongTableRow } from "./SongTableRow";
 import { SongFilters } from "./SongFilters";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
-import { useInView } from "react-intersection-observer";
-
-const ITEMS_PER_PAGE = 20;
 
 const SongList = () => {
   const [selectedGenre, setSelectedGenre] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
   const [editingSong, setEditingSong] = useState<Song | null>(null);
   const { toast } = useToast();
-  const { ref, inView } = useInView();
   const queryClient = useQueryClient();
 
-  const fetchSongs = async ({ pageParam = 1 }) => {
-    try {
-      const params = new URLSearchParams({
-        page: pageParam.toString(),
-        limit: ITEMS_PER_PAGE.toString(),
-      });
-
-      if (searchTerm) {
-        params.append("search", searchTerm);
-      }
-      if (selectedGenre !== "All") {
-        params.append("genre", selectedGenre);
-      }
-
-      console.log("Fetching songs with params:", params.toString());
-
-      const response = await fetch(
-        `http://localhost:5000/api/songs?${params.toString()}`
-      );
-      
-      if (!response.ok) {
-        throw new Error("Failed to fetch songs");
-      }
-      
-      const data = await response.json();
-      console.log("Fetched songs data:", data);
-      return data;
-    } catch (error) {
-      console.error("Error fetching songs:", error);
-      throw error;
-    }
-  };
-
-  const {
-    data,
-    isLoading,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage,
-    refetch,
-    error
-  } = useInfiniteQuery({
+  const { data: songs = [], isLoading, error, refetch } = useQuery({
     queryKey: ["songs", searchTerm, selectedGenre],
-    queryFn: fetchSongs,
-    getNextPageParam: (lastPage) => {
-      if (!lastPage) return undefined;
-      return lastPage.hasNextPage ? lastPage.currentPage + 1 : undefined;
-    },
-    initialPageParam: 1,
+    queryFn: async () => {
+      try {
+        const params = new URLSearchParams();
+        if (searchTerm) params.append("search", searchTerm);
+        if (selectedGenre !== "All") params.append("genre", selectedGenre);
+
+        console.log("Fetching songs with params:", params.toString());
+        const response = await fetch(`http://localhost:5000/api/songs?${params.toString()}`);
+        
+        if (!response.ok) throw new Error("Failed to fetch songs");
+        const data = await response.json();
+        console.log("Fetched songs data:", data);
+        return data.songs || [];
+      } catch (error) {
+        console.error("Error fetching songs:", error);
+        throw error;
+      }
+    }
   });
 
   const handleDelete = async (id: string) => {
@@ -94,22 +61,10 @@ const SongList = () => {
     }
   };
 
-  const loadMoreRef = useCallback((node: any) => {
-    if (node !== null) {
-      ref(node);
-      if (inView && hasNextPage && !isFetchingNextPage) {
-        fetchNextPage();
-      }
-    }
-  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage, ref]);
-
-  // Safely get the songs array from all pages
-  const allSongs = data?.pages?.flatMap((page) => page.songs || []) ?? [];
-  
   // Calculate unique genres from available songs
   const uniqueGenres = ["All"];
-  if (allSongs && allSongs.length > 0) {
-    const genres = new Set(allSongs.filter(song => song && song.genre).map(song => song.genre));
+  if (songs && songs.length > 0) {
+    const genres = new Set(songs.filter(song => song && song.genre).map(song => song.genre));
     uniqueGenres.push(...Array.from(genres).sort());
   }
 
@@ -135,7 +90,7 @@ const SongList = () => {
           <Table>
             <SongTableHeader />
             <TableBody>
-              {Array.from({ length: ITEMS_PER_PAGE }).map((_, index) => (
+              {Array.from({ length: 5 }).map((_, index) => (
                 <tr key={index}>
                   <td colSpan={7} className="p-2">
                     <Skeleton className="h-12 w-full" />
@@ -149,7 +104,7 @@ const SongList = () => {
     );
   }
 
-  if (!allSongs || allSongs.length === 0) {
+  if (!songs || songs.length === 0) {
     return (
       <div className="space-y-4">
         <SongFilters
@@ -186,30 +141,17 @@ const SongList = () => {
         <Table>
           <SongTableHeader />
           <TableBody>
-            {allSongs.map((song: Song) => (
-              song && <SongTableRow
+            {songs.map((song: Song) => (
+              <SongTableRow
                 key={song._id}
                 song={song}
                 onEdit={setEditingSong}
                 onDelete={handleDelete}
-                allSongs={allSongs}
+                allSongs={songs}
               />
             ))}
           </TableBody>
         </Table>
-
-        <div
-          ref={loadMoreRef}
-          className="h-20 flex items-center justify-center"
-        >
-          {isFetchingNextPage && (
-            <div className="space-y-4">
-              {Array.from({ length: 3 }).map((_, index) => (
-                <Skeleton key={index} className="h-12 w-full" />
-              ))}
-            </div>
-          )}
-        </div>
       </div>
 
       <SongEditDialog

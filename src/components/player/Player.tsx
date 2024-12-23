@@ -117,7 +117,7 @@ const Player = () => {
       <div className={`mx-auto h-full flex items-center ${isMobile ? 'px-2 flex-col justify-center gap-2 h-auto py-4' : 'container px-4 justify-between'}`}>
         <div className={`flex items-center gap-4 ${isMobile ? 'w-full justify-between' : ''}`}>
           <div className="w-12 h-12 bg-muted rounded-md shrink-0 overflow-hidden">
-            {currentSong.artwork ? (
+            {currentSong?.artwork ? (
               <img
                 src={`http://localhost:5000${currentSong.artwork}`}
                 alt={`${currentSong.name} artwork`}
