@@ -1,11 +1,16 @@
 const WebSocket = require('ws');
 const Store = require('electron-store');
 const store = new Store();
+const { handlePlaylist } = require('./handlers/playlistHandler');
+const { handleAuth } = require('./handlers/authHandler');
 
 class WebSocketService {
   constructor() {
     this.ws = null;
-    this.messageHandlers = new Map();
+    this.messageHandlers = new Map([
+      ['auth', handleAuth],
+      ['playlist', handlePlaylist]
+    ]);
     this.connect();
   }
 
@@ -13,6 +18,12 @@ class WebSocketService {
     const deviceInfo = store.get('deviceInfo');
     if (!deviceInfo || !deviceInfo.token) {
       console.log('No device info found');
+      return;
+    }
+
+    // Eğer zaten bağlantı varsa, yeni bağlantı oluşturma
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      console.log('WebSocket already connected');
       return;
     }
 
@@ -63,14 +74,6 @@ class WebSocketService {
     } else {
       console.log('No handler for message type:', message.type);
     }
-  }
-
-  addMessageHandler(type, handler) {
-    this.messageHandlers.set(type, handler);
-  }
-
-  removeMessageHandler(type) {
-    this.messageHandlers.delete(type);
   }
 }
 
