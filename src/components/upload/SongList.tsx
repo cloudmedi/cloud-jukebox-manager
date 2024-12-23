@@ -53,7 +53,7 @@ export const SongList = ({
         <SongTableHeader
           sortConfig={sortConfig}
           onSort={handleSort}
-          showSelect={!!onSelect}
+          showCheckbox={!!onSelect}
           allSongs={sortedSongs}
         />
         <TableBody>
