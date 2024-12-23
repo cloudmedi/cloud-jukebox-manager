@@ -58,7 +58,7 @@ export const DeviceList = () => {
     websocketService.addMessageHandler('deviceStatus', handleDeviceStatus);
 
     return () => {
-      websocketService.removeMessageHandler('deviceStatus');
+      websocketService.removeMessageHandler('deviceStatus', handleDeviceStatus);
     };
   }, [queryClient]);
 

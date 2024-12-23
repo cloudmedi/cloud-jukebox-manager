@@ -5,6 +5,7 @@ interface Song {
   name: string;
   artist: string;
   filePath?: string;
+  artwork?: string | null;
 }
 
 interface PlayerState {
