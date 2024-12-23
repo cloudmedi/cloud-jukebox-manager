@@ -23,7 +23,7 @@ class WebSocketServer {
       if (req.url === '/admin') {
         this.handleAdminConnection(ws);
       } else {
-        this.handleDeviceConnection(ws, req);
+        this.handleDeviceConnection(ws);
       }
     });
 
@@ -83,13 +83,8 @@ class WebSocketServer {
     });
   }
 
-  async handleDeviceConnection(ws, req) {
+  async handleDeviceConnection(ws) {
     let deviceToken = null;
-
-    // IP adresini al
-    const ip = req.headers['x-forwarded-for'] || 
-               req.connection.remoteAddress || 
-               req.socket.remoteAddress;
 
     ws.once('message', async (message) => {
       try {
@@ -104,16 +99,13 @@ class WebSocketServer {
             ws.deviceToken = deviceToken;
             console.log(`Device authenticated: ${deviceToken}`);
 
-            // IP adresini güncelle
-            device.ipAddress = ip;
             await device.updateStatus(true);
 
             this.broadcastToAdmins({
               type: 'deviceStatus',
               token: deviceToken,
               isOnline: true,
-              volume: device.volume,
-              ipAddress: ip
+              volume: device.volume
             });
 
             ws.send(JSON.stringify({
@@ -121,8 +113,7 @@ class WebSocketServer {
               status: 'success',
               deviceInfo: {
                 name: device.name,
-                volume: device.volume,
-                ipAddress: ip
+                volume: device.volume
               }
             }));
 

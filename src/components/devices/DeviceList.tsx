@@ -13,8 +13,8 @@ export const DeviceList = () => {
   const [filterStatus, setFilterStatus] = useState<"all" | "online" | "offline">("all");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
-  const [locationFilter, setLocationFilter] = useState("");
-  const [groupFilter, setGroupFilter] = useState("");
+  const [locationFilter, setLocationFilter] = useState("_all");
+  const [groupFilter, setGroupFilter] = useState("_all");
   
   const { data: devices, isLoading } = useQuery({
     queryKey: ['devices'],
@@ -24,9 +24,7 @@ export const DeviceList = () => {
         throw new Error("Cihazlar yüklenirken bir hata oluştu");
       }
       return response.json();
-    },
-    refetchInterval: 0,
-    refetchOnWindowFocus: false,
+    }
   });
 
   useEffect(() => {
@@ -60,7 +58,7 @@ export const DeviceList = () => {
     websocketService.addMessageHandler('deviceStatus', handleDeviceStatus);
 
     return () => {
-      websocketService.removeMessageHandler('deviceStatus');
+      websocketService.removeMessageHandler('deviceStatus', handleDeviceStatus);
     };
   }, [queryClient]);
 
@@ -71,12 +69,12 @@ export const DeviceList = () => {
     }
 
     // Lokasyon filtresi
-    if (locationFilter && locationFilter !== "_all" && device.location !== locationFilter) {
+    if (locationFilter !== "_all" && device.location !== locationFilter) {
       return false;
     }
 
     // Grup filtresi
-    if (groupFilter && groupFilter !== "_all" && device.groupId !== groupFilter) {
+    if (groupFilter !== "_all" && device.groupId !== groupFilter) {
       return false;
     }
 
