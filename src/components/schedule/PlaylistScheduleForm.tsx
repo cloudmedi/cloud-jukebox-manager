@@ -21,7 +21,7 @@ export const PlaylistScheduleForm = ({ initialDate, onSuccess }: PlaylistSchedul
     resolver: zodResolver(scheduleFormSchema),
     defaultValues: {
       startDate: initialDate || new Date(),
-      endDate: initialDate ? new Date(initialDate.getTime() + 60 * 60 * 1000) : new Date(),
+      endDate: initialDate ? new Date(initialDate.getTime() + 60 * 60 * 1000) : new Date(new Date().getTime() + 60 * 60 * 1000),
       repeatType: "once",
       targets: {
         devices: [],
@@ -54,6 +54,7 @@ export const PlaylistScheduleForm = ({ initialDate, onSuccess }: PlaylistSchedul
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["playlist-schedules"] });
+      toast.success("Zamanlama başarıyla oluşturuldu");
       form.reset();
       onSuccess?.();
     },

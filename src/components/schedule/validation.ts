@@ -12,6 +12,9 @@ export const scheduleFormSchema = z.object({
   })
   .refine((date) => date > new Date(), {
     message: "Bitiş tarihi gelecekte olmalıdır",
+  })
+  .refine((date, data) => date > data.startDate, {
+    message: "Bitiş tarihi başlangıç tarihinden sonra olmalıdır",
   }),
   repeatType: z.enum(["once", "daily", "weekly", "monthly"], {
     required_error: "Tekrar tipi zorunludur",
