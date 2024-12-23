@@ -13,11 +13,18 @@ const Player = () => {
   const [duration, setDuration] = useState(0);
   const audioRef = useRef<HTMLAudioElement>(null);
   const isMobile = useIsMobile();
-  const currentSong = usePlaybackStore((state) => state.currentSong);
+  
+  const { currentSong, next, previous } = usePlaybackStore();
 
   useEffect(() => {
     if (currentSong && audioRef.current) {
-      audioRef.current.src = `http://localhost:5000/${currentSong.filePath}`;
+      const audioPath = currentSong.filePath ? `http://localhost:5000/${currentSong.filePath}` : currentSong.localPath;
+      if (!audioPath) {
+        console.error('No valid audio path found for song:', currentSong);
+        return;
+      }
+
+      audioRef.current.src = audioPath;
       audioRef.current.play().then(() => {
         setIsPlaying(true);
       }).catch(error => {
@@ -41,6 +48,7 @@ const Player = () => {
     const handleEnded = () => {
       setIsPlaying(false);
       setProgress(0);
+      next(); // Şarkı bittiğinde otomatik olarak sıradakine geç
     };
 
     audio.addEventListener('timeupdate', handleTimeUpdate);
@@ -52,7 +60,7 @@ const Player = () => {
       audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
       audio.removeEventListener('ended', handleEnded);
     };
-  }, []);
+  }, [next]);
 
   const handlePlayPause = () => {
     if (audioRef.current) {
@@ -63,6 +71,14 @@ const Player = () => {
       }
       setIsPlaying(!isPlaying);
     }
+  };
+
+  const handleNext = () => {
+    next();
+  };
+
+  const handlePrevious = () => {
+    previous();
   };
 
   const handleVolumeChange = (value: number[]) => {
@@ -109,7 +125,12 @@ const Player = () => {
         
         <div className={`flex flex-col items-center gap-2 ${isMobile ? 'w-full' : ''}`}>
           <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" className="shrink-0">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="shrink-0"
+              onClick={handlePrevious}
+            >
               <SkipBack className="h-5 w-5" />
             </Button>
             <Button 
@@ -124,7 +145,12 @@ const Player = () => {
                 <Play className="h-5 w-5" />
               )}
             </Button>
-            <Button variant="ghost" size="icon" className="shrink-0">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="shrink-0"
+              onClick={handleNext}
+            >
               <SkipForward className="h-5 w-5" />
             </Button>
           </div>
