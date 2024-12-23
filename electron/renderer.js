@@ -3,6 +3,7 @@ const Store = require('electron-store');
 const store = new Store();
 const AudioEventHandler = require('./services/audio/AudioEventHandler');
 const playbackStateManager = require('./services/audio/PlaybackStateManager');
+const playlistHandler = require('./services/playlistHandler');
 
 const audio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(audio);
@@ -46,6 +47,9 @@ ipcRenderer.on('token-error', (event, message) => {
 document.addEventListener('DOMContentLoaded', () => {
   checkAndDisplayToken();
 });
+
+// Initialize playlist handler
+playlistHandler;
 
 // Initialize volume
 audio.volume = 0.7; // 70%
