@@ -1,10 +1,12 @@
 const PlaylistHandler = require('./PlaylistHandler');
 const CommandHandler = require('./CommandHandler');
+const PlaylistStatusHandler = require('./PlaylistStatusHandler');
 
 class MessageHandler {
   constructor(wss) {
     this.playlistHandler = new PlaylistHandler(wss);
     this.commandHandler = new CommandHandler(wss);
+    this.playlistStatusHandler = new PlaylistStatusHandler(wss);
   }
 
   async handleAdminMessage(data, ws) {
@@ -37,7 +39,7 @@ class MessageHandler {
         break;
 
       case 'playlistStatus':
-        await this.playlistHandler.handlePlaylistStatus(data, ws.deviceToken);
+        await this.playlistStatusHandler.handlePlaylistStatus(data, ws.deviceToken);
         break;
 
       default:
