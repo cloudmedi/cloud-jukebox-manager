@@ -41,9 +41,10 @@ const Player = () => {
     const handleTimeUpdate = () => setProgress(audio.currentTime);
     const handleLoadedMetadata = () => setDuration(audio.duration);
     const handleEnded = () => {
+      console.log('Song ended, playing next');
       setIsPlaying(false);
       setProgress(0);
-      next();
+      next(); // Şarkı bittiğinde sonraki şarkıya geç
     };
 
     audio.addEventListener('timeupdate', handleTimeUpdate);
