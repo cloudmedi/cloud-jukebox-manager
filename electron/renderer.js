@@ -3,12 +3,18 @@ const Store = require('electron-store');
 const store = new Store();
 const AudioEventHandler = require('./services/audio/AudioEventHandler');
 const playbackStateManager = require('./services/audio/PlaybackStateManager');
+const webSocketMessageHandler = require('./services/websocket/WebSocketMessageHandler');
 
 const audio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(audio);
 
 // Initialize volume
 audio.volume = 0.7; // 70%
+
+// WebSocket message handler
+ipcRenderer.on('ws-message', (event, message) => {
+  webSocketMessageHandler.handleMessage(message);
+});
 
 // Auto-play playlist
 ipcRenderer.on('auto-play-playlist', (event, playlist) => {
@@ -232,6 +238,3 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM loaded, displaying playlists');
   displayPlaylists();
 });
-
-// Diğer event listener'lar
-
