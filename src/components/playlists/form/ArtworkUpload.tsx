@@ -56,12 +56,10 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
     }
 
     try {
-      const formData = new FormData();
-      formData.append('artwork', file);
-
       form.setValue("artwork", e.target.files as FileList, {
         shouldValidate: true,
         shouldDirty: true,
+        shouldTouch: true,
       });
 
       toast({

@@ -1,5 +1,5 @@
 import { memo } from "react";
-import { Send, Trash2, Music2, MoreVertical } from "lucide-react";
+import { Send, Trash2, Music2, MoreVertical, Pencil, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
   DropdownMenu,
@@ -23,9 +23,11 @@ interface PlaylistCardProps {
     genre?: string;
   };
   onDelete: (id: string) => void;
+  onEdit?: (id: string) => void;
+  onPlay?: (id: string) => void;
 }
 
-export const PlaylistCard = memo(({ playlist, onDelete }: PlaylistCardProps) => {
+export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: PlaylistCardProps) => {
   const [isSendDialogOpen, setIsSendDialogOpen] = useState(false);
 
   return (
@@ -70,6 +72,18 @@ export const PlaylistCard = memo(({ playlist, onDelete }: PlaylistCardProps) => 
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40">
+                {onPlay && (
+                  <DropdownMenuItem onClick={() => onPlay(playlist._id)} className="gap-2">
+                    <Play className="h-4 w-4" />
+                    Oynat
+                  </DropdownMenuItem>
+                )}
+                {onEdit && (
+                  <DropdownMenuItem onClick={() => onEdit(playlist._id)} className="gap-2">
+                    <Pencil className="h-4 w-4" />
+                    Düzenle
+                  </DropdownMenuItem>
+                )}
                 <DropdownMenuItem onClick={() => setIsSendDialogOpen(true)} className="gap-2">
                   <Send className="h-4 w-4" />
                   Gönder
