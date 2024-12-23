@@ -38,6 +38,9 @@ function createWindow() {
     if (!app.isQuitting) {
       event.preventDefault();
       mainWindow.hide();
+      if (tray === null) {
+        createTray();
+      }
     }
     return false;
   });
@@ -47,7 +50,6 @@ function createWindow() {
   if (deviceInfo && deviceInfo.token) {
     websocketService.connect(deviceInfo.token);
     
-    // Son kaydedilen playlist'i kontrol et ve varsa otomatik başlat
     const playlists = store.get('playlists', []);
     if (playlists.length > 0) {
       const lastPlaylist = playlists[playlists.length - 1];
@@ -60,39 +62,48 @@ function createWindow() {
 }
 
 function createTray() {
-  // Tray ikonu oluştur
-  tray = new Tray(path.join(__dirname, 'icon.png'));
-  
-  // Tray menüsünü oluştur
-  const contextMenu = Menu.buildFromTemplate([
-    {
-      label: 'Show App',
-      click: function() {
-        mainWindow.show();
+  try {
+    // Tray ikonu oluştur
+    const iconPath = path.join(__dirname, 'icon.png');
+    console.log('Tray icon path:', iconPath);
+    
+    tray = new Tray(iconPath);
+    
+    // Tray menüsünü oluştur
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: 'Show App',
+        click: function() {
+          mainWindow.show();
+        }
+      },
+      {
+        label: 'Close',
+        click: function() {
+          app.isQuitting = true;
+          app.quit();
+        }
       }
-    },
-    {
-      label: 'Close',
-      click: function() {
-        app.isQuitting = true;
-        app.quit();
-      }
-    }
-  ]);
+    ]);
 
-  // Tray ayarlarını yap
-  tray.setToolTip('Cloud Media Player');
-  tray.setContextMenu(contextMenu);
+    // Tray ayarlarını yap
+    tray.setToolTip('Cloud Media Player');
+    tray.setContextMenu(contextMenu);
 
-  // Tray ikonuna çift tıklandığında uygulamayı göster
-  tray.on('double-click', () => {
-    mainWindow.show();
-  });
+    // Tray ikonuna çift tıklandığında uygulamayı göster
+    tray.on('double-click', () => {
+      mainWindow.show();
+    });
+    
+    console.log('Tray created successfully');
+  } catch (error) {
+    console.error('Error creating tray:', error);
+  }
 }
 
 app.whenReady().then(() => {
   createWindow();
-  createTray();
+  createTray(); // Uygulama başladığında tray'i oluştur
 });
 
 app.on('window-all-closed', () => {
