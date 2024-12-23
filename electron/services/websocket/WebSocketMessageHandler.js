@@ -20,6 +20,8 @@ class WebSocketMessageHandler {
   }
 
   handleCommand(message) {
+    console.log('Handling command:', message);
+    
     switch (message.command) {
       case 'clearPlaylists':
         console.log('Clearing all playlists');

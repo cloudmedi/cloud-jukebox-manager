@@ -44,6 +44,10 @@ class PlaylistManager {
     // Store'u temizle
     this.store.delete('playlists');
     console.log('All playlists cleared from store');
+
+    // Renderer'a playlist'lerin temizlendiğini bildir
+    const { ipcRenderer } = require('electron');
+    ipcRenderer.send('playlists-cleared');
   }
 }
 
