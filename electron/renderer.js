@@ -18,6 +18,7 @@ ipcRenderer.on('stop-playback', () => {
   if (audio) {
     audio.pause();
     audio.src = '';
+    console.log('Playback stopped successfully');
   }
 });
 
@@ -38,6 +39,7 @@ ipcRenderer.on('error', (event, message) => {
 
 // Notification handler
 ipcRenderer.on('show-notification', (event, { title, body }) => {
+  console.log('Showing notification:', { title, body });
   new Notification(title, { body });
 });
 

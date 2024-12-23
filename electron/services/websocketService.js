@@ -32,9 +32,10 @@ class WebSocketService {
           if (message.reason === 'device_deleted') {
             console.log('Handling shutdown command for device deletion');
             
-            // Ses çalmayı durdur
+            // Önce ses çalmayı durdur
             if (mainWindow) {
               mainWindow.webContents.send('stop-playback');
+              console.log('Sent stop-playback command');
             }
 
             // Kullanıcıya bildirim göster
@@ -43,6 +44,7 @@ class WebSocketService {
                 title: 'Cihaz Silindi',
                 body: 'Bu cihaz sistemden silindi. Uygulama kapatılıyor.'
               });
+              console.log('Sent notification to user');
             }
 
             // Yerel dosyaları temizle
@@ -54,6 +56,7 @@ class WebSocketService {
             }
 
             // 3 saniye sonra uygulamayı kapat
+            console.log('Scheduling application shutdown...');
             setTimeout(() => {
               console.log('Shutting down application...');
               app.quit();
