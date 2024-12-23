@@ -87,7 +87,7 @@ export const PlaylistForm = ({
       formData.append("isShuffled", String(data.isShuffled));
       formData.append("createdBy", "system");
 
-      const response = await fetch("http://localhost:5000/api/playlists", {
+      const response = await fetch(`http://localhost:5000/api/playlists${isEditing ? `/${initialData?._id}` : ''}`, {
         method: isEditing ? "PATCH" : "POST",
         body: formData,
       });
@@ -121,10 +121,12 @@ export const PlaylistForm = ({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
-        <div className="grid gap-8 p-6 border rounded-lg bg-card">
-          <BasicInfoForm form={form} />
-          <ArtworkUpload form={form} />
-          <SongSelector form={form} />
+        <div className="grid gap-8">
+          <div className="grid gap-8 p-6 border rounded-lg bg-card">
+            <BasicInfoForm form={form} />
+            <ArtworkUpload form={form} />
+            <SongSelector form={form} />
+          </div>
         </div>
         
         <Button type="submit" className="w-full" size="lg">

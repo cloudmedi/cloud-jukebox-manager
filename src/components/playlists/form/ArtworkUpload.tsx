@@ -1,4 +1,4 @@
-import { FormField, FormItem, FormLabel, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
+import { FormField, FormItem, FormControl, FormMessage, FormDescription } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { UseFormReturn } from "react-hook-form";
 import { PlaylistFormValues } from "../PlaylistForm";
@@ -48,15 +48,18 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <Card className="overflow-hidden">
                     <CardContent className="p-4">
-                      <div className="relative aspect-square w-full overflow-hidden rounded-lg border border-border">
+                      <div 
+                        className="relative aspect-square w-full overflow-hidden rounded-lg border border-border cursor-pointer"
+                        onClick={handleUploadClick}
+                      >
                         {previewUrl ? (
                           <img
                             src={previewUrl}
                             alt="Kapak resmi önizleme"
-                            className="h-full w-full object-cover"
+                            className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
                           />
                         ) : (
-                          <div className="flex h-full items-center justify-center bg-muted">
+                          <div className="flex h-full items-center justify-center bg-muted hover:bg-muted/80 transition-colors">
                             <ImageIcon className="h-16 w-16 text-muted-foreground/25" />
                           </div>
                         )}
