@@ -14,12 +14,7 @@ audio.volume = 0.7; // 70%
 ipcRenderer.on('auto-play-playlist', (event, playlist) => {
   console.log('Auto-playing playlist:', playlist);
   if (playlist && playlist.songs && playlist.songs.length > 0) {
-    const playbackState = playbackStateManager.getPlaybackState();
-    audioHandler.setCurrentPlaylistId(playlist._id);
-    
-    // Eğer playlist ID'leri eşleşiyorsa, kaydedilen durumu kullan
-    const shouldAutoPlay = playbackState.playlistId === playlist._id ? 
-      playbackState.isPlaying : true;
+    const shouldAutoPlay = playbackStateManager.getPlaybackState();
     
     displayPlaylists();
     
@@ -65,6 +60,7 @@ ipcRenderer.on('toggle-playback', () => {
       audio.play()
         .then(() => {
           console.log('Playback started successfully');
+          playbackStateManager.savePlaybackState(true);
           ipcRenderer.send('playback-status-changed', true);
         })
         .catch(err => {
@@ -74,6 +70,7 @@ ipcRenderer.on('toggle-playback', () => {
     } else {
       audio.pause();
       console.log('Playback paused');
+      playbackStateManager.savePlaybackState(false);
       ipcRenderer.send('playback-status-changed', false);
     }
   }
@@ -232,3 +229,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Diğer event listener'lar
+
