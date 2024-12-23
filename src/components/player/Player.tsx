@@ -1,145 +1,121 @@
+import { useEffect, useRef, useState } from "react";
+import { Howl } from "howler";
 import { usePlaybackStore } from "@/store/playbackStore";
-import { Button } from "@/components/ui/button";
-import { Slider } from "@/components/ui/slider";
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
-import { useState } from "react";
+import { Music } from "lucide-react";
+import { formatDuration } from "@/lib/utils";
 import { Song } from "@/types/song";
 
-const Player = () => {
-  const { 
-    currentSong,
-    isPlaying,
-    volume,
-    currentTime,
-    duration,
-    togglePlayPause,
-    setVolume,
-    setCurrentTime,
-    playPreviousSong,
-    playNextSong
-  } = usePlaybackStore();
+export const Player = () => {
+  const { currentSong, isPlaying, play, pause } = usePlaybackStore((state) => ({
+    currentSong: state.currentSong,
+    isPlaying: state.isPlaying,
+    play: state.play,
+    pause: state.pause
+  }));
+  
+  const [sound, setSound] = useState<Howl | null>(null);
+  const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const progressInterval = useRef<number>();
 
-  const [isMuted, setIsMuted] = useState(false);
-  const [previousVolume, setPreviousVolume] = useState(volume);
-
-  const handleVolumeChange = (value: number[]) => {
-    setVolume(value[0]);
-    if (value[0] > 0) setIsMuted(false);
-  };
-
-  const toggleMute = () => {
-    if (isMuted) {
-      setVolume(previousVolume);
-      setIsMuted(false);
-    } else {
-      setPreviousVolume(volume);
-      setVolume(0);
-      setIsMuted(true);
+  // Cleanup function to prevent memory leaks
+  const cleanup = () => {
+    if (progressInterval.current) {
+      clearInterval(progressInterval.current);
+    }
+    if (sound) {
+      sound.unload();
     }
   };
 
-  const formatTime = (time: number) => {
-    const minutes = Math.floor(time / 60);
-    const seconds = Math.floor(time % 60);
-    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
+  useEffect(() => {
+    return () => cleanup();
+  }, []);
+
+  useEffect(() => {
+    if (currentSong) {
+      cleanup();
+
+      const newSound = new Howl({
+        src: [`http://localhost:5000${currentSong.filePath}`],
+        html5: true,
+        onload: () => {
+          setDuration(newSound.duration());
+        },
+        onplay: () => {
+          progressInterval.current = window.setInterval(() => {
+            setProgress(newSound.seek());
+          }, 1000);
+        },
+        onpause: () => {
+          if (progressInterval.current) {
+            clearInterval(progressInterval.current);
+          }
+        },
+        onend: () => {
+          if (progressInterval.current) {
+            clearInterval(progressInterval.current);
+          }
+        },
+      });
+
+      setSound(newSound);
+
+      return () => cleanup();
+    }
+  }, [currentSong]);
+
+  useEffect(() => {
+    if (sound) {
+      if (isPlaying) {
+        sound.play();
+      } else {
+        sound.pause();
+      }
+    }
+  }, [isPlaying, sound]);
+
+  const handlePlayPause = () => {
+    if (isPlaying) {
+      pause();
+    } else {
+      play();
+    }
   };
 
-  if (!currentSong) return null;
+  const artworkUrl = currentSong?.artwork 
+    ? `http://localhost:5000${currentSong.artwork}`
+    : '/placeholder.svg';
 
   return (
-    <div className="player fixed bottom-0 left-0 right-0 bg-background border-t p-4">
-      <div className="container max-w-7xl mx-auto">
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4 flex-1 min-w-0">
-            {currentSong.artwork && (
-              <img
-                src={`http://localhost:5000${currentSong.artwork}`}
-                alt={currentSong.name}
-                className="w-12 h-12 rounded object-cover"
+    <div className="fixed bottom-0 left-0 right-0 bg-background border-t">
+      <div className="container flex items-center justify-between h-20">
+        <div className="flex items-center gap-3">
+          <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center overflow-hidden">
+            {currentSong?.artwork ? (
+              <img 
+                src={artworkUrl}
+                alt={currentSong.name} 
+                className="w-full h-full object-cover" 
               />
+            ) : (
+              <Music className="h-6 w-6 text-muted-foreground" />
             )}
-            <div className="min-w-0">
-              <div className="font-medium truncate">{currentSong.name}</div>
-              <div className="text-sm text-muted-foreground truncate">
-                {currentSong.artist}
-              </div>
-            </div>
           </div>
-
-          <div className="flex flex-col items-center gap-2 flex-1">
-            <div className="flex items-center gap-2">
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={playPreviousSong}
-              >
-                <SkipBack className="h-5 w-5" />
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={togglePlayPause}
-              >
-                {isPlaying ? (
-                  <Pause className="h-5 w-5" />
-                ) : (
-                  <Play className="h-5 w-5" />
-                )}
-              </Button>
-
-              <Button
-                variant="ghost"
-                size="icon"
-                onClick={playNextSong}
-              >
-                <SkipForward className="h-5 w-5" />
-              </Button>
-            </div>
-
-            <div className="flex items-center gap-2 w-full max-w-md">
-              <span className="text-sm tabular-nums">
-                {formatTime(currentTime)}
-              </span>
-              <Slider
-                value={[currentTime]}
-                min={0}
-                max={duration}
-                step={1}
-                onValueChange={(value) => setCurrentTime(value[0])}
-                className="flex-1"
-              />
-              <span className="text-sm tabular-nums">
-                {formatTime(duration)}
-              </span>
-            </div>
+          <div>
+            <p className="font-medium">{currentSong?.name}</p>
+            <p className="text-sm text-muted-foreground">{currentSong?.artist}</p>
           </div>
-
-          <div className="flex items-center gap-2 flex-1 justify-end">
-            <Button
-              variant="ghost"
-              size="icon"
-              onClick={toggleMute}
-            >
-              {volume === 0 || isMuted ? (
-                <VolumeX className="h-5 w-5" />
-              ) : (
-                <Volume2 className="h-5 w-5" />
-              )}
-            </Button>
-            <Slider
-              value={[volume]}
-              min={0}
-              max={1}
-              step={0.01}
-              onValueChange={handleVolumeChange}
-              className="w-32"
-            />
+        </div>
+        <div className="flex items-center">
+          <button onClick={handlePlayPause}>
+            {isPlaying ? "Pause" : "Play"}
+          </button>
+          <div className="flex items-center">
+            <span>{formatDuration(progress)}</span> / <span>{formatDuration(duration)}</span>
           </div>
         </div>
       </div>
     </div>
   );
 };
-
-export default Player;

@@ -42,7 +42,7 @@ export type PlaylistFormValues = z.infer<typeof playlistSchema>;
 
 interface PlaylistFormProps {
   onSuccess?: () => void;
-  initialData?: PlaylistFormValues & { _id?: string };
+  initialData?: PlaylistFormValues;
   isEditing?: boolean;
 }
 
@@ -66,6 +66,7 @@ export const PlaylistForm = ({
     },
   });
 
+  // Seçili şarkıları forma ekle
   useEffect(() => {
     if (selectedSongs.length > 0) {
       form.setValue('songs', selectedSongs.map(song => song._id));
@@ -86,7 +87,7 @@ export const PlaylistForm = ({
       formData.append("isShuffled", String(data.isShuffled));
       formData.append("createdBy", "system");
 
-      const response = await fetch(`http://localhost:5000/api/playlists${isEditing && initialData?._id ? `/${initialData._id}` : ''}`, {
+      const response = await fetch("http://localhost:5000/api/playlists", {
         method: isEditing ? "PATCH" : "POST",
         body: formData,
       });
@@ -102,6 +103,7 @@ export const PlaylistForm = ({
         description: "İşlem başarıyla tamamlandı",
       });
 
+      // Seçili şarkıları temizle
       clearSelection();
 
       if (onSuccess) {
@@ -119,9 +121,11 @@ export const PlaylistForm = ({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
-        <BasicInfoForm form={form} />
-        <ArtworkUpload form={form} />
-        <SongSelector form={form} />
+        <div className="grid gap-8 p-6 border rounded-lg bg-card">
+          <BasicInfoForm form={form} />
+          <ArtworkUpload form={form} />
+          <SongSelector form={form} />
+        </div>
         
         <Button type="submit" className="w-full" size="lg">
           <Save className="mr-2 h-5 w-5" />

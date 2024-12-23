@@ -29,12 +29,9 @@ const SongList = () => {
     },
   });
 
-  const genres: string[] = Array.from(
-    new Set(songs.map((song: Song) => song.genre))
-  ).sort();
-  const allGenres: string[] = ["All", ...genres];
+  const genres = ["All", ...Array.from(new Set(songs.map((song) => song.genre)))].sort();
 
-  const filteredSongs = songs.filter((song: Song) => {
+  const filteredSongs = songs?.filter((song) => {
     const matchesGenre = selectedGenre === "All" || song.genre === selectedGenre;
     const matchesSearch =
       song.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -95,7 +92,7 @@ const SongList = () => {
           onSearchChange={setSearchTerm}
           selectedGenre={selectedGenre}
           onGenreChange={setSelectedGenre}
-          genres={allGenres}
+          genres={genres}
         />
         {selectedSongs.length > 0 && (
           <div className="flex gap-2">
@@ -115,7 +112,7 @@ const SongList = () => {
         <Table>
           <SongTableHeader showCheckbox={true} allSongs={filteredSongs} />
           <TableBody>
-            {filteredSongs.map((song: Song) => (
+            {filteredSongs?.map((song) => (
               <SongTableRow
                 key={song._id}
                 song={song}
@@ -128,13 +125,11 @@ const SongList = () => {
         </Table>
       </div>
 
-      {editingSong && (
-        <SongEditDialog
-          song={editingSong}
-          open={!!editingSong}
-          onOpenChange={(open) => !open && setEditingSong(null)}
-        />
-      )}
+      <SongEditDialog
+        song={editingSong}
+        open={!!editingSong}
+        onOpenChange={(open) => !open && setEditingSong(null)}
+      />
     </div>
   );
 };

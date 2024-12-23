@@ -1,20 +1,26 @@
 import { create } from 'zustand';
-import { Song } from '@/types/song';
+import websocketService from '@/services/websocketService';
+
+interface Song {
+  _id: string;
+  name: string;
+  artist: string;
+  filePath: string;
+  localPath?: string;
+  duration: number;
+  artwork?: string | null;
+}
 
 interface PlaybackStore {
   currentSong: Song | null;
   isPlaying: boolean;
-  volume: number;
-  currentTime: number;
-  duration: number;
   queue: Song[];
   currentIndex: number;
   setQueue: (songs: Song[]) => void;
-  togglePlayPause: () => void;
-  setVolume: (volume: number) => void;
-  setCurrentTime: (time: number) => void;
-  playPreviousSong: () => void;
-  playNextSong: () => void;
+  play: () => void;
+  pause: () => void;
+  next: () => void;
+  previous: () => void;
   setCurrentSong: (song: Song) => void;
   addToQueue: (song: Song) => void;
 }
@@ -22,9 +28,6 @@ interface PlaybackStore {
 export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
   currentSong: null,
   isPlaying: false,
-  volume: 1,
-  currentTime: 0,
-  duration: 0,
   queue: [],
   currentIndex: 0,
 
@@ -35,19 +38,42 @@ export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
     }
   },
 
-  togglePlayPause: () => {
-    set(state => ({ isPlaying: !state.isPlaying }));
+  play: () => {
+    set({ isPlaying: true });
+    websocketService.sendMessage({
+      type: 'command',
+      command: 'play'
+    });
   },
 
-  setVolume: (volume) => {
-    set({ volume });
+  pause: () => {
+    set({ isPlaying: false });
+    websocketService.sendMessage({
+      type: 'command',
+      command: 'pause'
+    });
   },
 
-  setCurrentTime: (currentTime) => {
-    set({ currentTime });
+  next: () => {
+    const { queue, currentIndex } = get();
+    if (queue.length === 0) return;
+
+    const nextIndex = (currentIndex + 1) % queue.length;
+    const nextSong = queue[nextIndex];
+
+    set({ 
+      currentIndex: nextIndex,
+      currentSong: nextSong,
+      isPlaying: true 
+    });
+
+    websocketService.sendMessage({
+      type: 'command',
+      command: 'next'
+    });
   },
 
-  playPreviousSong: () => {
+  previous: () => {
     const { queue, currentIndex } = get();
     if (queue.length === 0) return;
 
@@ -59,19 +85,10 @@ export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
       currentSong: prevSong,
       isPlaying: true 
     });
-  },
 
-  playNextSong: () => {
-    const { queue, currentIndex } = get();
-    if (queue.length === 0) return;
-
-    const nextIndex = (currentIndex + 1) % queue.length;
-    const nextSong = queue[nextIndex];
-
-    set({ 
-      currentIndex: nextIndex,
-      currentSong: nextSong,
-      isPlaying: true 
+    websocketService.sendMessage({
+      type: 'command',
+      command: 'previous'
     });
   },
 
