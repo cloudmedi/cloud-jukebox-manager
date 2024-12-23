@@ -6,7 +6,6 @@ const audio = document.getElementById('audioPlayer');
 // Initialize volume
 audio.volume = 0.7; // 70%
 
-// Playlist listesini göster
 function displayPlaylists() {
   const playlists = store.get('playlists', []);
   const playlistContainer = document.getElementById('playlistContainer');
@@ -38,59 +37,50 @@ function displayPlaylists() {
   });
 }
 
+// Audio event listeners
+ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
+  console.log('Updating player with song:', currentSong);
+  if (currentSong && currentSong.localPath) {
+    // Windows yolunu URL formatına çevir
+    const normalizedPath = currentSong.localPath.replace(/\\/g, '/');
+    audio.src = normalizedPath;
+    audio.play().catch(err => console.error('Playback error:', err));
+  }
+});
+
+ipcRenderer.on('toggle-playback', () => {
+  if (audio.paused) {
+    audio.play().catch(err => console.error('Play error:', err));
+  } else {
+    audio.pause();
+  }
+});
+
 // Play/Pause toggle
-document.getElementById('playButton').addEventListener('click', async () => {
-    try {
-        const isPlaying = await ipcRenderer.invoke('play-pause');
-        updatePlayButton(isPlaying);
-    } catch (error) {
-        console.error('Play/Pause error:', error);
-    }
+document.getElementById('playButton').addEventListener('click', () => {
+  ipcRenderer.invoke('play-pause');
 });
 
 // Previous track
-document.getElementById('prevButton').addEventListener('click', async () => {
-    console.log('Previous button clicked');
-    try {
-        const success = await ipcRenderer.invoke('prev-song');
-        if (!success) {
-            console.log('Could not play previous song');
-        }
-    } catch (err) {
-        console.error('Error invoking prev-song:', err);
-    }
+document.getElementById('prevButton').addEventListener('click', () => {
+  ipcRenderer.invoke('prev-song');
 });
 
 // Next track
-document.getElementById('nextButton').addEventListener('click', async () => {
-    console.log('Next button clicked');
-    try {
-        const success = await ipcRenderer.invoke('next-song');
-        if (!success) {
-            console.log('Could not play next song');
-        }
-    } catch (err) {
-        console.error('Error invoking next-song:', err);
-    }
+document.getElementById('nextButton').addEventListener('click', () => {
+  ipcRenderer.invoke('next-song');
 });
 
 // Progress bar updates
 audio.addEventListener('timeupdate', () => {
-    const progress = (audio.currentTime / audio.duration) * 100;
-    document.getElementById('progressBar').style.width = progress + '%';
-    
-    if (audio.duration > 0 && audio.currentTime >= audio.duration - 0.5) {
-        console.log('Song near end, requesting next song');
-        ipcRenderer.invoke('next-song').catch(err => {
-            console.error('Error invoking next-song near end:', err);
-        });
-    }
+  const progress = (audio.currentTime / audio.duration) * 100;
+  document.getElementById('progressBar').style.width = progress + '%';
 });
 
 // WebSocket mesajlarını dinle
 ipcRenderer.on('playlist-received', (event, playlist) => {
-    console.log('Playlist received:', playlist);
-    displayPlaylists(); // Yeni playlist eklendiğinde listeyi güncelle
+  console.log('Playlist received:', playlist);
+  displayPlaylists();
 });
 
 // İlk yüklemede playlistleri göster

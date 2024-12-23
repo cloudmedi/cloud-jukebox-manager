@@ -1,6 +1,5 @@
 const { ipcMain } = require('electron');
 const path = require('path');
-const { Howl } = require('howler');
 
 class AudioService {
   constructor() {
@@ -15,103 +14,44 @@ class AudioService {
       console.log('Received playlist:', playlist);
       this.playlist = playlist;
       this.currentIndex = 0;
-      this.playCurrentSong();
+      
+      // Playlist'i renderer process'e gönder
+      event.sender.send('update-player', {
+        playlist: this.playlist,
+        currentSong: this.playlist.songs[this.currentIndex]
+      });
     });
 
-    ipcMain.handle('play-pause', () => {
-      console.log('Play/Pause requested');
-      if (this.currentSound) {
-        if (this.currentSound.playing()) {
-          this.currentSound.pause();
-          return false;
-        } else {
-          this.currentSound.play();
-          return true;
-        }
-      }
-      return false;
+    ipcMain.handle('play-pause', (event) => {
+      event.sender.send('toggle-playback');
+      return true;
     });
 
-    ipcMain.handle('next-song', () => {
-      console.log('Next song requested');
+    ipcMain.handle('next-song', (event) => {
       if (this.playlist && this.playlist.songs.length > 0) {
-        console.log('Current index:', this.currentIndex);
         this.currentIndex = (this.currentIndex + 1) % this.playlist.songs.length;
-        console.log('New index:', this.currentIndex);
-        this.playCurrentSong();
+        const nextSong = this.playlist.songs[this.currentIndex];
+        event.sender.send('update-player', {
+          playlist: this.playlist,
+          currentSong: nextSong
+        });
         return true;
       }
-      console.log('No playlist or empty playlist');
       return false;
     });
 
-    ipcMain.handle('prev-song', () => {
-      console.log('Previous song requested');
+    ipcMain.handle('prev-song', (event) => {
       if (this.playlist && this.playlist.songs.length > 0) {
-        console.log('Current index:', this.currentIndex);
         this.currentIndex = (this.currentIndex - 1 + this.playlist.songs.length) % this.playlist.songs.length;
-        console.log('New index:', this.currentIndex);
-        this.playCurrentSong();
+        const prevSong = this.playlist.songs[this.currentIndex];
+        event.sender.send('update-player', {
+          playlist: this.playlist,
+          currentSong: prevSong
+        });
         return true;
       }
-      console.log('No playlist or empty playlist');
       return false;
     });
-  }
-
-  playCurrentSong() {
-    if (!this.playlist || !this.playlist.songs.length) {
-      console.log('No playlist or songs available');
-      return;
-    }
-
-    const song = this.playlist.songs[this.currentIndex];
-    if (!song) {
-      console.log('No song at index:', this.currentIndex);
-      return;
-    }
-
-    console.log('Playing song:', song);
-
-    if (this.currentSound) {
-      console.log('Stopping current sound');
-      this.currentSound.unload();
-    }
-
-    const serverUrl = 'http://localhost:5000';
-    const songUrl = `${serverUrl}/${song.filePath.replace(/\\/g, '/')}`;
-    console.log('Playing from URL:', songUrl);
-
-    this.currentSound = new Howl({
-      src: [songUrl],
-      html5: true,
-      format: ['mp3'],
-      onplay: () => {
-        console.log('Song started playing:', song.name);
-      },
-      onend: () => {
-        console.log('Song ended, playing next');
-        this.next();
-      },
-      onloaderror: (id, err) => {
-        console.error('Error loading song:', err);
-        this.next();
-      },
-      onplayerror: (id, err) => {
-        console.error('Error playing song:', err);
-        this.next();
-      }
-    });
-
-    this.currentSound.play();
-  }
-
-  next() {
-    console.log('Playing next song');
-    if (this.playlist && this.playlist.songs.length > 0) {
-      this.currentIndex = (this.currentIndex + 1) % this.playlist.songs.length;
-      this.playCurrentSong();
-    }
   }
 }
 
