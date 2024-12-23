@@ -46,15 +46,31 @@ function deleteOldPlaylists() {
   if (playlists.length > 1) {
     const latestPlaylist = playlists[playlists.length - 1];
     
-    // Eski playlistlerin şarkı dosyalarını sil
+    // Eski playlistlerin şarkı dosyalarını ve klasörlerini sil
     playlists.slice(0, -1).forEach(playlist => {
       playlist.songs.forEach(song => {
         if (song.localPath) {
           try {
+            // Şarkı dosyasını sil
             fs.unlinkSync(song.localPath);
             console.log(`Deleted song file: ${song.localPath}`);
+            
+            // Şarkının bulunduğu klasörü bul
+            const playlistDir = path.dirname(song.localPath);
+            
+            // Klasördeki tüm dosyaları sil
+            const files = fs.readdirSync(playlistDir);
+            files.forEach(file => {
+              const filePath = path.join(playlistDir, file);
+              fs.unlinkSync(filePath);
+              console.log(`Deleted file: ${filePath}`);
+            });
+            
+            // Boş klasörü sil
+            fs.rmdirSync(playlistDir);
+            console.log(`Deleted playlist directory: ${playlistDir}`);
           } catch (error) {
-            console.error(`Error deleting song file: ${error}`);
+            console.error(`Error deleting files/directory: ${error}`);
           }
         }
       });
