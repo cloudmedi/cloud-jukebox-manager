@@ -2,9 +2,16 @@ import { useEffect, useRef, useState } from "react";
 import { Howl } from "howler";
 import { usePlaybackStore } from "@/store/playbackStore";
 import { Music } from "lucide-react";
+import { formatDuration } from "@/lib/utils";
+import { Song } from "@/types/song";
 
 export const Player = () => {
-  const { currentSong, isPlaying, setIsPlaying, queue, setQueue } = usePlaybackStore();
+  const { currentSong, isPlaying, queue } = usePlaybackStore((state) => ({
+    currentSong: state.currentSong,
+    isPlaying: state.isPlaying,
+    queue: state.queue,
+  }));
+  
   const [sound, setSound] = useState<Howl | null>(null);
   const [progress, setProgress] = useState(0);
   const [volume, setVolume] = useState(1);
@@ -26,19 +33,19 @@ export const Player = () => {
           setDuration(newSound.duration());
         },
         onplay: () => {
-          setIsPlaying(true);
+          usePlaybackStore.setState({ isPlaying: true });
           progressInterval.current = window.setInterval(() => {
             setProgress(newSound.seek());
           }, 1000);
         },
         onpause: () => {
-          setIsPlaying(false);
+          usePlaybackStore.setState({ isPlaying: false });
           if (progressInterval.current) {
             clearInterval(progressInterval.current);
           }
         },
         onend: () => {
-          setIsPlaying(false);
+          usePlaybackStore.setState({ isPlaying: false });
           if (progressInterval.current) {
             clearInterval(progressInterval.current);
           }
@@ -84,7 +91,7 @@ export const Player = () => {
           </div>
         </div>
         <div className="flex items-center">
-          <button onClick={() => setIsPlaying(!isPlaying)}>
+          <button onClick={() => usePlaybackStore.setState({ isPlaying: !isPlaying })}>
             {isPlaying ? "Pause" : "Play"}
           </button>
           <div className="flex items-center">
