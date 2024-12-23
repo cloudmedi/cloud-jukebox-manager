@@ -1,64 +1,12 @@
 const WebSocket = require('ws');
 const Store = require('electron-store');
-const { BrowserWindow } = require('electron');
 const store = new Store();
 
 class WebSocketService {
   constructor() {
     this.ws = null;
     this.messageHandlers = new Map();
-    this.setupHandlers();
     this.connect();
-    this.reconnectInterval = 5000; // 5 saniye
-    this.maxReconnectAttempts = 10;
-    this.reconnectAttempts = 0;
-  }
-
-  setupHandlers() {
-    // Auth handler
-    this.addMessageHandler('auth', (message) => {
-      console.log('Auth message received:', message);
-      if (message.status === 'success') {
-        store.set('deviceInfo', { 
-          token: message.deviceInfo.token || store.get('deviceInfo.token'),
-          name: message.deviceInfo.name,
-          volume: message.deviceInfo.volume 
-        });
-        console.log('Device info saved:', store.get('deviceInfo'));
-      }
-    });
-
-    // Playlist handler
-    this.addMessageHandler('playlist', async (message) => {
-      console.log('Playlist message received:', message);
-      try {
-        const mainWindow = BrowserWindow.getAllWindows()[0];
-        if (mainWindow) {
-          mainWindow.webContents.send('playlist-received', message.data);
-          console.log('Playlist update sent to renderer');
-        }
-      } catch (error) {
-        console.error('Error handling playlist message:', error);
-      }
-    });
-
-    // Command handler
-    this.addMessageHandler('command', (message) => {
-      console.log('Command message received:', message);
-      const mainWindow = BrowserWindow.getAllWindows()[0];
-      if (mainWindow) {
-        mainWindow.webContents.send(message.command, message.data);
-      }
-    });
-
-    // Status handler
-    this.addMessageHandler('status', (message) => {
-      console.log('Status message received:', message);
-      const mainWindow = BrowserWindow.getAllWindows()[0];
-      if (mainWindow) {
-        mainWindow.webContents.send('status-update', message);
-      }
-    });
   }
 
   connect() {
@@ -68,17 +16,10 @@ class WebSocketService {
       return;
     }
 
-    if (this.ws) {
-      console.log('Closing existing connection');
-      this.ws.close();
-    }
-
-    console.log('Connecting to WebSocket server...');
     this.ws = new WebSocket('ws://localhost:5000');
 
     this.ws.on('open', () => {
       console.log('WebSocket connected');
-      this.reconnectAttempts = 0;
       this.sendAuth(deviceInfo.token);
     });
 
@@ -93,28 +34,16 @@ class WebSocketService {
     });
 
     this.ws.on('close', () => {
-      console.log('WebSocket disconnected');
-      this.handleReconnect();
+      console.log('WebSocket disconnected, reconnecting...');
+      setTimeout(() => this.connect(), 5000);
     });
 
     this.ws.on('error', (error) => {
       console.error('WebSocket error:', error);
-      this.handleReconnect();
     });
   }
 
-  handleReconnect() {
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      this.reconnectAttempts++;
-      console.log(`Reconnect attempt ${this.reconnectAttempts} of ${this.maxReconnectAttempts}`);
-      setTimeout(() => this.connect(), this.reconnectInterval);
-    } else {
-      console.error('Max reconnection attempts reached');
-    }
-  }
-
   sendAuth(token) {
-    console.log('Sending auth message with token:', token);
     this.sendMessage({
       type: 'auth',
       token: token
@@ -124,8 +53,6 @@ class WebSocketService {
   sendMessage(message) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message));
-    } else {
-      console.error('WebSocket connection not ready');
     }
   }
 

@@ -1,31 +1,37 @@
 const Store = require('electron-store');
-const store = new Store();
 
 class PlaybackStateManager {
   constructor() {
+    if (PlaybackStateManager.instance) {
+      return PlaybackStateManager.instance;
+    }
+    
     this.store = new Store();
+    PlaybackStateManager.instance = this;
   }
 
-  savePlaybackState(isPlaying, playlistId = null) {
-    const state = {
+  savePlaybackState(isPlaying) {
+    console.log('Saving playback state:', isPlaying);
+    this.store.set('playbackState', {
       isPlaying,
-      playlistId,
       timestamp: new Date().toISOString()
-    };
-    
-    console.log('Saving playback state:', state);
-    this.store.set('playbackState', state);
+    });
   }
 
   getPlaybackState() {
     const state = this.store.get('playbackState');
     console.log('Getting playback state:', state);
-    return state || { isPlaying: false };
+    return state ? state.isPlaying : false;
   }
 
   clearPlaybackState() {
+    console.log('Clearing playback state');
     this.store.delete('playbackState');
   }
 }
 
-module.exports = new PlaybackStateManager();
+// Singleton instance'ı oluştur ve export et
+const instance = new PlaybackStateManager();
+Object.freeze(instance);
+
+module.exports = instance;

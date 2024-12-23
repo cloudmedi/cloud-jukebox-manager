@@ -6,41 +6,16 @@ const playbackStateManager = require('./services/audio/PlaybackStateManager');
 
 const audio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(audio);
-const tokenDisplay = document.getElementById('tokenDisplay');
 
-// Token kontrolü ve görüntüleme
-function checkAndDisplayToken() {
-  const deviceInfo = store.get('deviceInfo');
-  
-  if (deviceInfo && deviceInfo.token) {
-    // Token varsa göster
-    tokenDisplay.innerHTML = `
-      <div class="token-container">
-        <h2>Cihaz Token</h2>
-        <div class="token-value">${deviceInfo.token}</div>
-        <p class="token-info">Bu token'ı admin panelinde cihaz eklerken kullanın</p>
-      </div>
-    `;
-  } else {
-    // Token yoksa yeni token oluştur
-    ipcRenderer.invoke('generate-token').then(token => {
-      if (token) {
-        tokenDisplay.innerHTML = `
-          <div class="token-container">
-            <h2>Yeni Cihaz Token</h2>
-            <div class="token-value">${token}</div>
-            <p class="token-info">Bu token'ı admin panelinde cihaz eklerken kullanın</p>
-          </div>
-        `;
-      }
-    });
-  }
-}
+// Initialize volume
+audio.volume = 0.7; // 70%
 
-// Sayfa yüklendiğinde token kontrolü yap
-document.addEventListener('DOMContentLoaded', checkAndDisplayToken);
+// Close button event listener
+document.getElementById('closeButton').addEventListener('click', () => {
+    window.close();
+});
 
-// Audio player and playlist handling
+// Volume control from WebSocket
 ipcRenderer.on('set-volume', (event, volume) => {
   console.log('Setting volume to:', volume);
   if (audio) {
@@ -67,25 +42,27 @@ ipcRenderer.on('toggle-playback', () => {
       audio.play()
         .then(() => {
           console.log('Playback started successfully');
+          playbackStateManager.savePlaybackState(true);
           ipcRenderer.send('playback-status-changed', true);
         })
         .catch(err => {
           console.error('Playback error:', err);
+          playbackStateManager.savePlaybackState(false);
           ipcRenderer.send('playback-status-changed', false);
         });
     } else {
       audio.pause();
       console.log('Playback paused');
+      playbackStateManager.savePlaybackState(false);
       ipcRenderer.send('playback-status-changed', false);
     }
   }
 });
 
 // Otomatik playlist başlatma
-ipcRenderer.on('auto-play-playlist', (event, playlist) => {
-  console.log('Auto-playing playlist:', playlist);
+ipcRenderer.on('auto-play-playlist', (event, { playlist, shouldAutoPlay }) => {
+  console.log('Auto-playing playlist:', playlist, 'Should auto-play:', shouldAutoPlay);
   if (playlist && playlist.songs && playlist.songs.length > 0) {
-    const shouldAutoPlay = playbackStateManager.getPlaybackState();
     displayPlaylists();
     
     if (shouldAutoPlay) {
@@ -220,7 +197,11 @@ ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
   if (currentSong && currentSong.localPath) {
     const normalizedPath = currentSong.localPath.replace(/\\/g, '/');
     audio.src = normalizedPath;
-    audio.play().catch(err => console.error('Playback error:', err));
+    
+    const shouldAutoPlay = playbackStateManager.getPlaybackState();
+    if (shouldAutoPlay) {
+      audio.play().catch(err => console.error('Playback error:', err));
+    }
     
     // Şarkı değiştiğinde görsel bilgileri güncelle
     displayPlaylists();
