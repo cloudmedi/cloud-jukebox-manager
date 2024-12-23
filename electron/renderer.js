@@ -60,10 +60,9 @@ ipcRenderer.on('toggle-playback', () => {
 });
 
 // Otomatik playlist başlatma
-ipcRenderer.on('auto-play-playlist', (event, playlist) => {
-  console.log('Auto-playing playlist:', playlist);
+ipcRenderer.on('auto-play-playlist', (event, { playlist, shouldAutoPlay }) => {
+  console.log('Auto-playing playlist:', playlist, 'Should auto-play:', shouldAutoPlay);
   if (playlist && playlist.songs && playlist.songs.length > 0) {
-    const shouldAutoPlay = playbackStateManager.getPlaybackState();
     displayPlaylists();
     
     if (shouldAutoPlay) {
