@@ -1,4 +1,5 @@
 const os = require('os');
+const apiService = require('./apiService');
 
 function getDeviceInfo() {
   return {
@@ -20,7 +21,21 @@ function generateToken() {
   return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
+async function registerDeviceToken() {
+  const token = generateToken();
+  const deviceInfo = getDeviceInfo();
+  
+  try {
+    await apiService.registerToken(token, deviceInfo);
+    return token;
+  } catch (error) {
+    console.error('Error registering device token:', error);
+    throw error;
+  }
+}
+
 module.exports = {
   getDeviceInfo,
-  generateToken
+  generateToken,
+  registerDeviceToken
 };

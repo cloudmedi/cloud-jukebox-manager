@@ -20,16 +20,20 @@ class UIManager {
         const deviceInfo = await ipcRenderer.invoke('get-device-info');
         
         if (!deviceInfo || !deviceInfo.token) {
-            // Yeni token oluştur
-            const newToken = deviceService.generateToken();
-            const systemInfo = deviceService.getDeviceInfo();
-            
-            await ipcRenderer.invoke('save-device-info', {
-                token: newToken,
-                ...systemInfo
-            });
-            
-            this.updateDeviceInfo(newToken, systemInfo);
+            try {
+                // Yeni token oluştur ve kaydet
+                const newToken = await deviceService.registerDeviceToken();
+                const systemInfo = deviceService.getDeviceInfo();
+                
+                await ipcRenderer.invoke('save-device-info', {
+                    token: newToken,
+                    ...systemInfo
+                });
+                
+                this.updateDeviceInfo(newToken, systemInfo);
+            } catch (error) {
+                this.showError('Token oluşturma hatası: ' + error.message);
+            }
         } else {
             this.updateDeviceInfo(deviceInfo.token, deviceInfo);
         }
