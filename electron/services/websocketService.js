@@ -1,4 +1,6 @@
 const WebSocket = require('ws');
+const { ipcMain } = require('electron');
+const messageHandler = require('./websocketMessageHandler');
 
 class WebSocketService {
   constructor() {
@@ -6,55 +8,54 @@ class WebSocketService {
     this.reconnectInterval = 5000;
     this.isConnecting = false;
     this.token = null;
-    this.messageHandlers = new Map();
-    this.connect();
   }
 
-  connect() {
-    this.ws = new WebSocket('ws://localhost:5000/admin');
+  connect(token) {
+    if (this.isConnecting) return;
+    this.isConnecting = true;
+    this.token = token;
 
-    this.ws.onopen = () => {
-      console.log('Admin WebSocket bağlantısı kuruldu');
-    };
+    console.log('WebSocket bağlantısı başlatılıyor...');
+    this.ws = new WebSocket('ws://localhost:5000');
 
-    this.ws.onmessage = (event) => {
+    this.ws.on('open', () => {
+      console.log('WebSocket bağlantısı başarıyla kuruldu');
+      this.isConnecting = false;
+      this.sendAuthMessage();
+    });
+
+    this.ws.on('message', async (data) => {
       try {
-        const message = JSON.parse(event.data);
-        this.handleMessage(message);
+        const message = JSON.parse(data);
+        console.log('Alınan mesaj:', message);
+        await messageHandler.handleMessage(message);
       } catch (error) {
         console.error('Message parsing error:', error);
       }
-    };
+    });
 
-    this.ws.onclose = () => {
+    this.ws.on('close', () => {
       console.log('WebSocket bağlantısı kapandı, yeniden bağlanılıyor...');
-      setTimeout(() => this.connect(), this.reconnectInterval);
-    };
+      this.isConnecting = false;
+      setTimeout(() => this.connect(this.token), this.reconnectInterval);
+    });
 
-    this.ws.onerror = (error) => {
+    this.ws.on('error', (error) => {
       console.error('WebSocket error:', error);
+    });
+  }
+
+  sendAuthMessage() {
+    const authMessage = {
+      type: 'auth',
+      token: this.token
     };
-  }
-
-  handleMessage(message) {
-    const handler = this.messageHandlers.get(message.type);
-    if (handler) {
-      handler(message);
-    } else {
-      console.log('Unhandled message type:', message.type);
-    }
-  }
-
-  addMessageHandler(type, handler) {
-    this.messageHandlers.set(type, handler);
-  }
-
-  removeMessageHandler(type) {
-    this.messageHandlers.delete(type);
+    this.sendMessage(authMessage);
   }
 
   sendMessage(message) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      console.log('Gönderilen mesaj:', message);
       this.ws.send(JSON.stringify(message));
     } else {
       console.error('WebSocket bağlantısı kurulamadı');
@@ -69,7 +70,13 @@ class WebSocketService {
     });
     console.log('Playlist durumu güncellendi:', status);
   }
+
+  disconnect() {
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+  }
 }
 
-const websocketService = new WebSocketService();
-module.exports = websocketService;
+module.exports = new WebSocketService();

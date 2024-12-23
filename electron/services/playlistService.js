@@ -1,4 +1,4 @@
-const WebSocket = require('ws');
+const { app } = require('electron');
 const Store = require('electron-store');
 const path = require('path');
 const fs = require('fs');
@@ -39,10 +39,7 @@ class PlaylistService {
     
     if (!message || !message.data) {
       console.error('Geçersiz playlist mesajı:', message);
-      websocketService.sendMessage({
-        type: 'playlistStatus',
-        status: 'error'
-      });
+      websocketService.updatePlaylistStatus('error', message.data?._id);
       return;
     }
     
@@ -56,11 +53,7 @@ class PlaylistService {
       console.log('Playlist indirme başlatılıyor:', playlist._id);
       
       // İndirme başladığında durumu güncelle
-      websocketService.sendMessage({
-        type: 'playlistStatus',
-        status: 'loading',
-        playlistId: playlist._id
-      });
+      websocketService.updatePlaylistStatus('loading', playlist._id);
       
       this.store.set(`download.${playlist._id}`, {
         status: 'downloading',
@@ -98,11 +91,7 @@ class PlaylistService {
           
         } catch (error) {
           console.error(`Şarkı indirme hatası (${song.name}):`, error);
-          websocketService.sendMessage({
-            type: 'playlistStatus',
-            status: 'error',
-            playlistId: playlist._id
-          });
+          websocketService.updatePlaylistStatus('error', playlist._id);
           return;
         }
       }
@@ -115,22 +104,13 @@ class PlaylistService {
       });
 
       // İndirme tamamlandığında durumu güncelle
-      websocketService.sendMessage({
-        type: 'playlistStatus',
-        status: 'loaded',
-        playlistId: playlist._id
-      });
-      
+      websocketService.updatePlaylistStatus('loaded', playlist._id);
       console.log('Playlist başarıyla indirildi:', playlist._id);
 
       return true;
     } catch (error) {
       console.error('Playlist indirme hatası:', error);
-      websocketService.sendMessage({
-        type: 'playlistStatus',
-        status: 'error',
-        playlistId: playlist._id
-      });
+      websocketService.updatePlaylistStatus('error', playlist._id);
       throw error;
     }
   }
