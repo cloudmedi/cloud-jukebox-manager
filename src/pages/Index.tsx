@@ -1,13 +1,11 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Plus, Music2 } from "lucide-react";
+import { Plus } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { PlaylistCard } from "@/components/playlists/PlaylistCard";
-import { useToast } from "@/hooks/use-toast";
 
 const Index = () => {
   const navigate = useNavigate();
-  const { toast } = useToast();
 
   const { data: playlists, isLoading } = useQuery({
     queryKey: ["playlists"],
@@ -70,16 +68,6 @@ const Index = () => {
           <PlaylistCard
             key={playlist._id}
             playlist={playlist}
-            onDelete={(id) => {
-              toast({
-                title: "Playlist silindi",
-                description: "Playlist başarıyla silindi.",
-              });
-            }}
-            onEdit={(id) => navigate(`/playlists/${id}/edit`)}
-            onPlay={(id) => {
-              console.log("Playing playlist:", id);
-            }}
           />
         ))}
       </div>
