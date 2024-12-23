@@ -18,6 +18,18 @@ export interface Device {
     artist: string;
   };
   groupId?: string;
+  deviceInfo?: {
+    hostname: string;
+    platform: string;
+    arch: string;
+    cpus: string;
+    totalMemory: string;
+    freeMemory: string;
+    osVersion: string;
+    networkInterfaces: string[];
+  };
+  createdAt: string;
+  updatedAt: string;
 }
 
 class DeviceService {
