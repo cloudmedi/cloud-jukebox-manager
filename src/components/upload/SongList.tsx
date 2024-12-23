@@ -21,23 +21,36 @@ const SongList = () => {
   const queryClient = useQueryClient();
 
   const fetchSongs = async ({ pageParam = 1 }) => {
-    const params = new URLSearchParams({
-      page: pageParam.toString(),
-      limit: ITEMS_PER_PAGE.toString(),
-    });
+    try {
+      const params = new URLSearchParams({
+        page: pageParam.toString(),
+        limit: ITEMS_PER_PAGE.toString(),
+      });
 
-    if (searchTerm) {
-      params.append("search", searchTerm);
-    }
-    if (selectedGenre !== "All") {
-      params.append("genre", selectedGenre);
-    }
+      if (searchTerm) {
+        params.append("search", searchTerm);
+      }
+      if (selectedGenre !== "All") {
+        params.append("genre", selectedGenre);
+      }
 
-    const response = await fetch(
-      `http://localhost:5000/api/songs?${params.toString()}`
-    );
-    if (!response.ok) throw new Error("Failed to fetch songs");
-    return response.json();
+      console.log("Fetching songs with params:", params.toString());
+
+      const response = await fetch(
+        `http://localhost:5000/api/songs?${params.toString()}`
+      );
+      
+      if (!response.ok) {
+        throw new Error("Failed to fetch songs");
+      }
+      
+      const data = await response.json();
+      console.log("Fetched songs data:", data);
+      return data;
+    } catch (error) {
+      console.error("Error fetching songs:", error);
+      throw error;
+    }
   };
 
   const {
@@ -47,6 +60,7 @@ const SongList = () => {
     hasNextPage,
     isFetchingNextPage,
     refetch,
+    error
   } = useInfiniteQuery({
     queryKey: ["songs", searchTerm, selectedGenre],
     queryFn: fetchSongs,
@@ -78,7 +92,6 @@ const SongList = () => {
     }
   };
 
-  // Load more when scrolling to the bottom
   const loadMoreRef = useCallback((node: any) => {
     if (node !== null) {
       ref(node);
@@ -88,14 +101,22 @@ const SongList = () => {
     }
   }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage, ref]);
 
-  // Güvenli bir şekilde songs dizisini al
+  // Safely get the songs array
   const allSongs = data?.pages?.flatMap((page) => page.songs || []) ?? [];
   
-  // Güvenli bir şekilde uniqueGenres hesapla
+  // Safely calculate unique genres
   const uniqueGenres = ["All"];
   if (allSongs && allSongs.length > 0) {
     const genres = new Set(allSongs.filter(song => song && song.genre).map(song => song.genre));
     uniqueGenres.push(...Array.from(genres).sort());
+  }
+
+  if (error) {
+    return (
+      <div className="p-4 text-center text-red-500">
+        Şarkılar yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.
+      </div>
+    );
   }
 
   if (isLoading) {
@@ -121,6 +142,23 @@ const SongList = () => {
               ))}
             </TableBody>
           </Table>
+        </div>
+      </div>
+    );
+  }
+
+  if (allSongs.length === 0) {
+    return (
+      <div className="space-y-4">
+        <SongFilters
+          searchTerm={searchTerm}
+          onSearchChange={setSearchTerm}
+          selectedGenre={selectedGenre}
+          onGenreChange={setSelectedGenre}
+          genres={uniqueGenres}
+        />
+        <div className="text-center py-8 text-muted-foreground">
+          Henüz hiç şarkı yüklenmemiş veya arama kriterlerine uygun şarkı bulunamadı.
         </div>
       </div>
     );
