@@ -20,9 +20,7 @@ export const scheduleFormSchema = z.object({
   .refine((data) => data.devices.length > 0 || data.groups.length > 0, {
     message: "En az bir cihaz veya grup seçilmelidir",
   }),
-}).refine((data) => {
-  return data.endDate > data.startDate;
-}, {
+}).refine((data) => data.endDate > data.startDate, {
   message: "Bitiş tarihi başlangıç tarihinden sonra olmalıdır",
-  path: ["endDate"], // This tells Zod to show the error on the endDate field
+  path: ["endDate"],
 });

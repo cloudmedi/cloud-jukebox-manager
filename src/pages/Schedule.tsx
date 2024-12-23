@@ -30,23 +30,13 @@ const Schedule = () => {
 
   const handleDateSelect = (selectInfo: any) => {
     const selectedDate = new Date(selectInfo.start);
-    // Seçilen tarihin saat bilgisini koru
-    const hours = selectedDate.getHours();
-    const minutes = selectedDate.getMinutes();
-    
-    // Eğer saat 0:00 ise, varsayılan olarak şu anki saati kullan
-    if (hours === 0 && minutes === 0) {
-      const now = new Date();
-      selectedDate.setHours(now.getHours(), now.getMinutes());
-    }
-    
     setSelectedDate(selectedDate);
     setIsDialogOpen(true);
   };
 
-  const handleScheduleCreate = async () => {
+  const handleScheduleCreate = () => {
     setIsDialogOpen(false);
-    toast.success("Zamanlama başarıyla oluşturuldu");
+    setSelectedDate(null);
   };
 
   const events = schedules?.map((schedule: any) => ({
@@ -130,9 +120,11 @@ const Schedule = () => {
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Playlist Zamanla</DialogTitle>
-            <DialogDescription>
-              Seçilen tarih: {selectedDate ? format(selectedDate, "dd MMM yyyy HH:mm", { locale: tr }) : ""}
-            </DialogDescription>
+            {selectedDate && (
+              <DialogDescription>
+                Seçilen tarih: {format(selectedDate, "dd MMM yyyy HH:mm", { locale: tr })}
+              </DialogDescription>
+            )}
           </DialogHeader>
           <PlaylistScheduleForm 
             initialDate={selectedDate} 
