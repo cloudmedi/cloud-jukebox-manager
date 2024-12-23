@@ -19,7 +19,9 @@ ipcRenderer.on('auto-play-playlist', (event, playlist) => {
     
     // Eğer playlist ID'leri eşleşiyorsa, kaydedilen durumu kullan
     const shouldAutoPlay = playbackState.playlistId === playlist._id ? 
-      playbackState.isPlaying : true;
+      playbackState.isPlaying : false; // Varsayılan olarak çalma
+    
+    console.log('Should auto-play:', shouldAutoPlay, 'Playback state:', playbackState);
     
     displayPlaylists();
     
@@ -232,3 +234,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Diğer event listener'lar
+
