@@ -199,8 +199,20 @@ router.post('/bulk/playlist', async (req, res) => {
       }
     );
 
+    // WebSocket üzerinden her cihaza playlist'i gönder
+    const devices = await Device.find({ _id: { $in: deviceIds } });
+    
+    for (const device of devices) {
+      req.wss.sendToDevice(device.token, {
+        type: 'command',
+        command: 'loadPlaylist',
+        playlistId: playlistId
+      });
+    }
+
     res.json({ message: 'Playlist başarıyla atandı' });
   } catch (error) {
+    console.error('Bulk playlist assignment error:', error);
     res.status(500).json({ message: error.message });
   }
 });
