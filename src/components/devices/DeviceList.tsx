@@ -7,7 +7,12 @@ import { DeviceFilters } from "./DeviceFilters";
 import { BulkActionsMenu } from "./bulk-actions/BulkActionsMenu";
 import websocketService from "@/services/websocketService";
 import { Device } from "@/services/deviceService";
-import { toast } from "sonner";
+import { 
+  showDeviceOfflineNotification, 
+  showVolumeWarning, 
+  showPlaylistError,
+  VOLUME_THRESHOLD 
+} from "@/utils/notificationUtils";
 
 export const DeviceList = () => {
   const queryClient = useQueryClient();
@@ -37,8 +42,19 @@ export const DeviceList = () => {
 
       const updatedDevices = currentDevices.map(device => {
         if (device.token === data.token) {
-          if (device.isOnline !== data.isOnline) {
-            toast.info(`${device.name} ${data.isOnline ? 'çevrimiçi' : 'çevrimdışı'} oldu`);
+          // Check if device went offline
+          if (device.isOnline && !data.isOnline) {
+            showDeviceOfflineNotification(device.name);
+          }
+
+          // Check volume threshold
+          if (data.volume && data.volume >= VOLUME_THRESHOLD) {
+            showVolumeWarning(device.name, data.volume);
+          }
+
+          // Check playlist loading errors
+          if (data.playlistStatus === 'error') {
+            showPlaylistError(device.name, 'Playlist yüklenemedi');
           }
           
           return { 

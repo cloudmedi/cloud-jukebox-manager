@@ -1,4 +1,5 @@
 const Device = require('../models/Device');
+const Notification = require('../models/Notification');
 
 const restartDevice = async (req, res) => {
   try {
@@ -15,6 +16,13 @@ const restartDevice = async (req, res) => {
     if (sent) {
       res.json({ message: 'Cihaz yeniden başlatılıyor' });
     } else {
+      // Create offline notification
+      await Notification.create({
+        type: 'device',
+        title: 'Cihaz Çevrimdışı',
+        message: `${device.name} cihazı çevrimdışı olduğu için komut gönderilemedi`,
+        read: false
+      });
       res.status(404).json({ message: 'Cihaz çevrimiçi değil' });
     }
   } catch (error) {
@@ -29,14 +37,26 @@ const setVolume = async (req, res) => {
       return res.status(404).json({ message: 'Cihaz bulunamadı' });
     }
 
+    const volume = req.body.volume;
     const sent = req.wss.sendToDevice(device.token, {
       type: 'command',
       command: 'setVolume',
-      volume: req.body.volume
+      volume
     });
 
     if (sent) {
-      await device.setVolume(req.body.volume);
+      await device.setVolume(volume);
+      
+      // Check volume threshold
+      if (volume >= 80) {
+        await Notification.create({
+          type: 'device',
+          title: 'Yüksek Ses Seviyesi',
+          message: `${device.name} cihazının ses seviyesi ${volume}% seviyesine ayarlandı`,
+          read: false
+        });
+      }
+      
       res.json({ message: 'Ses seviyesi güncellendi' });
     } else {
       res.status(404).json({ message: 'Cihaz çevrimiçi değil' });

@@ -1,4 +1,5 @@
 const Device = require('../models/Device');
+const Notification = require('../models/Notification');
 
 const bulkAssignPlaylist = async (req, res) => {
   try {
@@ -19,11 +20,21 @@ const bulkAssignPlaylist = async (req, res) => {
     const devices = await Device.find({ _id: { $in: deviceIds } });
     
     for (const device of devices) {
-      req.wss.sendToDevice(device.token, {
+      const sent = req.wss.sendToDevice(device.token, {
         type: 'command',
         command: 'loadPlaylist',
         playlistId: playlistId
       });
+
+      if (!sent) {
+        // Create notification for offline devices
+        await Notification.create({
+          type: 'playlist',
+          title: 'Playlist Yükleme Hatası',
+          message: `${device.name} cihazı çevrimdışı olduğu için playlist yüklenemedi`,
+          read: false
+        });
+      }
     }
 
     res.json({ message: 'Playlist başarıyla atandı' });
