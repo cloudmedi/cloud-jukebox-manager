@@ -5,6 +5,11 @@ const audio = document.getElementById('audioPlayer');
 const fs = require('fs');
 const path = require('path');
 
+// Close button event listener
+document.getElementById('closeButton').addEventListener('click', () => {
+    window.close();
+});
+
 // Initialize volume
 audio.volume = 0.7; // 70%
 
