@@ -89,12 +89,12 @@ const SongList = () => {
   }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage, ref]);
 
   // Güvenli bir şekilde songs dizisini al
-  const allSongs = data?.pages?.flatMap((page) => page.songs) ?? [];
+  const allSongs = data?.pages?.flatMap((page) => page.songs || []) ?? [];
   
   // Güvenli bir şekilde uniqueGenres hesapla
   const uniqueGenres = ["All"];
-  if (allSongs.length > 0) {
-    const genres = new Set(allSongs.map(song => song?.genre).filter(Boolean));
+  if (allSongs && allSongs.length > 0) {
+    const genres = new Set(allSongs.filter(song => song && song.genre).map(song => song.genre));
     uniqueGenres.push(...Array.from(genres).sort());
   }
 
@@ -147,7 +147,7 @@ const SongList = () => {
           <SongTableHeader />
           <TableBody>
             {allSongs.map((song) => (
-              <SongTableRow
+              song && <SongTableRow
                 key={song._id}
                 song={song}
                 onEdit={setEditingSong}
