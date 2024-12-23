@@ -11,7 +11,7 @@ export interface Song {
   filePath: string;
   artwork: string | null;
   status?: 'active' | 'inactive';
-  localPath?: string;
+  createdBy: string;
   updatedAt?: string;
   __v?: number;
 }

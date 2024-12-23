@@ -16,7 +16,7 @@ const SongList = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  const { data: songsData, isLoading, error } = useQuery({
+  const { data: songsResponse, isLoading, error } = useQuery({
     queryKey: ["songs", searchTerm, selectedGenre],
     queryFn: async () => {
       try {
@@ -38,7 +38,7 @@ const SongList = () => {
     }
   });
 
-  const songs = songsData?.songs || [];
+  const songs = songsResponse?.songs || [];
 
   const handleDelete = async (id: string) => {
     try {
