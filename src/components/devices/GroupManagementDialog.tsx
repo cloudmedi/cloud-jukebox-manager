@@ -14,7 +14,7 @@ interface GroupManagementDialogProps {
   isOpen: boolean;
   onClose: () => void;
   currentGroupId: string | null;
-  onGroupChange: (groupId: string | null) => void;
+  onGroupChange: (groupId: string | null) => Promise<void>;
 }
 
 const GroupManagementDialog = ({
@@ -26,6 +26,10 @@ const GroupManagementDialog = ({
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(currentGroupId);
   const [isSaving, setIsSaving] = useState(false);
 
+  useEffect(() => {
+    setSelectedGroupId(currentGroupId);
+  }, [currentGroupId]);
+
   const { data: groups = [] } = useQuery({
     queryKey: ["device-groups"],
     queryFn: async () => {
@@ -35,16 +39,10 @@ const GroupManagementDialog = ({
     },
   });
 
-  useEffect(() => {
-    setSelectedGroupId(currentGroupId);
-  }, [currentGroupId]);
-
   const handleSave = async () => {
     try {
       setIsSaving(true);
       await onGroupChange(selectedGroupId);
-      toast.success("Grup başarıyla güncellendi");
-      onClose();
     } catch (error) {
       console.error("Grup güncelleme hatası:", error);
       toast.error("Grup güncellenirken bir hata oluştu");

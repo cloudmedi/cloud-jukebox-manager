@@ -123,7 +123,7 @@ export const deviceService = {
       }
 
       const data = await response.json();
-      console.log('Group update response:', data); // Debug log
+      console.log('Group update response:', data);
       
       toast.success('Cihaz grubu güncellendi');
     } catch (error) {

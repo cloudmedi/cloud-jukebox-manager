@@ -99,8 +99,9 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
   const handleGroupChange = async (groupId: string | null) => {
     try {
       await deviceService.updateGroup(device._id, groupId);
-      setIsGroupDialogOpen(false);
       queryClient.invalidateQueries({ queryKey: ['devices'] });
+      queryClient.invalidateQueries({ queryKey: ['device-groups'] });
+      setIsGroupDialogOpen(false);
     } catch (error) {
       console.error('Group management error:', error);
     }
