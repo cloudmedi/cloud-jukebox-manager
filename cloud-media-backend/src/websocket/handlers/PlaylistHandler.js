@@ -1,4 +1,3 @@
-const Playlist = require('../../models/Playlist');
 const Device = require('../../models/Device');
 const DeviceGroup = require('../../models/DeviceGroup');
 
@@ -62,6 +61,8 @@ class PlaylistHandler {
 
   async handlePlaylistStatus(message, deviceToken) {
     try {
+      console.log('Handling playlist status update:', message, 'for device:', deviceToken);
+      
       const { status, playlistId } = message;
       const device = await Device.findOne({ token: deviceToken });
       
@@ -71,6 +72,8 @@ class PlaylistHandler {
         });
         
         console.log(`Updated playlist status for device ${deviceToken} to ${status}`);
+      } else {
+        console.error('Device not found for token:', deviceToken);
       }
     } catch (error) {
       console.error('Error updating playlist status:', error);

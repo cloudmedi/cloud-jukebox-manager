@@ -1,8 +1,9 @@
-const QueueManager = require('./audio/QueueManager');
-const PlaybackState = require('./audio/PlaybackState');
-const path = require('path');
+const { app } = require('electron');
 const Store = require('electron-store');
-const audioPlayer = require('./audioPlayer');
+const path = require('path');
+const fs = require('fs');
+const axios = require('axios');
+const websocketService = require('./websocketService');
 
 class PlaylistService {
   constructor() {
@@ -26,8 +27,6 @@ class PlaylistService {
         console.log('Creating directory:', dir);
         fs.mkdirSync(dir, { recursive: true });
         console.log('Directory created successfully');
-      } else {
-        console.log('Directory already exists:', dir);
       }
     } catch (error) {
       console.error('Directory creation error:', error);
@@ -40,12 +39,7 @@ class PlaylistService {
     
     if (!message || !message.data) {
       console.error('Geçersiz playlist mesajı:', message);
-      if (ws) {
-        ws.send(JSON.stringify({
-          type: 'downloadProgress',
-          error: 'Geçersiz playlist mesajı',
-        }));
-      }
+      websocketService.updatePlaylistStatus('error', message.data?._id);
       return;
     }
     
@@ -54,10 +48,12 @@ class PlaylistService {
     
     try {
       const playlistPath = path.join(this.downloadPath, playlist._id);
-      console.log('Playlist klasör yolu:', playlistPath);
       this.ensureDirectoryExists(playlistPath);
       
       console.log('Playlist indirme başlatılıyor:', playlist._id);
+      
+      // İndirme başladığında durumu güncelle
+      websocketService.updatePlaylistStatus('loading', playlist._id);
       
       this.store.set(`download.${playlist._id}`, {
         status: 'downloading',
@@ -95,21 +91,7 @@ class PlaylistService {
           
         } catch (error) {
           console.error(`Şarkı indirme hatası (${song.name}):`, error);
-          if (ws) {
-            ws.send(JSON.stringify({
-              type: 'downloadProgress',
-              songId: song._id,
-              songName: song.name,
-              error: `İndirme hatası: ${error.message}`
-            }));
-          }
-          
-          // İndirme hatası durumunda sunucuya bildir
-          ws.send(JSON.stringify({
-            type: 'playlistStatus',
-            status: 'error',
-            playlistId: playlist._id
-          }));
+          websocketService.updatePlaylistStatus('error', playlist._id);
           return;
         }
       }
@@ -121,36 +103,14 @@ class PlaylistService {
         completedSongs: playlist.songs.map(s => s._id)
       });
 
-      // Sunucuya yükleme tamamlandı bilgisi gönder
-      ws.send(JSON.stringify({
-        type: 'playlistStatus',
-        status: 'loaded',
-        playlistId: playlist._id
-      }));
-
-      if (ws) {
-        ws.send(JSON.stringify({
-          type: 'playlistReady',
-          playlistId: playlist._id
-        }));
-      }
+      // İndirme tamamlandığında durumu güncelle
+      websocketService.updatePlaylistStatus('loaded', playlist._id);
+      console.log('Playlist başarıyla indirildi:', playlist._id);
 
       return true;
     } catch (error) {
       console.error('Playlist indirme hatası:', error);
-      if (ws) {
-        ws.send(JSON.stringify({
-          type: 'downloadProgress',
-          error: `Playlist indirme hatası: ${error.message}`
-        }));
-        
-        // Genel hata durumunda sunucuya bildir
-        ws.send(JSON.stringify({
-          type: 'playlistStatus',
-          status: 'error',
-          playlistId: playlist._id
-        }));
-      }
+      websocketService.updatePlaylistStatus('error', playlist._id);
       throw error;
     }
   }

@@ -55,8 +55,20 @@ class WebSocketService {
 
   sendMessage(message) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      console.log('Gönderilen mesaj:', message);
       this.ws.send(JSON.stringify(message));
+    } else {
+      console.error('WebSocket bağlantısı kurulamadı');
     }
+  }
+
+  updatePlaylistStatus(status, playlistId) {
+    this.sendMessage({
+      type: 'playlistStatus',
+      status: status,
+      playlistId: playlistId
+    });
+    console.log('Playlist durumu güncellendi:', status);
   }
 
   disconnect() {
