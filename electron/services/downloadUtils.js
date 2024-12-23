@@ -1,14 +1,20 @@
+const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-const axios = require('axios');
+const { app } = require('electron');
 
-function ensureDirectoryExists(dir) {
+const ensureDirectoryExists = (dir) => {
   if (!fs.existsSync(dir)) {
     fs.mkdirSync(dir, { recursive: true });
   }
-}
+};
 
-async function downloadFile(url, filePath, onProgress) {
+const getDownloadPath = () => {
+  const userDataPath = app.getPath('userData');
+  return path.join(userDataPath, 'downloads');
+};
+
+const downloadFile = async (url, filePath, onProgress) => {
   try {
     console.log('Downloading file:', url);
     const downloadPath = path.dirname(filePath);
@@ -50,9 +56,10 @@ async function downloadFile(url, filePath, onProgress) {
     console.error('Download failed:', error);
     throw error;
   }
-}
+};
 
 module.exports = {
   downloadFile,
+  getDownloadPath,
   ensureDirectoryExists
 };
