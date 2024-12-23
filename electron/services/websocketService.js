@@ -1,5 +1,3 @@
-const WebSocket = require('ws');
-
 class WebSocketService {
   constructor() {
     this.ws = null;
@@ -72,4 +70,4 @@ class WebSocketService {
 }
 
 const websocketService = new WebSocketService();
-module.exports = websocketService;
+export default websocketService;
