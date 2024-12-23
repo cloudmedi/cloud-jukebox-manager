@@ -1,21 +1,20 @@
-class WebSocketService {
-  private static instance: WebSocketService;
-  private ws: WebSocket | null = null;
-  private messageHandlers: Map<string, (data: any) => void> = new Map();
+const WebSocket = require('ws');
+const { BrowserWindow } = require('electron');
 
-  private constructor() {
+class WebSocketService {
+  constructor() {
+    if (WebSocketService.instance) {
+      return WebSocketService.instance;
+    }
+    WebSocketService.instance = this;
+    
+    this.ws = null;
+    this.messageHandlers = new Map();
     this.connect();
     this.setupDefaultHandlers();
   }
 
-  public static getInstance(): WebSocketService {
-    if (!WebSocketService.instance) {
-      WebSocketService.instance = new WebSocketService();
-    }
-    return WebSocketService.instance;
-  }
-
-  private setupDefaultHandlers() {
+  setupDefaultHandlers() {
     // Auth mesaj handler'ı
     this.addMessageHandler('auth', (message) => {
       console.log('Auth başarılı:', message);
@@ -36,21 +35,23 @@ class WebSocketService {
     // Playlist mesaj handler'ı
     this.addMessageHandler('playlist', (message) => {
       console.log('Playlist alındı:', message);
-      const { ipcRenderer } = require('electron');
+      const mainWindow = BrowserWindow.getAllWindows()[0];
       
-      // Playlist'i renderer process'e gönder
-      ipcRenderer.send('playlist-received', message.data);
-      
-      // Playlist durumunu güncelle
-      this.sendMessage({
-        type: 'playlistStatus',
-        status: 'loading',
-        playlistId: message.data._id
-      });
+      if (mainWindow) {
+        // Playlist'i renderer process'e gönder
+        mainWindow.webContents.send('playlist-received', message.data);
+        
+        // Playlist durumunu güncelle
+        this.sendMessage({
+          type: 'playlistStatus',
+          status: 'loading',
+          playlistId: message.data._id
+        });
+      }
     });
   }
 
-  private connect() {
+  connect() {
     this.ws = new WebSocket('ws://localhost:5000/admin');
 
     this.ws.onopen = () => {
@@ -76,7 +77,7 @@ class WebSocketService {
     };
   }
 
-  private handleMessage(message: any) {
+  handleMessage(message) {
     const handler = this.messageHandlers.get(message.type);
     if (handler) {
       handler(message);
@@ -85,15 +86,15 @@ class WebSocketService {
     }
   }
 
-  public addMessageHandler(type: string, handler: (data: any) => void) {
+  addMessageHandler(type, handler) {
     this.messageHandlers.set(type, handler);
   }
 
-  public removeMessageHandler(type: string) {
+  removeMessageHandler(type) {
     this.messageHandlers.delete(type);
   }
 
-  public sendMessage(message: any) {
+  sendMessage(message) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message));
     } else {
@@ -102,5 +103,6 @@ class WebSocketService {
   }
 }
 
-const websocketService = WebSocketService.getInstance();
-export default websocketService;
+// Singleton instance
+const websocketService = new WebSocketService();
+module.exports = websocketService;
