@@ -86,14 +86,16 @@ router.delete('/:id', async (req, res) => {
     // Önce cihazın token'ını serbest bırak
     await Token.findOneAndUpdate(
       { token: device.token },
-      { isUsed: false }
+      { $set: { isUsed: false } }
     );
 
-    // Sonra cihazı sil
-    await device.remove();
+    // Sonra cihazı sil - device.remove() yerine deleteOne() kullan
+    await Device.deleteOne({ _id: device._id });
+    
     res.json({ message: 'Cihaz silindi' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Device deletion error:', error);
+    res.status(500).json({ message: error.message || 'Cihaz silinirken bir hata oluştu' });
   }
 });
 
