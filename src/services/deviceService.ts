@@ -117,19 +117,19 @@ export const deviceService = {
         body: JSON.stringify({ groupId })
       });
       
-      if (!response.ok) throw new Error('Grup güncellenemedi');
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || 'Grup güncellenemedi');
+      }
+
+      const data = await response.json();
+      console.log('Group update response:', data); // Debug log
       
-      toast({
-        title: "Başarılı",
-        description: "Cihaz grubu güncellendi",
-      });
+      toast.success('Cihaz grubu güncellendi');
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Hata",
-        description: "Grup güncellenemedi",
-      });
-      throw error;
+      console.error('Group update error:', error);
+      toast.error('Grup güncellenemedi');
+      throw error; // Hata fırlatılıyor ki üst katmanda yakalanabilsin
     }
   },
 
