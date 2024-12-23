@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { SongList } from "@/components/upload/SongList";
+import SongList from "@/components/upload/SongList";
 import SongUploader from "@/components/upload/SongUploader";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";

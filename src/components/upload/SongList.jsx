@@ -1,10 +1,9 @@
 import { useState } from "react";
-import { Song } from "@/types/song";
 import { SongTableHeader } from "./SongTableHeader";
 import { SongTableRow } from "./SongTableRow";
 import { Table, TableBody } from "@/components/ui/table";
 
-export const SongList = ({
+const SongList = ({
   songs,
   onDelete,
   onEdit,
@@ -65,3 +64,5 @@ export const SongList = ({
     </div>
   );
 };
+
+export default SongList;
