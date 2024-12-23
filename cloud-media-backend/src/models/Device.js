@@ -42,6 +42,12 @@ const deviceSchema = new mongoose.Schema({
     ref: 'Playlist',
     default: null
   },
+  currentSong: {
+    name: String,
+    artist: String,
+    duration: Number,
+    playedAt: Date
+  },
   playlistStatus: {
     type: String,
     enum: ['loaded', 'loading', 'error', null],

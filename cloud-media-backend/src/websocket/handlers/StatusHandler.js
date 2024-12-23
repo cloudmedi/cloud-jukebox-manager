@@ -15,7 +15,13 @@ class StatusHandler {
 
       // Playlist durumunu güncelle
       await Device.findByIdAndUpdate(device._id, {
-        playlistStatus: message.status
+        playlistStatus: message.status,
+        currentSong: message.currentSong ? {
+          name: message.currentSong.name,
+          artist: message.currentSong.artist,
+          duration: message.currentSong.duration,
+          playedAt: new Date()
+        } : null
       });
 
       // Admin paneline bildir
@@ -23,6 +29,7 @@ class StatusHandler {
         type: 'deviceStatus',
         token: token,
         playlistStatus: message.status,
+        currentSong: message.currentSong,
         playlistId: message.playlistId
       });
 
