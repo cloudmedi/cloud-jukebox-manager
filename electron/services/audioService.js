@@ -11,6 +11,39 @@ class AudioService {
     this.queue = [];
     this.isPlaying = false;
     this.setupIpcHandlers();
+    this.setupWebSocketHandlers();
+  }
+
+  setupWebSocketHandlers() {
+    websocketService.addMessageHandler('command', (message) => {
+      console.log('Received command:', message);
+      switch (message.command) {
+        case 'setVolume':
+          this.handleVolumeChange(message.volume);
+          break;
+        case 'restart':
+          this.handleRestart();
+          break;
+        default:
+          console.log('Unknown command:', message.command);
+      }
+    });
+  }
+
+  handleVolumeChange(volume) {
+    console.log('Setting volume to:', volume);
+    const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
+    if (mainWindow) {
+      mainWindow.webContents.send('set-volume', volume);
+    }
+  }
+
+  handleRestart() {
+    console.log('Restarting audio playback');
+    const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
+    if (mainWindow) {
+      mainWindow.webContents.send('restart-playback');
+    }
   }
 
   setupIpcHandlers() {

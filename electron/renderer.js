@@ -13,6 +13,26 @@ document.getElementById('closeButton').addEventListener('click', () => {
 // Initialize volume
 audio.volume = 0.7; // 70%
 
+// Volume control from WebSocket
+ipcRenderer.on('set-volume', (event, volume) => {
+  console.log('Setting volume to:', volume);
+  if (audio) {
+    const normalizedVolume = volume / 100;
+    audio.volume = normalizedVolume;
+    // Ses seviyesi değişikliğini WebSocket'e bildir
+    ipcRenderer.send('volume-changed', volume);
+  }
+});
+
+// Restart playback from WebSocket
+ipcRenderer.on('restart-playback', () => {
+  console.log('Restarting playback');
+  if (audio) {
+    audio.currentTime = 0;
+    audio.play().catch(err => console.error('Playback error:', err));
+  }
+});
+
 // Otomatik playlist başlatma
 ipcRenderer.on('auto-play-playlist', (event, playlist) => {
   console.log('Auto-playing playlist:', playlist);
