@@ -1,5 +1,6 @@
 import { TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useRef, useEffect } from "react";
 
 interface DeviceTableHeaderProps {
   onSelectAll: (checked: boolean) => void;
@@ -12,27 +13,32 @@ export const DeviceTableHeader = ({
   allSelected,
   someSelected,
 }: DeviceTableHeaderProps) => {
+  const checkboxRef = useRef<HTMLButtonElement>(null);
+
+  useEffect(() => {
+    if (checkboxRef.current) {
+      // @ts-ignore - indeterminate exists on HTMLInputElement
+      checkboxRef.current.indeterminate = someSelected && !allSelected;
+    }
+  }, [someSelected, allSelected]);
+
   return (
     <TableHeader>
       <TableRow>
-        <TableHead className="w-[40px]">
-          <Checkbox 
-            checked={allSelected} 
+        <TableHead className="w-12">
+          <Checkbox
+            ref={checkboxRef}
+            checked={allSelected}
             onCheckedChange={onSelectAll}
-            ref={(input) => {
-              if (input) {
-                input.indeterminate = someSelected && !allSelected;
-              }
-            }}
           />
         </TableHead>
-        <TableHead>Cihaz Adı</TableHead>
+        <TableHead>Ad</TableHead>
         <TableHead>Token</TableHead>
-        <TableHead>Konum</TableHead>
+        <TableHead>Lokasyon</TableHead>
         <TableHead>IP Adresi</TableHead>
         <TableHead>Durum</TableHead>
-        <TableHead>Playlist Durumu</TableHead>
-        <TableHead>Ses Seviyesi</TableHead>
+        <TableHead>Playlist</TableHead>
+        <TableHead>Ses</TableHead>
         <TableHead>Son Görülme</TableHead>
         <TableHead className="text-right">İşlemler</TableHead>
       </TableRow>

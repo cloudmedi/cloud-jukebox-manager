@@ -183,4 +183,26 @@ router.post('/:id/emergency-stop', async (req, res) => {
   }
 });
 
+// Toplu playlist atama
+router.post('/bulk/playlist', async (req, res) => {
+  try {
+    const { deviceIds, playlistId } = req.body;
+
+    // Tüm cihazları güncelle
+    await Device.updateMany(
+      { _id: { $in: deviceIds } },
+      { 
+        $set: { 
+          activePlaylist: playlistId,
+          playlistStatus: 'loading'
+        } 
+      }
+    );
+
+    res.json({ message: 'Playlist başarıyla atandı' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router;
