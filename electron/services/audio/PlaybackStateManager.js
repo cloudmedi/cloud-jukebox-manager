@@ -16,7 +16,7 @@ class PlaybackStateManager {
   getPlaybackState() {
     const state = this.store.get('playbackState');
     console.log('Getting playback state:', state);
-    return state ? state.isPlaying : false; // Varsayılan olarak false (durmuş) döndür
+    return state ? state.isPlaying : false;
   }
 
   clearPlaybackState() {
@@ -25,4 +25,4 @@ class PlaybackStateManager {
   }
 }
 
-module.exports = new PlaybackStateManager();
+module.exports = PlaybackStateManager;
