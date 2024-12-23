@@ -23,8 +23,6 @@ ipcRenderer.on('auto-play-playlist', (event, playlist) => {
     
     console.log('Should auto-play:', shouldAutoPlay, 'Playback state:', playbackState);
     
-    displayPlaylists();
-    
     if (shouldAutoPlay) {
       console.log('Auto-playing based on saved state');
       ipcRenderer.invoke('play-playlist', playlist);
@@ -99,17 +97,14 @@ ipcRenderer.on('playlist-received', (event, playlist) => {
   
   store.set('playlists', playlists);
   
-  const shouldAutoPlay = playbackStateManager.getPlaybackState();
-  if (shouldAutoPlay) {
+  const playbackState = playbackStateManager.getPlaybackState();
+  if (playbackState.isPlaying) {
     console.log('Auto-playing new playlist:', playlist);
     ipcRenderer.invoke('play-playlist', playlist);
   } else {
     console.log('Loading new playlist without auto-play');
     ipcRenderer.invoke('load-playlist', playlist);
   }
-  
-  deleteOldPlaylists();
-  displayPlaylists();
   
   new Notification('Yeni Playlist', {
     body: `${playlist.name} playlist'i başarıyla indirildi.`
@@ -127,17 +122,17 @@ ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
   if (currentSong && currentSong.localPath) {
     const normalizedPath = currentSong.localPath.replace(/\\/g, '/');
     audio.src = normalizedPath;
-    audio.play().catch(err => console.error('Playback error:', err));
     
-    // Şarkı değiştiğinde görsel bilgileri güncelle
-    displayPlaylists();
+    // Playback durumunu kontrol et
+    const playbackState = playbackStateManager.getPlaybackState();
+    if (playbackState.isPlaying) {
+      audio.play().catch(err => console.error('Playback error:', err));
+    }
   }
 });
 
-// İlk yüklemede playlistleri göster
+// İlk yüklemede playback durumunu kontrol et
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('DOM loaded, displaying playlists');
-  displayPlaylists();
+  const playbackState = playbackStateManager.getPlaybackState();
+  console.log('Initial playback state:', playbackState);
 });
-
-// Diğer event listener'lar
