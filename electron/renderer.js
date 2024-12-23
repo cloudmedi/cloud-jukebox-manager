@@ -8,6 +8,7 @@ const currentTimeSpan = document.getElementById('currentTime');
 const durationSpan = document.getElementById('duration');
 const songTitle = document.querySelector('.song-title');
 const artistName = document.querySelector('.artist');
+const songPath = document.querySelector('.song-path');
 
 let isPlaying = false;
 let playPromise = null;
@@ -87,8 +88,10 @@ function formatTime(seconds) {
 // Handle playlist messages from main process
 ipcRenderer.on('update-player', (event, song) => {
     if (song) {
+        console.log('Received song:', song);
         songTitle.textContent = song.name;
         artistName.textContent = song.artist;
+        songPath.textContent = song.localPath;
         
         if (playPromise !== null) {
             playPromise
