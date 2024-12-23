@@ -12,7 +12,10 @@ export interface Device {
     name: string;
     songs: string[];
     artwork: string | null;
-    status: string;
+  } | null;
+  currentSong?: {
+    name: string;
+    artist: string;
   } | null;
   playlistStatus: 'loaded' | 'loading' | 'error' | null;
   groupId: string | null;
@@ -36,15 +39,6 @@ export interface DeviceGroup {
   name: string;
   description?: string;
   devices: string[];
-}
-
-export interface Song {
-  _id: string;
-  name: string;
-  artist?: string;
-  artwork?: string | null;
-  filePath?: string;
-  localPath?: string;
 }
 
 // Device service functions

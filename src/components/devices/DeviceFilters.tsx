@@ -44,7 +44,6 @@ export const DeviceFilters = ({
   groupFilter,
   setGroupFilter,
 }: DeviceFiltersProps) => {
-  // Benzersiz lokasyonları al
   const { data: devices = [] } = useQuery({
     queryKey: ['devices'],
     queryFn: async () => {
@@ -54,10 +53,6 @@ export const DeviceFilters = ({
     }
   });
 
-  // Benzersiz lokasyonları çıkar
-  const uniqueLocations = Array.from(new Set(devices.map((device: any) => device.location))).filter(Boolean);
-
-  // Grupları al
   const { data: groups = [] } = useQuery({
     queryKey: ['device-groups'],
     queryFn: async () => {
@@ -66,6 +61,9 @@ export const DeviceFilters = ({
       return response.json();
     }
   });
+
+  // Benzersiz lokasyonları çıkar
+  const uniqueLocations = Array.from(new Set(devices.map((device: any) => device.location))).filter(Boolean);
 
   return (
     <div className="flex items-center justify-between gap-4 w-full mb-4">
@@ -85,7 +83,7 @@ export const DeviceFilters = ({
             <SelectValue placeholder="Lokasyon" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Tüm Lokasyonlar</SelectItem>
+            <SelectItem value="_all">Tüm Lokasyonlar</SelectItem>
             {uniqueLocations.map((location: string) => (
               <SelectItem key={location} value={location}>
                 {location}
@@ -99,7 +97,7 @@ export const DeviceFilters = ({
             <SelectValue placeholder="Grup" />
           </SelectTrigger>
           <SelectContent>
-            <SelectItem value="">Tüm Gruplar</SelectItem>
+            <SelectItem value="_all">Tüm Gruplar</SelectItem>
             {groups.map((group: any) => (
               <SelectItem key={group._id} value={group._id}>
                 {group.name}

@@ -71,12 +71,12 @@ export const DeviceList = () => {
     }
 
     // Lokasyon filtresi
-    if (locationFilter && device.location !== locationFilter) {
+    if (locationFilter && locationFilter !== "_all" && device.location !== locationFilter) {
       return false;
     }
 
     // Grup filtresi
-    if (groupFilter && device.groupId !== groupFilter) {
+    if (groupFilter && groupFilter !== "_all" && device.groupId !== groupFilter) {
       return false;
     }
 
