@@ -4,12 +4,35 @@
     <meta charset="UTF-8">
     <title>Cloud Media Player</title>
     <link rel="stylesheet" href="styles.css">
+    <style>
+        .token-container {
+            text-align: center;
+            padding: 20px;
+            margin: 20px;
+            background: #f5f5f5;
+            border-radius: 8px;
+        }
+        .token-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #333;
+            margin: 10px 0;
+            padding: 10px;
+            background: #fff;
+            border-radius: 4px;
+        }
+        .token-info {
+            color: #666;
+            font-size: 14px;
+        }
+    </style>
 </head>
 <body>
     <div class="titlebar">
         <button class="titlebar-button close" id="closeButton">✕</button>
     </div>
     <div class="container">
+        <div id="tokenDisplay"></div>
         <div id="playlistContainer" class="playlist-container">
             <!-- Playlistler buraya eklenecek -->
         </div>

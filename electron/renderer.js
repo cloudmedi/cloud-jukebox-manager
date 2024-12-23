@@ -6,41 +6,41 @@ const playbackStateManager = require('./services/audio/PlaybackStateManager');
 
 const audio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(audio);
+const tokenDisplay = document.getElementById('tokenDisplay');
 
-// Initialize volume
-audio.volume = 0.7; // 70%
-
-// Auto-play playlist
-ipcRenderer.on('auto-play-playlist', (event, playlist) => {
-  console.log('Auto-playing playlist:', playlist);
-  if (playlist && playlist.songs && playlist.songs.length > 0) {
-    const playbackState = playbackStateManager.getPlaybackState();
-    audioHandler.setCurrentPlaylistId(playlist._id);
-    
-    // Eğer playlist ID'leri eşleşiyorsa, kaydedilen durumu kullan
-    const shouldAutoPlay = playbackState.playlistId === playlist._id ? 
-      playbackState.isPlaying : false; // Varsayılan olarak çalma
-    
-    console.log('Should auto-play:', shouldAutoPlay, 'Playback state:', playbackState);
-    
-    displayPlaylists();
-    
-    if (shouldAutoPlay) {
-      console.log('Auto-playing based on saved state');
-      ipcRenderer.invoke('play-playlist', playlist);
-    } else {
-      console.log('Not auto-playing due to saved state');
-      ipcRenderer.invoke('load-playlist', playlist);
-    }
+// Token kontrolü ve görüntüleme
+function checkAndDisplayToken() {
+  const deviceInfo = store.get('deviceInfo');
+  
+  if (deviceInfo && deviceInfo.token) {
+    // Token varsa göster
+    tokenDisplay.innerHTML = `
+      <div class="token-container">
+        <h2>Cihaz Token</h2>
+        <div class="token-value">${deviceInfo.token}</div>
+        <p class="token-info">Bu token'ı admin panelinde cihaz eklerken kullanın</p>
+      </div>
+    `;
+  } else {
+    // Token yoksa yeni token oluştur
+    ipcRenderer.invoke('generate-token').then(token => {
+      if (token) {
+        tokenDisplay.innerHTML = `
+          <div class="token-container">
+            <h2>Yeni Cihaz Token</h2>
+            <div class="token-value">${token}</div>
+            <p class="token-info">Bu token'ı admin panelinde cihaz eklerken kullanın</p>
+          </div>
+        `;
+      }
+    });
   }
-});
+}
 
-// Close button event listener
-document.getElementById('closeButton').addEventListener('click', () => {
-    window.close();
-});
+// Sayfa yüklendiğinde token kontrolü yap
+document.addEventListener('DOMContentLoaded', checkAndDisplayToken);
 
-// Volume control from WebSocket
+// Audio player and playlist handling
 ipcRenderer.on('set-volume', (event, volume) => {
   console.log('Setting volume to:', volume);
   if (audio) {
@@ -232,6 +232,3 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM loaded, displaying playlists');
   displayPlaylists();
 });
-
-// Diğer event listener'lar
-
