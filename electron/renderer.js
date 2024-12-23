@@ -3,53 +3,9 @@ const Store = require('electron-store');
 const store = new Store();
 const AudioEventHandler = require('./services/audio/AudioEventHandler');
 const playbackStateManager = require('./services/audio/PlaybackStateManager');
-const playlistHandler = require('./services/playlistHandler');
 
 const audio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(audio);
-const tokenDisplay = document.getElementById('tokenDisplay');
-const tokenStatus = document.getElementById('tokenStatus');
-
-// Token kontrolü ve görüntüleme
-async function checkAndDisplayToken() {
-  try {
-    tokenStatus.textContent = 'Token kontrol ediliyor...';
-    tokenStatus.className = 'text-yellow-500';
-
-    const deviceInfo = await ipcRenderer.invoke('check-token');
-    
-    if (deviceInfo && deviceInfo.token) {
-      tokenDisplay.textContent = `Token: ${deviceInfo.token}`;
-      tokenStatus.textContent = 'Token hazır';
-      tokenStatus.className = 'text-green-500';
-    }
-  } catch (error) {
-    tokenStatus.textContent = 'Token oluşturma hatası!';
-    tokenStatus.className = 'text-red-500';
-    console.error('Token error:', error);
-  }
-}
-
-// Token oluşturulduğunda
-ipcRenderer.on('token-created', (event, { token }) => {
-  tokenDisplay.textContent = `Yeni Token: ${token}`;
-  tokenStatus.textContent = 'Yeni token oluşturuldu';
-  tokenStatus.className = 'text-green-500';
-});
-
-// Token hatası
-ipcRenderer.on('token-error', (event, message) => {
-  tokenStatus.textContent = `Hata: ${message}`;
-  tokenStatus.className = 'text-red-500';
-});
-
-// İlk yüklemede token kontrolü yap
-document.addEventListener('DOMContentLoaded', () => {
-  checkAndDisplayToken();
-});
-
-// Initialize playlist handler
-playlistHandler;
 
 // Initialize volume
 audio.volume = 0.7; // 70%
@@ -86,27 +42,25 @@ ipcRenderer.on('toggle-playback', () => {
       audio.play()
         .then(() => {
           console.log('Playback started successfully');
-          playbackStateManager.savePlaybackState(true);
           ipcRenderer.send('playback-status-changed', true);
         })
         .catch(err => {
           console.error('Playback error:', err);
-          playbackStateManager.savePlaybackState(false);
           ipcRenderer.send('playback-status-changed', false);
         });
     } else {
       audio.pause();
       console.log('Playback paused');
-      playbackStateManager.savePlaybackState(false);
       ipcRenderer.send('playback-status-changed', false);
     }
   }
 });
 
 // Otomatik playlist başlatma
-ipcRenderer.on('auto-play-playlist', (event, { playlist, shouldAutoPlay }) => {
-  console.log('Auto-playing playlist:', playlist, 'Should auto-play:', shouldAutoPlay);
+ipcRenderer.on('auto-play-playlist', (event, playlist) => {
+  console.log('Auto-playing playlist:', playlist);
   if (playlist && playlist.songs && playlist.songs.length > 0) {
+    const shouldAutoPlay = playbackStateManager.getPlaybackState();
     displayPlaylists();
     
     if (shouldAutoPlay) {
@@ -241,11 +195,7 @@ ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
   if (currentSong && currentSong.localPath) {
     const normalizedPath = currentSong.localPath.replace(/\\/g, '/');
     audio.src = normalizedPath;
-    
-    const shouldAutoPlay = playbackStateManager.getPlaybackState();
-    if (shouldAutoPlay) {
-      audio.play().catch(err => console.error('Playback error:', err));
-    }
+    audio.play().catch(err => console.error('Playback error:', err));
     
     // Şarkı değiştiğinde görsel bilgileri güncelle
     displayPlaylists();
@@ -257,3 +207,5 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM loaded, displaying playlists');
   displayPlaylists();
 });
+
+// Diğer event listener'lar

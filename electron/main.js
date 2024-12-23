@@ -1,12 +1,12 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 const store = new Store();
 const websocketService = require('./services/websocketService');
-const { initializeTokenHandlers } = require('./services/tokenService');
-const playbackStateManager = require('./services/audio/PlaybackStateManager');
+require('./services/audioService');
 
 let mainWindow;
+let tray = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -33,18 +33,85 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   }
 
-  // Token handler'ları başlat
-  initializeTokenHandlers(mainWindow);
+  // Pencere kapatıldığında sistem tepsisine küçült
+  mainWindow.on('close', function (event) {
+    if (!app.isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+      if (tray === null) {
+        createTray();
+      }
+    }
+    return false;
+  });
 
-  // Mevcut token varsa WebSocket bağlantısını kur
+  // Uygulama başladığında son kaydedilen playlist'i kontrol et
   const deviceInfo = store.get('deviceInfo');
   if (deviceInfo && deviceInfo.token) {
     websocketService.connect(deviceInfo.token);
+    
+    const playlists = store.get('playlists', []);
+    if (playlists.length > 0) {
+      const lastPlaylist = playlists[playlists.length - 1];
+      console.log('Starting last saved playlist:', lastPlaylist.name);
+      mainWindow.webContents.on('did-finish-load', () => {
+        mainWindow.webContents.send('auto-play-playlist', lastPlaylist);
+      });
+    }
+  }
+}
+
+function createTray() {
+  try {
+    // Tray ikonu oluştur
+    const iconPath = path.join(__dirname, 'icon.png');
+    console.log('Tray icon path:', iconPath);
+    
+    tray = new Tray(iconPath);
+    
+    // Tray menüsünü oluştur
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: 'Show App',
+        click: function() {
+          mainWindow.show();
+          mainWindow.focus(); // Pencereyi ön plana getir
+        }
+      },
+      {
+        label: 'Close',
+        click: function() {
+          app.isQuitting = true;
+          app.quit();
+        }
+      }
+    ]);
+
+    // Tray ayarlarını yap
+    tray.setToolTip('Cloud Media Player');
+    tray.setContextMenu(contextMenu);
+
+    // Tray ikonuna çift tıklandığında uygulamayı göster
+    tray.on('double-click', () => {
+      mainWindow.show();
+      mainWindow.focus(); // Pencereyi ön plana getir
+    });
+    
+    // Tray ikonuna tek tıklandığında uygulamayı göster
+    tray.on('click', () => {
+      mainWindow.show();
+      mainWindow.focus(); // Pencereyi ön plana getir
+    });
+    
+    console.log('Tray created successfully');
+  } catch (error) {
+    console.error('Error creating tray:', error);
   }
 }
 
 app.whenReady().then(() => {
   createWindow();
+  createTray(); // Uygulama başladığında tray'i oluştur
 });
 
 app.on('window-all-closed', () => {
@@ -70,6 +137,8 @@ ipcMain.handle('save-device-info', async (event, deviceInfo) => {
   if (deviceInfo.token) {
     websocketService.connect(deviceInfo.token);
   }
+  
+  return deviceInfo;
 });
 
 ipcMain.handle('get-device-info', async () => {

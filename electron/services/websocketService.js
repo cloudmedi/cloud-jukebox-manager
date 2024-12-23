@@ -1,80 +1,59 @@
 const WebSocket = require('ws');
-const { BrowserWindow } = require('electron');
+const Store = require('electron-store');
+const store = new Store();
 
 class WebSocketService {
   constructor() {
-    if (WebSocketService.instance) {
-      return WebSocketService.instance;
-    }
-    WebSocketService.instance = this;
-    
     this.ws = null;
     this.messageHandlers = new Map();
     this.connect();
-    this.setupDefaultHandlers();
-  }
-
-  setupDefaultHandlers() {
-    // Auth mesaj handler'ı
-    this.addMessageHandler('auth', (message) => {
-      console.log('Auth başarılı:', message);
-      if (message.status === 'success') {
-        // Device bilgilerini güncelle
-        const { name, volume } = message.deviceInfo;
-        // Volume değişikliğini ilet
-        if (this.ws && volume !== undefined) {
-          this.sendMessage({
-            type: 'command',
-            command: 'setVolume',
-            volume: volume
-          });
-        }
-      }
-    });
-
-    // Playlist mesaj handler'ı
-    this.addMessageHandler('playlist', (message) => {
-      console.log('Playlist alındı:', message);
-      const mainWindow = BrowserWindow.getAllWindows()[0];
-      
-      if (mainWindow) {
-        // Playlist'i renderer process'e gönder
-        mainWindow.webContents.send('playlist-received', message.data);
-        
-        // Playlist durumunu güncelle
-        this.sendMessage({
-          type: 'playlistStatus',
-          status: 'loading',
-          playlistId: message.data._id
-        });
-      }
-    });
   }
 
   connect() {
-    this.ws = new WebSocket('ws://localhost:5000/admin');
+    const deviceInfo = store.get('deviceInfo');
+    if (!deviceInfo || !deviceInfo.token) {
+      console.log('No device info found');
+      return;
+    }
 
-    this.ws.onopen = () => {
-      console.log('Admin WebSocket bağlantısı kuruldu');
-    };
+    this.ws = new WebSocket('ws://localhost:5000');
 
-    this.ws.onmessage = (event) => {
+    this.ws.on('open', () => {
+      console.log('WebSocket connected');
+      this.sendAuth(deviceInfo.token);
+    });
+
+    this.ws.on('message', (data) => {
       try {
-        const message = JSON.parse(event.data);
+        const message = JSON.parse(data);
+        console.log('Received message:', message);
         this.handleMessage(message);
       } catch (error) {
-        console.error('Message parsing error:', error);
+        console.error('Error parsing message:', error);
       }
-    };
+    });
 
-    this.ws.onclose = () => {
-      console.log('WebSocket bağlantısı kapandı, yeniden bağlanılıyor...');
+    this.ws.on('close', () => {
+      console.log('WebSocket disconnected, reconnecting...');
       setTimeout(() => this.connect(), 5000);
-    };
+    });
 
-    this.ws.onerror = (error) => {
+    this.ws.on('error', (error) => {
       console.error('WebSocket error:', error);
-    };
+    });
+  }
+
+  sendAuth(token) {
+    this.sendMessage({
+      type: 'auth',
+      token: token
+    });
+  }
+
+  sendMessage(message) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(message));
+    }
   }
 
   handleMessage(message) {
@@ -93,16 +72,6 @@ class WebSocketService {
   removeMessageHandler(type) {
     this.messageHandlers.delete(type);
   }
-
-  sendMessage(message) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message));
-    } else {
-      console.error('WebSocket bağlantısı kurulamadı');
-    }
-  }
 }
 
-// Singleton instance
-const websocketService = new WebSocketService();
-module.exports = websocketService;
+module.exports = new WebSocketService();

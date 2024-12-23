@@ -24,12 +24,6 @@ class AudioEventHandler {
       playbackStateManager.savePlaybackState(false);
       ipcRenderer.send('playback-status-changed', false);
     });
-
-    this.audio.addEventListener('error', (error) => {
-      console.error('Audio error:', error);
-      playbackStateManager.savePlaybackState(false);
-      ipcRenderer.send('playback-status-changed', false);
-    });
   }
 }
 
