@@ -9,6 +9,7 @@ export interface Device {
   location: string;
   ipAddress: string;
   isOnline: boolean;
+  isPlaying?: boolean;
   volume: number;
   lastSeen: string;
   createdAt: string;
