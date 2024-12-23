@@ -6,18 +6,16 @@ export interface Device {
   ipAddress: string | null;
   isOnline: boolean;
   volume: number;
-  activePlaylist?: {
+  activePlaylist: {
     _id: string;
     name: string;
     songs: string[];
     artwork: string | null;
     status: string;
   } | null;
-  playlistStatus?: 'loaded' | 'loading' | 'error' | null;
+  playlistStatus: 'loaded' | 'loading' | 'error' | null;
   groupId: string | null;
   lastSeen: string;
-  createdAt: string;
-  updatedAt: string;
   deviceInfo?: {
     hostname: string;
     platform: string;
@@ -27,7 +25,7 @@ export interface Device {
     freeMemory: string;
     networkInterfaces: string[];
     osVersion: string;
-  } | null;
+  };
 }
 
 export interface DeviceGroup {

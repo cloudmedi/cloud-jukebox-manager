@@ -24,8 +24,7 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
       try {
         const response = await fetch("http://localhost:5000/api/devices");
         if (!response.ok) throw new Error("Cihazlar yüklenemedi");
-        const data = await response.json();
-        return data || [];
+        return response.json();
       } catch (error) {
         console.error("Cihaz yükleme hatası:", error);
         toast.error("Cihazlar yüklenirken bir hata oluştu");
@@ -41,8 +40,7 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
       try {
         const response = await fetch("http://localhost:5000/api/device-groups");
         if (!response.ok) throw new Error("Gruplar yüklenemedi");
-        const data = await response.json();
-        return data || [];
+        return response.json();
       } catch (error) {
         console.error("Grup yükleme hatası:", error);
         toast.error("Gruplar yüklenirken bir hata oluştu");
@@ -52,28 +50,20 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
     initialData: []
   });
 
-  const filteredDevices = devices.filter((device: Device) =>
+  const filteredDevices = Array.isArray(devices) ? devices.filter((device: Device) =>
     device?.name?.toLowerCase().includes(deviceSearch.toLowerCase()) ||
     device?.location?.toLowerCase().includes(deviceSearch.toLowerCase())
-  );
+  ) : [];
 
-  const filteredGroups = groups.filter((group: DeviceGroup) =>
+  const filteredGroups = Array.isArray(groups) ? groups.filter((group: DeviceGroup) =>
     group?.name?.toLowerCase().includes(groupSearch.toLowerCase())
-  );
+  ) : [];
 
   if (isDevicesLoading || isGroupsLoading) {
     return (
       <div className="space-y-4">
         <div className="h-[40px] bg-muted animate-pulse rounded-md" />
         <div className="h-[40px] bg-muted animate-pulse rounded-md" />
-      </div>
-    );
-  }
-
-  if (devicesError || groupsError) {
-    return (
-      <div className="text-red-500 p-4 text-center">
-        Veriler yüklenirken bir hata oluştu. Lütfen sayfayı yenileyin.
       </div>
     );
   }
