@@ -83,7 +83,6 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   }
 
-  // Pencere kapatıldığında sistem tepsisine küçült
   mainWindow.on('close', function (event) {
     if (!app.isQuitting) {
       event.preventDefault();
@@ -95,7 +94,6 @@ function createWindow() {
     return false;
   });
 
-  // Uygulama başladığında son kaydedilen playlist'i kontrol et
   const deviceInfo = store.get('deviceInfo');
   if (deviceInfo && deviceInfo.token) {
     websocketService.connect(deviceInfo.token);
@@ -105,12 +103,10 @@ function createWindow() {
       const lastPlaylist = playlists[playlists.length - 1];
       console.log('Starting last saved playlist:', lastPlaylist.name);
       
-      // Oynatma durumunu kontrol et
       const shouldAutoPlay = playbackStateManager.getPlaybackState();
       console.log('Should auto-play:', shouldAutoPlay);
       
       mainWindow.webContents.on('did-finish-load', () => {
-        // Oynatma durumuna göre playlist'i başlat
         mainWindow.webContents.send('auto-play-playlist', {
           playlist: lastPlaylist,
           shouldAutoPlay: shouldAutoPlay
