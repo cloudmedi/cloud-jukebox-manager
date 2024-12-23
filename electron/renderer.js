@@ -10,6 +10,24 @@ const audioHandler = new AudioEventHandler(audio);
 // Initialize volume
 audio.volume = 0.7; // 70%
 
+// Auto-play playlist
+ipcRenderer.on('auto-play-playlist', (event, playlist) => {
+  console.log('Auto-playing playlist:', playlist);
+  if (playlist && playlist.songs && playlist.songs.length > 0) {
+    const shouldAutoPlay = playbackStateManager.getPlaybackState();
+    displayPlaylists();
+    
+    if (shouldAutoPlay) {
+      console.log('Auto-playing based on saved state');
+      ipcRenderer.invoke('play-playlist', playlist);
+    } else {
+      console.log('Not auto-playing due to saved state');
+      // Playlist'i yükle ama oynatma
+      ipcRenderer.invoke('load-playlist', playlist);
+    }
+  }
+});
+
 // Close button event listener
 document.getElementById('closeButton').addEventListener('click', () => {
     window.close();

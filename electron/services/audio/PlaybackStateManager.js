@@ -16,7 +16,7 @@ class PlaybackStateManager {
 
   getPlaybackState() {
     const state = this.store.get('playbackState');
-    return state ? state.isPlaying : true; // Varsayılan olarak true
+    return state ? state.isPlaying : false; // Varsayılan olarak false (duraklatılmış)
   }
 }
 
