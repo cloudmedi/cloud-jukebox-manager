@@ -1,23 +1,90 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { usePlaybackStore } from "@/store/playbackStore";
 
 const Player = () => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(70);
   const [isMuted, setIsMuted] = useState(false);
   const [progress, setProgress] = useState(0);
+  const [duration, setDuration] = useState(0);
+  const audioRef = useRef<HTMLAudioElement>(null);
   const isMobile = useIsMobile();
+  const currentSong = usePlaybackStore((state) => state.currentSong);
+
+  useEffect(() => {
+    if (currentSong && audioRef.current) {
+      audioRef.current.src = `http://localhost:5000/${currentSong.filePath}`;
+      audioRef.current.play().then(() => {
+        setIsPlaying(true);
+      }).catch(error => {
+        console.error('Playback error:', error);
+      });
+    }
+  }, [currentSong]);
+
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleTimeUpdate = () => {
+      setProgress(audio.currentTime);
+    };
+
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration);
+    };
+
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setProgress(0);
+    };
+
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('ended', handleEnded);
+
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, []);
+
+  const handlePlayPause = () => {
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
+    }
+  };
 
   const handleVolumeChange = (value: number[]) => {
-    setVolume(value[0]);
-    if (value[0] > 0) setIsMuted(false);
+    if (audioRef.current) {
+      setVolume(value[0]);
+      audioRef.current.volume = value[0] / 100;
+      if (value[0] > 0) setIsMuted(false);
+    }
   };
 
   const toggleMute = () => {
-    setIsMuted(!isMuted);
+    if (audioRef.current) {
+      audioRef.current.muted = !isMuted;
+      setIsMuted(!isMuted);
+    }
+  };
+
+  const handleSeek = (value: number[]) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = value[0];
+      setProgress(value[0]);
+    }
   };
 
   const formatTime = (seconds: number) => {
@@ -26,14 +93,17 @@ const Player = () => {
     return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
   };
 
+  if (!currentSong) return null;
+
   return (
     <div className="fixed bottom-0 left-0 right-0 h-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t border-border/40">
+      <audio ref={audioRef} />
       <div className={`mx-auto h-full flex items-center ${isMobile ? 'px-2 flex-col justify-center gap-2 h-auto py-4' : 'container px-4 justify-between'}`}>
         <div className={`flex items-center gap-4 ${isMobile ? 'w-full justify-between' : ''}`}>
           <div className="w-12 h-12 bg-muted rounded-md shrink-0" />
           <div className="min-w-0">
-            <h4 className="font-medium truncate">Şarkı Adı</h4>
-            <p className="text-sm text-muted-foreground truncate">Sanatçı</p>
+            <h4 className="font-medium truncate">{currentSong.name}</h4>
+            <p className="text-sm text-muted-foreground truncate">{currentSong.artist}</p>
           </div>
         </div>
         
@@ -46,7 +116,7 @@ const Player = () => {
               variant="outline" 
               size="icon" 
               className="h-10 w-10 shrink-0"
-              onClick={() => setIsPlaying(!isPlaying)}
+              onClick={handlePlayPause}
             >
               {isPlaying ? (
                 <Pause className="h-5 w-5" />
@@ -62,12 +132,12 @@ const Player = () => {
             <span className="text-sm text-muted-foreground shrink-0">{formatTime(progress)}</span>
             <Slider
               value={[progress]}
-              onValueChange={(value) => setProgress(value[0])}
-              max={225}
+              onValueChange={handleSeek}
+              max={duration}
               step={1}
               className="w-full"
             />
-            <span className="text-sm text-muted-foreground shrink-0">3:45</span>
+            <span className="text-sm text-muted-foreground shrink-0">{formatTime(duration)}</span>
           </div>
         </div>
         

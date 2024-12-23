@@ -12,15 +12,24 @@ import {
 import { Button } from "@/components/ui/button";
 import { Song } from "@/types/song";
 import { formatDuration } from "@/lib/utils";
+import { usePlaybackStore } from "@/store/playbackStore";
+import { usePlayer } from "@/components/layout/MainLayout";
 
 interface SongTableRowProps {
   song: Song;
-  onPlay: (song: Song) => void;
   onEdit: (song: Song) => void;
   onDelete: (id: string) => void;
 }
 
-export const SongTableRow = ({ song, onPlay, onEdit, onDelete }: SongTableRowProps) => {
+export const SongTableRow = ({ song, onEdit, onDelete }: SongTableRowProps) => {
+  const setCurrentSong = usePlaybackStore((state) => state.setCurrentSong);
+  const { setShowPlayer } = usePlayer();
+
+  const handlePlay = () => {
+    setCurrentSong(song);
+    setShowPlayer(true);
+  };
+
   return (
     <TableRow key={song._id}>
       <TableCell>
@@ -30,7 +39,7 @@ export const SongTableRow = ({ song, onPlay, onEdit, onDelete }: SongTableRowPro
               <Music className="h-4 w-4 text-muted-foreground" />
             </div>
             <button
-              onClick={() => onPlay(song)}
+              onClick={handlePlay}
               className="absolute inset-0 bg-black/60 rounded-md opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
             >
               <PlayCircle className="h-5 w-5 text-white" />
