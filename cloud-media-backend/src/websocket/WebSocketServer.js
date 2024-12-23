@@ -170,14 +170,6 @@ class WebSocketServer {
         await this.statusHandler.handlePlaylistStatus(token, message);
         break;
 
-      case 'playbackStatus':
-        this.broadcastToAdmins({
-          type: 'deviceStatus',
-          token: token,
-          isPlaying: message.status === 'playing'
-        });
-        break;
-
       case 'volume':
         const device = await Device.findOne({ token });
         if (!device) return;
