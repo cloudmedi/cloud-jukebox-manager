@@ -3,10 +3,32 @@ const path = require('path');
 const Store = require('electron-store');
 const store = new Store();
 const websocketService = require('./services/websocketService');
+const deviceService = require('./services/deviceService');
+const apiService = require('./services/apiService');
 require('./services/audioService');
 
 let mainWindow;
 let tray = null;
+
+async function initializeDevice() {
+  try {
+    const deviceInfo = store.get('deviceInfo');
+    
+    if (!deviceInfo || !deviceInfo.token) {
+      console.log('No device info found, generating new token...');
+      const token = deviceService.generateToken();
+      const systemInfo = deviceService.getDeviceInfo();
+      
+      console.log('Registering token with backend...');
+      await apiService.registerToken(token, systemInfo);
+      
+      store.set('deviceInfo', { token });
+      console.log('Device info saved:', { token });
+    }
+  } catch (error) {
+    console.error('Error initializing device:', error);
+  }
+}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -33,7 +55,6 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   }
 
-  // Pencere kapatıldığında sistem tepsisine küçült
   mainWindow.on('close', function (event) {
     if (!app.isQuitting) {
       event.preventDefault();
@@ -44,21 +65,6 @@ function createWindow() {
     }
     return false;
   });
-
-  // Uygulama başladığında son kaydedilen playlist'i kontrol et
-  const deviceInfo = store.get('deviceInfo');
-  if (deviceInfo && deviceInfo.token) {
-    websocketService.connect(deviceInfo.token);
-    
-    const playlists = store.get('playlists', []);
-    if (playlists.length > 0) {
-      const lastPlaylist = playlists[playlists.length - 1];
-      console.log('Starting last saved playlist:', lastPlaylist.name);
-      mainWindow.webContents.on('did-finish-load', () => {
-        mainWindow.webContents.send('auto-play-playlist', lastPlaylist);
-      });
-    }
-  }
 }
 
 function createTray() {
@@ -109,9 +115,10 @@ function createTray() {
   }
 }
 
-app.whenReady().then(() => {
+app.whenReady().then(async () => {
+  await initializeDevice();
   createWindow();
-  createTray(); // Uygulama başladığında tray'i oluştur
+  createTray();
 });
 
 app.on('window-all-closed', () => {
