@@ -1,11 +1,15 @@
 const WebSocket = require('ws');
 const Device = require('../models/Device');
 const MessageHandler = require('./handlers/MessageHandler');
+const InitialStateHandler = require('./handlers/InitialStateHandler');
+const ConnectionHandler = require('./handlers/ConnectionHandler');
 
 class WebSocketServer {
   constructor(server) {
     this.wss = new WebSocket.Server({ server });
     this.messageHandler = new MessageHandler(this);
+    this.initialStateHandler = new InitialStateHandler(this);
+    this.connectionHandler = new ConnectionHandler(this);
     this.initialize();
   }
 
@@ -45,23 +49,7 @@ class WebSocketServer {
   async handleAdminConnection(ws) {
     console.log('Admin client connected');
     ws.isAdmin = true;
-
-    try {
-      const devices = await Device.find({});
-      const deviceStatuses = devices.map(device => ({
-        type: 'deviceStatus',
-        token: device.token,
-        isOnline: device.isOnline,
-        volume: device.volume
-      }));
-
-      ws.send(JSON.stringify({
-        type: 'initialState',
-        devices: deviceStatuses
-      }));
-    } catch (error) {
-      console.error('Error fetching initial device states:', error);
-    }
+    await this.initialStateHandler.handleInitialState(ws);
 
     ws.on('message', async (message) => {
       try {
@@ -82,44 +70,18 @@ class WebSocketServer {
   }
 
   async handleDeviceConnection(ws) {
-    let deviceToken = null;
-
     ws.once('message', async (message) => {
       try {
         const data = JSON.parse(message);
-        console.log('Device auth attempt:', data);
-
         if (data.type === 'auth' && data.token) {
-          const device = await Device.findOne({ token: data.token });
-
+          const device = await this.connectionHandler.handleDeviceAuth(ws, data);
+          
           if (device) {
-            deviceToken = device.token;
-            ws.deviceToken = deviceToken;
-            console.log(`Device authenticated: ${deviceToken}`);
-
-            await device.updateStatus(true);
-
-            this.broadcastToAdmins({
-              type: 'deviceStatus',
-              token: deviceToken,
-              isOnline: true,
-              volume: device.volume
-            });
-
-            ws.send(JSON.stringify({
-              type: 'auth',
-              status: 'success',
-              deviceInfo: {
-                name: device.name,
-                volume: device.volume
-              }
-            }));
-
             ws.on('message', async (message) => {
               try {
                 const data = JSON.parse(message);
                 console.log('Device message received:', data);
-                await this.handleDeviceMessage(deviceToken, data);
+                await this.messageHandler.handleDeviceMessage(device.token, data);
               } catch (error) {
                 console.error('Message handling error:', error);
                 ws.send(JSON.stringify({
@@ -130,23 +92,14 @@ class WebSocketServer {
             });
 
             ws.on('close', async () => {
-              console.log(`Device disconnected: ${deviceToken}`);
+              console.log(`Device disconnected: ${device.token}`);
               await device.updateStatus(false);
-
               this.broadcastToAdmins({
                 type: 'deviceStatus',
-                token: deviceToken,
+                token: device.token,
                 isOnline: false
               });
             });
-          } else {
-            console.log('Invalid token received:', data.token);
-            ws.send(JSON.stringify({
-              type: 'auth',
-              status: 'error',
-              message: 'Invalid token'
-            }));
-            ws.close();
           }
         }
       } catch (error) {
@@ -154,40 +107,6 @@ class WebSocketServer {
         ws.close();
       }
     });
-  }
-
-  async handleDeviceMessage(token, message) {
-    console.log(`Handling device message from ${token}:`, message);
-    const device = await Device.findOne({ token });
-    if (!device) return;
-
-    switch (message.type) {
-      case 'status':
-        await device.updateStatus(message.isOnline);
-        this.broadcastToAdmins({
-          type: 'deviceStatus',
-          token: token,
-          isOnline: message.isOnline
-        });
-        break;
-
-      case 'volume':
-        await device.setVolume(message.volume);
-        this.broadcastToAdmins({
-          type: 'deviceStatus',
-          token: token,
-          volume: message.volume
-        });
-        break;
-
-      case 'error':
-        this.broadcastToAdmins({
-          type: 'deviceError',
-          token: token,
-          error: message.error
-        });
-        break;
-    }
   }
 
   broadcastToAdmins(message) {
