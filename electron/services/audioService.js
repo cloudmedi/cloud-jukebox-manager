@@ -1,4 +1,4 @@
-const { ipcMain } = require('electron');
+const { ipcMain, app } = require('electron');
 const Store = require('electron-store');
 const store = new Store();
 const websocketService = require('./websocketService');
@@ -39,11 +39,9 @@ class AudioService {
   }
 
   handleRestart() {
-    console.log('Restarting audio playback');
-    const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
-    if (mainWindow) {
-      mainWindow.webContents.send('restart-playback');
-    }
+    console.log('Restarting application...');
+    app.relaunch();
+    app.exit(0);
   }
 
   setupIpcHandlers() {
