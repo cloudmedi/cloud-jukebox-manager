@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Music, MoreVertical, Play, Pencil, Trash } from "lucide-react";
+import { Music, MoreVertical, PlayCircle, Pencil, Trash } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -28,7 +28,6 @@ import {
 import { usePlayer } from "@/components/layout/MainLayout";
 import SongEditDialog from "./SongEditDialog";
 import { Song } from "@/types/song";
-import websocketService from "@/services/websocketService";
 
 const SongList = () => {
   const { toast } = useToast();
@@ -36,6 +35,7 @@ const SongList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingSong, setEditingSong] = useState<Song | null>(null);
   const { setShowPlayer } = usePlayer();
+  const [audio] = useState(new Audio());
 
   const { data: songs = [], isLoading, refetch } = useQuery<Song[]>({
     queryKey: ["songs"],
@@ -86,26 +86,32 @@ const SongList = () => {
   };
 
   const handlePlay = (song: Song) => {
-    // Player'ı göster
-    setShowPlayer(true);
-
-    // WebSocket üzerinden şarkıyı çal
-    websocketService.sendMessage({
-      type: 'command',
-      command: 'play',
-      data: {
-        songId: song._id,
-        name: song.name,
-        artist: song.artist,
-        filePath: song.filePath,
-        duration: song.duration
-      }
-    });
-
-    toast({
-      title: "Şarkı Çalınıyor",
-      description: `${song.name} - ${song.artist}`,
-    });
+    // Önceki şarkıyı durdur
+    audio.pause();
+    
+    // Yeni şarkının URL'ini ayarla
+    const songUrl = `http://localhost:5000/${song.filePath}`;
+    audio.src = songUrl;
+    
+    // Şarkıyı çal
+    audio.play()
+      .then(() => {
+        // Player'ı göster
+        setShowPlayer(true);
+        
+        toast({
+          title: "Şarkı Çalınıyor",
+          description: `${song.name} - ${song.artist}`,
+        });
+      })
+      .catch((error) => {
+        console.error('Şarkı çalma hatası:', error);
+        toast({
+          variant: "destructive",
+          title: "Hata",
+          description: "Şarkı çalınırken bir hata oluştu",
+        });
+      });
   };
 
   if (isLoading) {
@@ -162,7 +168,7 @@ const SongList = () => {
                         onClick={() => handlePlay(song)}
                         className="absolute inset-0 bg-black/60 rounded-md opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
                       >
-                        <Play className="h-4 w-4 text-white" />
+                        <PlayCircle className="h-5 w-5 text-white" />
                       </button>
                     </div>
                     {song.name}
