@@ -119,11 +119,9 @@ export const PlaylistForm = ({
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
-        <div className="grid gap-8">
-          <BasicInfoForm form={form} />
-          <ArtworkUpload form={form} />
-          <SongSelector form={form} />
-        </div>
+        <BasicInfoForm form={form} />
+        <ArtworkUpload form={form} />
+        <SongSelector form={form} />
         
         <Button type="submit" className="w-full" size="lg">
           <Save className="mr-2 h-5 w-5" />
