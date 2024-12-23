@@ -9,5 +9,6 @@ export interface Song {
   duration: number;
   createdAt: string;
   filePath: string;
+  artwork?: string | null;
   status?: 'active' | 'inactive';
 }

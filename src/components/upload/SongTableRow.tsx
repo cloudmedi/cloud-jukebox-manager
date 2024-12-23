@@ -37,17 +37,28 @@ export const SongTableRow = ({ song, onEdit, onDelete, allSongs }: SongTableRowP
       <TableCell>
         <div className="flex items-center gap-2">
           <div className="relative group">
-            <div className="w-8 h-8 bg-muted rounded-md flex items-center justify-center">
-              <Music className="h-4 w-4 text-muted-foreground" />
+            <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center overflow-hidden">
+              {song.artwork ? (
+                <img 
+                  src={`http://localhost:5000${song.artwork}`} 
+                  alt={`${song.name} artwork`}
+                  className="w-full h-full object-cover"
+                />
+              ) : (
+                <Music className="h-6 w-6 text-muted-foreground" />
+              )}
             </div>
             <button
               onClick={handlePlay}
               className="absolute inset-0 bg-black/60 rounded-md opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
             >
-              <PlayCircle className="h-5 w-5 text-white" />
+              <PlayCircle className="h-6 w-6 text-white" />
             </button>
           </div>
-          {song.name}
+          <div>
+            <p className="font-medium">{song.name}</p>
+            <p className="text-sm text-muted-foreground">{song.artist}</p>
+          </div>
         </div>
       </TableCell>
       <TableCell>{song.artist}</TableCell>

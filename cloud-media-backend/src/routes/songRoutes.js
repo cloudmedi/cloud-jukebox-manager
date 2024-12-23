@@ -4,6 +4,7 @@ const multer = require('multer');
 const path = require('path');
 const Song = require('../models/Song');
 const NodeID3 = require('node-id3');
+const fs = require('fs');
 
 // Multer yapılandırması
 const storage = multer.diskStorage({
@@ -65,6 +66,21 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     const genre = tags.genre || 'Other';
     const year = tags.year ? parseInt(tags.year) : null;
     
+    // Artwork'ü kaydet
+    let artworkPath = null;
+    if (tags.image && tags.image.imageBuffer) {
+      const artworkFileName = `artwork-${Date.now()}.jpg`;
+      const artworkFullPath = path.join('uploads', 'artworks', artworkFileName);
+      
+      // Artwork klasörünü oluştur
+      if (!fs.existsSync(path.join('uploads', 'artworks'))) {
+        fs.mkdirSync(path.join('uploads', 'artworks'), { recursive: true });
+      }
+      
+      fs.writeFileSync(artworkFullPath, tags.image.imageBuffer);
+      artworkPath = `/uploads/artworks/${artworkFileName}`;
+    }
+    
     // Varsayılan süre (gerçek süreyi almak için farklı bir kütüphane gerekebilir)
     const duration = 0;
 
@@ -75,6 +91,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
       album: album,
       year: year,
       filePath: req.file.path,
+      artwork: artworkPath,
       duration: duration,
       createdBy: 'system'
     });
@@ -83,30 +100,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     res.status(201).json(newSong);
   } catch (error) {
     console.warn('Hata:', error);
-    // Eğer tür hatası varsa, dosyayı silmeden devam et
-    if (error.name === 'ValidationError' && error.errors.genre) {
-      try {
-        // Hata mesajından türü al ve yeni bir kayıt dene
-        const song = new Song({
-          name: title,
-          artist: artist,
-          genre: genre, // Orijinal türü kullan
-          album: album,
-          year: year,
-          filePath: req.file.path,
-          duration: duration,
-          createdBy: 'system'
-        });
-
-        const newSong = await song.save();
-        res.status(201).json(newSong);
-      } catch (retryError) {
-        console.error('Yeniden deneme hatası:', retryError);
-        res.status(400).json({ message: retryError.message });
-      }
-    } else {
-      res.status(400).json({ message: error.message });
-    }
+    res.status(400).json({ message: error.message });
   }
 });
 
