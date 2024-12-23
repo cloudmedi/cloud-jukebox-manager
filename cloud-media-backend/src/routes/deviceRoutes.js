@@ -35,21 +35,43 @@ router.get('/', async (req, res) => {
 
 // Yeni cihaz oluştur
 router.post('/', async (req, res) => {
-  const device = new Device({
-    name: req.body.name,
-    token: req.body.token,
-    location: req.body.location,
-    volume: req.body.volume
-  });
-
+  console.log('Creating new device with data:', req.body);
+  
   try {
+    // Önce token'ı kontrol et
+    const existingToken = await Token.findOne({ token: req.body.token });
+    console.log('Found token:', existingToken);
+
+    if (!existingToken) {
+      console.log('Token not found:', req.body.token);
+      return res.status(400).json({ message: 'Geçersiz token' });
+    }
+
+    if (existingToken.isUsed) {
+      console.log('Token already used:', existingToken);
+      return res.status(400).json({ message: 'Token daha önce kullanılmış' });
+    }
+
+    const device = new Device({
+      name: req.body.name,
+      token: req.body.token,
+      location: req.body.location,
+      volume: req.body.volume
+    });
+
     const newDevice = await device.save();
+    console.log('Device created:', newDevice);
+
+    // Token'ı kullanıldı olarak işaretle
     await Token.findOneAndUpdate(
       { token: req.body.token },
       { isUsed: true }
     );
+    console.log('Token marked as used');
+
     res.status(201).json(newDevice);
   } catch (error) {
+    console.error('Device creation error:', error);
     res.status(400).json({ message: error.message });
   }
 });
