@@ -16,10 +16,14 @@ export const DeviceTableHeader = ({
     <TableHeader>
       <TableRow>
         <TableHead className="w-[40px]">
-          <Checkbox
-            checked={allSelected}
-            indeterminate={someSelected}
+          <Checkbox 
+            checked={allSelected} 
             onCheckedChange={onSelectAll}
+            ref={(input) => {
+              if (input) {
+                input.indeterminate = someSelected && !allSelected;
+              }
+            }}
           />
         </TableHead>
         <TableHead>Cihaz Adı</TableHead>
