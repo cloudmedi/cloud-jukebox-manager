@@ -6,6 +6,7 @@ class AudioEventHandler {
     this.audio = audio;
     this.currentPlaylistId = null;
     this.setupEventListeners();
+    console.log('AudioEventHandler initialized');
   }
 
   setCurrentPlaylistId(playlistId) {
@@ -37,8 +38,17 @@ class AudioEventHandler {
       const playbackState = playbackStateManager.getPlaybackState();
       if (playbackState.isPlaying && playbackState.playlistId === this.currentPlaylistId) {
         console.log('Auto-playing based on saved state');
-        this.audio.play().catch(err => console.error('Auto-play error:', err));
+        this.audio.play().catch(err => {
+          console.error('Auto-play error:', err);
+          playbackStateManager.savePlaybackState(false, this.currentPlaylistId);
+        });
       }
+    });
+
+    this.audio.addEventListener('ended', () => {
+      console.log('Audio ended');
+      playbackStateManager.savePlaybackState(false, this.currentPlaylistId);
+      ipcRenderer.send('playback-status-changed', false);
     });
   }
 }

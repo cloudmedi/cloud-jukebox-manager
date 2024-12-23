@@ -3,6 +3,7 @@ const Store = require('electron-store');
 class PlaybackStateManager {
   constructor() {
     this.store = new Store();
+    console.log('PlaybackStateManager initialized');
   }
 
   savePlaybackState(isPlaying, playlistId = null) {
