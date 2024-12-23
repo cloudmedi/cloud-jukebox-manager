@@ -1,13 +1,15 @@
 body {
     margin: 0;
-    padding: 20px;
+    padding: 0;
     font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif;
-    background: #f5f5f5;
+    background-color: #111827;
+    color: white;
 }
 
 .container {
-    max-width: 800px;
+    max-width: 1200px;
     margin: 0 auto;
+    padding: 20px;
 }
 
 .playlist-container {
@@ -18,130 +20,164 @@ body {
 }
 
 .playlist-item {
-    background: white;
-    border-radius: 8px;
-    padding: 15px;
+    background-color: #1f2937;
+    border-radius: 0.5rem;
+    overflow: hidden;
+    transition: transform 0.3s ease;
     cursor: pointer;
-    transition: transform 0.2s, box-shadow 0.2s;
-    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .playlist-item:hover {
-    transform: translateY(-2px);
-    box-shadow: 0 4px 8px rgba(0,0,0,0.15);
+    transform: translateY(-4px);
 }
 
 .playlist-info {
-    display: flex;
-    flex-direction: column;
-    gap: 10px;
+    padding: 1rem;
 }
 
 .playlist-artwork {
     width: 100%;
-    height: 150px;
+    height: 200px;
     object-fit: cover;
-    border-radius: 4px;
 }
 
 .playlist-artwork-placeholder {
     width: 100%;
-    height: 150px;
-    background: #e0e0e0;
-    border-radius: 4px;
+    height: 200px;
+    background-color: #374151;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    color: #9ca3af;
+    font-size: 3rem;
 }
 
-.playlist-details {
-    flex: 1;
+.player-container {
+    background-color: #1f2937;
+    border-radius: 1rem;
+    padding: 1.5rem;
+    max-width: 400px;
+    margin: 2rem auto;
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
 }
 
-.playlist-details h3 {
+.artwork-container {
+    position: relative;
+    width: 100%;
+    height: 300px;
+    margin-bottom: 1.5rem;
+    border-radius: 0.5rem;
+    overflow: hidden;
+}
+
+.artwork-placeholder {
+    width: 100%;
+    height: 100%;
+    background-color: #374151;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 3rem;
+    color: #9ca3af;
+}
+
+.artwork-overlay {
+    position: absolute;
+    inset: 0;
+    background-color: rgba(0, 0, 0, 0.4);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    opacity: 0;
+    transition: opacity 0.3s ease;
+}
+
+.artwork-container:hover .artwork-overlay {
+    opacity: 1;
+}
+
+.play-button {
+    background-color: white;
+    border: none;
+    border-radius: 50%;
+    width: 50px;
+    height: 50px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.play-button:hover {
+    background-color: #e5e7eb;
+}
+
+.player-info {
+    text-align: center;
+    margin-bottom: 1.5rem;
+}
+
+.playlist-name {
+    font-size: 1.5rem;
+    font-weight: bold;
+    margin: 0 0 0.5rem;
+    color: white;
+}
+
+.current-song {
+    color: #9ca3af;
     margin: 0;
-    font-size: 16px;
-    font-weight: 600;
-}
-
-.playlist-details p {
-    margin: 5px 0 0;
-    font-size: 14px;
-    color: #666;
-}
-
-.player-controls {
-    position: fixed;
-    bottom: 0;
-    left: 0;
-    right: 0;
-    background: white;
-    padding: 15px;
-    box-shadow: 0 -2px 10px rgba(0,0,0,0.1);
+    font-size: 0.875rem;
 }
 
 .progress-container {
-    height: 4px;
-    background: #e0e0e0;
-    margin-bottom: 10px;
-    border-radius: 2px;
+    margin-bottom: 1.5rem;
 }
 
 .progress-bar {
-    height: 100%;
-    background: #007aff;
+    width: 100%;
+    height: 4px;
+    background-color: #4b5563;
     border-radius: 2px;
-    width: 0;
+    margin-bottom: 0.5rem;
+    overflow: hidden;
+}
+
+.progress {
+    height: 100%;
+    background-color: #3b82f6;
     transition: width 0.1s linear;
+}
+
+.time-display {
+    display: flex;
+    justify-content: space-between;
+    color: #9ca3af;
+    font-size: 0.75rem;
 }
 
 .controls {
     display: flex;
     justify-content: center;
-    gap: 20px;
+    align-items: center;
+    gap: 1.5rem;
 }
 
 .control-button {
     background: none;
     border: none;
+    color: #9ca3af;
+    font-size: 1.25rem;
     cursor: pointer;
-    padding: 8px;
-    border-radius: 50%;
-    width: 40px;
-    height: 40px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    transition: background-color 0.2s;
+    transition: color 0.2s ease;
+    padding: 0.5rem;
 }
 
 .control-button:hover {
-    background: #f0f0f0;
+    color: white;
 }
 
-.control-button svg {
-    width: 24px;
-    height: 24px;
-    color: #333;
-}
-
-.download-progress {
-    position: fixed;
-    top: 20px;
-    right: 20px;
-    background: white;
-    padding: 15px;
-    border-radius: 8px;
-    box-shadow: 0 2px 10px rgba(0,0,0,0.1);
-    width: 300px;
-}
-
-.download-progress-bar {
-    height: 4px;
-    background: #007aff;
-    border-radius: 2px;
-    width: 0;
-    margin-bottom: 10px;
-}
-
-.download-progress-text {
-    font-size: 14px;
-    color: #666;
+.control-button.play-pause {
+    font-size: 1.5rem;
 }
