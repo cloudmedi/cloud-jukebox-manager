@@ -29,8 +29,7 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
         console.error("Cihaz yükleme hatası:", error);
         return [];
       }
-    },
-    initialData: [], // Başlangıç değeri olarak boş dizi
+    }
   });
 
   const { data: groups = [], isError: isGroupsError } = useQuery({
@@ -45,16 +44,15 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
         console.error("Grup yükleme hatası:", error);
         return [];
       }
-    },
-    initialData: [], // Başlangıç değeri olarak boş dizi
+    }
   });
 
-  const filteredDevices = Array.isArray(devices) ? devices.filter((device: any) =>
-    (device?.name?.toLowerCase().includes(deviceSearch.toLowerCase()) ||
-    device?.location?.toLowerCase().includes(deviceSearch.toLowerCase()))
+  const filteredDevices = devices && Array.isArray(devices) ? devices.filter((device: any) =>
+    device?.name?.toLowerCase().includes(deviceSearch.toLowerCase()) ||
+    device?.location?.toLowerCase().includes(deviceSearch.toLowerCase())
   ) : [];
 
-  const filteredGroups = Array.isArray(groups) ? groups.filter((group: any) =>
+  const filteredGroups = groups && Array.isArray(groups) ? groups.filter((group: any) =>
     group?.name?.toLowerCase().includes(groupSearch.toLowerCase())
   ) : [];
 
