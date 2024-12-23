@@ -7,6 +7,8 @@ const os = require('os');
 
 async function cleanupLocalFiles() {
   try {
+    console.log('Cleaning up local files...');
+    
     // Uygulama veri dizinini al
     const appDataPath = app.getPath('userData');
     
@@ -20,6 +22,7 @@ async function cleanupLocalFiles() {
     console.log('Local files cleaned up successfully');
   } catch (error) {
     console.error('Error cleaning up local files:', error);
+    throw error; // Hata yönetimi için hatayı yukarı fırlat
   }
 }
 

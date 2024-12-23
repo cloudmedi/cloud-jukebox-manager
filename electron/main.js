@@ -8,6 +8,12 @@ require('./services/audioService');
 let mainWindow;
 let tray = null;
 
+// Quit app handler ekleyelim
+ipcMain.on('quit-app', () => {
+  console.log('Quitting app...');
+  app.quit();
+});
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 400,
