@@ -30,6 +30,13 @@ class WebSocketService {
       switch (message.command) {
         case 'shutdown':
           if (message.reason === 'device_deleted') {
+            console.log('Handling shutdown command for device deletion');
+            
+            // Ses çalmayı durdur
+            if (mainWindow) {
+              mainWindow.webContents.send('stop-playback');
+            }
+
             // Kullanıcıya bildirim göster
             if (mainWindow) {
               mainWindow.webContents.send('show-notification', {
@@ -39,10 +46,16 @@ class WebSocketService {
             }
 
             // Yerel dosyaları temizle
-            await deviceService.cleanupLocalFiles();
+            try {
+              await deviceService.cleanupLocalFiles();
+              console.log('Local files cleaned up successfully');
+            } catch (error) {
+              console.error('Error cleaning up files:', error);
+            }
 
             // 3 saniye sonra uygulamayı kapat
             setTimeout(() => {
+              console.log('Shutting down application...');
               app.quit();
             }, 3000);
           }
@@ -84,7 +97,7 @@ class WebSocketService {
       return;
     }
 
-    this.ws = new WebSocket('ws://localhost:5000');
+    this.ws = new WebSocket('ws://localhost:5000/admin');
 
     this.ws.on('open', () => {
       console.log('WebSocket connected');

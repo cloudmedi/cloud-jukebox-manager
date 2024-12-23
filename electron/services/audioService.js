@@ -30,10 +30,35 @@ class AudioService {
         case 'pause':
           this.handlePause();
           break;
+        case 'shutdown':
+          this.handleShutdown(message.reason);
+          break;
         default:
           console.log('Unknown command:', message.command);
       }
     });
+  }
+
+  handleShutdown(reason) {
+    console.log('Handling shutdown command:', reason);
+    if (reason === 'device_deleted') {
+      this.stopPlayback();
+      // Diğer temizlik işlemleri websocketService'te yapılıyor
+    }
+  }
+
+  stopPlayback() {
+    console.log('Stopping all playback');
+    this.isPlaying = false;
+    this.currentSound = null;
+    this.playlist = null;
+    this.queue = [];
+    this.currentIndex = 0;
+    
+    const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
+    if (mainWindow) {
+      mainWindow.webContents.send('stop-playback');
+    }
   }
 
   handleVolumeChange(volume) {

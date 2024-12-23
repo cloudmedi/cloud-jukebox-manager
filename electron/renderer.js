@@ -5,7 +5,6 @@ const AudioEventHandler = require('./services/audio/AudioEventHandler');
 const playbackStateManager = require('./services/audio/PlaybackStateManager');
 const UIManager = require('./services/ui/UIManager');
 const deviceService = require('./services/deviceService');
-require('./services/commands/CommandHandler');
 
 const audio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(audio);
@@ -13,9 +12,13 @@ const audioHandler = new AudioEventHandler(audio);
 // Initialize volume
 audio.volume = 0.7; // 70%
 
-// Close button event listener
-document.getElementById('closeButton').addEventListener('click', () => {
-    window.close();
+// Playback control events
+ipcRenderer.on('stop-playback', () => {
+  console.log('Stopping playback...');
+  if (audio) {
+    audio.pause();
+    audio.src = '';
+  }
 });
 
 // WebSocket bağlantı durumu
@@ -31,6 +34,11 @@ ipcRenderer.on('download-progress', (event, { songName, progress }) => {
 // Hata mesajları
 ipcRenderer.on('error', (event, message) => {
     UIManager.showError(message);
+});
+
+// Notification handler
+ipcRenderer.on('show-notification', (event, { title, body }) => {
+  new Notification(title, { body });
 });
 
 // Volume control from WebSocket
