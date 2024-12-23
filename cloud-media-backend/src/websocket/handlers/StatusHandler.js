@@ -5,7 +5,7 @@ class StatusHandler {
     this.wss = wss;
   }
 
-  async handlePlaylistStatus(token, message) {
+  async handlePlaybackStatus(token, message) {
     try {
       const device = await Device.findOne({ token });
       if (!device) {
@@ -13,22 +13,16 @@ class StatusHandler {
         return;
       }
 
-      // Playlist durumunu güncelle
-      await Device.findByIdAndUpdate(device._id, {
-        playlistStatus: message.status
-      });
-
       // Admin paneline bildir
       this.wss.broadcastToAdmins({
         type: 'deviceStatus',
         token: token,
-        playlistStatus: message.status,
-        playlistId: message.playlistId
+        isPlaying: message.status === 'playing'
       });
 
-      console.log(`Updated playlist status for device ${token} to ${message.status}`);
+      console.log(`Updated playback status for device ${token} to ${message.status}`);
     } catch (error) {
-      console.error('Error handling playlist status:', error);
+      console.error('Error handling playback status:', error);
     }
   }
 

@@ -166,16 +166,12 @@ class WebSocketServer {
         await this.statusHandler.handleOnlineStatus(token, message.isOnline);
         break;
 
-      case 'playlistStatus':
-        await this.statusHandler.handlePlaylistStatus(token, message);
+      case 'playbackStatus':
+        await this.statusHandler.handlePlaybackStatus(token, message);
         break;
 
-      case 'playbackStatus':
-        this.broadcastToAdmins({
-          type: 'deviceStatus',
-          token: token,
-          isPlaying: message.status === 'playing'
-        });
+      case 'playlistStatus':
+        await this.statusHandler.handlePlaylistStatus(token, message);
         break;
 
       case 'volume':
