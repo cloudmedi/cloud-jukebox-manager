@@ -8,7 +8,7 @@ export interface Song {
   artwork?: string | null;
   duration: number;
   status?: 'active' | 'inactive';
-  createdAt?: string;
+  createdAt: string;
   year?: number;
   language?: string;
 }

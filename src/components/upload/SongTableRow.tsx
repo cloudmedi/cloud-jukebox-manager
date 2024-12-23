@@ -10,52 +10,30 @@ import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Song } from "@/types/song";
 import { formatDuration } from "@/lib/utils";
-import { usePlaybackStore } from "@/store/playbackStore";
-import { usePlayer } from "@/components/layout/MainLayout";
-import { useSelectedSongsStore } from "@/store/selectedSongsStore";
 
 export interface SongTableRowProps {
   song: Song;
   onEdit?: (song: Song) => void;
   onDelete: (id: string) => Promise<void>;
   isSelected?: boolean;
-  onSelect?: (songId: string) => void;
-  allSongs?: Song[];
+  onSelect?: (song: Song, checked: boolean) => void;
 }
 
 export const SongTableRow = ({ 
   song, 
   onEdit, 
-  onDelete, 
+  onDelete,
   isSelected,
-  onSelect,
-  allSongs = []
+  onSelect
 }: SongTableRowProps) => {
-  const { setCurrentSong, setQueue } = usePlaybackStore();
-  const { setShowPlayer } = usePlayer();
-  const { addSong, removeSong } = useSelectedSongsStore();
-
-  const handlePlay = () => {
-    setQueue(allSongs);
-    setCurrentSong(song);
-    setShowPlayer(true);
-  };
-
-  const handleCheckboxChange = (checked: boolean) => {
-    if (checked) {
-      addSong(song);
-    } else {
-      removeSong(song._id);
-    }
-  };
-
   return (
     <TableRow key={song._id}>
       <TableCell>
         <Checkbox
           checked={isSelected}
-          onCheckedChange={handleCheckboxChange}
-          className="mr-2"
+          onCheckedChange={(checked) => onSelect?.(song, checked as boolean)}
+          aria-label={`${song.name} seç`}
+          className="ml-2"
         />
       </TableCell>
       <TableCell>
@@ -77,7 +55,6 @@ export const SongTableRow = ({
               )}
             </div>
             <button
-              onClick={handlePlay}
               className="absolute inset-0 bg-black/60 rounded-md opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center"
             >
               <PlayCircle className="h-6 w-6 text-white" />
