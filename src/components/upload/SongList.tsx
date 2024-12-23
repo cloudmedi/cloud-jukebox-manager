@@ -1,43 +1,45 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useState, useRef, useCallback } from "react";
+import { useInfiniteQuery } from "@tanstack/react-query";
 import { Table, TableBody } from "@/components/ui/table";
 import SongEditDialog from "./SongEditDialog";
 import { Song } from "@/types/song";
 import { SongTableHeader } from "./SongTableHeader";
 import { SongTableRow } from "./SongTableRow";
 import { SongFilters } from "./SongFilters";
-import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useInView } from "react-intersection-observer";
 
-interface SongResponse {
-  songs: Song[];
-  currentPage: number;
-  totalPages: number;
-  totalSongs: number;
-  hasNextPage: boolean;
-  hasPrevPage: boolean;
-}
+const ITEMS_PER_PAGE = 20;
 
 const SongList = () => {
   const [selectedGenre, setSelectedGenre] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
   const [editingSong, setEditingSong] = useState<Song | null>(null);
-  const [currentPage, setCurrentPage] = useState(1);
-  const limit = 20;
+  const { toast } = useToast();
+  const { ref, inView } = useInView();
 
-  const { data, isLoading, refetch } = useQuery<SongResponse>({
-    queryKey: ["songs", currentPage, limit],
-    queryFn: async () => {
-      const response = await fetch(
-        `http://localhost:5000/api/songs?page=${currentPage}&limit=${limit}`
-      );
-      if (!response.ok) throw new Error("Failed to fetch songs");
-      return response.json();
-    },
+  const fetchSongs = async ({ pageParam = 1 }) => {
+    const response = await fetch(
+      `http://localhost:5000/api/songs?page=${pageParam}&limit=${ITEMS_PER_PAGE}`
+    );
+    if (!response.ok) throw new Error("Failed to fetch songs");
+    return response.json();
+  };
+
+  const {
+    data,
+    isLoading,
+    fetchNextPage,
+    hasNextPage,
+    isFetchingNextPage,
+  } = useInfiniteQuery({
+    queryKey: ["songs"],
+    queryFn: fetchSongs,
+    getNextPageParam: (lastPage) => 
+      lastPage.hasNextPage ? lastPage.currentPage + 1 : undefined,
+    initialPageParam: 1,
   });
-
-  const genres = data?.songs ? ["All", ...new Set(data.songs.map((song) => song.genre))].sort() : ["All"];
 
   const handleDelete = async (id: string) => {
     try {
@@ -46,15 +48,34 @@ const SongList = () => {
       });
 
       if (!response.ok) throw new Error("Failed to delete song");
-      refetch();
+      
+      toast({
+        title: "Başarılı",
+        description: "Şarkı başarıyla silindi",
+      });
+      
+      // Invalidate and refetch
+      queryClient.invalidateQueries({ queryKey: ["songs"] });
     } catch (error) {
-      console.error("Delete error:", error);
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Şarkı silinirken bir hata oluştu",
+      });
     }
   };
 
-  const handlePageChange = (newPage: number) => {
-    setCurrentPage(newPage);
-  };
+  // Load more when scrolling to the bottom
+  const loadMoreRef = useCallback((node: any) => {
+    if (node !== null) {
+      ref(node);
+      if (inView && hasNextPage && !isFetchingNextPage) {
+        fetchNextPage();
+      }
+    }
+  }, [inView, hasNextPage, isFetchingNextPage, fetchNextPage, ref]);
+
+  const allSongs = data?.pages.flatMap((page) => page.songs) ?? [];
 
   return (
     <div className="space-y-4">
@@ -63,7 +84,7 @@ const SongList = () => {
         onSearchChange={setSearchTerm}
         selectedGenre={selectedGenre}
         onGenreChange={setSelectedGenre}
-        genres={genres}
+        genres={["All", ...new Set(allSongs.map((song) => song.genre))].sort()}
       />
 
       <div className="rounded-md border">
@@ -71,51 +92,39 @@ const SongList = () => {
           <SongTableHeader />
           <TableBody>
             {isLoading ? (
-              // Loading skeleton
-              Array.from({ length: limit }).map((_, index) => (
+              Array.from({ length: ITEMS_PER_PAGE }).map((_, index) => (
                 <tr key={index}>
                   <td colSpan={7} className="p-2">
                     <Skeleton className="h-12 w-full" />
                   </td>
                 </tr>
               ))
-            ) : data?.songs?.map((song) => (
-              <SongTableRow
-                key={song._id}
-                song={song}
-                onEdit={setEditingSong}
-                onDelete={handleDelete}
-                allSongs={data.songs}
-              />
-            ))}
+            ) : (
+              allSongs.map((song, index) => (
+                <SongTableRow
+                  key={song._id}
+                  song={song}
+                  onEdit={setEditingSong}
+                  onDelete={handleDelete}
+                  allSongs={allSongs}
+                />
+              ))
+            )}
           </TableBody>
         </Table>
-      </div>
 
-      {/* Pagination Controls */}
-      <div className="flex items-center justify-between">
-        <div className="text-sm text-muted-foreground">
-          Toplam {data?.totalSongs || 0} şarkı, Sayfa {data?.currentPage || 1} / {data?.totalPages || 1}
-        </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handlePageChange(currentPage - 1)}
-            disabled={!data?.hasPrevPage}
-          >
-            <ChevronLeft className="h-4 w-4 mr-1" />
-            Önceki
-          </Button>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => handlePageChange(currentPage + 1)}
-            disabled={!data?.hasNextPage}
-          >
-            Sonraki
-            <ChevronRight className="h-4 w-4 ml-1" />
-          </Button>
+        {/* Infinite scroll trigger */}
+        <div
+          ref={loadMoreRef}
+          className="h-20 flex items-center justify-center"
+        >
+          {isFetchingNextPage && (
+            <div className="space-y-4">
+              {Array.from({ length: 3 }).map((_, index) => (
+                <Skeleton key={index} className="h-12 w-full" />
+              ))}
+            </div>
+          )}
         </div>
       </div>
 
