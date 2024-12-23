@@ -7,7 +7,7 @@ class PlaybackState {
 
   update(state, currentSong, playlist, volume) {
     const playbackState = {
-      state,
+      state, // 'playing' veya 'paused'
       currentSong,
       playlist,
       volume,
