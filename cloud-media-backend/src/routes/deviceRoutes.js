@@ -22,6 +22,7 @@ router.get('/', async (req, res) => {
         return {
           ...device,
           deviceInfo: tokenInfo?.deviceInfo || null,
+          // Eğer activePlaylist yoksa playlistStatus null olmalı
           playlistStatus: device.activePlaylist ? device.playlistStatus : null
         };
       })
@@ -35,43 +36,22 @@ router.get('/', async (req, res) => {
 
 // Yeni cihaz oluştur
 router.post('/', async (req, res) => {
-  console.log('Creating new device with data:', req.body);
-  
+  const device = new Device({
+    name: req.body.name,
+    token: req.body.token,
+    location: req.body.location,
+    volume: req.body.volume
+  });
+
   try {
-    // Önce token'ı kontrol et
-    const existingToken = await Token.findOne({ token: req.body.token });
-    console.log('Found token:', existingToken);
-
-    if (!existingToken) {
-      console.log('Token not found:', req.body.token);
-      return res.status(400).json({ message: 'Geçersiz token' });
-    }
-
-    if (existingToken.isUsed) {
-      console.log('Token already used:', existingToken);
-      return res.status(400).json({ message: 'Token daha önce kullanılmış' });
-    }
-
-    const device = new Device({
-      name: req.body.name,
-      token: req.body.token,
-      location: req.body.location,
-      volume: req.body.volume
-    });
-
     const newDevice = await device.save();
-    console.log('Device created:', newDevice);
-
     // Token'ı kullanıldı olarak işaretle
     await Token.findOneAndUpdate(
       { token: req.body.token },
       { isUsed: true }
     );
-    console.log('Token marked as used');
-
     res.status(201).json(newDevice);
   } catch (error) {
-    console.error('Device creation error:', error);
     res.status(400).json({ message: error.message });
   }
 });
@@ -109,21 +89,95 @@ router.delete('/:id', async (req, res) => {
       { isUsed: false }
     );
 
-    // WebSocket üzerinden cihaza playlist temizleme komutu gönder
-    if (device.isOnline && req.wss) {
-      req.wss.sendToDevice(device.token, {
-        type: 'command',
-        command: 'clearPlaylists'
-      });
-    }
-
-    // Cihazı sil (remove() yerine deleteOne() kullan)
-    await Device.deleteOne({ _id: device._id });
-    
+    // Sonra cihazı sil
+    await device.remove();
     res.json({ message: 'Cihaz silindi' });
   } catch (error) {
-    console.error('Device deletion error:', error);
-    res.status(500).json({ message: 'Cihaz silinirken bir hata oluştu' });
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Cihazı yeniden başlat
+router.post('/:id/restart', async (req, res) => {
+  try {
+    const device = await Device.findById(req.params.id);
+    if (!device) {
+      return res.status(404).json({ message: 'Cihaz bulunamadı' });
+    }
+
+    // WebSocket üzerinden cihaza restart komutu gönder
+    const sent = req.wss.sendToDevice(device.token, {
+      type: 'command',
+      command: 'restart'
+    });
+
+    if (sent) {
+      res.json({ message: 'Cihaz yeniden başlatılıyor' });
+    } else {
+      res.status(404).json({ message: 'Cihaz çevrimiçi değil' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Ses seviyesini ayarla
+router.post('/:id/volume', async (req, res) => {
+  try {
+    const device = await Device.findById(req.params.id);
+    if (!device) {
+      return res.status(404).json({ message: 'Cihaz bulunamadı' });
+    }
+
+    // WebSocket üzerinden cihaza ses seviyesi değiştirme komutu gönder
+    const sent = req.wss.sendToDevice(device.token, {
+      type: 'command',
+      command: 'setVolume',
+      volume: req.body.volume
+    });
+
+    if (sent) {
+      await device.setVolume(req.body.volume);
+      res.json({ message: 'Ses seviyesi güncellendi' });
+    } else {
+      res.status(404).json({ message: 'Cihaz çevrimiçi değil' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Cihazı aç/kapat
+router.post('/:id/power', async (req, res) => {
+  try {
+    const device = await Device.findById(req.params.id);
+    if (!device) {
+      return res.status(404).json({ message: 'Cihaz bulunamadı' });
+    }
+
+    device.isOnline = req.body.power;
+    await device.save();
+
+    res.json({ message: `Cihaz ${req.body.power ? 'açıldı' : 'kapatıldı'}` });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Acil durdur
+router.post('/:id/emergency-stop', async (req, res) => {
+  try {
+    const device = await Device.findById(req.params.id);
+    if (!device) {
+      return res.status(404).json({ message: 'Cihaz bulunamadı' });
+    }
+
+    // Burada cihaza acil durdurma sinyali gönderilecek
+    // WebSocket veya başka bir yöntemle cihaza bilgi gönderilebilir
+
+    res.json({ message: 'Cihaz acil olarak durduruldu' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
 });
 

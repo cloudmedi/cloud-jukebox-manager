@@ -21,15 +21,18 @@ class PlaylistHandler {
     try {
       console.log('Handling playlist:', playlist.name);
       
+      // Playlist için klasör oluştur
       const playlistDir = path.join(this.downloadPath, playlist._id);
       this.ensureDirectoryExists(playlistDir);
 
+      // Şarkıları indir ve localPath'leri güncelle
       const updatedSongs = await Promise.all(
         playlist.songs.map(async (song) => {
           try {
             const songPath = path.join(playlistDir, `${song._id}.mp3`);
             const songUrl = `${playlist.baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
 
+            // Şarkı zaten indirilmiş mi kontrol et
             if (!fs.existsSync(songPath)) {
               console.log(`Downloading song: ${song.name}`);
               await this.downloadFile(songUrl, songPath);
@@ -46,11 +49,13 @@ class PlaylistHandler {
         })
       );
 
+      // Güncellenmiş playlist'i oluştur
       const updatedPlaylist = {
         ...playlist,
         songs: updatedSongs
       };
 
+      // Local storage'a kaydet
       const playlists = store.get('playlists', []);
       const existingIndex = playlists.findIndex(p => p._id === playlist._id);
       
@@ -61,12 +66,6 @@ class PlaylistHandler {
       }
       
       store.set('playlists', playlists);
-      
-      // Playlist hazır olduğunda ana pencereye bildir
-      const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
-      if (mainWindow) {
-        mainWindow.webContents.send('playlist-updated', updatedPlaylist);
-      }
       
       return updatedPlaylist;
     } catch (error) {
@@ -92,4 +91,4 @@ class PlaylistHandler {
   }
 }
 
-module.exports = PlaylistHandler;
+module.exports = new PlaylistHandler();

@@ -1,39 +1,12 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu } = require('electron');
+const path = require('path');
 const Store = require('electron-store');
 const store = new Store();
 const websocketService = require('./services/websocketService');
-const deviceService = require('./services/deviceService');
-const apiService = require('./services/apiService');
 require('./services/audioService');
 
 let mainWindow;
-
-async function initializeDevice() {
-  try {
-    // Token kontrolü
-    let token = deviceService.getStoredToken();
-    console.log('Checking stored token:', token);
-    
-    if (!token) {
-      console.log('No token found, generating new token...');
-      token = await deviceService.generateAndRegisterToken();
-      console.log('New token generated and registered:', token);
-    }
-
-    // WebSocket bağlantısını başlat
-    if (token) {
-      console.log('Connecting to WebSocket with token:', token);
-      websocketService.connect(token);
-    }
-
-    // Ana pencereye token'ı gönder
-    if (mainWindow) {
-      mainWindow.webContents.send('update-token', token);
-    }
-  } catch (error) {
-    console.error('Error initializing device:', error);
-  }
-}
+let tray = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -60,6 +33,7 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   }
 
+  // Pencere kapatıldığında sistem tepsisine küçült
   mainWindow.on('close', function (event) {
     if (!app.isQuitting) {
       event.preventDefault();
@@ -71,20 +45,73 @@ function createWindow() {
     return false;
   });
 
-  // Son kaydedilen playlist'i kontrol et ve yükle
-  const playlists = store.get('playlists', []);
-  if (playlists.length > 0) {
-    const lastPlaylist = playlists[playlists.length - 1];
-    console.log('Starting last saved playlist:', lastPlaylist.name);
-    mainWindow.webContents.on('did-finish-load', () => {
-      mainWindow.webContents.send('auto-play-playlist', lastPlaylist);
-    });
+  // Uygulama başladığında son kaydedilen playlist'i kontrol et
+  const deviceInfo = store.get('deviceInfo');
+  if (deviceInfo && deviceInfo.token) {
+    websocketService.connect(deviceInfo.token);
+    
+    const playlists = store.get('playlists', []);
+    if (playlists.length > 0) {
+      const lastPlaylist = playlists[playlists.length - 1];
+      console.log('Starting last saved playlist:', lastPlaylist.name);
+      mainWindow.webContents.on('did-finish-load', () => {
+        mainWindow.webContents.send('auto-play-playlist', lastPlaylist);
+      });
+    }
   }
 }
 
-app.whenReady().then(async () => {
-  await initializeDevice();
+function createTray() {
+  try {
+    // Tray ikonu oluştur
+    const iconPath = path.join(__dirname, 'icon.png');
+    console.log('Tray icon path:', iconPath);
+    
+    tray = new Tray(iconPath);
+    
+    // Tray menüsünü oluştur
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: 'Show App',
+        click: function() {
+          mainWindow.show();
+          mainWindow.focus(); // Pencereyi ön plana getir
+        }
+      },
+      {
+        label: 'Close',
+        click: function() {
+          app.isQuitting = true;
+          app.quit();
+        }
+      }
+    ]);
+
+    // Tray ayarlarını yap
+    tray.setToolTip('Cloud Media Player');
+    tray.setContextMenu(contextMenu);
+
+    // Tray ikonuna çift tıklandığında uygulamayı göster
+    tray.on('double-click', () => {
+      mainWindow.show();
+      mainWindow.focus(); // Pencereyi ön plana getir
+    });
+    
+    // Tray ikonuna tek tıklandığında uygulamayı göster
+    tray.on('click', () => {
+      mainWindow.show();
+      mainWindow.focus(); // Pencereyi ön plana getir
+    });
+    
+    console.log('Tray created successfully');
+  } catch (error) {
+    console.error('Error creating tray:', error);
+  }
+}
+
+app.whenReady().then(() => {
   createWindow();
+  createTray(); // Uygulama başladığında tray'i oluştur
 });
 
 app.on('window-all-closed', () => {
@@ -104,11 +131,16 @@ app.on('before-quit', () => {
   app.isQuitting = true;
 });
 
-// IPC handlers for token management
-ipcMain.handle('get-device-token', async () => {
-  return deviceService.getStoredToken();
+ipcMain.handle('save-device-info', async (event, deviceInfo) => {
+  store.set('deviceInfo', deviceInfo);
+  
+  if (deviceInfo.token) {
+    websocketService.connect(deviceInfo.token);
+  }
+  
+  return deviceInfo;
 });
 
-ipcMain.handle('regenerate-token', async () => {
-  return await deviceService.generateAndRegisterToken();
+ipcMain.handle('get-device-info', async () => {
+  return store.get('deviceInfo');
 });

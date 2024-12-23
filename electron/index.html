@@ -1,29 +1,26 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Cloud Media Player</title>
-  <link rel="stylesheet" href="styles.css">
+    <meta charset="UTF-8">
+    <title>Cloud Media Player</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
-<body class="bg-gray-900 text-white">
-  <div class="flex flex-col h-screen">
-    <div id="titleBar" class="drag">
-      <button id="closeButton" class="no-drag">×</button>
+<body>
+    <div class="titlebar">
+        <button class="titlebar-button close" id="closeButton">✕</button>
     </div>
-    
-    <div class="flex-1 p-4">
-      <div id="tokenContainer" class="mb-4">
-        <!-- Token will be displayed here -->
-      </div>
-      
-      <div id="playlistContainer" class="mb-4">
-        <!-- Playlist info will be displayed here -->
-      </div>
-      
-      <audio id="audioPlayer"></audio>
+    <div class="container">
+        <div id="playlistContainer" class="playlist-container">
+            <!-- Playlistler buraya eklenecek -->
+        </div>
+        
+        <audio id="audioPlayer"></audio>
+        
+        <div class="download-progress" style="display: none;">
+            <div class="download-progress-bar"></div>
+            <div class="download-progress-text"></div>
+        </div>
     </div>
-  </div>
-  
-  <script src="renderer.js"></script>
+    <script src="renderer.js"></script>
 </body>
 </html>

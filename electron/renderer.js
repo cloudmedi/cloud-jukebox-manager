@@ -3,72 +3,12 @@ const Store = require('electron-store');
 const store = new Store();
 const AudioEventHandler = require('./services/audio/AudioEventHandler');
 const playbackStateManager = require('./services/audio/PlaybackStateManager');
-const webSocketMessageHandler = require('./services/websocket/WebSocketMessageHandler');
 
 const audio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(audio);
 
 // Initialize volume
 audio.volume = 0.7; // 70%
-
-// Token display management
-function displayToken(token) {
-  const tokenContainer = document.getElementById('tokenContainer');
-  if (tokenContainer) {
-    tokenContainer.innerHTML = `
-      <div class="token-display p-4 bg-gray-800 rounded-lg text-white text-center">
-        <h2 class="text-lg font-semibold mb-2">Cihaz Token</h2>
-        <p class="text-3xl font-bold mb-2">${token}</p>
-        <p class="text-sm text-gray-400">Bu token'ı Cloud Media Manager'da cihaz eklerken kullanın</p>
-      </div>
-    `;
-  }
-}
-
-// Get and display initial token
-ipcRenderer.invoke('get-device-token').then(token => {
-  if (token) {
-    displayToken(token);
-  }
-});
-
-// Listen for token updates
-ipcRenderer.on('update-token', (event, token) => {
-  displayToken(token);
-});
-
-// WebSocket message handlers
-ipcRenderer.on('ws-message', (event, message) => {
-  webSocketMessageHandler.handleMessage(message);
-});
-
-// Handle playlist cleared event
-ipcRenderer.on('playlists-cleared', () => {
-  console.log('All playlists have been cleared');
-  if (audio) {
-    audio.pause();
-    audio.src = '';
-  }
-  
-  // Cihaz bilgilerini göster
-  const deviceInfo = store.get('deviceInfo');
-  if (deviceInfo?.token) {
-    console.log('Displaying device info after clearing playlists');
-    displayDeviceInfo(deviceInfo);
-  }
-});
-
-function displayDeviceInfo(deviceInfo) {
-  const playlistContainer = document.getElementById('playlistContainer');
-  if (playlistContainer) {
-    playlistContainer.innerHTML = `
-      <div class="device-info p-4 bg-gray-800 rounded-lg text-white">
-        <h2 class="text-lg font-semibold mb-2">Cihaz Bilgileri</h2>
-        <p class="text-sm">Token: ${deviceInfo.token}</p>
-      </div>
-    `;
-  }
-}
 
 // Auto-play playlist
 ipcRenderer.on('auto-play-playlist', (event, playlist) => {
@@ -77,8 +17,9 @@ ipcRenderer.on('auto-play-playlist', (event, playlist) => {
     const playbackState = playbackStateManager.getPlaybackState();
     audioHandler.setCurrentPlaylistId(playlist._id);
     
+    // Eğer playlist ID'leri eşleşiyorsa, kaydedilen durumu kullan
     const shouldAutoPlay = playbackState.playlistId === playlist._id ? 
-      playbackState.isPlaying : false;
+      playbackState.isPlaying : false; // Varsayılan olarak çalma
     
     console.log('Should auto-play:', shouldAutoPlay, 'Playback state:', playbackState);
     
@@ -140,8 +81,25 @@ ipcRenderer.on('toggle-playback', () => {
   }
 });
 
+// Otomatik playlist başlatma
+ipcRenderer.on('auto-play-playlist', (event, playlist) => {
+  console.log('Auto-playing playlist:', playlist);
+  if (playlist && playlist.songs && playlist.songs.length > 0) {
+    const shouldAutoPlay = playbackStateManager.getPlaybackState();
+    displayPlaylists();
+    
+    if (shouldAutoPlay) {
+      console.log('Auto-playing based on saved state');
+      ipcRenderer.invoke('play-playlist', playlist);
+    } else {
+      console.log('Not auto-playing due to saved state');
+      // Playlist'i yükle ama oynatma
+      ipcRenderer.invoke('load-playlist', playlist);
+    }
+  }
+});
+
 function displayPlaylists() {
-  const deviceInfo = store.get('deviceInfo');
   const playlists = store.get('playlists', []);
   const playlistContainer = document.getElementById('playlistContainer');
   
@@ -151,31 +109,6 @@ function displayPlaylists() {
   }
   
   playlistContainer.innerHTML = '';
-
-  // Eğer cihaz bilgisi yoksa
-  if (!deviceInfo || !deviceInfo.token) {
-    playlistContainer.innerHTML = `
-      <div class="no-device-info p-4 bg-gray-800 rounded-lg text-white">
-        <h2 class="text-lg font-semibold mb-2">Hoş Geldiniz</h2>
-        <p class="text-sm mb-2">Cihaz henüz kaydedilmemiş. Lütfen cihazı kaydetmek için Cloud Media Manager uygulamasını kullanın.</p>
-        <p class="text-sm">Token: Bekleniyor...</p>
-      </div>
-    `;
-    return;
-  }
-
-  // Eğer playlist yoksa
-  if (!playlists.length) {
-    playlistContainer.innerHTML = `
-      <div class="no-playlists p-4 bg-gray-800 rounded-lg text-white">
-        <h2 class="text-lg font-semibold mb-2">Playlist Bulunamadı</h2>
-        <p class="text-sm mb-2">Henüz hiç playlist indirilmemiş.</p>
-        <p class="text-sm">Token: ${deviceInfo.token}</p>
-        <p class="text-sm mt-2">Cloud Media Manager üzerinden bir playlist göndererek başlayabilirsiniz.</p>
-      </div>
-    `;
-    return;
-  }
   
   // Son playlist'i göster
   const lastPlaylist = playlists[playlists.length - 1];
@@ -183,17 +116,16 @@ function displayPlaylists() {
     const playlistElement = document.createElement('div');
     playlistElement.className = 'playlist-item';
     playlistElement.innerHTML = `
-      <div class="playlist-info p-4 bg-gray-800 rounded-lg text-white">
+      <div class="playlist-info">
         ${lastPlaylist.artwork ? 
-          `<img src="${lastPlaylist.artwork}" alt="${lastPlaylist.name}" class="playlist-artwork w-16 h-16 rounded mb-2"/>` :
-          '<div class="playlist-artwork-placeholder w-16 h-16 bg-gray-700 rounded mb-2"></div>'
+          `<img src="${lastPlaylist.artwork}" alt="${lastPlaylist.name}" class="playlist-artwork"/>` :
+          '<div class="playlist-artwork-placeholder"></div>'
         }
         <div class="playlist-details">
-          <h3 class="font-semibold">${lastPlaylist.name}</h3>
-          <p class="text-sm text-gray-300">${lastPlaylist.songs[0]?.artist || 'Unknown Artist'}</p>
-          <p class="text-sm text-gray-300">${lastPlaylist.songs[0]?.name || 'No songs'}</p>
+          <h3>${lastPlaylist.name}</h3>
+          <p>${lastPlaylist.songs[0]?.artist || 'Unknown Artist'}</p>
+          <p>${lastPlaylist.songs[0]?.name || 'No songs'}</p>
         </div>
-        <p class="text-sm mt-2 text-gray-400">Token: ${deviceInfo.token}</p>
       </div>
     `;
     
@@ -202,8 +134,104 @@ function displayPlaylists() {
   }
 }
 
+function deleteOldPlaylists() {
+  const playlists = store.get('playlists', []);
+  
+  // Son playlist hariç tüm playlistleri sil
+  if (playlists.length > 1) {
+    const latestPlaylist = playlists[playlists.length - 1];
+    
+    // Eski playlistlerin şarkı dosyalarını ve klasörlerini sil
+    playlists.slice(0, -1).forEach(playlist => {
+      playlist.songs.forEach(song => {
+        if (song.localPath) {
+          try {
+            // Şarkı dosyasını sil
+            fs.unlinkSync(song.localPath);
+            console.log(`Deleted song file: ${song.localPath}`);
+            
+            // Şarkının bulunduğu klasörü bul
+            const playlistDir = path.dirname(song.localPath);
+            
+            // Klasördeki tüm dosyaları sil
+            const files = fs.readdirSync(playlistDir);
+            files.forEach(file => {
+              const filePath = path.join(playlistDir, file);
+              fs.unlinkSync(filePath);
+              console.log(`Deleted file: ${filePath}`);
+            });
+            
+            // Boş klasörü sil
+            fs.rmdirSync(playlistDir);
+            console.log(`Deleted playlist directory: ${playlistDir}`);
+          } catch (error) {
+            console.error(`Error deleting files/directory: ${error}`);
+          }
+        }
+      });
+    });
+    
+    // Store'u güncelle, sadece son playlisti tut
+    store.set('playlists', [latestPlaylist]);
+    console.log('Kept only the latest playlist:', latestPlaylist.name);
+  }
+}
+
+// WebSocket mesaj dinleyicileri
+ipcRenderer.on('playlist-received', (event, playlist) => {
+  console.log('New playlist received:', playlist);
+  
+  const playlists = store.get('playlists', []);
+  const existingIndex = playlists.findIndex(p => p._id === playlist._id);
+  
+  if (existingIndex !== -1) {
+    playlists[existingIndex] = playlist;
+  } else {
+    playlists.push(playlist);
+  }
+  
+  store.set('playlists', playlists);
+  
+  const shouldAutoPlay = playbackStateManager.getPlaybackState();
+  if (shouldAutoPlay) {
+    console.log('Auto-playing new playlist:', playlist);
+    ipcRenderer.invoke('play-playlist', playlist);
+  } else {
+    console.log('Loading new playlist without auto-play');
+    ipcRenderer.invoke('load-playlist', playlist);
+  }
+  
+  deleteOldPlaylists();
+  displayPlaylists();
+  
+  new Notification('Yeni Playlist', {
+    body: `${playlist.name} playlist'i başarıyla indirildi.`
+  });
+});
+
+// Audio event listeners
+audio.addEventListener('ended', () => {
+  console.log('Song ended, playing next');
+  ipcRenderer.invoke('song-ended');
+});
+
+ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
+  console.log('Updating player with song:', currentSong);
+  if (currentSong && currentSong.localPath) {
+    const normalizedPath = currentSong.localPath.replace(/\\/g, '/');
+    audio.src = normalizedPath;
+    audio.play().catch(err => console.error('Playback error:', err));
+    
+    // Şarkı değiştiğinde görsel bilgileri güncelle
+    displayPlaylists();
+  }
+});
+
 // İlk yüklemede playlistleri göster
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM loaded, displaying playlists');
   displayPlaylists();
 });
+
+// Diğer event listener'lar
+
