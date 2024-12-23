@@ -1,121 +1,212 @@
-import { useEffect, useRef, useState } from "react";
-import { Howl } from "howler";
+import { useState, useEffect, useRef } from "react";
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Music } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Slider } from "@/components/ui/slider";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { usePlaybackStore } from "@/store/playbackStore";
-import { Music } from "lucide-react";
-import { formatDuration } from "@/lib/utils";
-import { Song } from "@/types/song";
 
-export const Player = () => {
-  const { currentSong, isPlaying, play, pause } = usePlaybackStore((state) => ({
-    currentSong: state.currentSong,
-    isPlaying: state.isPlaying,
-    play: state.play,
-    pause: state.pause
-  }));
-  
-  const [sound, setSound] = useState<Howl | null>(null);
+const Player = () => {
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [volume, setVolume] = useState(70);
+  const [isMuted, setIsMuted] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
-  const progressInterval = useRef<number>();
-
-  // Cleanup function to prevent memory leaks
-  const cleanup = () => {
-    if (progressInterval.current) {
-      clearInterval(progressInterval.current);
-    }
-    if (sound) {
-      sound.unload();
-    }
-  };
+  const audioRef = useRef<HTMLAudioElement>(null);
+  const isMobile = useIsMobile();
+  
+  const { currentSong, next, previous } = usePlaybackStore();
 
   useEffect(() => {
-    return () => cleanup();
-  }, []);
+    if (currentSong && audioRef.current) {
+      const audioPath = currentSong.filePath ? `http://localhost:5000/${currentSong.filePath}` : currentSong.localPath;
+      if (!audioPath) {
+        console.error('No valid audio path found for song:', currentSong);
+        return;
+      }
 
-  useEffect(() => {
-    if (currentSong) {
-      cleanup();
-
-      const newSound = new Howl({
-        src: [`http://localhost:5000${currentSong.filePath}`],
-        html5: true,
-        onload: () => {
-          setDuration(newSound.duration());
-        },
-        onplay: () => {
-          progressInterval.current = window.setInterval(() => {
-            setProgress(newSound.seek());
-          }, 1000);
-        },
-        onpause: () => {
-          if (progressInterval.current) {
-            clearInterval(progressInterval.current);
-          }
-        },
-        onend: () => {
-          if (progressInterval.current) {
-            clearInterval(progressInterval.current);
-          }
-        },
+      audioRef.current.src = audioPath;
+      audioRef.current.play().then(() => {
+        setIsPlaying(true);
+      }).catch(error => {
+        console.error('Playback error:', error);
       });
-
-      setSound(newSound);
-
-      return () => cleanup();
     }
   }, [currentSong]);
 
   useEffect(() => {
-    if (sound) {
-      if (isPlaying) {
-        sound.play();
-      } else {
-        sound.pause();
-      }
-    }
-  }, [isPlaying, sound]);
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const handleTimeUpdate = () => {
+      setProgress(audio.currentTime);
+    };
+
+    const handleLoadedMetadata = () => {
+      setDuration(audio.duration);
+    };
+
+    const handleEnded = () => {
+      setIsPlaying(false);
+      setProgress(0);
+      next();
+    };
+
+    audio.addEventListener('timeupdate', handleTimeUpdate);
+    audio.addEventListener('loadedmetadata', handleLoadedMetadata);
+    audio.addEventListener('ended', handleEnded);
+
+    return () => {
+      audio.removeEventListener('timeupdate', handleTimeUpdate);
+      audio.removeEventListener('loadedmetadata', handleLoadedMetadata);
+      audio.removeEventListener('ended', handleEnded);
+    };
+  }, [next]);
 
   const handlePlayPause = () => {
-    if (isPlaying) {
-      pause();
-    } else {
-      play();
+    if (audioRef.current) {
+      if (isPlaying) {
+        audioRef.current.pause();
+      } else {
+        audioRef.current.play();
+      }
+      setIsPlaying(!isPlaying);
     }
   };
 
-  const artworkUrl = currentSong?.artwork 
-    ? `http://localhost:5000${currentSong.artwork}`
-    : '/placeholder.svg';
+  const handleNext = () => {
+    next();
+  };
+
+  const handlePrevious = () => {
+    previous();
+  };
+
+  const handleVolumeChange = (value: number[]) => {
+    if (audioRef.current) {
+      setVolume(value[0]);
+      audioRef.current.volume = value[0] / 100;
+      if (value[0] > 0) setIsMuted(false);
+    }
+  };
+
+  const toggleMute = () => {
+    if (audioRef.current) {
+      audioRef.current.muted = !isMuted;
+      setIsMuted(!isMuted);
+    }
+  };
+
+  const handleSeek = (value: number[]) => {
+    if (audioRef.current) {
+      audioRef.current.currentTime = value[0];
+      setProgress(value[0]);
+    }
+  };
+
+  const formatTime = (seconds: number) => {
+    const minutes = Math.floor(seconds / 60);
+    const remainingSeconds = Math.floor(seconds % 60);
+    return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
+  };
+
+  if (!currentSong) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 bg-background border-t">
-      <div className="container flex items-center justify-between h-20">
-        <div className="flex items-center gap-3">
-          <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center overflow-hidden">
-            {currentSong?.artwork ? (
-              <img 
-                src={artworkUrl}
-                alt={currentSong.name} 
-                className="w-full h-full object-cover" 
+    <div className="fixed bottom-0 left-0 right-0 h-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t border-border/40">
+      <audio ref={audioRef} />
+      <div className={`mx-auto h-full flex items-center ${isMobile ? 'px-2 flex-col justify-center gap-2 h-auto py-4' : 'container px-4 justify-between'}`}>
+        <div className={`flex items-center gap-4 ${isMobile ? 'w-full justify-between' : ''}`}>
+          <div className="w-12 h-12 bg-muted rounded-md shrink-0 overflow-hidden">
+            {currentSong.artwork ? (
+              <img
+                src={`http://localhost:5000${currentSong.artwork}`}
+                alt={`${currentSong.name} artwork`}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/placeholder.svg';
+                }}
               />
             ) : (
-              <Music className="h-6 w-6 text-muted-foreground" />
+              <div className="w-full h-full flex items-center justify-center">
+                <Music className="h-6 w-6 text-muted-foreground" />
+              </div>
             )}
           </div>
-          <div>
-            <p className="font-medium">{currentSong?.name}</p>
-            <p className="text-sm text-muted-foreground">{currentSong?.artist}</p>
+          <div className="min-w-0">
+            <h4 className="font-medium truncate">{currentSong.name}</h4>
+            <p className="text-sm text-muted-foreground truncate">{currentSong.artist}</p>
           </div>
         </div>
-        <div className="flex items-center">
-          <button onClick={handlePlayPause}>
-            {isPlaying ? "Pause" : "Play"}
-          </button>
-          <div className="flex items-center">
-            <span>{formatDuration(progress)}</span> / <span>{formatDuration(duration)}</span>
+        
+        <div className={`flex flex-col items-center gap-2 ${isMobile ? 'w-full' : ''}`}>
+          <div className="flex items-center gap-4">
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="shrink-0"
+              onClick={handlePrevious}
+            >
+              <SkipBack className="h-5 w-5" />
+            </Button>
+            <Button 
+              variant="outline" 
+              size="icon" 
+              className="h-10 w-10 shrink-0"
+              onClick={handlePlayPause}
+            >
+              {isPlaying ? (
+                <Pause className="h-5 w-5" />
+              ) : (
+                <Play className="h-5 w-5" />
+              )}
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="shrink-0"
+              onClick={handleNext}
+            >
+              <SkipForward className="h-5 w-5" />
+            </Button>
           </div>
+          <div className={`flex items-center gap-2 ${isMobile ? 'w-full' : 'w-96'}`}>
+            <span className="text-sm text-muted-foreground shrink-0">{formatTime(progress)}</span>
+            <Slider
+              value={[progress]}
+              onValueChange={handleSeek}
+              max={duration}
+              step={1}
+              className="w-full"
+            />
+            <span className="text-sm text-muted-foreground shrink-0">{formatTime(duration)}</span>
+          </div>
+        </div>
+        
+        <div className={`flex items-center gap-2 ${isMobile ? 'w-full justify-end' : ''}`}>
+          <Button 
+            variant="ghost" 
+            size="icon"
+            onClick={toggleMute}
+            className="shrink-0"
+          >
+            {isMuted || volume === 0 ? (
+              <VolumeX className="h-5 w-5" />
+            ) : (
+              <Volume2 className="h-5 w-5" />
+            )}
+          </Button>
+          <Slider
+            value={[isMuted ? 0 : volume]}
+            onValueChange={handleVolumeChange}
+            max={100}
+            step={1}
+            className={`${isMobile ? 'w-32' : 'w-28'}`}
+          />
         </div>
       </div>
     </div>
   );
 };
+
+export default Player;

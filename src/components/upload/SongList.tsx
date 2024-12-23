@@ -25,11 +25,11 @@ const SongList = () => {
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/songs");
       if (!response.ok) throw new Error("Failed to fetch songs");
-      return response.json() as Promise<Song[]>;
+      return response.json();
     },
   });
 
-  const genres = ["All", ...Array.from(new Set(songs.map((song) => song.genre)))].sort();
+  const genres = ["All", ...new Set(songs.map((song) => song.genre))].sort();
 
   const filteredSongs = songs?.filter((song) => {
     const matchesGenre = selectedGenre === "All" || song.genre === selectedGenre;

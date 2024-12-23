@@ -1,4 +1,4 @@
-import { Music, MoreVertical, PlayCircle, Pencil, Trash2 } from "lucide-react";
+import { Music, MoreVertical, PlayCircle, Pencil, Trash } from "lucide-react";
 import { TableCell, TableRow } from "@/components/ui/table";
 import {
   DropdownMenu,
@@ -39,9 +39,6 @@ export const SongTableRow = ({ song, onEdit, onDelete, allSongs }: SongTableRowP
       removeSong(song._id);
     }
   };
-
-  // Format duration properly, ensuring it's a number
-  const formattedDuration = song.duration ? formatDuration(song.duration) : "0:00";
 
   return (
     <TableRow key={song._id}>
@@ -86,7 +83,7 @@ export const SongTableRow = ({ song, onEdit, onDelete, allSongs }: SongTableRowP
       <TableCell>{song.artist}</TableCell>
       <TableCell>{song.genre}</TableCell>
       <TableCell>{song.album || "-"}</TableCell>
-      <TableCell>{formattedDuration}</TableCell>
+      <TableCell>{formatDuration(song.duration)}</TableCell>
       <TableCell>
         {new Date(song.createdAt).toLocaleDateString("tr-TR")}
       </TableCell>
@@ -106,7 +103,7 @@ export const SongTableRow = ({ song, onEdit, onDelete, allSongs }: SongTableRowP
               className="text-destructive"
               onClick={() => onDelete(song._id)}
             >
-              <Trash2 className="mr-2 h-4 w-4" />
+              <Trash className="mr-2 h-4 w-4" />
               Sil
             </DropdownMenuItem>
           </DropdownMenuContent>

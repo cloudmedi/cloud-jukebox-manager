@@ -8,7 +8,6 @@ interface Song {
   filePath: string;
   localPath?: string;
   duration: number;
-  artwork?: string | null;
 }
 
 interface PlaybackStore {
@@ -39,19 +38,19 @@ export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
   },
 
   play: () => {
-    set({ isPlaying: true });
     websocketService.sendMessage({
       type: 'command',
       command: 'play'
     });
+    set({ isPlaying: true });
   },
 
   pause: () => {
-    set({ isPlaying: false });
     websocketService.sendMessage({
       type: 'command',
       command: 'pause'
     });
+    set({ isPlaying: false });
   },
 
   next: () => {
@@ -97,6 +96,7 @@ export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
     const songIndex = queue.findIndex(s => s._id === song._id);
     
     if (songIndex === -1) {
+      // Şarkı queue'da yoksa, ekleyelim
       set(state => ({ 
         queue: [...state.queue, song],
         currentSong: song,
@@ -104,6 +104,7 @@ export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
         isPlaying: true
       }));
     } else {
+      // Şarkı queue'da varsa, sadece current song'u güncelleyelim
       set({ 
         currentSong: song,
         currentIndex: songIndex,
