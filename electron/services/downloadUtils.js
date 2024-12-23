@@ -14,13 +14,12 @@ const getDownloadPath = () => {
   return path.join(userDataPath, 'downloads');
 };
 
-const downloadFile = async (url, filename, onProgress) => {
+const downloadFile = async (url, filePath, onProgress) => {
   try {
     console.log('Downloading file:', url);
-    const downloadPath = getDownloadPath();
+    const downloadPath = path.dirname(filePath);
     ensureDirectoryExists(downloadPath);
 
-    const filePath = path.join(downloadPath, filename);
     const writer = fs.createWriteStream(filePath);
 
     const response = await axios({

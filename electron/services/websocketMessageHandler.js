@@ -1,22 +1,19 @@
 const { BrowserWindow } = require('electron');
 const { downloadFile } = require('./downloadUtils');
+const Store = require('electron-store');
 const path = require('path');
+const fs = require('fs');
 
 class WebSocketMessageHandler {
   constructor() {
     this.handlers = new Map();
-    this.mainWindow = null;
+    this.store = new Store();
     this.initializeHandlers();
   }
 
   initializeHandlers() {
-    // Handler fonksiyonlarını this bağlamıyla bağlayalım
-    this.handlePlaylist = this.handlePlaylist.bind(this);
-    this.handleCommand = this.handleCommand.bind(this);
-
-    // Şimdi Map'e ekleyelim
-    this.handlers.set('playlist', this.handlePlaylist);
-    this.handlers.set('command', this.handleCommand);
+    this.handlers.set('playlist', this.handlePlaylist.bind(this));
+    this.handlers.set('command', this.handleCommand.bind(this));
   }
 
   async handleMessage(message) {
@@ -49,12 +46,23 @@ class WebSocketMessageHandler {
       return;
     }
 
-    // Playlist bilgisini renderer'a gönder
-    mainWindow.webContents.send('playlist-info', {
-      id: playlist._id,
+    // Playlist için indirme klasörünü oluştur
+    const playlistDir = path.join(
+      this.store.get('downloadPath', path.join(app.getPath('userData'), 'downloads')),
+      playlist._id
+    );
+
+    if (!fs.existsSync(playlistDir)) {
+      fs.mkdirSync(playlistDir, { recursive: true });
+    }
+
+    // Playlist'i store'a kaydet
+    const storedPlaylist = {
+      _id: playlist._id,
       name: playlist.name,
-      artwork: playlist.artwork
-    });
+      artwork: playlist.artwork,
+      songs: []
+    };
 
     // Her şarkıyı indir
     for (const song of playlist.songs) {
@@ -62,21 +70,22 @@ class WebSocketMessageHandler {
         console.log('Processing song:', song);
         const songUrl = `${playlist.baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
         const filename = `${song._id}${path.extname(song.filePath)}`;
+        const localPath = path.join(playlistDir, filename);
 
         mainWindow.webContents.send('download-progress', {
           songName: song.name,
           progress: 0
         });
 
-        const localPath = await downloadFile(songUrl, filename, (progress) => {
+        await downloadFile(songUrl, localPath, (progress) => {
           mainWindow.webContents.send('download-progress', {
             songName: song.name,
             progress
           });
         });
 
-        // İndirilen şarkı bilgisini renderer'a gönder
-        mainWindow.webContents.send('song-downloaded', {
+        // Şarkıyı localPath ile birlikte playlist'e ekle
+        storedPlaylist.songs.push({
           ...song,
           localPath
         });
@@ -89,6 +98,21 @@ class WebSocketMessageHandler {
         });
       }
     }
+
+    // Playlist'i store'a kaydet
+    const playlists = this.store.get('playlists', []);
+    const existingIndex = playlists.findIndex(p => p._id === playlist._id);
+    
+    if (existingIndex !== -1) {
+      playlists[existingIndex] = storedPlaylist;
+    } else {
+      playlists.push(storedPlaylist);
+    }
+    
+    this.store.set('playlists', playlists);
+
+    // Renderer'a playlist hazır olduğunu bildir
+    mainWindow.webContents.send('playlist-ready', storedPlaylist);
   }
 
   handleCommand(message) {
