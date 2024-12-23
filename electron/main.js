@@ -75,6 +75,7 @@ function createTray() {
         label: 'Show App',
         click: function() {
           mainWindow.show();
+          mainWindow.focus(); // Pencereyi ön plana getir
         }
       },
       {
@@ -93,6 +94,13 @@ function createTray() {
     // Tray ikonuna çift tıklandığında uygulamayı göster
     tray.on('double-click', () => {
       mainWindow.show();
+      mainWindow.focus(); // Pencereyi ön plana getir
+    });
+    
+    // Tray ikonuna tek tıklandığında uygulamayı göster
+    tray.on('click', () => {
+      mainWindow.show();
+      mainWindow.focus(); // Pencereyi ön plana getir
     });
     
     console.log('Tray created successfully');
