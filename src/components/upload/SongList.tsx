@@ -51,8 +51,6 @@ export const SongList = ({
     <div className="rounded-md border">
       <Table>
         <SongTableHeader
-          sortConfig={sortConfig}
-          onSort={handleSort}
           showCheckbox={!!onSelect}
           allSongs={sortedSongs}
         />
