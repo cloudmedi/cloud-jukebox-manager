@@ -1,8 +1,5 @@
 import { Music, MoreVertical, PlayCircle, Pencil, Trash } from "lucide-react";
-import {
-  TableCell,
-  TableRow,
-} from "@/components/ui/table";
+import { TableCell, TableRow } from "@/components/ui/table";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -43,6 +40,10 @@ export const SongTableRow = ({ song, onEdit, onDelete, allSongs }: SongTableRowP
                   src={`http://localhost:5000${song.artwork}`} 
                   alt={`${song.name} artwork`}
                   className="w-full h-full object-cover"
+                  onError={(e) => {
+                    const target = e.target as HTMLImageElement;
+                    target.src = '/placeholder.svg';
+                  }}
                 />
               ) : (
                 <Music className="h-6 w-6 text-muted-foreground" />

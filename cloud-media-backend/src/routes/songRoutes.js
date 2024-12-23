@@ -69,13 +69,14 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     // Artwork'ü kaydet
     let artworkPath = null;
     if (tags.image && tags.image.imageBuffer) {
-      const artworkFileName = `artwork-${Date.now()}.jpg`;
-      const artworkFullPath = path.join('uploads', 'artworks', artworkFileName);
-      
       // Artwork klasörünü oluştur
-      if (!fs.existsSync(path.join('uploads', 'artworks'))) {
-        fs.mkdirSync(path.join('uploads', 'artworks'), { recursive: true });
+      const artworkDir = path.join('uploads', 'artworks');
+      if (!fs.existsSync(artworkDir)) {
+        fs.mkdirSync(artworkDir, { recursive: true });
       }
+      
+      const artworkFileName = `artwork-${Date.now()}.jpg`;
+      const artworkFullPath = path.join(artworkDir, artworkFileName);
       
       fs.writeFileSync(artworkFullPath, tags.image.imageBuffer);
       artworkPath = `/uploads/artworks/${artworkFileName}`;
@@ -99,7 +100,7 @@ router.post('/upload', upload.single('file'), async (req, res) => {
     const newSong = await song.save();
     res.status(201).json(newSong);
   } catch (error) {
-    console.warn('Hata:', error);
+    console.error('Hata:', error);
     res.status(400).json({ message: error.message });
   }
 });
