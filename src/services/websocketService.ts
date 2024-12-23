@@ -5,8 +5,6 @@ class WebSocketService {
   private reconnectTimeout: NodeJS.Timeout | null = null;
   private isConnecting: boolean = false;
   private pingInterval: NodeJS.Timeout | null = null;
-  private reconnectAttempts: number = 0;
-  private maxReconnectAttempts: number = 5;
 
   private constructor() {
     this.connect();
@@ -21,10 +19,7 @@ class WebSocketService {
   }
 
   private setupPing() {
-    if (this.pingInterval) {
-      clearInterval(this.pingInterval);
-    }
-    
+    // Her 30 saniyede bir ping gönder
     this.pingInterval = setInterval(() => {
       if (this.ws?.readyState === WebSocket.OPEN) {
         this.ws.send(JSON.stringify({ type: 'ping' }));
@@ -34,11 +29,6 @@ class WebSocketService {
 
   private connect() {
     if (this.isConnecting || (this.ws && this.ws.readyState === WebSocket.OPEN)) {
-      return;
-    }
-
-    if (this.reconnectAttempts >= this.maxReconnectAttempts) {
-      console.error('Maximum reconnection attempts reached');
       return;
     }
 
@@ -54,7 +44,6 @@ class WebSocketService {
     this.ws.onopen = () => {
       console.log('Admin WebSocket bağlantısı kuruldu');
       this.isConnecting = false;
-      this.reconnectAttempts = 0;
       if (this.reconnectTimeout) {
         clearTimeout(this.reconnectTimeout);
         this.reconnectTimeout = null;
@@ -64,7 +53,7 @@ class WebSocketService {
     this.ws.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);
-        if (message.type === 'pong') return;
+        if (message.type === 'pong') return; // Ping-pong yanıtlarını işleme
         this.handleMessage(message);
       } catch (error) {
         console.error('Message parsing error:', error);
@@ -74,7 +63,6 @@ class WebSocketService {
     this.ws.onclose = () => {
       console.log('WebSocket bağlantısı kapandı, yeniden bağlanılıyor...');
       this.isConnecting = false;
-      this.reconnectAttempts++;
       this.scheduleReconnect();
     };
 
@@ -86,11 +74,10 @@ class WebSocketService {
   }
 
   private scheduleReconnect() {
-    if (!this.reconnectTimeout && this.reconnectAttempts < this.maxReconnectAttempts) {
-      const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
+    if (!this.reconnectTimeout) {
       this.reconnectTimeout = setTimeout(() => {
         this.connect();
-      }, delay);
+      }, 5000);
     }
   }
 
@@ -148,7 +135,6 @@ class WebSocketService {
     }
     this.messageHandlers.clear();
     this.isConnecting = false;
-    this.reconnectAttempts = 0;
   }
 }
 
