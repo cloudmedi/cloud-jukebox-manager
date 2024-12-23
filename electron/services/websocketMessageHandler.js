@@ -1,4 +1,4 @@
-const { BrowserWindow } = require('electron');
+const { BrowserWindow, app } = require('electron');
 const { downloadFile } = require('./downloadUtils');
 const Store = require('electron-store');
 const path = require('path');
@@ -47,8 +47,10 @@ class WebSocketMessageHandler {
     }
 
     // Playlist için indirme klasörünü oluştur
+    const userDataPath = app.getPath('userData');
     const playlistDir = path.join(
-      this.store.get('downloadPath', path.join(app.getPath('userData'), 'downloads')),
+      userDataPath,
+      'downloads',
       playlist._id
     );
 
