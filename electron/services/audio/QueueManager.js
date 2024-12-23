@@ -14,6 +14,12 @@ class QueueManager {
     return this.queue[this.currentIndex];
   }
 
+  peekNext() {
+    if (this.queue.length === 0) return null;
+    const nextIndex = (this.currentIndex + 1) % this.queue.length;
+    return this.queue[nextIndex];
+  }
+
   next() {
     if (this.queue.length === 0) return null;
     this.currentIndex = (this.currentIndex + 1) % this.queue.length;

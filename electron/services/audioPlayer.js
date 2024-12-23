@@ -19,6 +19,7 @@ class AudioPlayer {
 
     this.audio.addEventListener('error', (e) => {
       console.error('Audio error:', e);
+      // Hata durumunda da sonraki şarkıya geç
       this.playNext();
     });
 
@@ -32,6 +33,20 @@ class AudioPlayer {
       console.log('Audio paused');
       this.isPlaying = false;
       this.updatePlaybackState('paused');
+    });
+
+    // Şarkı süresini kontrol et
+    this.audio.addEventListener('timeupdate', () => {
+      // Şarkı sonuna yaklaşıldığında kontrol et
+      if (this.audio.duration > 0 && 
+          this.audio.currentTime >= this.audio.duration - 0.5) {
+        console.log('Song near end, preparing next');
+        // Sonraki şarkıyı hazırla
+        const nextSong = this.queueManager.peekNext();
+        if (nextSong) {
+          console.log('Preloading next song:', nextSong.name);
+        }
+      }
     });
   }
 
@@ -66,14 +81,23 @@ class AudioPlayer {
       const normalizedPath = path.normalize(song.localPath);
       console.log('Playing file from:', normalizedPath);
       
+      // Yeni şarkıyı yüklemeden önce eski şarkıyı durdur
+      this.audio.pause();
+      this.audio.currentTime = 0;
+      
       this.audio.src = normalizedPath;
       this.audio.volume = this.volume;
       
-      if (this.isPlaying) {
-        this.audio.play().catch(error => {
-          console.error('Error playing audio:', error);
-        });
-      }
+      // Şarkı yüklendikten sonra çal
+      this.audio.addEventListener('loadeddata', () => {
+        console.log('Song loaded successfully');
+        if (this.isPlaying) {
+          this.audio.play().catch(error => {
+            console.error('Error playing audio:', error);
+          });
+        }
+      }, { once: true }); // Event listener'ı bir kez çalıştır
+      
     } catch (error) {
       console.error('Error loading song:', error);
       this.playNext();
@@ -105,15 +129,22 @@ class AudioPlayer {
   }
 
   playNext() {
+    console.log('Playing next song');
     const nextSong = this.queueManager.next();
     if (nextSong) {
+      console.log('Next song found:', nextSong.name);
       this.loadCurrentSong();
+    } else {
+      console.log('No more songs in queue');
+      this.stop();
     }
   }
 
   playPrevious() {
+    console.log('Playing previous song');
     const prevSong = this.queueManager.previous();
     if (prevSong) {
+      console.log('Previous song found:', prevSong.name);
       this.loadCurrentSong();
     }
   }
