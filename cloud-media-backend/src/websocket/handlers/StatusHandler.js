@@ -42,6 +42,33 @@ class StatusHandler {
       console.error('Error handling online status:', error);
     }
   }
+
+  async handlePlaylistStatus(token, message) {
+    try {
+      console.log('Handling playlist status update:', message, 'for device:', token);
+      
+      const { status, playlistId } = message;
+      const device = await Device.findOne({ token });
+      
+      if (device) {
+        await Device.findByIdAndUpdate(device._id, {
+          playlistStatus: status
+        });
+        
+        this.wss.broadcastToAdmins({
+          type: 'deviceStatus',
+          token: token,
+          playlistStatus: status
+        });
+        
+        console.log(`Updated playlist status for device ${token} to ${status}`);
+      } else {
+        console.error('Device not found for token:', token);
+      }
+    } catch (error) {
+      console.error('Error updating playlist status:', error);
+    }
+  }
 }
 
 module.exports = StatusHandler;

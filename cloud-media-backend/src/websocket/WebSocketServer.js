@@ -2,12 +2,14 @@ const WebSocket = require('ws');
 const Device = require('../models/Device');
 const MessageHandler = require('./handlers/MessageHandler');
 const StatusHandler = require('./handlers/StatusHandler');
+const DeviceMessageHandler = require('./handlers/DeviceMessageHandler');
 
 class WebSocketServer {
   constructor(server) {
     this.wss = new WebSocket.Server({ server });
-    this.messageHandler = new MessageHandler(this);
     this.statusHandler = new StatusHandler(this);
+    this.messageHandler = new MessageHandler(this);
+    this.deviceMessageHandler = new DeviceMessageHandler(this, this.statusHandler);
     this.initialize();
   }
 
@@ -121,7 +123,7 @@ class WebSocketServer {
               try {
                 const data = JSON.parse(message);
                 console.log('Device message received:', data);
-                await this.handleDeviceMessage(deviceToken, data);
+                await this.deviceMessageHandler.handleMessage(deviceToken, data);
               } catch (error) {
                 console.error('Message handling error:', error);
                 ws.send(JSON.stringify({
@@ -156,48 +158,6 @@ class WebSocketServer {
         ws.close();
       }
     });
-  }
-
-  async handleDeviceMessage(token, message) {
-    console.log(`Handling device message from ${token}:`, message);
-    
-    switch (message.type) {
-      case 'status':
-        await this.statusHandler.handleOnlineStatus(token, message.isOnline);
-        break;
-
-      case 'playbackStatus':
-        await this.statusHandler.handlePlaybackStatus(token, message);
-        break;
-
-      case 'playlistStatus':
-        await this.statusHandler.handlePlaylistStatus(token, message);
-        break;
-
-      case 'volume':
-        const device = await Device.findOne({ token });
-        if (!device) return;
-
-        await device.setVolume(message.volume);
-        this.broadcastToAdmins({
-          type: 'deviceStatus',
-          token: token,
-          volume: message.volume
-        });
-        break;
-
-      case 'error':
-        this.broadcastToAdmins({
-          type: 'deviceError',
-          token: token,
-          error: message.error
-        });
-        break;
-
-      default:
-        console.log('Unknown message type:', message.type);
-        break;
-    }
   }
 
   broadcastToAdmins(message) {
