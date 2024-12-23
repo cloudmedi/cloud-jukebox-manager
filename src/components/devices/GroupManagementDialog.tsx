@@ -3,6 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
+import { toast } from "sonner";
 
 interface Group {
   _id: string;
@@ -23,6 +24,7 @@ const GroupManagementDialog = ({
   onGroupChange,
 }: GroupManagementDialogProps) => {
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(currentGroupId);
+  const [isSaving, setIsSaving] = useState(false);
 
   const { data: groups = [] } = useQuery({
     queryKey: ["device-groups"],
@@ -37,9 +39,18 @@ const GroupManagementDialog = ({
     setSelectedGroupId(currentGroupId);
   }, [currentGroupId]);
 
-  const handleSave = () => {
-    onGroupChange(selectedGroupId);
-    onClose();
+  const handleSave = async () => {
+    try {
+      setIsSaving(true);
+      await onGroupChange(selectedGroupId);
+      toast.success("Grup başarıyla güncellendi");
+      onClose();
+    } catch (error) {
+      console.error("Grup güncelleme hatası:", error);
+      toast.error("Grup güncellenirken bir hata oluştu");
+    } finally {
+      setIsSaving(false);
+    }
   };
 
   return (
@@ -52,6 +63,7 @@ const GroupManagementDialog = ({
           <Select
             value={selectedGroupId || undefined}
             onValueChange={setSelectedGroupId}
+            disabled={isSaving}
           >
             <SelectTrigger>
               <SelectValue placeholder="Grup seçin" />
@@ -65,11 +77,18 @@ const GroupManagementDialog = ({
             </SelectContent>
           </Select>
           <div className="flex justify-end gap-2 mt-6">
-            <Button variant="outline" onClick={onClose}>
+            <Button 
+              variant="outline" 
+              onClick={onClose}
+              disabled={isSaving}
+            >
               İptal
             </Button>
-            <Button onClick={handleSave}>
-              Kaydet
+            <Button 
+              onClick={handleSave}
+              disabled={isSaving}
+            >
+              {isSaving ? "Kaydediliyor..." : "Kaydet"}
             </Button>
           </div>
         </div>
