@@ -14,19 +14,29 @@ document.getElementById('playButton').addEventListener('click', () => {
 });
 
 // Previous track
-document.getElementById('prevButton').addEventListener('click', () => {
+document.getElementById('prevButton').addEventListener('click', async () => {
     console.log('Previous button clicked');
-    ipcRenderer.invoke('prev-song').catch(err => {
+    try {
+        const success = await ipcRenderer.invoke('prev-song');
+        if (!success) {
+            console.log('Could not play previous song');
+        }
+    } catch (err) {
         console.error('Error invoking prev-song:', err);
-    });
+    }
 });
 
 // Next track
-document.getElementById('nextButton').addEventListener('click', () => {
+document.getElementById('nextButton').addEventListener('click', async () => {
     console.log('Next button clicked');
-    ipcRenderer.invoke('next-song').catch(err => {
+    try {
+        const success = await ipcRenderer.invoke('next-song');
+        if (!success) {
+            console.log('Could not play next song');
+        }
+    } catch (err) {
         console.error('Error invoking next-song:', err);
-    });
+    }
 });
 
 // Update play button icon

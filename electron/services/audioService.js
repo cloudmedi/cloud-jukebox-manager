@@ -19,6 +19,7 @@ class AudioService {
     });
 
     ipcMain.handle('play-pause', () => {
+      console.log('Play/Pause requested');
       if (this.currentSound) {
         if (this.currentSound.playing()) {
           this.currentSound.pause();
@@ -31,17 +32,27 @@ class AudioService {
     ipcMain.handle('next-song', () => {
       console.log('Next song requested');
       if (this.playlist && this.playlist.songs.length > 0) {
+        console.log('Current index:', this.currentIndex);
         this.currentIndex = (this.currentIndex + 1) % this.playlist.songs.length;
+        console.log('New index:', this.currentIndex);
         this.playCurrentSong();
+        return true;
       }
+      console.log('No playlist or empty playlist');
+      return false;
     });
 
     ipcMain.handle('prev-song', () => {
       console.log('Previous song requested');
       if (this.playlist && this.playlist.songs.length > 0) {
+        console.log('Current index:', this.currentIndex);
         this.currentIndex = (this.currentIndex - 1 + this.playlist.songs.length) % this.playlist.songs.length;
+        console.log('New index:', this.currentIndex);
         this.playCurrentSong();
+        return true;
       }
+      console.log('No playlist or empty playlist');
+      return false;
     });
   }
 
@@ -60,6 +71,7 @@ class AudioService {
     console.log('Playing song:', song);
 
     if (this.currentSound) {
+      console.log('Stopping current sound');
       this.currentSound.unload();
     }
 
@@ -80,12 +92,10 @@ class AudioService {
       },
       onloaderror: (id, err) => {
         console.error('Error loading song:', err);
-        // Hata durumunda sonraki şarkıya geç
         this.next();
       },
       onplayerror: (id, err) => {
         console.error('Error playing song:', err);
-        // Çalma hatası durumunda sonraki şarkıya geç
         this.next();
       }
     });
