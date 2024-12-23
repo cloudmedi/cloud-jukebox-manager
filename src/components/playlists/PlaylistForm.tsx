@@ -120,11 +120,9 @@ export const PlaylistForm = ({
     <Form {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
         <div className="grid gap-8">
-          <div className="space-y-8">
-            <BasicInfoForm form={form} />
-            <ArtworkUpload form={form} />
-            <SongSelector form={form} />
-          </div>
+          <BasicInfoForm form={form} />
+          <ArtworkUpload form={form} />
+          <SongSelector form={form} />
         </div>
         
         <Button type="submit" className="w-full" size="lg">
