@@ -4,11 +4,13 @@ export interface Song {
   artist: string;
   genre: string;
   album?: string;
+  year?: number;
+  language?: string;
   filePath: string;
   artwork?: string | null;
   duration: number;
   status?: 'active' | 'inactive';
-  createdAt: string;
-  year?: number;
-  language?: string;
+  createdBy?: string;
+  createdAt?: string;
+  updatedAt?: string;
 }

@@ -38,9 +38,10 @@ export const SongTableHeader = ({
               onCheckedChange={onSelectAll}
               aria-label="Tümünü seç"
               className="ml-2"
-              ref={(input) => {
-                if (input) {
-                  input.indeterminate = isPartiallySelected;
+              ref={(checkbox: HTMLButtonElement | null) => {
+                if (checkbox) {
+                  // @ts-ignore
+                  checkbox.indeterminate = isPartiallySelected;
                 }
               }}
             />
