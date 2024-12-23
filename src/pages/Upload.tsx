@@ -4,8 +4,11 @@ import SongUploader from "@/components/upload/SongUploader";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Song } from "@/types/song";
+import SongEditDialog from "@/components/upload/SongEditDialog";
+import { Loader2 } from "lucide-react";
 
 const Upload = () => {
+  const [editingSong, setEditingSong] = useState<Song | null>(null);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -43,7 +46,11 @@ const Upload = () => {
   };
 
   if (isLoading) {
-    return <div>Yükleniyor...</div>;
+    return (
+      <div className="flex items-center justify-center h-[50vh]">
+        <Loader2 className="h-8 w-8 animate-spin" />
+      </div>
+    );
   }
 
   return (
@@ -55,8 +62,21 @@ const Upload = () => {
         </p>
       </div>
 
-      <SongUploader onUploadComplete={() => queryClient.invalidateQueries({ queryKey: ["songs"] })} />
-      <SongList songs={songs} onDelete={handleDelete} />
+      <SongUploader 
+        onUploadComplete={() => queryClient.invalidateQueries({ queryKey: ["songs"] })} 
+      />
+      
+      <SongList 
+        songs={songs} 
+        onDelete={handleDelete}
+        onEdit={(song) => setEditingSong(song)}
+      />
+
+      <SongEditDialog
+        song={editingSong}
+        open={!!editingSong}
+        onOpenChange={(open) => !open && setEditingSong(null)}
+      />
     </div>
   );
 };

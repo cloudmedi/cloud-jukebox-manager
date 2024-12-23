@@ -20,15 +20,15 @@ export const SongList = ({
   onSelect,
 }: SongListProps) => {
   const [sortConfig, setSortConfig] = useState({
-    key: "name",
-    direction: "asc",
+    key: "name" as keyof Song,
+    direction: "asc" as "asc" | "desc",
   });
 
   const sortedSongs = [...songs].sort((a, b) => {
-    if (!a[sortConfig.key as keyof Song] || !b[sortConfig.key as keyof Song]) return 0;
+    if (!a[sortConfig.key] || !b[sortConfig.key]) return 0;
     
-    const aValue = a[sortConfig.key as keyof Song];
-    const bValue = b[sortConfig.key as keyof Song];
+    const aValue = a[sortConfig.key];
+    const bValue = b[sortConfig.key];
     
     if (typeof aValue === 'string' && typeof bValue === 'string') {
       return sortConfig.direction === "asc"
@@ -39,12 +39,22 @@ export const SongList = ({
     return 0;
   });
 
+  const handleSort = (key: keyof Song) => {
+    setSortConfig((current) => ({
+      key,
+      direction:
+        current.key === key && current.direction === "asc" ? "desc" : "asc",
+    }));
+  };
+
   return (
     <div className="rounded-md border">
       <Table>
         <SongTableHeader
           showCheckbox={!!onSelect}
           allSongs={sortedSongs}
+          sortConfig={sortConfig}
+          onSort={handleSort}
         />
         <TableBody>
           {sortedSongs.map((song) => (
