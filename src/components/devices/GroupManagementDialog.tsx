@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -25,8 +25,13 @@ const GroupManagementDialog = ({
   currentGroupId,
   onGroupChange,
 }: GroupManagementDialogProps) => {
-  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(currentGroupId);
+  const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+
+  // currentGroupId değiştiğinde selectedGroupId'yi güncelle
+  useEffect(() => {
+    setSelectedGroupId(currentGroupId);
+  }, [currentGroupId]);
 
   const { data: groups = [] } = useQuery({
     queryKey: ["device-groups"],
@@ -37,9 +42,7 @@ const GroupManagementDialog = ({
         return response.json();
       } catch (error) {
         console.error("Grup yükleme hatası:", error);
-        toast("Hata", {
-          description: "Gruplar yüklenirken bir hata oluştu",
-        });
+        toast.error("Gruplar yüklenirken bir hata oluştu");
         return [];
       }
     },
@@ -50,11 +53,10 @@ const GroupManagementDialog = ({
       setIsSaving(true);
       await onGroupChange(selectedGroupId);
       onClose();
+      toast.success("Grup başarıyla güncellendi");
     } catch (error) {
       console.error("Grup güncelleme hatası:", error);
-      toast("Hata", {
-        description: "Grup güncellenirken bir hata oluştu",
-      });
+      toast.error("Grup güncellenirken bir hata oluştu");
     } finally {
       setIsSaving(false);
     }
@@ -69,13 +71,16 @@ const GroupManagementDialog = ({
         <div className="py-6">
           <Select
             value={selectedGroupId || undefined}
-            onValueChange={setSelectedGroupId}
+            onValueChange={(value) => setSelectedGroupId(value)}
             disabled={isSaving}
           >
             <SelectTrigger>
-              <SelectValue placeholder="Grup seçin" />
+              <SelectValue placeholder="Grup seçin">
+                {groups.find((g: Group) => g._id === selectedGroupId)?.name || "Grup seçin"}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
+              <SelectItem value="">Grupsuz</SelectItem>
               {groups.map((group: Group) => (
                 <SelectItem key={group._id} value={group._id}>
                   {group.name}
