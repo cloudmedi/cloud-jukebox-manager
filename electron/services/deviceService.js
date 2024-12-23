@@ -18,24 +18,14 @@ function getDeviceInfo() {
 }
 
 function generateToken() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
-}
-
-async function registerDeviceToken() {
-  const token = generateToken();
+  const token = Math.floor(100000 + Math.random() * 900000).toString();
+  // Token oluşturulduğunda hemen API'ye gönder
   const deviceInfo = getDeviceInfo();
-  
-  try {
-    await apiService.registerToken(token, deviceInfo);
-    return token;
-  } catch (error) {
-    console.error('Error registering device token:', error);
-    throw error;
-  }
+  apiService.registerToken(token, deviceInfo);
+  return token;
 }
 
 module.exports = {
   getDeviceInfo,
-  generateToken,
-  registerDeviceToken
+  generateToken
 };

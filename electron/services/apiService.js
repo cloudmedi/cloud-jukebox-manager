@@ -12,7 +12,8 @@ async function registerToken(token, deviceInfo) {
     return response.data;
   } catch (error) {
     console.error('Token registration error:', error);
-    throw error;
+    // Hatayı fırlat ama uygulamanın çalışmasını engelleme
+    console.error('Failed to register token but continuing...');
   }
 }
 
