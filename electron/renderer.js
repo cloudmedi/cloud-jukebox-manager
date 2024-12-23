@@ -14,7 +14,13 @@ audio.volume = 0.7; // 70%
 ipcRenderer.on('auto-play-playlist', (event, playlist) => {
   console.log('Auto-playing playlist:', playlist);
   if (playlist && playlist.songs && playlist.songs.length > 0) {
-    const shouldAutoPlay = playbackStateManager.getPlaybackState();
+    const playbackState = playbackStateManager.getPlaybackState();
+    audioHandler.setCurrentPlaylistId(playlist._id);
+    
+    // Eğer playlist ID'leri eşleşiyorsa, kaydedilen durumu kullan
+    const shouldAutoPlay = playbackState.playlistId === playlist._id ? 
+      playbackState.isPlaying : true;
+    
     displayPlaylists();
     
     if (shouldAutoPlay) {
@@ -22,7 +28,6 @@ ipcRenderer.on('auto-play-playlist', (event, playlist) => {
       ipcRenderer.invoke('play-playlist', playlist);
     } else {
       console.log('Not auto-playing due to saved state');
-      // Playlist'i yükle ama oynatma
       ipcRenderer.invoke('load-playlist', playlist);
     }
   }
