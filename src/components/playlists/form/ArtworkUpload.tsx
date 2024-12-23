@@ -55,7 +55,18 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
       return;
     }
 
-    form.setValue("artwork", e.target.files as FileList);
+    const formData = new FormData();
+    formData.append('artwork', file);
+
+    form.setValue("artwork", e.target.files as FileList, {
+      shouldValidate: true,
+      shouldDirty: true,
+    });
+
+    toast({
+      title: "Başarılı",
+      description: "Kapak resmi başarıyla yüklendi.",
+    });
   };
 
   return (
