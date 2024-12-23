@@ -6,30 +6,37 @@ import { Song } from "@/types/song";
 import { SongTableHeader } from "./SongTableHeader";
 import { SongTableRow } from "./SongTableRow";
 import { SongFilters } from "./SongFilters";
+import { Button } from "@/components/ui/button";
+import { ChevronLeft, ChevronRight } from "lucide-react";
+
+interface SongResponse {
+  songs: Song[];
+  currentPage: number;
+  totalPages: number;
+  totalSongs: number;
+  hasNextPage: boolean;
+  hasPrevPage: boolean;
+}
 
 const SongList = () => {
   const [selectedGenre, setSelectedGenre] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
   const [editingSong, setEditingSong] = useState<Song | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const limit = 20;
 
-  const { data: songs = [], isLoading, refetch } = useQuery<Song[]>({
-    queryKey: ["songs"],
+  const { data, isLoading, refetch } = useQuery<SongResponse>({
+    queryKey: ["songs", currentPage, limit],
     queryFn: async () => {
-      const response = await fetch("http://localhost:5000/api/songs");
+      const response = await fetch(
+        `http://localhost:5000/api/songs?page=${currentPage}&limit=${limit}`
+      );
       if (!response.ok) throw new Error("Failed to fetch songs");
-      return response.json() as Promise<Song[]>;
+      return response.json();
     },
   });
 
-  const genres = ["All", ...new Set(songs.map((song) => song.genre))].sort();
-
-  const filteredSongs = songs?.filter((song) => {
-    const matchesGenre = selectedGenre === "All" || song.genre === selectedGenre;
-    const matchesSearch =
-      song.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      song.artist.toLowerCase().includes(searchTerm.toLowerCase());
-    return matchesGenre && matchesSearch;
-  });
+  const genres = data?.songs ? ["All", ...new Set(data.songs.map((song) => song.genre))].sort() : ["All"];
 
   const handleDelete = async (id: string) => {
     try {
@@ -42,6 +49,10 @@ const SongList = () => {
     } catch (error) {
       console.error("Delete error:", error);
     }
+  };
+
+  const handlePageChange = (newPage: number) => {
+    setCurrentPage(newPage);
   };
 
   if (isLoading) {
@@ -62,17 +73,44 @@ const SongList = () => {
         <Table>
           <SongTableHeader />
           <TableBody>
-            {filteredSongs?.map((song) => (
+            {data?.songs.map((song) => (
               <SongTableRow
                 key={song._id}
                 song={song}
                 onEdit={setEditingSong}
                 onDelete={handleDelete}
-                allSongs={filteredSongs}
+                allSongs={data.songs}
               />
             ))}
           </TableBody>
         </Table>
+      </div>
+
+      {/* Pagination Controls */}
+      <div className="flex items-center justify-between">
+        <div className="text-sm text-muted-foreground">
+          Toplam {data?.totalSongs} şarkı, Sayfa {data?.currentPage} / {data?.totalPages}
+        </div>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage - 1)}
+            disabled={!data?.hasPrevPage}
+          >
+            <ChevronLeft className="h-4 w-4 mr-1" />
+            Önceki
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => handlePageChange(currentPage + 1)}
+            disabled={!data?.hasNextPage}
+          >
+            Sonraki
+            <ChevronRight className="h-4 w-4 ml-1" />
+          </Button>
+        </div>
       </div>
 
       <SongEditDialog

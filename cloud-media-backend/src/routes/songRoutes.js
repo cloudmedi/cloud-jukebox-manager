@@ -26,11 +26,29 @@ const upload = multer({
   }
 });
 
-// Tüm şarkıları getir
+// Tüm şarkıları getir (sayfalama ile)
 router.get('/', async (req, res) => {
   try {
-    const songs = await Song.find();
-    res.json(songs);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 20;
+    const skip = (page - 1) * limit;
+
+    const totalSongs = await Song.countDocuments();
+    const totalPages = Math.ceil(totalSongs / limit);
+
+    const songs = await Song.find()
+      .sort({ createdAt: -1 })
+      .skip(skip)
+      .limit(limit);
+
+    res.json({
+      songs,
+      currentPage: page,
+      totalPages,
+      totalSongs,
+      hasNextPage: page < totalPages,
+      hasPrevPage: page > 1
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
