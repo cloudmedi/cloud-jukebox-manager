@@ -12,10 +12,8 @@ const SongList = () => {
   const [selectedGenre, setSelectedGenre] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
   const [editingSong, setEditingSong] = useState<Song | null>(null);
-  const { setShowPlayer } = usePlayer();
-  const [audio] = useState(new Audio());
 
-  const { data: songs = [], isLoading, refetch } = useQuery<Song[]>({
+  const { data: songs = [], isLoading, refetch } = useQuery({
     queryKey: ["songs"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/songs");
@@ -47,20 +45,6 @@ const SongList = () => {
     }
   };
 
-  const handlePlay = (song: Song) => {
-    audio.pause();
-    const songUrl = `http://localhost:5000/${song.filePath}`;
-    audio.src = songUrl;
-    
-    audio.play()
-      .then(() => {
-        setShowPlayer(true);
-      })
-      .catch((error) => {
-        console.error('Şarkı çalma hatası:', error);
-      });
-  };
-
   if (isLoading) {
     return <div>Yükleniyor...</div>;
   }
@@ -83,7 +67,6 @@ const SongList = () => {
               <SongTableRow
                 key={song._id}
                 song={song}
-                onPlay={handlePlay}
                 onEdit={setEditingSong}
                 onDelete={handleDelete}
               />

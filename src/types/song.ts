@@ -8,6 +8,6 @@ export interface Song {
   language?: string;
   duration: number;
   createdAt: string;
-  filePath?: string;
+  filePath: string;
   status?: 'active' | 'inactive';
 }
