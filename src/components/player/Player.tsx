@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
+import { Play, Pause, SkipBack, SkipForward, Volume2, VolumeX, Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { useIsMobile } from "@/hooks/use-mobile";
@@ -48,7 +48,7 @@ const Player = () => {
     const handleEnded = () => {
       setIsPlaying(false);
       setProgress(0);
-      next(); // Şarkı bittiğinde otomatik olarak sıradakine geç
+      next();
     };
 
     audio.addEventListener('timeupdate', handleTimeUpdate);
@@ -116,7 +116,23 @@ const Player = () => {
       <audio ref={audioRef} />
       <div className={`mx-auto h-full flex items-center ${isMobile ? 'px-2 flex-col justify-center gap-2 h-auto py-4' : 'container px-4 justify-between'}`}>
         <div className={`flex items-center gap-4 ${isMobile ? 'w-full justify-between' : ''}`}>
-          <div className="w-12 h-12 bg-muted rounded-md shrink-0" />
+          <div className="w-12 h-12 bg-muted rounded-md shrink-0 overflow-hidden">
+            {currentSong.artwork ? (
+              <img
+                src={`http://localhost:5000${currentSong.artwork}`}
+                alt={`${currentSong.name} artwork`}
+                className="w-full h-full object-cover"
+                onError={(e) => {
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/placeholder.svg';
+                }}
+              />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center">
+                <Music className="h-6 w-6 text-muted-foreground" />
+              </div>
+            )}
+          </div>
           <div className="min-w-0">
             <h4 className="font-medium truncate">{currentSong.name}</h4>
             <p className="text-sm text-muted-foreground truncate">{currentSong.artist}</p>
