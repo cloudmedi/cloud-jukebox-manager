@@ -8,6 +8,14 @@ const path = require('path');
 // Initialize volume
 audio.volume = 0.7; // 70%
 
+// Otomatik playlist başlatma
+ipcRenderer.on('auto-play-playlist', (event, playlist) => {
+  console.log('Auto-playing playlist:', playlist);
+  if (playlist && playlist.songs && playlist.songs.length > 0) {
+    ipcRenderer.invoke('play-playlist', playlist);
+  }
+});
+
 function displayPlaylists() {
   const playlists = store.get('playlists', []);
   const playlistContainer = document.getElementById('playlistContainer');
@@ -112,7 +120,7 @@ ipcRenderer.on('playlist-received', (event, playlist) => {
   
   // Bildirim göster
   new Notification('Yeni Playlist', {
-    body: `${playlist.name} playlist'i başarıyla indirildi ve çalınıyor. Eski playlist'ler silindi.`
+    body: `${playlist.name} playlist'i başarıyla indirildi ve çalınıyor.`
   });
 });
 

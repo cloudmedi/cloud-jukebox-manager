@@ -29,9 +29,20 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   }
 
+  // Uygulama başladığında son kaydedilen playlist'i kontrol et
   const deviceInfo = store.get('deviceInfo');
   if (deviceInfo && deviceInfo.token) {
     websocketService.connect(deviceInfo.token);
+    
+    // Son kaydedilen playlist'i kontrol et ve varsa otomatik başlat
+    const playlists = store.get('playlists', []);
+    if (playlists.length > 0) {
+      const lastPlaylist = playlists[playlists.length - 1];
+      console.log('Starting last saved playlist:', lastPlaylist.name);
+      mainWindow.webContents.on('did-finish-load', () => {
+        mainWindow.webContents.send('auto-play-playlist', lastPlaylist);
+      });
+    }
   }
 }
 

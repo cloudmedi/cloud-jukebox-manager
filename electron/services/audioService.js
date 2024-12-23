@@ -1,7 +1,7 @@
 const { ipcMain } = require('electron');
-const path = require('path');
 const Store = require('electron-store');
 const store = new Store();
+const websocketService = require('./websocketService');
 
 class AudioService {
   constructor() {
@@ -15,7 +15,7 @@ class AudioService {
 
   setupIpcHandlers() {
     ipcMain.handle('play-playlist', async (event, playlist) => {
-      console.log('Playing new playlist:', playlist);
+      console.log('Playing playlist:', playlist);
       
       // Mevcut çalan playlist'i durdur
       if (this.isPlaying) {
@@ -35,6 +35,13 @@ class AudioService {
           playlist: this.playlist,
           currentSong: firstSong,
           isPlaying: true
+        });
+
+        // Playlist durumunu güncelle
+        websocketService.sendMessage({
+          type: 'playlistStatus',
+          status: 'loaded',
+          playlistId: playlist._id
         });
       }
     });
