@@ -1,4 +1,3 @@
-const { Howl } = require('howler');
 const QueueManager = require('./audio/QueueManager');
 const PlaybackState = require('./audio/PlaybackState');
 const path = require('path');
@@ -7,10 +6,33 @@ class AudioPlayer {
   constructor() {
     this.queueManager = new QueueManager();
     this.playbackState = new PlaybackState();
-    this.currentSound = null;
+    this.audio = new Audio();
     this.playlist = null;
     this.isPlaying = false;
     this.volume = 1.0;
+    
+    // Audio element event listeners
+    this.audio.addEventListener('ended', () => {
+      console.log('Song ended, playing next');
+      this.playNext();
+    });
+
+    this.audio.addEventListener('error', (e) => {
+      console.error('Audio error:', e);
+      this.playNext();
+    });
+
+    this.audio.addEventListener('play', () => {
+      console.log('Audio started playing');
+      this.isPlaying = true;
+      this.updatePlaybackState('playing');
+    });
+
+    this.audio.addEventListener('pause', () => {
+      console.log('Audio paused');
+      this.isPlaying = false;
+      this.updatePlaybackState('paused');
+    });
   }
 
   loadPlaylist(playlist) {
@@ -34,93 +56,52 @@ class AudioPlayer {
 
     console.log('Loading song:', song);
 
-    if (this.currentSound) {
-      try {
-        this.currentSound.stop();
-        this.currentSound.unload();
-      } catch (error) {
-        console.error('Error stopping current sound:', error);
-      }
-      this.currentSound = null;
-    }
-
     if (!song.localPath) {
       console.error('Song localPath is missing:', song);
       this.playNext();
       return;
     }
 
-    // Normalize file path for Electron
-    const normalizedPath = path.normalize(song.localPath);
-    console.log('Playing file from:', normalizedPath);
-
     try {
-      this.currentSound = new Howl({
-        src: [normalizedPath],
-        html5: false, // Native audio kullan
-        format: ['mp3'],
-        volume: this.volume,
-        autoplay: false,
-        onload: () => {
-          console.log('Song loaded successfully:', song.name);
-          if (this.isPlaying) {
-            this.currentSound.play();
-          }
-        },
-        onloaderror: (id, error) => {
-          console.error('Song loading error:', error);
-          console.error('Song path:', normalizedPath);
-          this.currentSound = null;
-          this.playNext();
-        },
-        onplay: () => {
-          console.log('Song started playing:', song.name);
-          this.isPlaying = true;
-          this.updatePlaybackState('playing');
-        },
-        onend: () => {
-          console.log('Song ended, playing next');
-          this.playNext();
-        },
-        onpause: () => {
-          this.isPlaying = false;
-          this.updatePlaybackState('paused');
-        },
-        onstop: () => {
-          this.isPlaying = false;
-          this.updatePlaybackState('stopped');
-        }
-      });
+      const normalizedPath = path.normalize(song.localPath);
+      console.log('Playing file from:', normalizedPath);
+      
+      this.audio.src = normalizedPath;
+      this.audio.volume = this.volume;
+      
+      if (this.isPlaying) {
+        this.audio.play().catch(error => {
+          console.error('Error playing audio:', error);
+        });
+      }
     } catch (error) {
-      console.error('Error creating Howl instance:', error);
-      this.currentSound = null;
+      console.error('Error loading song:', error);
       this.playNext();
     }
   }
 
   play() {
     console.log('Play requested');
-    if (this.currentSound) {
-      this.currentSound.play();
+    if (this.audio.src) {
+      this.audio.play().catch(error => {
+        console.error('Error playing audio:', error);
+      });
       this.isPlaying = true;
     } else {
-      console.log('No sound loaded to play');
+      console.log('No audio source loaded');
       this.loadCurrentSong();
     }
   }
 
   pause() {
-    if (this.currentSound) {
-      this.currentSound.pause();
-      this.isPlaying = false;
-    }
+    this.audio.pause();
+    this.isPlaying = false;
   }
 
   stop() {
-    if (this.currentSound) {
-      this.currentSound.stop();
-      this.isPlaying = false;
-    }
+    this.audio.pause();
+    this.audio.currentTime = 0;
+    this.isPlaying = false;
   }
 
   playNext() {
@@ -139,9 +120,7 @@ class AudioPlayer {
 
   setVolume(volume) {
     this.volume = volume / 100;
-    if (this.currentSound) {
-      this.currentSound.volume(this.volume);
-    }
+    this.audio.volume = this.volume;
   }
 
   shuffle() {
