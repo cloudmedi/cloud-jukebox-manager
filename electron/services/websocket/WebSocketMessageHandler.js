@@ -1,12 +1,12 @@
 const { ipcRenderer } = require('electron');
 const Store = require('electron-store');
 const store = new Store();
-const PlaylistHandler = require('../playlist/PlaylistHandler');
+const playlistHandler = require('../playlist/PlaylistHandler');
 const playlistManager = require('../playlist/PlaylistManager');
 
 class WebSocketMessageHandler {
   constructor() {
-    this.playlistHandler = new PlaylistHandler();
+    this.playlistHandler = playlistHandler;
   }
 
   async handleMessage(message) {
