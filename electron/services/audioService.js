@@ -23,10 +23,13 @@ class AudioService {
       if (this.currentSound) {
         if (this.currentSound.playing()) {
           this.currentSound.pause();
+          return false;
         } else {
           this.currentSound.play();
+          return true;
         }
       }
+      return false;
     });
 
     ipcMain.handle('next-song', () => {

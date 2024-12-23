@@ -5,11 +5,12 @@ const audio = document.getElementById('audioPlayer');
 audio.volume = 0.7; // 70%
 
 // Play/Pause toggle
-document.getElementById('playButton').addEventListener('click', () => {
-    if (audio.paused) {
-        audio.play().catch(error => console.error('Play error:', error));
-    } else {
-        audio.pause();
+document.getElementById('playButton').addEventListener('click', async () => {
+    try {
+        const isPlaying = await ipcRenderer.invoke('play-pause');
+        updatePlayButton(isPlaying);
+    } catch (error) {
+        console.error('Play/Pause error:', error);
     }
 });
 
@@ -39,23 +40,23 @@ document.getElementById('nextButton').addEventListener('click', async () => {
     }
 });
 
-// Update play button icon
-audio.addEventListener('play', () => {
-    document.getElementById('playButton').innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <rect x="6" y="4" width="4" height="16"></rect>
-            <rect x="14" y="4" width="4" height="16"></rect>
-        </svg>
-    `;
-});
-
-audio.addEventListener('pause', () => {
-    document.getElementById('playButton').innerHTML = `
-        <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <polygon points="5 3 19 12 5 21 5 3"></polygon>
-        </svg>
-    `;
-});
+function updatePlayButton(isPlaying) {
+    const playButton = document.getElementById('playButton');
+    if (isPlaying) {
+        playButton.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-6 h-6">
+                <rect x="6" y="4" width="4" height="16"></rect>
+                <rect x="14" y="4" width="4" height="16"></rect>
+            </svg>
+        `;
+    } else {
+        playButton.innerHTML = `
+            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-6 h-6">
+                <polygon points="5 3 19 12 5 21 5 3"></polygon>
+            </svg>
+        `;
+    }
+}
 
 // Progress bar updates
 audio.addEventListener('timeupdate', () => {
@@ -84,20 +85,6 @@ ipcRenderer.on('download-progress', (event, data) => {
         hideDownloadProgress();
     } else {
         showDownloadProgress(data);
-    }
-});
-
-ipcRenderer.on('download-error', (event, data) => {
-    console.error('Download error:', data);
-    showError(`${data.songName}: ${data.error}`);
-    hideDownloadProgress();
-});
-
-ipcRenderer.on('song-downloaded', (event, song) => {
-    console.log('Song downloaded:', song);
-    // Add the downloaded song to the player
-    if (song.localPath) {
-        updatePlayer(song);
     }
 });
 
@@ -140,17 +127,10 @@ function showError(message) {
     }, 5000);
 }
 
-function updatePlayer(song) {
-    const songTitle = document.querySelector('.song-title');
-    const artistName = document.querySelector('.artist');
-    const songPath = document.querySelector('.song-path');
-    
-    if (songTitle) songTitle.textContent = song.name;
-    if (artistName) artistName.textContent = song.artist;
-    if (songPath) songPath.textContent = song.localPath;
-    
-    if (audio) {
-        audio.src = song.localPath;
-        audio.play().catch(err => console.error('Playback error:', err));
-    }
-}
+// WebSocket mesajlarını dinle
+ipcRenderer.on('playlist-received', (event, playlist) => {
+    console.log('Playlist received:', playlist);
+    ipcRenderer.invoke('play-playlist', playlist).catch(err => {
+        console.error('Error starting playlist:', err);
+    });
+});
