@@ -25,14 +25,16 @@ const SongList = () => {
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/songs");
       if (!response.ok) throw new Error("Failed to fetch songs");
-      return response.json();
+      return response.json() as Promise<Song[]>;
     },
   });
 
-  const genres = Array.from(new Set(songs.map((song: Song) => song.genre))).sort();
-  const allGenres = ["All", ...genres];
+  const genres: string[] = Array.from(
+    new Set(songs.map((song: Song) => song.genre))
+  ).sort();
+  const allGenres: string[] = ["All", ...genres];
 
-  const filteredSongs = songs?.filter((song) => {
+  const filteredSongs = songs.filter((song: Song) => {
     const matchesGenre = selectedGenre === "All" || song.genre === selectedGenre;
     const matchesSearch =
       song.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -113,7 +115,7 @@ const SongList = () => {
         <Table>
           <SongTableHeader showCheckbox={true} allSongs={filteredSongs} />
           <TableBody>
-            {filteredSongs?.map((song) => (
+            {filteredSongs.map((song: Song) => (
               <SongTableRow
                 key={song._id}
                 song={song}
@@ -126,11 +128,13 @@ const SongList = () => {
         </Table>
       </div>
 
-      <SongEditDialog
-        song={editingSong}
-        open={!!editingSong}
-        onOpenChange={(open) => !open && setEditingSong(null)}
-      />
+      {editingSong && (
+        <SongEditDialog
+          song={editingSong}
+          open={!!editingSong}
+          onOpenChange={(open) => !open && setEditingSong(null)}
+        />
+      )}
     </div>
   );
 };
