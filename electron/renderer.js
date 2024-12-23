@@ -16,6 +16,15 @@ const volumeBar = document.getElementById('volumeBar');
 const volumeButton = document.getElementById('volumeButton');
 const albumArtwork = document.getElementById('albumArtwork');
 
+// Add volume control IPC listener
+ipcRenderer.on('set-volume', (event, volume) => {
+  if (audio && !isNaN(volume)) {
+    currentVolume = volume;
+    audio.volume = volume;
+    updateVolumeUI();
+  }
+});
+
 // Window controls
 document.getElementById('minimizeButton').addEventListener('click', () => {
     ipcRenderer.send('minimize-window');
@@ -296,3 +305,4 @@ audio.addEventListener('error', (e) => {
     console.error('Audio error:', e);
     playPromise = null;
 });
+
