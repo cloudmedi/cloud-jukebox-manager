@@ -39,14 +39,6 @@ export const SongList = ({
     return 0;
   });
 
-  const handleSort = (key: string) => {
-    setSortConfig((current) => ({
-      key,
-      direction:
-        current.key === key && current.direction === "asc" ? "desc" : "asc",
-    }));
-  };
-
   return (
     <div className="rounded-md border">
       <Table>

@@ -1,5 +1,5 @@
 import { useState } from "react";
-import SongList from "@/components/upload/SongList";
+import { SongList } from "@/components/upload/SongList";
 import SongUploader from "@/components/upload/SongUploader";
 import { useQueryClient, useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -9,7 +9,7 @@ const Upload = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: songs = [] } = useQuery<Song[]>({
+  const { data: songs = [], isLoading } = useQuery<Song[]>({
     queryKey: ["songs"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/songs");
@@ -17,10 +17,6 @@ const Upload = () => {
       return response.json();
     },
   });
-
-  const handleUploadComplete = () => {
-    queryClient.invalidateQueries({ queryKey: ["songs"] });
-  };
 
   const handleDelete = async (songId: string) => {
     try {
@@ -46,6 +42,10 @@ const Upload = () => {
     }
   };
 
+  if (isLoading) {
+    return <div>Yükleniyor...</div>;
+  }
+
   return (
     <div className="space-y-6">
       <div>
@@ -55,7 +55,7 @@ const Upload = () => {
         </p>
       </div>
 
-      <SongUploader onUploadComplete={handleUploadComplete} />
+      <SongUploader onUploadComplete={() => queryClient.invalidateQueries({ queryKey: ["songs"] })} />
       <SongList songs={songs} onDelete={handleDelete} />
     </div>
   );

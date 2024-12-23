@@ -1,8 +1,21 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import AnnouncementList from "@/components/announcements/AnnouncementList";
 import AnnouncementForm from "@/components/announcements/AnnouncementForm";
+import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
 const Announcements = () => {
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
+
+  const handleSuccess = () => {
+    queryClient.invalidateQueries({ queryKey: ["announcements"] });
+    toast({
+      title: "Başarılı",
+      description: "Anons başarıyla oluşturuldu",
+    });
+  };
+
   return (
     <div className="space-y-6">
       <div>
@@ -21,12 +34,7 @@ const Announcements = () => {
           <AnnouncementList />
         </TabsContent>
         <TabsContent value="create" className="space-y-4">
-          <AnnouncementForm 
-            announcement={null} 
-            onSuccess={() => {
-              // Optional: Add any success handling here
-            }} 
-          />
+          <AnnouncementForm onSuccess={handleSuccess} />
         </TabsContent>
       </Tabs>
     </div>
