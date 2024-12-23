@@ -26,6 +26,10 @@ export const Player = () => {
 
   useEffect(() => {
     if (currentSong) {
+      if (sound) {
+        sound.unload();
+      }
+
       const newSound = new Howl({
         src: [currentSong.filePath],
         html5: true,
@@ -54,11 +58,13 @@ export const Player = () => {
       });
 
       setSound(newSound);
-      newSound.play();
+
+      if (isPlaying) {
+        newSound.play();
+      }
 
       return () => {
-        newSound.stop();
-        setSound(null);
+        newSound.unload();
         if (progressInterval.current) {
           clearInterval(progressInterval.current);
         }
@@ -66,9 +72,23 @@ export const Player = () => {
     }
   }, [currentSong]);
 
+  useEffect(() => {
+    if (sound) {
+      if (isPlaying) {
+        sound.play();
+      } else {
+        sound.pause();
+      }
+    }
+  }, [isPlaying, sound]);
+
   const artworkUrl = currentSong?.artwork 
     ? `http://localhost:5000${currentSong.artwork}`
     : '/placeholder.svg';
+
+  const handlePlayPause = () => {
+    usePlaybackStore.setState({ isPlaying: !isPlaying });
+  };
 
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-background border-t">
@@ -91,7 +111,7 @@ export const Player = () => {
           </div>
         </div>
         <div className="flex items-center">
-          <button onClick={() => usePlaybackStore.setState({ isPlaying: !isPlaying })}>
+          <button onClick={handlePlayPause}>
             {isPlaying ? "Pause" : "Play"}
           </button>
           <div className="flex items-center">
