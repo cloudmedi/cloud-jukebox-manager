@@ -6,18 +6,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Search } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
-
-interface Device {
-  _id: string;
-  name: string;
-  location?: string;
-  isOnline: boolean;
-}
-
-interface Group {
-  _id: string;
-  name: string;
-}
+import { Device, DeviceGroup } from "@/services/deviceService";
 
 interface TargetDeviceSelectProps {
   form: any;
@@ -63,14 +52,14 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
     initialData: []
   });
 
-  const filteredDevices = devices?.filter((device: Device) =>
+  const filteredDevices = devices.filter((device: Device) =>
     device?.name?.toLowerCase().includes(deviceSearch.toLowerCase()) ||
     device?.location?.toLowerCase().includes(deviceSearch.toLowerCase())
-  ) || [];
+  );
 
-  const filteredGroups = groups?.filter((group: Group) =>
+  const filteredGroups = groups.filter((group: DeviceGroup) =>
     group?.name?.toLowerCase().includes(groupSearch.toLowerCase())
-  ) || [];
+  );
 
   if (isDevicesLoading || isGroupsLoading) {
     return (
@@ -106,7 +95,7 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
                   className="w-full justify-between"
                 >
                   {field.value?.[0]
-                    ? devices.find((device: Device) => device?._id === field.value?.[0])?.name || "Cihaz seçin..."
+                    ? devices.find((device: Device) => device._id === field.value?.[0])?.name || "Cihaz seçin..."
                     : "Cihaz seçin..."}
                   <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -162,7 +151,7 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
                   className="w-full justify-between"
                 >
                   {field.value?.[0]
-                    ? groups.find((group: Group) => group?._id === field.value?.[0])?.name || "Grup seçin..."
+                    ? groups.find((group: DeviceGroup) => group._id === field.value?.[0])?.name || "Grup seçin..."
                     : "Grup seçin..."}
                   <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
@@ -176,7 +165,7 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
                   />
                   <CommandEmpty>Grup bulunamadı.</CommandEmpty>
                   <CommandGroup className="max-h-[300px] overflow-auto">
-                    {filteredGroups.map((group: Group) => (
+                    {filteredGroups.map((group: DeviceGroup) => (
                       <CommandItem
                         key={group._id}
                         value={group._id}
