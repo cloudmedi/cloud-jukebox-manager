@@ -1,6 +1,7 @@
 const WebSocket = require('ws');
 const Store = require('electron-store');
 const { BrowserWindow } = require('electron');
+const playlistHandler = require('./playlist/PlaylistHandler');
 const store = new Store();
 
 class WebSocketService {
@@ -21,29 +22,18 @@ class WebSocketService {
     });
 
     // Playlist handler
-    this.addMessageHandler('playlist', (message) => {
+    this.addMessageHandler('playlist', async (message) => {
       console.log('Playlist message received:', message);
       try {
-        // Playlist'i store'a kaydet
-        const playlists = store.get('playlists', []);
-        const existingIndex = playlists.findIndex(p => p._id === message.data._id);
+        // Playlist'i indir ve işle
+        const updatedPlaylist = await playlistHandler.handlePlaylist(message.data);
         
-        if (existingIndex !== -1) {
-          playlists[existingIndex] = message.data;
-        } else {
-          playlists.push(message.data);
-        }
-        
-        store.set('playlists', playlists);
-        console.log('Playlist saved to store:', message.data.name);
-
         // Renderer process'e playlist güncellemesini gönder
         const mainWindow = BrowserWindow.getAllWindows()[0];
         if (mainWindow) {
-          mainWindow.webContents.send('playlist-received', message.data);
+          mainWindow.webContents.send('playlist-received', updatedPlaylist);
           console.log('Playlist update sent to renderer');
         }
-
       } catch (error) {
         console.error('Error handling playlist message:', error);
       }
