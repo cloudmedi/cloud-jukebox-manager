@@ -1,4 +1,5 @@
 const Store = require('electron-store');
+const store = new Store();
 
 class PlaybackStateManager {
   constructor() {
@@ -6,13 +7,12 @@ class PlaybackStateManager {
   }
 
   savePlaybackState(isPlaying) {
-    console.log('Saving playback state:', isPlaying);
     this.store.set('playbackState', { isPlaying });
+    console.log('Playback state saved:', isPlaying);
   }
 
   getPlaybackState() {
     const state = this.store.get('playbackState');
-    console.log('Getting playback state:', state?.isPlaying);
     return state?.isPlaying ?? false;
   }
 
