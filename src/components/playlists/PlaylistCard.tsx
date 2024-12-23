@@ -1,7 +1,8 @@
 import { memo } from "react";
-import { Music2 } from "lucide-react";
+import { Music2, Trash2, Send } from "lucide-react";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 
 interface PlaylistCardProps {
   playlist: {
@@ -14,11 +15,9 @@ interface PlaylistCardProps {
     genre?: string;
   };
   onDelete?: (id: string) => void;
-  onEdit?: (id: string) => void;
-  onPlay?: (id: string) => void;
 }
 
-export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: PlaylistCardProps) => {
+export const PlaylistCard = memo(({ playlist, onDelete }: PlaylistCardProps) => {
   return (
     <Card 
       className="group overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 w-[200px]"
@@ -36,6 +35,30 @@ export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: Playli
             <Music2 className="h-24 w-24 text-muted-foreground/40" />
           </div>
         )}
+        
+        <div className="absolute right-2 top-2 flex gap-1">
+          {onDelete && (
+            <Button
+              variant="destructive"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => onDelete(playlist._id)}
+            >
+              <Trash2 className="h-4 w-4" />
+            </Button>
+          )}
+          <Button
+            variant="secondary"
+            size="icon"
+            className="h-8 w-8"
+            onClick={() => {
+              // Send functionality will be implemented here
+              console.log("Send playlist:", playlist._id);
+            }}
+          >
+            <Send className="h-4 w-4" />
+          </Button>
+        </div>
       </CardHeader>
         
       <CardContent className="space-y-2 p-4">
