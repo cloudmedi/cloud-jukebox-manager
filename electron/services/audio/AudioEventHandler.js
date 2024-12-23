@@ -14,11 +14,6 @@ class AudioEventHandler {
   }
 
   setupEventListeners() {
-    this.audio.addEventListener('ended', () => {
-      console.log('Song ended, playing next');
-      ipcRenderer.invoke('song-ended');
-    });
-
     this.audio.addEventListener('play', () => {
       console.log('Audio started playing');
       playbackStateManager.savePlaybackState(true, this.currentPlaylistId);

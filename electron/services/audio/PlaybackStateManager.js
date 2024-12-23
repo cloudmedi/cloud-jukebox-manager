@@ -6,9 +6,10 @@ class PlaybackStateManager {
   }
 
   savePlaybackState(isPlaying, playlistId = null) {
+    const currentState = this.getPlaybackState();
     const state = {
       isPlaying,
-      playlistId,
+      playlistId: playlistId || currentState.playlistId,
       timestamp: new Date().toISOString()
     };
     

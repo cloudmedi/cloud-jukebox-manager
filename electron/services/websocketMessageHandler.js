@@ -26,12 +26,12 @@ class WebSocketMessageHandler {
   handleCommand(message, mainWindow) {
     switch (message.command) {
       case 'play':
-        playbackStateManager.savePlaybackState(true, message.playlistId);
+        playbackStateManager.savePlaybackState(true);
         mainWindow.webContents.send('toggle-playback');
         console.log('Play command processed, state saved');
         break;
       case 'pause':
-        playbackStateManager.savePlaybackState(false, message.playlistId);
+        playbackStateManager.savePlaybackState(false);
         mainWindow.webContents.send('toggle-playback');
         console.log('Pause command processed, state saved');
         break;
@@ -51,7 +51,6 @@ class WebSocketMessageHandler {
     const playbackState = playbackStateManager.getPlaybackState();
     console.log('Handling playlist with current state:', playbackState);
     
-    // Yeni playlist geldiğinde mevcut durumu kontrol et
     mainWindow.webContents.send('playlist-received', {
       ...message.data,
       autoPlay: playbackState.isPlaying && playbackState.playlistId === message.data._id
