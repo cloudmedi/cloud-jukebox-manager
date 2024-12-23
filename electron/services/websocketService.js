@@ -1,11 +1,13 @@
 const WebSocket = require('ws');
 const Store = require('electron-store');
 const store = new Store();
+const PlaylistHandler = require('./playlist/PlaylistHandler');
 
 class WebSocketService {
   constructor() {
     this.ws = null;
     this.messageHandlers = new Map();
+    this.playlistHandler = new PlaylistHandler();
     this.setupHandlers();
   }
 
@@ -13,9 +15,9 @@ class WebSocketService {
     // Auth handler
     this.addMessageHandler('auth', (message) => {
       console.log('Auth message received:', message);
-      if (message.success) {
-        console.log('Authentication successful, saving token:', message.token);
-        store.set('deviceInfo', { token: message.token });
+      if (message.status === 'success') {
+        console.log('Authentication successful, saving device info:', message.deviceInfo);
+        store.set('deviceInfo', message.deviceInfo);
       } else {
         console.error('Authentication failed:', message);
       }
@@ -25,15 +27,7 @@ class WebSocketService {
     this.addMessageHandler('playlist', async (message) => {
       console.log('Playlist message received:', message);
       try {
-        // Playlist'i indir ve işle
-        const updatedPlaylist = await playlistHandler.handlePlaylist(message.data);
-        
-        // Renderer process'e playlist güncellemesini gönder
-        const mainWindow = BrowserWindow.getAllWindows()[0];
-        if (mainWindow) {
-          mainWindow.webContents.send('playlist-received', updatedPlaylist);
-          console.log('Playlist update sent to renderer');
-        }
+        await this.playlistHandler.handlePlaylist(message.data);
       } catch (error) {
         console.error('Error handling playlist message:', error);
       }
@@ -42,7 +36,7 @@ class WebSocketService {
     // Command handler
     this.addMessageHandler('command', (message) => {
       console.log('Command message received:', message);
-      const mainWindow = BrowserWindow.getAllWindows()[0];
+      const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
       if (mainWindow) {
         mainWindow.webContents.send(message.command, message.data);
       }
