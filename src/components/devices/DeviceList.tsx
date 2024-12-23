@@ -34,16 +34,27 @@ export const DeviceList = () => {
 
       const updatedDevices = currentDevices.map(device => {
         if (device.token === data.token) {
+          // Online durumu değiştiğinde bildirim göster
           if (device.isOnline !== data.isOnline) {
             toast.info(`${device.name} ${data.isOnline ? 'çevrimiçi' : 'çevrimdışı'} oldu`);
           }
-          return { ...device, ...data };
+          
+          // Playlist durumu değiştiğinde bildirim göster
+          if (data.playlistStatus && device.playlistStatus !== data.playlistStatus) {
+            toast.info(`${device.name} playlist durumu: ${data.playlistStatus}`);
+          }
+
+          return { 
+            ...device, 
+            ...data,
+            // Eğer playlistStatus gelmediyse mevcut durumu koru
+            playlistStatus: data.playlistStatus || device.playlistStatus
+          };
         }
         return device;
       });
 
       queryClient.setQueryData(['devices'], updatedDevices);
-      queryClient.invalidateQueries({ queryKey: ['devices'] });
     };
 
     websocketService.addMessageHandler('deviceStatus', handleDeviceStatus);

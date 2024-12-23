@@ -1,11 +1,13 @@
 const WebSocket = require('ws');
 const Device = require('../models/Device');
 const MessageHandler = require('./handlers/MessageHandler');
+const StatusHandler = require('./handlers/StatusHandler');
 
 class WebSocketServer {
   constructor(server) {
     this.wss = new WebSocket.Server({ server });
     this.messageHandler = new MessageHandler(this);
+    this.statusHandler = new StatusHandler(this);
     this.initialize();
   }
 
@@ -158,20 +160,20 @@ class WebSocketServer {
 
   async handleDeviceMessage(token, message) {
     console.log(`Handling device message from ${token}:`, message);
-    const device = await Device.findOne({ token });
-    if (!device) return;
-
+    
     switch (message.type) {
       case 'status':
-        await device.updateStatus(message.isOnline);
-        this.broadcastToAdmins({
-          type: 'deviceStatus',
-          token: token,
-          isOnline: message.isOnline
-        });
+        await this.statusHandler.handleOnlineStatus(token, message.isOnline);
+        break;
+
+      case 'playlistStatus':
+        await this.statusHandler.handlePlaylistStatus(token, message);
         break;
 
       case 'volume':
+        const device = await Device.findOne({ token });
+        if (!device) return;
+
         await device.setVolume(message.volume);
         this.broadcastToAdmins({
           type: 'deviceStatus',
@@ -186,6 +188,10 @@ class WebSocketServer {
           token: token,
           error: message.error
         });
+        break;
+
+      default:
+        console.log('Unknown message type:', message.type);
         break;
     }
   }
