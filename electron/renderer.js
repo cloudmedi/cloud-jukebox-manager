@@ -1,8 +1,42 @@
 const { ipcRenderer } = require('electron');
+const Store = require('electron-store');
+const store = new Store();
 const audio = document.getElementById('audioPlayer');
 
 // Initialize volume
 audio.volume = 0.7; // 70%
+
+// Playlist listesini göster
+function displayPlaylists() {
+  const playlists = store.get('playlists', []);
+  const playlistContainer = document.getElementById('playlistContainer');
+  
+  playlistContainer.innerHTML = '';
+  
+  playlists.forEach(playlist => {
+    const playlistElement = document.createElement('div');
+    playlistElement.className = 'playlist-item';
+    playlistElement.innerHTML = `
+      <div class="playlist-info">
+        ${playlist.artwork ? 
+          `<img src="${playlist.artwork}" alt="${playlist.name}" class="playlist-artwork"/>` :
+          '<div class="playlist-artwork-placeholder"></div>'
+        }
+        <div class="playlist-details">
+          <h3>${playlist.name}</h3>
+          <p>${playlist.songs.length} şarkı</p>
+        </div>
+      </div>
+    `;
+    
+    playlistElement.addEventListener('click', () => {
+      console.log('Playing playlist:', playlist);
+      ipcRenderer.invoke('play-playlist', playlist);
+    });
+    
+    playlistContainer.appendChild(playlistElement);
+  });
+}
 
 // Play/Pause toggle
 document.getElementById('playButton').addEventListener('click', async () => {
@@ -40,30 +74,11 @@ document.getElementById('nextButton').addEventListener('click', async () => {
     }
 });
 
-function updatePlayButton(isPlaying) {
-    const playButton = document.getElementById('playButton');
-    if (isPlaying) {
-        playButton.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-6 h-6">
-                <rect x="6" y="4" width="4" height="16"></rect>
-                <rect x="14" y="4" width="4" height="16"></rect>
-            </svg>
-        `;
-    } else {
-        playButton.innerHTML = `
-            <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" class="w-6 h-6">
-                <polygon points="5 3 19 12 5 21 5 3"></polygon>
-            </svg>
-        `;
-    }
-}
-
 // Progress bar updates
 audio.addEventListener('timeupdate', () => {
     const progress = (audio.currentTime / audio.duration) * 100;
     document.getElementById('progressBar').style.width = progress + '%';
     
-    // Şarkı sonuna yaklaşıldığında kontrol et
     if (audio.duration > 0 && audio.currentTime >= audio.duration - 0.5) {
         console.log('Song near end, requesting next song');
         ipcRenderer.invoke('next-song').catch(err => {
@@ -72,65 +87,11 @@ audio.addEventListener('timeupdate', () => {
     }
 });
 
-// Download progress handling
-const downloadProgress = document.querySelector('.download-progress');
-const downloadProgressBar = document.querySelector('.download-progress-bar');
-const downloadProgressText = document.querySelector('.download-progress-text');
-
-ipcRenderer.on('download-progress', (event, data) => {
-    console.log('Download progress:', data);
-    
-    if (data.error) {
-        showError(data.error);
-        hideDownloadProgress();
-    } else {
-        showDownloadProgress(data);
-    }
-});
-
-function showDownloadProgress(data) {
-    downloadProgress.style.display = 'block';
-    downloadProgressBar.style.width = `${data.progress}%`;
-    downloadProgressText.textContent = `İndiriliyor: ${data.songName} (${Math.round(data.progress)}%)`;
-    
-    if (data.progress === 100) {
-        setTimeout(hideDownloadProgress, 2000);
-    }
-}
-
-function hideDownloadProgress() {
-    downloadProgress.style.display = 'none';
-}
-
-function showError(message) {
-    const errorDiv = document.createElement('div');
-    errorDiv.className = 'download-error';
-    errorDiv.innerHTML = `
-        <div class="error-content">
-            <span class="error-icon">⚠️</span>
-            <div class="error-message">
-                <strong>İndirme Hatası</strong>
-                <p>${message}</p>
-            </div>
-            <button class="error-close">×</button>
-        </div>
-    `;
-    
-    document.body.appendChild(errorDiv);
-    
-    errorDiv.querySelector('.error-close').onclick = () => {
-        errorDiv.remove();
-    };
-    
-    setTimeout(() => {
-        errorDiv.remove();
-    }, 5000);
-}
-
 // WebSocket mesajlarını dinle
 ipcRenderer.on('playlist-received', (event, playlist) => {
     console.log('Playlist received:', playlist);
-    ipcRenderer.invoke('play-playlist', playlist).catch(err => {
-        console.error('Error starting playlist:', err);
-    });
+    displayPlaylists(); // Yeni playlist eklendiğinde listeyi güncelle
 });
+
+// İlk yüklemede playlistleri göster
+displayPlaylists();
