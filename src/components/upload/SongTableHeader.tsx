@@ -4,10 +4,15 @@ import {
   TableRow,
 } from "@/components/ui/table";
 
-export const SongTableHeader = () => {
+interface SongTableHeaderProps {
+  showCheckbox?: boolean;
+}
+
+export const SongTableHeader = ({ showCheckbox = false }: SongTableHeaderProps) => {
   return (
     <TableHeader>
       <TableRow>
+        {showCheckbox && <TableHead className="w-[50px]"></TableHead>}
         <TableHead>Şarkı</TableHead>
         <TableHead>Sanatçı</TableHead>
         <TableHead>Tür</TableHead>

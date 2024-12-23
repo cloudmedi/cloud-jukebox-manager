@@ -7,10 +7,12 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Song } from "@/types/song";
 import { formatDuration } from "@/lib/utils";
 import { usePlaybackStore } from "@/store/playbackStore";
 import { usePlayer } from "@/components/layout/MainLayout";
+import { useSelectedSongsStore } from "@/store/selectedSongsStore";
 
 interface SongTableRowProps {
   song: Song;
@@ -22,6 +24,7 @@ interface SongTableRowProps {
 export const SongTableRow = ({ song, onEdit, onDelete, allSongs }: SongTableRowProps) => {
   const { setCurrentSong, setQueue } = usePlaybackStore();
   const { setShowPlayer } = usePlayer();
+  const { addSong, removeSong, isSelected } = useSelectedSongsStore();
 
   const handlePlay = () => {
     setQueue(allSongs);
@@ -29,8 +32,23 @@ export const SongTableRow = ({ song, onEdit, onDelete, allSongs }: SongTableRowP
     setShowPlayer(true);
   };
 
+  const handleCheckboxChange = (checked: boolean) => {
+    if (checked) {
+      addSong(song);
+    } else {
+      removeSong(song._id);
+    }
+  };
+
   return (
     <TableRow key={song._id}>
+      <TableCell>
+        <Checkbox
+          checked={isSelected(song._id)}
+          onCheckedChange={handleCheckboxChange}
+          className="mr-2"
+        />
+      </TableCell>
       <TableCell>
         <div className="flex items-center gap-2">
           <div className="relative group">
