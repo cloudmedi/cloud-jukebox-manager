@@ -2,8 +2,9 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Table, TableBody } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
-import { Plus } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 import SongEditDialog from "./SongEditDialog";
 import { Song } from "@/types/song";
 import { SongTableHeader } from "./SongTableHeader";
@@ -16,9 +17,10 @@ const SongList = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [editingSong, setEditingSong] = useState<Song | null>(null);
   const navigate = useNavigate();
+  const { toast } = useToast();
   const { selectedSongs, clearSelection } = useSelectedSongsStore();
 
-  const { data: songs = [], isLoading, refetch } = useQuery<Song[]>({
+  const { data: songs = [], isLoading, refetch } = useQuery({
     queryKey: ["songs"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/songs");
@@ -54,6 +56,30 @@ const SongList = () => {
     navigate("/playlists/new");
   };
 
+  const handleDeleteSelected = async () => {
+    try {
+      for (const song of selectedSongs) {
+        await fetch(`http://localhost:5000/api/songs/${song._id}`, {
+          method: "DELETE",
+        });
+      }
+      
+      toast({
+        title: "Başarılı",
+        description: "Seçili şarkılar silindi",
+      });
+      
+      clearSelection();
+      refetch();
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Şarkılar silinirken bir hata oluştu",
+      });
+    }
+  };
+
   if (isLoading) {
     return <div>Yükleniyor...</div>;
   }
@@ -69,10 +95,16 @@ const SongList = () => {
           genres={genres}
         />
         {selectedSongs.length > 0 && (
-          <Button onClick={handleCreatePlaylist}>
-            <Plus className="mr-2 h-4 w-4" />
-            Yeni Playlist Oluştur ({selectedSongs.length})
-          </Button>
+          <div className="flex gap-2">
+            <Button onClick={handleCreatePlaylist}>
+              <Plus className="mr-2 h-4 w-4" />
+              Yeni Playlist Oluştur ({selectedSongs.length})
+            </Button>
+            <Button variant="destructive" onClick={handleDeleteSelected}>
+              <Trash2 className="mr-2 h-4 w-4" />
+              Seçilenleri Sil
+            </Button>
+          </div>
         )}
       </div>
 
