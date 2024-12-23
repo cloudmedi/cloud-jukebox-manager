@@ -50,12 +50,13 @@ const SongList = () => {
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/songs");
       if (!response.ok) throw new Error("Failed to fetch songs");
-      return response.json();
+      const data: Song[] = await response.json();
+      return data;
     },
   });
 
-  // Mevcut türleri dinamik olarak al
-  const genres = ["All", ...new Set(songs.map((song: Song) => song.genre))].sort();
+  // Mevcut türleri dinamik olarak al ve string[] tipinde olduğunu belirt
+  const genres: string[] = ["All", ...new Set(songs.map((song: Song) => song.genre))].sort();
 
   const filteredSongs = songs?.filter((song: Song) => {
     const matchesGenre = selectedGenre === "All" || song.genre === selectedGenre;
