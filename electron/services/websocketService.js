@@ -1,12 +1,52 @@
 const WebSocket = require('ws');
 const Store = require('electron-store');
+const { BrowserWindow } = require('electron');
+const playlistHandler = require('./playlist/PlaylistHandler');
 const store = new Store();
 
 class WebSocketService {
   constructor() {
     this.ws = null;
     this.messageHandlers = new Map();
+    this.setupHandlers();
     this.connect();
+  }
+
+  setupHandlers() {
+    // Auth handler
+    this.addMessageHandler('auth', (message) => {
+      console.log('Auth message received:', message);
+      if (message.success) {
+        store.set('deviceInfo', { token: message.token });
+      }
+    });
+
+    // Playlist handler
+    this.addMessageHandler('playlist', async (message) => {
+      console.log('Playlist message received:', message);
+      try {
+        // Playlist'i indir ve işle
+        const updatedPlaylist = await playlistHandler.handlePlaylist(message.data);
+        
+        // Renderer process'e playlist güncellemesini gönder
+        const mainWindow = BrowserWindow.getAllWindows()[0];
+        if (mainWindow) {
+          mainWindow.webContents.send('playlist-received', updatedPlaylist);
+          console.log('Playlist update sent to renderer');
+        }
+      } catch (error) {
+        console.error('Error handling playlist message:', error);
+      }
+    });
+
+    // Command handler
+    this.addMessageHandler('command', (message) => {
+      console.log('Command message received:', message);
+      const mainWindow = BrowserWindow.getAllWindows()[0];
+      if (mainWindow) {
+        mainWindow.webContents.send(message.command, message.data);
+      }
+    });
   }
 
   connect() {
@@ -53,6 +93,8 @@ class WebSocketService {
   sendMessage(message) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message));
+    } else {
+      console.error('WebSocket connection not ready');
     }
   }
 

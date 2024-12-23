@@ -42,27 +42,25 @@ ipcRenderer.on('toggle-playback', () => {
       audio.play()
         .then(() => {
           console.log('Playback started successfully');
-          playbackStateManager.savePlaybackState(true);
           ipcRenderer.send('playback-status-changed', true);
         })
         .catch(err => {
           console.error('Playback error:', err);
-          playbackStateManager.savePlaybackState(false);
           ipcRenderer.send('playback-status-changed', false);
         });
     } else {
       audio.pause();
       console.log('Playback paused');
-      playbackStateManager.savePlaybackState(false);
       ipcRenderer.send('playback-status-changed', false);
     }
   }
 });
 
 // Otomatik playlist başlatma
-ipcRenderer.on('auto-play-playlist', (event, { playlist, shouldAutoPlay }) => {
-  console.log('Auto-playing playlist:', playlist, 'Should auto-play:', shouldAutoPlay);
+ipcRenderer.on('auto-play-playlist', (event, playlist) => {
+  console.log('Auto-playing playlist:', playlist);
   if (playlist && playlist.songs && playlist.songs.length > 0) {
+    const shouldAutoPlay = playbackStateManager.getPlaybackState();
     displayPlaylists();
     
     if (shouldAutoPlay) {
@@ -197,11 +195,7 @@ ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
   if (currentSong && currentSong.localPath) {
     const normalizedPath = currentSong.localPath.replace(/\\/g, '/');
     audio.src = normalizedPath;
-    
-    const shouldAutoPlay = playbackStateManager.getPlaybackState();
-    if (shouldAutoPlay) {
-      audio.play().catch(err => console.error('Playback error:', err));
-    }
+    audio.play().catch(err => console.error('Playback error:', err));
     
     // Şarkı değiştiğinde görsel bilgileri güncelle
     displayPlaylists();
@@ -213,3 +207,5 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM loaded, displaying playlists');
   displayPlaylists();
 });
+
+// Diğer event listener'lar
