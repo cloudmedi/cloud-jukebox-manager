@@ -59,14 +59,12 @@ class PlaylistService {
       
       console.log('Playlist indirme başlatılıyor:', playlist._id);
       
-      // İndirme durumunu kaydet
       this.store.set(`download.${playlist._id}`, {
         status: 'downloading',
         progress: 0,
         completedSongs: []
       });
 
-      // Şarkıları sırayla indir
       for (let i = 0; i < playlist.songs.length; i++) {
         const song = playlist.songs[i];
         console.log(`Şarkı indiriliyor (${i + 1}/${playlist.songs.length}):`, song.name);
@@ -91,7 +89,6 @@ class PlaylistService {
             localPath: songPath
           };
           
-          // Başarılı indirmeleri kaydet
           const downloadState = this.store.get(`download.${playlist._id}`);
           downloadState.completedSongs.push(song._id);
           this.store.set(`download.${playlist._id}`, downloadState);
@@ -106,15 +103,30 @@ class PlaylistService {
               error: `İndirme hatası: ${error.message}`
             }));
           }
+          
+          // İndirme hatası durumunda sunucuya bildir
+          ws.send(JSON.stringify({
+            type: 'playlistStatus',
+            status: 'error',
+            playlistId: playlist._id
+          }));
+          return;
         }
       }
 
-      // İndirme tamamlandı
+      // Tüm şarkılar başarıyla indirildi
       this.store.set(`download.${playlist._id}`, {
         status: 'completed',
         progress: 100,
         completedSongs: playlist.songs.map(s => s._id)
       });
+
+      // Sunucuya yükleme tamamlandı bilgisi gönder
+      ws.send(JSON.stringify({
+        type: 'playlistStatus',
+        status: 'loaded',
+        playlistId: playlist._id
+      }));
 
       if (ws) {
         ws.send(JSON.stringify({
@@ -130,6 +142,13 @@ class PlaylistService {
         ws.send(JSON.stringify({
           type: 'downloadProgress',
           error: `Playlist indirme hatası: ${error.message}`
+        }));
+        
+        // Genel hata durumunda sunucuya bildir
+        ws.send(JSON.stringify({
+          type: 'playlistStatus',
+          status: 'error',
+          playlistId: playlist._id
         }));
       }
       throw error;

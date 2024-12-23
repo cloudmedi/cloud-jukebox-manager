@@ -36,6 +36,10 @@ class MessageHandler {
         }));
         break;
 
+      case 'playlistStatus':
+        await this.playlistHandler.handlePlaylistStatus(data, ws.deviceToken);
+        break;
+
       default:
         console.log('Unknown message type:', data.type);
         break;
