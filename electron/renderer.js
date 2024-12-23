@@ -33,7 +33,8 @@ function displayPlaylists() {
         }
         <div class="playlist-details">
           <h3>${playlist.name}</h3>
-          <p>${playlist.songs.length} şarkı</p>
+          <p>${playlist.songs[0]?.artist || 'Unknown Artist'}</p>
+          <p>${playlist.songs[0]?.name || 'No songs'}</p>
         </div>
       </div>
     `;

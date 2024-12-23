@@ -9,10 +9,13 @@ let mainWindow;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1200,
-    height: 800,
-    minWidth: 800,
-    minHeight: 600,
+    width: 400,
+    height: 300,
+    minWidth: 400,
+    minHeight: 300,
+    maxWidth: 400,
+    maxHeight: 300,
+    resizable: false,
     backgroundColor: '#1a1b1e',
     titleBarStyle: 'hidden',
     frame: false,
