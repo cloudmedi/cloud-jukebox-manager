@@ -4,6 +4,7 @@ import { DeviceTableHeader } from "./DeviceTableHeader";
 import { DeviceTableRow } from "./DeviceTableRow";
 import { Table, TableBody } from "@/components/ui/table";
 import { DeviceFilters } from "./DeviceFilters";
+import { BulkActionsMenu } from "./bulk-actions/BulkActionsMenu";
 import websocketService from "@/services/websocketService";
 import { Device } from "@/services/deviceService";
 import { toast } from "sonner";
@@ -15,6 +16,7 @@ export const DeviceList = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [locationFilter, setLocationFilter] = useState("_all");
   const [groupFilter, setGroupFilter] = useState("_all");
+  const [selectedDevices, setSelectedDevices] = useState<string[]>([]);
   
   const { data: devices, isLoading } = useQuery({
     queryKey: ['devices'],
@@ -39,10 +41,6 @@ export const DeviceList = () => {
             toast.info(`${device.name} ${data.isOnline ? 'çevrimiçi' : 'çevrimdışı'} oldu`);
           }
           
-          if (data.playlistStatus && device.playlistStatus !== data.playlistStatus) {
-            toast.info(`${device.name} playlist durumu: ${data.playlistStatus}`);
-          }
-
           return { 
             ...device, 
             ...data,
@@ -63,22 +61,18 @@ export const DeviceList = () => {
   }, [queryClient]);
 
   const filteredDevices = devices?.filter((device: Device) => {
-    // Durum filtresi
     if (filterStatus !== "all" && device.isOnline !== (filterStatus === "online")) {
       return false;
     }
 
-    // Lokasyon filtresi
     if (locationFilter !== "_all" && device.location !== locationFilter) {
       return false;
     }
 
-    // Grup filtresi
     if (groupFilter !== "_all" && device.groupId !== groupFilter) {
       return false;
     }
 
-    // Arama filtresi
     const searchLower = searchQuery.toLowerCase();
     return (
       !searchQuery ||
@@ -88,6 +82,22 @@ export const DeviceList = () => {
       device.location.toLowerCase().includes(searchLower)
     );
   });
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedDevices(filteredDevices.map((device: Device) => device._id));
+    } else {
+      setSelectedDevices([]);
+    }
+  };
+
+  const handleSelectDevice = (deviceId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedDevices(prev => [...prev, deviceId]);
+    } else {
+      setSelectedDevices(prev => prev.filter(id => id !== deviceId));
+    }
+  };
 
   if (isLoading) {
     return (
@@ -111,12 +121,29 @@ export const DeviceList = () => {
         groupFilter={groupFilter}
         setGroupFilter={setGroupFilter}
       />
+      
+      {selectedDevices.length > 0 && (
+        <BulkActionsMenu 
+          selectedDevices={selectedDevices}
+          onClearSelection={() => setSelectedDevices([])}
+        />
+      )}
+
       <div className="rounded-md border">
         <Table>
-          <DeviceTableHeader />
+          <DeviceTableHeader 
+            onSelectAll={handleSelectAll}
+            allSelected={selectedDevices.length === filteredDevices?.length}
+            someSelected={selectedDevices.length > 0 && selectedDevices.length < filteredDevices?.length}
+          />
           <TableBody>
             {filteredDevices?.map((device: Device) => (
-              <DeviceTableRow key={device._id} device={device} />
+              <DeviceTableRow 
+                key={device._id} 
+                device={device}
+                isSelected={selectedDevices.includes(device._id)}
+                onSelect={(checked) => handleSelectDevice(device._id, checked)}
+              />
             ))}
           </TableBody>
         </Table>

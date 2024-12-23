@@ -1,9 +1,27 @@
 import { TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
 
-export const DeviceTableHeader = () => {
+interface DeviceTableHeaderProps {
+  onSelectAll: (checked: boolean) => void;
+  allSelected: boolean;
+  someSelected: boolean;
+}
+
+export const DeviceTableHeader = ({
+  onSelectAll,
+  allSelected,
+  someSelected,
+}: DeviceTableHeaderProps) => {
   return (
     <TableHeader>
       <TableRow>
+        <TableHead className="w-[40px]">
+          <Checkbox
+            checked={allSelected}
+            indeterminate={someSelected}
+            onCheckedChange={onSelectAll}
+          />
+        </TableHead>
         <TableHead>Cihaz Adı</TableHead>
         <TableHead>Token</TableHead>
         <TableHead>Konum</TableHead>
