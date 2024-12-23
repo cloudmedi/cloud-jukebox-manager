@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Music, MoreVertical, Play, Pencil, Trash, Filter } from "lucide-react";
+import { Music, MoreVertical, Play, Pencil, Trash } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -39,15 +39,13 @@ interface Song {
   createdAt: string;
 }
 
-const genres = ["All", "Pop", "Rock", "Jazz", "Classical", "Electronic", "Other"];
-
 const SongList = () => {
   const { toast } = useToast();
   const [selectedGenre, setSelectedGenre] = useState("All");
   const [searchTerm, setSearchTerm] = useState("");
   const [editingSong, setEditingSong] = useState<Song | null>(null);
 
-  const { data: songs, isLoading, refetch } = useQuery({
+  const { data: songs = [], isLoading, refetch } = useQuery({
     queryKey: ["songs"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/songs");
@@ -55,6 +53,9 @@ const SongList = () => {
       return response.json();
     },
   });
+
+  // Mevcut türleri dinamik olarak al
+  const genres = ["All", ...new Set(songs.map((song: Song) => song.genre))].sort();
 
   const filteredSongs = songs?.filter((song: Song) => {
     const matchesGenre = selectedGenre === "All" || song.genre === selectedGenre;
