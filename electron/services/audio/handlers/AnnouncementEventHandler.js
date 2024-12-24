@@ -9,17 +9,22 @@ class AnnouncementEventHandler {
   }
 
   setupEventListeners() {
+    // Kampanya başlamadan önce
+    this.campaignAudio.addEventListener('loadeddata', () => {
+      console.log('Kampanya yüklendi, playlist duraklatılıyor');
+      if (!this.playlistAudio.paused) {
+        this.wasPlaylistPlaying = true;
+        this.playlistAudio.pause();
+      }
+    });
+
     // Kampanya başladığında
     this.campaignAudio.addEventListener('play', () => {
-      console.log('Kampanya başladı, playlist duraklatılıyor');
+      console.log('Kampanya başladı');
       this.isAnnouncementPlaying = true;
       
-      // Playlist'in mevcut durumunu kaydet
-      this.wasPlaylistPlaying = !this.playlistAudio.paused;
-      
-      // Playlist'i duraklat
-      if (this.wasPlaylistPlaying) {
-        console.log('Playlist duraklatılıyor...');
+      if (this.playlistAudio && !this.playlistAudio.paused) {
+        console.log('Playlist duraklatılıyor');
         this.playlistAudio.pause();
       }
     });
@@ -40,23 +45,25 @@ class AnnouncementEventHandler {
   cleanupAnnouncement() {
     console.log('Kampanya durumu temizleniyor');
     
-    // Kampanya audio elementini temizle
+    // Önce kampanya audio elementini temizle
     this.campaignAudio.src = '';
     this.isAnnouncementPlaying = false;
+    
+    // Son anons zamanını kaydet
+    this.lastAnnouncementTime = Date.now();
     
     // Kampanya bittiğini bildir
     require('electron').ipcRenderer.send('announcement-ended');
     
-    // Eğer playlist çalıyorduysa devam ettir
+    // Playlist'i devam ettir
     if (this.wasPlaylistPlaying) {
       console.log('Playlist kaldığı yerden devam ediyor');
-      this.playlistAudio.play().catch(err => {
-        console.error('Playlist devam ettirme hatası:', err);
-      });
+      setTimeout(() => {
+        this.playlistAudio.play().catch(err => {
+          console.error('Playlist devam ettirme hatası:', err);
+        });
+      }, 500); // Küçük bir gecikme ekleyerek çakışmayı önle
     }
-    
-    // Son anons zamanını kaydet
-    this.lastAnnouncementTime = Date.now();
     
     // Durumları sıfırla
     this.wasPlaylistPlaying = false;
@@ -78,6 +85,9 @@ class AnnouncementEventHandler {
     }
 
     try {
+      // Mevcut durumu kaydet
+      this.wasPlaylistPlaying = !this.playlistAudio.paused;
+      
       console.log('Kampanya başlatılıyor:', audioPath);
       
       // Kampanya audio elementini hazırla
