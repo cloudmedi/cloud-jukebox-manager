@@ -106,7 +106,10 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
   });
 
   const handleSubmit = async (data: AnnouncementFormData) => {
+    console.log('Form verileri gönderilmeden önce:', data);
+    
     if (announcement) {
+      console.log('Anons güncelleme isteği:', data);
       await updateAnnouncementMutation.mutateAsync(data);
       return;
     }
@@ -117,25 +120,57 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
     try {
       const formData = new FormData();
       
+      // Form verilerini logla
+      console.log('FormData oluşturuluyor:', {
+        ...data,
+        audioFile: data.audioFile ? {
+          name: data.audioFile.name,
+          type: data.audioFile.type,
+          size: data.audioFile.size
+        } : null
+      });
+      
       // Temel bilgiler
       Object.keys(data).forEach(key => {
         if (key === 'startDate' || key === 'endDate') {
           const date = data[key as keyof AnnouncementFormData];
           if (date instanceof Date) {
             formData.append(key, date.toISOString());
+            console.log(`${key} eklendi:`, date.toISOString());
           }
         } else if (key !== 'audioFile') {
           formData.append(key, JSON.stringify(data[key as keyof AnnouncementFormData]));
+          console.log(`${key} eklendi:`, data[key as keyof AnnouncementFormData]);
         }
       });
 
       if (data.audioFile) {
         formData.append('audioFile', data.audioFile);
+        console.log('Ses dosyası eklendi:', {
+          name: data.audioFile.name,
+          type: data.audioFile.type,
+          size: data.audioFile.size
+        });
       }
+
+      console.log('Backend\'e gönderilecek final FormData içeriği:', 
+        Array.from(formData.entries()).reduce((acc, [key, value]) => ({
+          ...acc,
+          [key]: value instanceof File ? {
+            name: value.name,
+            type: value.type,
+            size: value.size
+          } : value
+        }), {})
+      );
 
       await createAnnouncementMutation.mutateAsync(formData);
     } catch (error) {
-      console.error("Form gönderme hatası:", error);
+      console.error('Form gönderme hatası detayları:', {
+        error,
+        stack: error instanceof Error ? error.stack : undefined,
+        message: error instanceof Error ? error.message : 'Bilinmeyen hata'
+      });
     } finally {
       setUploading(false);
       setProgress(0);

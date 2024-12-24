@@ -31,6 +31,12 @@ router.get('/:id', async (req, res) => {
 
 // Yeni anons oluştur
 router.post('/', async (req, res) => {
+  console.log('Yeni anons isteği alındı:', {
+    body: req.body,
+    files: req.files,
+    headers: req.headers
+  });
+
   const announcement = new Announcement({
     title: req.body.title,
     content: req.body.content,
@@ -49,10 +55,17 @@ router.post('/', async (req, res) => {
   });
 
   try {
+    console.log('Anons modeli oluşturuldu:', announcement);
     const newAnnouncement = await announcement.save();
+    console.log('Anons başarıyla kaydedildi:', newAnnouncement);
     res.status(201).json(newAnnouncement);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error('Anons oluşturma hatası:', error);
+    res.status(400).json({ 
+      message: error.message,
+      validationErrors: error.errors,
+      stack: error.stack
+    });
   }
 });
 
