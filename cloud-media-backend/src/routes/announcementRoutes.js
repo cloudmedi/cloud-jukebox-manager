@@ -7,9 +7,7 @@ const Announcement = require('../models/Announcement');
 // Multer yapılandırması
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    // Var olan uploads klasörünü kullan
-    const uploadsDir = path.join(__dirname, '../../uploads/announcements');
-    cb(null, uploadsDir);
+    cb(null, path.join(__dirname, '../../uploads/announcements'));
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -42,6 +40,25 @@ router.post('/', upload.single('audioFile'), async (req, res) => {
       return res.status(400).json({ message: 'Ses dosyası zorunludur' });
     }
 
+    // Array verilerini düzgün şekilde parse et
+    const targetDevices = req.body['targetDevices[]'] 
+      ? Array.isArray(req.body['targetDevices[]']) 
+        ? req.body['targetDevices[]'] 
+        : [req.body['targetDevices[]']]
+      : [];
+
+    const targetGroups = req.body['targetGroups[]']
+      ? Array.isArray(req.body['targetGroups[]'])
+        ? req.body['targetGroups[]']
+        : [req.body['targetGroups[]']]
+      : [];
+
+    const specificTimes = req.body['specificTimes[]']
+      ? Array.isArray(req.body['specificTimes[]'])
+        ? req.body['specificTimes[]']
+        : [req.body['specificTimes[]']]
+      : [];
+
     const announcementData = {
       title: req.body.title,
       content: req.body.content,
@@ -53,12 +70,9 @@ router.post('/', upload.single('audioFile'), async (req, res) => {
       songInterval: req.body.songInterval ? parseInt(req.body.songInterval) : null,
       minuteInterval: req.body.minuteInterval ? parseInt(req.body.minuteInterval) : null,
       immediateInterrupt: req.body.immediateInterrupt === 'true',
-      specificTimes: Array.isArray(req.body.specificTimes) ? req.body.specificTimes : 
-                    req.body.specificTimes ? [req.body.specificTimes] : [],
-      targetDevices: Array.isArray(req.body.targetDevices) ? req.body.targetDevices : 
-                    req.body.targetDevices ? [req.body.targetDevices] : [],
-      targetGroups: Array.isArray(req.body.targetGroups) ? req.body.targetGroups : 
-                   req.body.targetGroups ? [req.body.targetGroups] : [],
+      specificTimes: specificTimes,
+      targetDevices: targetDevices,
+      targetGroups: targetGroups,
       createdBy: req.body.createdBy || 'system'
     };
 
