@@ -1,10 +1,8 @@
 class AudioManager {
   constructor() {
-    // Playlist için audio element
     this.playlistAudio = new Audio();
     this.playlistAudio.volume = 0.7;
 
-    // Anons için ayrı audio element
     this.announcementAudio = new Audio();
     this.announcementAudio.volume = 1.0;
 
@@ -29,10 +27,12 @@ class AudioManager {
 
     this.announcementAudio.addEventListener('ended', () => {
       console.log('Anons bitti');
+      // Önce anons durumunu güncelle
       this.isAnnouncementPlaying = false;
       
-      // Eğer playlist çalıyorduysa devam et
+      // Sonra playlist'i devam ettir
       if (this.wasPlaylistPlaying) {
+        console.log('Playlist devam ediyor');
         this.playlistAudio.play().catch(err => {
           console.error('Playlist devam ettirme hatası:', err);
         });
@@ -44,7 +44,6 @@ class AudioManager {
       console.error('Anons çalma hatası:', error);
       this.isAnnouncementPlaying = false;
       
-      // Hata durumunda da playlist'e devam et
       if (this.wasPlaylistPlaying) {
         this.playlistAudio.play().catch(err => {
           console.error('Playlist devam ettirme hatası:', err);
@@ -70,7 +69,9 @@ class AudioManager {
 
       // Playlist durumunu kaydet ve durdur
       this.wasPlaylistPlaying = !this.playlistAudio.paused;
-      this.playlistAudio.pause();
+      if (this.wasPlaylistPlaying) {
+        this.playlistAudio.pause();
+      }
 
       // Anonsu çal
       this.announcementAudio.src = announcement.localPath;
@@ -79,6 +80,7 @@ class AudioManager {
       return true;
     } catch (error) {
       console.error('Anons çalma hatası:', error);
+      this.isAnnouncementPlaying = false;
       this.resumePlaylistIfNeeded();
       return false;
     }
