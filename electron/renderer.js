@@ -19,17 +19,13 @@ document.getElementById('closeButton').addEventListener('click', () => {
 
 // Anons kontrolleri
 ipcRenderer.on('play-announcement', async (event, announcement) => {
-  // Mevcut çalan şarkıyı duraklat
-  if (!playlistAudio.paused) {
-    playlistAudio.pause();
-  }
-
+  console.log('Received announcement:', announcement);
+  
   // Anonsu çal
   const success = await AnnouncementAudioService.playAnnouncement(announcement);
   
   if (!success) {
-    // Hata durumunda şarkıyı devam ettir
-    playlistAudio.play().catch(err => console.error('Resume playback error:', err));
+    console.error('Failed to play announcement');
   }
 });
 
