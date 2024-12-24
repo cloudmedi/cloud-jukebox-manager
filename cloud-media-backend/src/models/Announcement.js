@@ -32,6 +32,11 @@ const announcementSchema = new mongoose.Schema({
     enum: ['songs', 'minutes', 'specific'],
     required: [true, 'Zamanlama tipi zorunludur']
   },
+  playMode: {
+    type: String,
+    enum: ['sequential', 'random'],
+    default: 'sequential'
+  },
   songInterval: {
     type: Number,
     min: 1,
@@ -41,6 +46,14 @@ const announcementSchema = new mongoose.Schema({
     type: Number,
     min: 1,
     default: null
+  },
+  lastPlayedAt: {
+    type: Date,
+    default: null
+  },
+  playCount: {
+    type: Number,
+    default: 0
   },
   immediateInterrupt: {
     type: Boolean,
@@ -85,6 +98,50 @@ announcementSchema.pre('remove', async function(next) {
   );
   next();
 });
+
+// Sıradaki anonsu seç (sıralı veya random)
+announcementSchema.statics.getNextAnnouncement = async function(deviceId, scheduleType) {
+  const now = new Date();
+  
+  // Aktif anonsları bul
+  const announcements = await this.find({
+    status: 'active',
+    scheduleType: scheduleType,
+    startDate: { $lte: now },
+    endDate: { $gte: now },
+    $or: [
+      { targetDevices: deviceId },
+      { targetGroups: { $in: await this.getDeviceGroupIds(deviceId) } }
+    ]
+  }).sort('lastPlayedAt');
+
+  if (announcements.length === 0) return null;
+
+  // Çalma moduna göre anons seç
+  let selectedAnnouncement;
+  if (announcements[0].playMode === 'random') {
+    const randomIndex = Math.floor(Math.random() * announcements.length);
+    selectedAnnouncement = announcements[randomIndex];
+  } else {
+    // En son çalınan anonsu bul ve sıradakini seç
+    selectedAnnouncement = announcements[0];
+  }
+
+  // Son çalma zamanını ve sayısını güncelle
+  await this.findByIdAndUpdate(selectedAnnouncement._id, {
+    lastPlayedAt: now,
+    $inc: { playCount: 1 }
+  });
+
+  return selectedAnnouncement;
+});
+
+// Yardımcı fonksiyon: Cihazın grup ID'lerini getir
+announcementSchema.statics.getDeviceGroupIds = async function(deviceId) {
+  const Device = mongoose.model('Device');
+  const device = await Device.findById(deviceId);
+  return device ? device.groupId ? [device.groupId] : [] : [];
+};
 
 const Announcement = mongoose.model('Announcement', announcementSchema);
 
