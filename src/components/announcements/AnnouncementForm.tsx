@@ -44,7 +44,7 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
     mutationFn: async (data: AnnouncementFormData) => {
       const formData = new FormData();
       
-      // Form verilerini FormData'ya ekle
+      // Temel form verilerini ekle
       formData.append('title', data.title);
       formData.append('content', data.content);
       if (data.audioFile) {
@@ -55,6 +55,7 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
       formData.append('endDate', data.endDate.toISOString());
       formData.append('scheduleType', data.scheduleType);
       
+      // İsteğe bağlı alanları kontrol et ve ekle
       if (data.songInterval) {
         formData.append('songInterval', String(data.songInterval));
       }
@@ -80,22 +81,6 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
       }
       
       formData.append('createdBy', data.createdBy);
-
-      console.log('Gönderilen form verileri:', {
-        title: data.title,
-        content: data.content,
-        audioFile: data.audioFile?.name,
-        duration: data.duration,
-        startDate: data.startDate,
-        endDate: data.endDate,
-        scheduleType: data.scheduleType,
-        songInterval: data.songInterval,
-        minuteInterval: data.minuteInterval,
-        specificTimes: data.specificTimes,
-        targetDevices: data.targets.devices,
-        targetGroups: data.targets.groups,
-        createdBy: data.createdBy
-      });
 
       const response = await fetch("http://localhost:5000/api/announcements", {
         method: "POST",
