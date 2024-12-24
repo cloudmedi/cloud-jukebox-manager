@@ -1,0 +1,39 @@
+.background {
+    -fx-background-color: #1a1b1e;
+}
+
+.title-label {
+    -fx-text-fill: white;
+    -fx-font-size: 24px;
+    -fx-font-weight: bold;
+}
+
+.info-label {
+    -fx-text-fill: #a1a1aa;
+    -fx-font-size: 14px;
+}
+
+.error-label {
+    -fx-text-fill: #ef4444;
+    -fx-font-size: 12px;
+}
+
+.text-field {
+    -fx-background-color: #27272a;
+    -fx-text-fill: white;
+    -fx-prompt-text-fill: #71717a;
+    -fx-padding: 8px;
+    -fx-background-radius: 4px;
+}
+
+.button {
+    -fx-background-color: #3b82f6;
+    -fx-text-fill: white;
+    -fx-padding: 8px 16px;
+    -fx-background-radius: 4px;
+    -fx-cursor: hand;
+}
+
+.button:hover {
+    -fx-background-color: #2563eb;
+}

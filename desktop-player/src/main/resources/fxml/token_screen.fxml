@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<?import javafx.scene.layout.*?>
+<?import javafx.scene.control.*?>
+<?import javafx.geometry.Insets?>
+
+<VBox fx:id="tokenScreen" spacing="20" alignment="CENTER" styleClass="background"
+      xmlns:fx="http://javafx.com/fxml" fx:controller="com.cloudmedia.ui.TokenScreenController">
+    <padding>
+        <Insets top="20" right="20" bottom="20" left="20"/>
+    </padding>
+
+    <Label text="Cloud Media Player" styleClass="title-label"/>
+    <Label text="Lütfen 6 haneli token kodunu girin" styleClass="info-label"/>
+    
+    <TextField fx:id="tokenField" maxWidth="200" promptText="Token"/>
+    
+    <Button fx:id="validateButton" text="Doğrula" onAction="#validateToken"/>
+    
+    <Label fx:id="errorLabel" styleClass="error-label" visible="false"/>
+</VBox>
