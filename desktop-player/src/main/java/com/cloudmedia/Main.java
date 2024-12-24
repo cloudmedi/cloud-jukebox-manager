@@ -16,7 +16,6 @@ public class Main extends Application {
         // Token ekranını göster
         TokenScreen tokenScreen = new TokenScreen(this::onTokenValidated);
         Scene scene = new Scene(tokenScreen, 400, 300);
-        scene.getStylesheets().add(getClass().getResource("/styles/dark-theme.css").toExternalForm());
         
         primaryStage.setScene(scene);
         primaryStage.show();
@@ -24,7 +23,6 @@ public class Main extends Application {
 
     private void onTokenValidated(String token) {
         // Token doğrulandığında ana oynatıcı ekranına geç
-        // Bu kısmı daha sonra implemente edeceğiz
         System.out.println("Token validated: " + token);
     }
 
