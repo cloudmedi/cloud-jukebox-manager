@@ -10,7 +10,6 @@ class AudioManager {
 
     this.isAnnouncementPlaying = false;
     this.wasPlaylistPlaying = false;
-    this.lastPlaylistSource = null;
 
     this.setupEventListeners();
   }
@@ -21,10 +20,9 @@ class AudioManager {
       console.log('Anons başladı');
       this.isAnnouncementPlaying = true;
       
-      // Playlist çalıyorsa durdur ve durumu kaydet
+      // Playlist çalıyorsa durdur
       if (!this.playlistAudio.paused) {
         this.wasPlaylistPlaying = true;
-        this.lastPlaylistSource = this.playlistAudio.src;
         this.playlistAudio.pause();
       }
     });
@@ -33,49 +31,31 @@ class AudioManager {
       console.log('Anons bitti');
       this.isAnnouncementPlaying = false;
       
-      // Playlist'i devam ettir
-      this.resumePlaylistIfNeeded();
+      // Eğer playlist çalıyorduysa devam et
+      if (this.wasPlaylistPlaying) {
+        this.playlistAudio.play();
+        this.wasPlaylistPlaying = false;
+      }
     });
 
     this.announcementAudio.addEventListener('error', (error) => {
       console.error('Anons çalma hatası:', error);
       this.isAnnouncementPlaying = false;
       
-      // Hata durumunda da playlist'i devam ettir
-      this.resumePlaylistIfNeeded();
-    });
-  }
-
-  async resumePlaylistIfNeeded() {
-    if (this.wasPlaylistPlaying && this.lastPlaylistSource) {
-      try {
-        console.log('Playlist devam ediyor...');
-        
-        // Audio element'i yeniden hazırla
-        this.playlistAudio.src = this.lastPlaylistSource;
-        
-        // Play promise'i bekle
-        await this.playlistAudio.play();
-        
-        // Başarılı oynatma sonrası state'i temizle
+      // Hata durumunda da playlist'e devam et
+      if (this.wasPlaylistPlaying) {
+        this.playlistAudio.play();
         this.wasPlaylistPlaying = false;
-        console.log('Playlist başarıyla devam ediyor');
-      } catch (error) {
-        console.error('Playlist devam ettirme hatası:', error);
-        // 3 kez deneme yap
-        for (let i = 0; i < 3; i++) {
-          try {
-            await new Promise(resolve => setTimeout(resolve, 1000));
-            await this.playlistAudio.play();
-            this.wasPlaylistPlaying = false;
-            console.log('Playlist yeniden deneme başarılı');
-            break;
-          } catch (retryError) {
-            console.error(`Yeniden deneme ${i + 1} başarısız:`, retryError);
-          }
-        }
       }
-    }
+    });
+
+    // Playlist audio event listeners
+    this.playlistAudio.addEventListener('ended', () => {
+      if (!this.isAnnouncementPlaying) {
+        console.log('Şarkı bitti, sıradakine geçiliyor');
+        ipcRenderer.invoke('song-ended');
+      }
+    });
   }
 
   async playAnnouncement(announcement) {
@@ -86,10 +66,7 @@ class AudioManager {
 
       // Playlist durumunu kaydet ve durdur
       this.wasPlaylistPlaying = !this.playlistAudio.paused;
-      if (this.wasPlaylistPlaying) {
-        this.lastPlaylistSource = this.playlistAudio.src;
-        this.playlistAudio.pause();
-      }
+      this.playlistAudio.pause();
 
       // Anonsu çal
       this.announcementAudio.src = announcement.localPath;
@@ -103,20 +80,22 @@ class AudioManager {
     }
   }
 
-  // Playlist kontrolleri
-  async playPlaylist(src) {
-    if (!this.isAnnouncementPlaying) {
-      try {
-        this.playlistAudio.src = src;
-        this.lastPlaylistSource = src;
-        await this.playlistAudio.play();
-        return true;
-      } catch (error) {
-        console.error('Playlist çalma hatası:', error);
-        return false;
-      }
+  resumePlaylistIfNeeded() {
+    if (this.wasPlaylistPlaying) {
+      this.playlistAudio.play().catch(err => {
+        console.error('Playlist devam ettirme hatası:', err);
+      });
+      this.wasPlaylistPlaying = false;
     }
-    return false;
+  }
+
+  // Playlist kontrolleri
+  playPlaylist(src) {
+    if (!this.isAnnouncementPlaying) {
+      this.playlistAudio.src = src;
+      return this.playlistAudio.play();
+    }
+    return Promise.reject(new Error('Anons çalıyor'));
   }
 
   pausePlaylist() {
