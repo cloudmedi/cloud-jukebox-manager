@@ -32,23 +32,23 @@ class AnnouncementEventHandler {
     // Kampanya bittiğinde
     this.campaignAudio.addEventListener('ended', () => {
       console.log('Kampanya bitti');
-      this.cleanupAnnouncement();
+      this.resetAnnouncementState();
     });
 
     // Kampanya hata durumunda
     this.campaignAudio.addEventListener('error', (error) => {
       console.error('Kampanya oynatma hatası:', error);
-      this.cleanupAnnouncement();
+      // Hata durumunda sadece state'i sıfırla, ses dosyasını silme
+      this.resetAnnouncementState();
     });
   }
 
-  cleanupAnnouncement() {
-    console.log('Kampanya durumu temizleniyor');
+  resetAnnouncementState() {
+    console.log('Kampanya durumu sıfırlanıyor');
     
-    // Kampanya audio elementini sıfırla
+    // Sadece duraklatma ve zaman sıfırlama
     this.campaignAudio.pause();
     this.campaignAudio.currentTime = 0;
-    this.campaignAudio.src = '';
     this.isAnnouncementPlaying = false;
     
     // Son anons zamanını kaydet
@@ -89,10 +89,6 @@ class AnnouncementEventHandler {
       // Mevcut durumu kaydet
       this.wasPlaylistPlaying = !this.playlistAudio.paused;
       
-      // Önceki kampanyayı temizle
-      this.campaignAudio.pause();
-      this.campaignAudio.currentTime = 0;
-      
       console.log('Kampanya başlatılıyor:', audioPath);
       
       // Yeni kampanyayı yükle ve çal
@@ -103,7 +99,7 @@ class AnnouncementEventHandler {
       return true;
     } catch (err) {
       console.error('Kampanya başlatma hatası:', err);
-      this.cleanupAnnouncement();
+      this.resetAnnouncementState();
       return false;
     }
   }
