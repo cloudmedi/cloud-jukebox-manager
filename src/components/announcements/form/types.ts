@@ -3,6 +3,7 @@ export type FormSteps = "basic" | "schedule" | "targets";
 export type ScheduleType = "songs" | "minutes" | "specific";
 
 export interface AnnouncementFormData {
+  _id?: string;  // Added _id as optional
   title: string;
   content: string;
   audioFile: File | null;
