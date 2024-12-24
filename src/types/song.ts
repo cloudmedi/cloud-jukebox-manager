@@ -6,12 +6,11 @@ export interface Song {
   album?: string;
   year?: number;
   language?: string;
-  duration: number;
-  artwork?: string | null;
   filePath: string;
-  localPath?: string;
+  artwork?: string | null;
+  duration: number;
   status?: 'active' | 'inactive';
   createdBy?: string;
-  createdAt: string;
-  updatedAt: string;
+  createdAt?: string;
+  updatedAt?: string;
 }

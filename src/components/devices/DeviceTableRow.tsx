@@ -1,106 +1,63 @@
 import { TableCell, TableRow } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Power, Music, Check, Loader, AlertCircle } from "lucide-react";
-import { Tooltip, TooltipContent, TooltipTrigger } from "@/components/ui/tooltip";
+import { formatDistanceToNow } from "date-fns";
+import { tr } from "date-fns/locale";
 import { Device } from "@/services/deviceService";
 import DeviceActions from "./DeviceActions";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface DeviceTableRowProps {
   device: Device;
-  style?: React.CSSProperties;
+  isSelected: boolean;
+  onSelect: (checked: boolean) => void;
 }
 
-export const DeviceTableRow = ({ device, style }: DeviceTableRowProps) => {
-  const getPlaylistStatusBadge = () => {
-    if (!device.activePlaylist) {
-      return (
-        <Badge variant="secondary" className="flex items-center gap-1">
-          <Music className="h-3 w-3" />
-          Playlist Atanmamış
-        </Badge>
-      );
-    }
-
-    switch (device.playlistStatus) {
-      case 'loaded':
-        return (
-          <Tooltip>
-            <TooltipTrigger>
-              <Badge variant="success" className="flex items-center gap-1">
-                <Check className="h-3 w-3" />
-                Yüklendi
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{device.activePlaylist.name}</p>
-            </TooltipContent>
-          </Tooltip>
-        );
-      case 'loading':
-        return (
-          <Tooltip>
-            <TooltipTrigger>
-              <Badge variant="warning" className="flex items-center gap-1">
-                <Loader className="h-3 w-3 animate-spin" />
-                Yükleniyor
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>{device.activePlaylist.name}</p>
-            </TooltipContent>
-          </Tooltip>
-        );
-      case 'error':
-        return (
-          <Tooltip>
-            <TooltipTrigger>
-              <Badge variant="destructive" className="flex items-center gap-1">
-                <AlertCircle className="h-3 w-3" />
-                Hata
-              </Badge>
-            </TooltipTrigger>
-            <TooltipContent>
-              <p>Playlist yüklenirken hata oluştu</p>
-            </TooltipContent>
-          </Tooltip>
-        );
-      default:
-        return null;
-    }
-  };
-
-  const formatDate = (dateString: string) => {
-    return new Date(dateString).toLocaleString('tr-TR', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
-      hour: '2-digit',
-      minute: '2-digit'
-    });
-  };
-
+export const DeviceTableRow = ({ device, isSelected, onSelect }: DeviceTableRowProps) => {
   return (
-    <TableRow style={style}>
-      <TableCell className="font-medium">{device.name}</TableCell>
+    <TableRow>
+      <TableCell>
+        <Checkbox checked={isSelected} onCheckedChange={onSelect} />
+      </TableCell>
+      <TableCell>{device.name}</TableCell>
       <TableCell>{device.token}</TableCell>
       <TableCell>{device.location}</TableCell>
       <TableCell>{device.ipAddress || "-"}</TableCell>
       <TableCell>
         <Badge
-          variant={device.isOnline ? "success" : "secondary"}
-          className="flex w-fit items-center gap-1"
+          variant={device.isOnline ? "success" : "destructive"}
+          className="capitalize"
         >
-          <Power className="h-3 w-3" />
           {device.isOnline ? "Çevrimiçi" : "Çevrimdışı"}
         </Badge>
       </TableCell>
-      <TableCell>{getPlaylistStatusBadge()}</TableCell>
       <TableCell>
-        <div className="flex items-center gap-2">
-          <span>{device.volume}%</span>
-        </div>
+        {device.playlistStatus ? (
+          <Badge
+            variant={
+              device.playlistStatus === "loaded"
+                ? "success"
+                : device.playlistStatus === "loading"
+                ? "warning"
+                : "destructive"
+            }
+          >
+            {device.playlistStatus === "loaded"
+              ? "Hazır"
+              : device.playlistStatus === "loading"
+              ? "Yükleniyor"
+              : "Hata"}
+          </Badge>
+        ) : (
+          "-"
+        )}
       </TableCell>
-      <TableCell>{formatDate(device.lastSeen)}</TableCell>
+      <TableCell>%{device.volume}</TableCell>
+      <TableCell>
+        {formatDistanceToNow(new Date(device.lastSeen), {
+          addSuffix: true,
+          locale: tr,
+        })}
+      </TableCell>
       <TableCell className="text-right">
         <DeviceActions device={device} />
       </TableCell>

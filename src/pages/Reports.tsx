@@ -1,10 +1,11 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { PlayCircle, Smartphone, Calendar, Activity, Music } from "lucide-react";
+import { PlayCircle, Smartphone, Calendar, Activity, Music, AlertTriangle } from "lucide-react";
 import PlaybackStats from "@/components/reports/PlaybackStats";
 import DeviceStats from "@/components/reports/DeviceStats";
 import ScheduleStats from "@/components/reports/ScheduleStats";
 import PerformanceStats from "@/components/reports/PerformanceStats";
 import DevicePlaybackReport from "@/components/reports/DevicePlaybackReport";
+import ErrorLogs from "@/components/reports/ErrorLogs";
 
 const Reports = () => {
   return (
@@ -35,6 +36,10 @@ const Reports = () => {
             <Music className="h-4 w-4" />
             Cihaz Çalma Raporu
           </TabsTrigger>
+          <TabsTrigger value="error-logs" className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            Hata Logları
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="playback">
@@ -55,6 +60,10 @@ const Reports = () => {
 
         <TabsContent value="device-playback">
           <DevicePlaybackReport />
+        </TabsContent>
+
+        <TabsContent value="error-logs">
+          <ErrorLogs />
         </TabsContent>
       </Tabs>
     </div>

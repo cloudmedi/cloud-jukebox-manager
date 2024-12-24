@@ -4,8 +4,9 @@ import { UseFormReturn } from "react-hook-form";
 import { PlaylistFormValues } from "../PlaylistForm";
 import { Card, CardContent } from "@/components/ui/card";
 import { ImagePlus, Image as ImageIcon } from "lucide-react";
-import { useRef, useEffect } from "react";
+import { useRef, useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
+import { useToast } from "@/hooks/use-toast";
 
 interface ArtworkUploadProps {
   form: UseFormReturn<PlaylistFormValues>;
@@ -13,22 +14,66 @@ interface ArtworkUploadProps {
 
 export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const artwork = form.watch("artwork");
+  const { toast } = useToast();
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   
-  const previewUrl = artwork && artwork.length > 0
-    ? URL.createObjectURL(artwork[0])
-    : null;
+  const artwork = form.watch("artwork");
 
   useEffect(() => {
-    return () => {
-      if (previewUrl) {
-        URL.revokeObjectURL(previewUrl);
-      }
-    };
-  }, [previewUrl]);
+    if (artwork && artwork.length > 0) {
+      const url = URL.createObjectURL(artwork[0]);
+      setPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    }
+  }, [artwork]);
 
   const handleUploadClick = () => {
     fileInputRef.current?.click();
+  };
+
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Check file type
+    if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Lütfen sadece JPG, PNG veya WEBP formatında dosya yükleyin.",
+      });
+      return;
+    }
+
+    // Check file size (5MB)
+    if (file.size > 5 * 1024 * 1024) {
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Dosya boyutu 5MB'dan küçük olmalıdır.",
+      });
+      return;
+    }
+
+    try {
+      form.setValue("artwork", e.target.files as FileList, {
+        shouldValidate: true,
+        shouldDirty: true,
+        shouldTouch: true,
+      });
+
+      toast({
+        title: "Başarılı",
+        description: "Kapak resmi başarıyla yüklendi.",
+      });
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Kapak resmi yüklenirken bir hata oluştu.",
+      });
+      console.error('Artwork upload error:', error);
+    }
   };
 
   return (
@@ -41,7 +86,7 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
       <FormField
         control={form.control}
         name="artwork"
-        render={({ field: { onChange, value, ...field } }) => (
+        render={({ field: { value, onChange, ...field } }) => (
           <FormItem>
             <FormControl>
               <div className="space-y-4">
@@ -85,12 +130,7 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
                   type="file"
                   accept="image/jpeg,image/jpg,image/png,image/webp"
                   className="hidden"
-                  onChange={(e) => {
-                    const files = e.target.files;
-                    if (files?.length) {
-                      onChange(files);
-                    }
-                  }}
+                  onChange={handleFileChange}
                   {...field}
                 />
               </div>
