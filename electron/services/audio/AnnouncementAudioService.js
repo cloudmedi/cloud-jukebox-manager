@@ -29,6 +29,7 @@ class AnnouncementAudioService {
       
       if (success) {
         AnnouncementLogger.logAudioState(this.campaignAudio);
+        AnnouncementLogger.logPlaybackStart();
       }
 
       return success;

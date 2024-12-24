@@ -9,9 +9,9 @@ class AnnouncementEventHandler {
   }
 
   setupEventListeners() {
-    // Kampanya başlamadan önce
+    // Kampanya yüklendiğinde
     this.campaignAudio.addEventListener('loadeddata', () => {
-      console.log('Kampanya yüklendi, playlist duraklatılıyor');
+      console.log('Kampanya yüklendi');
       if (!this.playlistAudio.paused) {
         this.wasPlaylistPlaying = true;
         this.playlistAudio.pause();
@@ -31,7 +31,7 @@ class AnnouncementEventHandler {
 
     // Kampanya bittiğinde
     this.campaignAudio.addEventListener('ended', () => {
-      console.log('Kampanya bitti, temizleniyor');
+      console.log('Kampanya bitti');
       this.cleanupAnnouncement();
     });
 
@@ -45,7 +45,9 @@ class AnnouncementEventHandler {
   cleanupAnnouncement() {
     console.log('Kampanya durumu temizleniyor');
     
-    // Önce kampanya audio elementini temizle
+    // Kampanya audio elementini sıfırla
+    this.campaignAudio.pause();
+    this.campaignAudio.currentTime = 0;
     this.campaignAudio.src = '';
     this.isAnnouncementPlaying = false;
     
@@ -62,10 +64,9 @@ class AnnouncementEventHandler {
         this.playlistAudio.play().catch(err => {
           console.error('Playlist devam ettirme hatası:', err);
         });
-      }, 500); // Küçük bir gecikme ekleyerek çakışmayı önle
+      }, 500);
     }
     
-    // Durumları sıfırla
     this.wasPlaylistPlaying = false;
   }
 
@@ -88,13 +89,17 @@ class AnnouncementEventHandler {
       // Mevcut durumu kaydet
       this.wasPlaylistPlaying = !this.playlistAudio.paused;
       
+      // Önceki kampanyayı temizle
+      this.campaignAudio.pause();
+      this.campaignAudio.currentTime = 0;
+      
       console.log('Kampanya başlatılıyor:', audioPath);
       
-      // Kampanya audio elementini hazırla
+      // Yeni kampanyayı yükle ve çal
       this.campaignAudio.src = audioPath;
-      
-      // Kampanyayı başlat
+      await this.campaignAudio.load();
       await this.campaignAudio.play();
+      
       return true;
     } catch (err) {
       console.error('Kampanya başlatma hatası:', err);
