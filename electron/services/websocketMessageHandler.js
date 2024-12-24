@@ -3,6 +3,8 @@ const { downloadFile } = require('./downloadUtils');
 const Store = require('electron-store');
 const path = require('path');
 const fs = require('fs');
+const announcementHandler = require('./announcement/AnnouncementHandler');
+const announcementPlayer = require('./announcement/AnnouncementPlayer');
 
 class WebSocketMessageHandler {
   constructor() {
@@ -35,11 +37,21 @@ class WebSocketMessageHandler {
     }
   }
 
-  handleCommand(message) {
+  async handleCommand(message) {
     console.log('Handling command:', message);
-    const mainWindow = BrowserWindow.getAllWindows()[0];
-
+    
     switch (message.command) {
+      case 'playAnnouncement':
+        try {
+          // Anonsu indir ve sakla
+          const storedAnnouncement = await announcementHandler.handleAnnouncement(message.announcement);
+          // Anonsu oynat
+          await announcementPlayer.playAnnouncement(storedAnnouncement);
+        } catch (error) {
+          console.error('Error handling announcement:', error);
+        }
+        break;
+
       case 'restart':
         console.log('Restarting application...');
         setTimeout(() => {
@@ -49,6 +61,7 @@ class WebSocketMessageHandler {
         break;
         
       default:
+        const mainWindow = BrowserWindow.getAllWindows()[0];
         if (mainWindow) {
           mainWindow.webContents.send(message.command, message.data);
         }

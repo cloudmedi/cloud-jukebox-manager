@@ -7,11 +7,51 @@ const UIManager = require('./services/ui/UIManager');
 
 const audio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(audio);
+const announcementAudio = new Audio();
 
 // Initialize volume
 audio.volume = 0.7; // 70%
 
-// Close button event listener
+// Anons oynatma eventi
+ipcRenderer.on('play-announcement', (event, announcement) => {
+  console.log('Playing announcement:', announcement);
+  
+  if (announcement.localPath) {
+    announcementAudio.src = announcement.localPath;
+    announcementAudio.volume = audio.volume;
+    announcementAudio.play().catch(err => {
+      console.error('Announcement playback error:', err);
+    });
+  }
+});
+
+// Anons durdurma eventi
+ipcRenderer.on('stop-announcement', () => {
+  console.log('Stopping announcement');
+  if (announcementAudio) {
+    announcementAudio.pause();
+    announcementAudio.currentTime = 0;
+  }
+});
+
+// Playlist duraklatma eventi
+ipcRenderer.on('pause-playlist', () => {
+  console.log('Pausing playlist for announcement');
+  if (audio) {
+    audio.pause();
+  }
+});
+
+// Playlist devam ettirme eventi
+ipcRenderer.on('resume-playlist', () => {
+  console.log('Resuming playlist after announcement');
+  if (audio) {
+    audio.play().catch(err => {
+      console.error('Playlist resume error:', err);
+    });
+  }
+});
+
 document.getElementById('closeButton').addEventListener('click', () => {
     window.close();
 });
@@ -225,4 +265,5 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Diğer event listener'lar
+
 
