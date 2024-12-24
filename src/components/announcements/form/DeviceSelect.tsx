@@ -1,28 +1,20 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
+import { Device } from "../types/announcement";
 
 interface DeviceSelectProps {
+  devices: Device[];
   selectedDevices: string[];
   onDeviceSelect: (deviceId: string) => void;
 }
 
-export const DeviceSelect = ({ selectedDevices, onDeviceSelect }: DeviceSelectProps) => {
+export const DeviceSelect = ({ devices, selectedDevices, onDeviceSelect }: DeviceSelectProps) => {
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: devices = [] } = useQuery({
-    queryKey: ["devices"],
-    queryFn: async () => {
-      const response = await fetch("http://localhost:5000/api/devices");
-      if (!response.ok) throw new Error("Cihazlar yüklenemedi");
-      return response.json();
-    }
-  });
-
-  const filteredDevices = devices.filter((device: any) =>
+  const filteredDevices = devices.filter(device =>
     device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     device.location?.toLowerCase().includes(searchQuery.toLowerCase())
   );
@@ -36,7 +28,7 @@ export const DeviceSelect = ({ selectedDevices, onDeviceSelect }: DeviceSelectPr
       />
       <CommandEmpty>Cihaz bulunamadı.</CommandEmpty>
       <CommandGroup className="max-h-[200px] overflow-y-auto">
-        {filteredDevices.map((device: any) => (
+        {filteredDevices.map((device) => (
           <CommandItem
             key={device._id}
             value={device._id}

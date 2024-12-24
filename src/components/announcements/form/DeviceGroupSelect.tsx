@@ -1,29 +1,22 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Check } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Badge } from "@/components/ui/badge";
+import { DeviceGroup } from "../types/announcement";
 
 interface DeviceGroupSelectProps {
+  groups: DeviceGroup[];
   selectedGroups: string[];
   onGroupSelect: (groupId: string) => void;
 }
 
-export const DeviceGroupSelect = ({ selectedGroups, onGroupSelect }: DeviceGroupSelectProps) => {
+export const DeviceGroupSelect = ({ groups, selectedGroups, onGroupSelect }: DeviceGroupSelectProps) => {
   const [searchQuery, setSearchQuery] = useState("");
 
-  const { data: groups = [] } = useQuery({
-    queryKey: ["device-groups"],
-    queryFn: async () => {
-      const response = await fetch("http://localhost:5000/api/device-groups");
-      if (!response.ok) throw new Error("Gruplar yüklenemedi");
-      return response.json();
-    }
-  });
-
-  const filteredGroups = groups.filter((group: any) =>
-    group.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredGroups = groups.filter(group =>
+    group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    group.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   return (
@@ -35,7 +28,7 @@ export const DeviceGroupSelect = ({ selectedGroups, onGroupSelect }: DeviceGroup
       />
       <CommandEmpty>Grup bulunamadı.</CommandEmpty>
       <CommandGroup className="max-h-[200px] overflow-y-auto">
-        {filteredGroups.map((group: any) => (
+        {filteredGroups.map((group) => (
           <CommandItem
             key={group._id}
             value={group._id}
@@ -49,9 +42,19 @@ export const DeviceGroupSelect = ({ selectedGroups, onGroupSelect }: DeviceGroup
                   selectedGroups.includes(group._id) ? "opacity-100" : "opacity-0"
                 )}
               />
-              <span>{group.name}</span>
+              <div className="flex flex-col">
+                <span>{group.name}</span>
+                {group.description && (
+                  <span className="text-sm text-muted-foreground">
+                    {group.description}
+                  </span>
+                )}
+              </div>
             </div>
-            <Badge variant={group.status === 'active' ? "success" : "secondary"}>
+            <Badge
+              variant={group.status === 'active' ? "success" : "secondary"}
+              className="ml-auto"
+            >
               {group.status === 'active' ? "Aktif" : "Pasif"}
             </Badge>
           </CommandItem>

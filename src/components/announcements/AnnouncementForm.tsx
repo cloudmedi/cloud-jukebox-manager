@@ -118,7 +118,10 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
       // Temel bilgiler
       Object.keys(data).forEach(key => {
         if (key === 'startDate' || key === 'endDate') {
-          formData.append(key, data[key as keyof AnnouncementFormData].toISOString());
+          const date = data[key as keyof AnnouncementFormData];
+          if (date instanceof Date) {
+            formData.append(key, date.toISOString());
+          }
         } else if (key !== 'audioFile') {
           formData.append(key, JSON.stringify(data[key as keyof AnnouncementFormData]));
         }
