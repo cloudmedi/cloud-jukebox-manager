@@ -23,27 +23,44 @@ export const AnnouncementForm = ({ onSuccess, initialData, mode = 'create' }: An
   
   const form = useForm({
     defaultValues: {
-      title: initialData?.title || "",
-      content: initialData?.content || "",
+      title: "",
+      content: "",
       audioFile: null,
-      duration: initialData?.duration || 0,
-      startDate: initialData?.startDate ? new Date(initialData.startDate) : new Date(),
-      endDate: initialData?.endDate ? new Date(initialData.endDate) : null,
-      scheduleType: initialData?.scheduleType || "songs",
-      songInterval: initialData?.songInterval || 1,
-      minuteInterval: initialData?.minuteInterval || null,
-      specificTimes: initialData?.specificTimes || [],
-      immediateInterrupt: initialData?.immediateInterrupt || false,
-      targetDevices: initialData?.targetDevices || [],
-      targetGroups: initialData?.targetGroups || []
+      duration: 0,
+      startDate: new Date(),
+      endDate: null,
+      scheduleType: "songs",
+      songInterval: 1,
+      minuteInterval: null,
+      specificTimes: [],
+      immediateInterrupt: false,
+      targetDevices: [],
+      targetGroups: []
     }
   });
 
   useEffect(() => {
     if (initialData && mode === 'update') {
+      // Form verilerini ayarla
       Object.keys(initialData).forEach(key => {
         if (key === 'startDate' || key === 'endDate') {
           form.setValue(key, new Date(initialData[key]));
+        } else if (key === 'targetDevices') {
+          // Hedef cihazları doğru formatta ayarla
+          const devices = Array.isArray(initialData[key]) 
+            ? initialData[key].map((device: any) => 
+                typeof device === 'string' ? device : device._id || device.id
+              ).filter(Boolean)
+            : [];
+          form.setValue('targetDevices', devices);
+        } else if (key === 'targetGroups') {
+          // Hedef grupları doğru formatta ayarla
+          const groups = Array.isArray(initialData[key])
+            ? initialData[key].map((group: any) =>
+                typeof group === 'string' ? group : group._id || group.id
+              ).filter(Boolean)
+            : [];
+          form.setValue('targetGroups', groups);
         } else {
           form.setValue(key, initialData[key]);
         }
@@ -79,12 +96,26 @@ export const AnnouncementForm = ({ onSuccess, initialData, mode = 'create' }: An
         });
       }
 
-      // Hedef cihaz ve gruplar
-      data.targetDevices.forEach((deviceId: string) => {
+      // Hedef cihaz ve grupları doğru formatta ekle
+      const targetDevices = Array.isArray(data.targetDevices) 
+        ? data.targetDevices.map((device: any) => 
+            typeof device === 'string' ? device : device._id || device.id
+          ).filter(Boolean)
+        : [];
+
+      const targetGroups = Array.isArray(data.targetGroups)
+        ? data.targetGroups.map((group: any) =>
+            typeof group === 'string' ? group : group._id || group.id
+          ).filter(Boolean)
+        : [];
+
+      // Her bir cihaz ID'sini ayrı ayrı ekle
+      targetDevices.forEach((deviceId: string) => {
         formData.append("targetDevices[]", deviceId);
       });
 
-      data.targetGroups.forEach((groupId: string) => {
+      // Her bir grup ID'sini ayrı ayrı ekle
+      targetGroups.forEach((groupId: string) => {
         formData.append("targetGroups[]", groupId);
       });
 

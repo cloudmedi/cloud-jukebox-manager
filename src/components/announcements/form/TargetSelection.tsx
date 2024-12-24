@@ -2,14 +2,16 @@ import { useQuery } from "@tanstack/react-query";
 import { FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Input } from "@/components/ui/input";
-import { useState } from "react";
 import { Search } from "lucide-react";
+import { useState } from "react";
 import { useFormContext } from "react-hook-form";
 import { AnnouncementFormData } from "./types";
 
 export const TargetSelection = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const form = useFormContext<AnnouncementFormData>();
+  const selectedDevices = form.watch("targetDevices") || [];
+  const selectedGroups = form.watch("targetGroups") || [];
 
   const { data: devices = [] } = useQuery({
     queryKey: ["devices"],
@@ -38,6 +40,18 @@ export const TargetSelection = () => {
     group.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  const isDeviceSelected = (deviceId: string) => {
+    return selectedDevices.some((id: any) => 
+      typeof id === 'string' ? id === deviceId : id._id === deviceId
+    );
+  };
+
+  const isGroupSelected = (groupId: string) => {
+    return selectedGroups.some((id: any) => 
+      typeof id === 'string' ? id === groupId : id._id === groupId
+    );
+  };
+
   return (
     <div className="space-y-6">
       <div className="relative">
@@ -63,12 +77,16 @@ export const TargetSelection = () => {
                 name="targetDevices"
                 render={({ field }) => (
                   <Checkbox
-                    checked={field.value?.includes(device._id)}
+                    checked={isDeviceSelected(device._id)}
                     onCheckedChange={(checked) => {
                       const current = field.value || [];
                       const updated = checked
                         ? [...current, device._id]
-                        : current.filter((id: string) => id !== device._id);
+                        : current.filter((id: any) => 
+                            typeof id === 'string' 
+                              ? id !== device._id 
+                              : id._id !== device._id
+                          );
                       field.onChange(updated);
                     }}
                   />
@@ -96,12 +114,16 @@ export const TargetSelection = () => {
                 name="targetGroups"
                 render={({ field }) => (
                   <Checkbox
-                    checked={field.value?.includes(group._id)}
+                    checked={isGroupSelected(group._id)}
                     onCheckedChange={(checked) => {
                       const current = field.value || [];
                       const updated = checked
                         ? [...current, group._id]
-                        : current.filter((id: string) => id !== group._id);
+                        : current.filter((id: any) => 
+                            typeof id === 'string' 
+                              ? id !== group._id 
+                              : id._id !== group._id
+                          );
                       field.onChange(updated);
                     }}
                   />
