@@ -7,7 +7,7 @@ import { BasicInfoForm } from "./BasicInfoForm";
 import { PlaybackScheduleForm } from "./PlaybackScheduleForm";
 import { Form } from "@/components/ui/form";
 import { AudioUpload } from "./form/AudioUpload";
-import { TargetSelect } from "@/components/schedule/TargetSelect";
+import { TargetDeviceSelect } from "./TargetDeviceSelect";
 import { AnnouncementFormData } from "./types/announcement";
 
 interface AnnouncementFormProps {
@@ -82,6 +82,8 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
       
       formData.append('createdBy', data.createdBy);
 
+      console.log('Form verileri:', Object.fromEntries(formData));
+
       const response = await fetch("http://localhost:5000/api/announcements", {
         method: "POST",
         body: formData
@@ -136,7 +138,7 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <BasicInfoForm form={form} />
         <PlaybackScheduleForm form={form} />
-        <TargetSelect form={form} />
+        <TargetDeviceSelect form={form} />
 
         {!announcement && (
           <AudioUpload

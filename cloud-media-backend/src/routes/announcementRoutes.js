@@ -34,6 +34,9 @@ router.get('/', async (req, res) => {
 
 // Yeni anons oluştur
 router.post('/', upload.single('audioFile'), async (req, res) => {
+  console.log('Gelen form verileri:', req.body);
+  console.log('Gelen dosya:', req.file);
+
   try {
     if (!req.file) {
       return res.status(400).json({ message: 'Ses dosyası zorunludur' });
@@ -58,6 +61,8 @@ router.post('/', upload.single('audioFile'), async (req, res) => {
                    req.body.targetGroups ? [req.body.targetGroups] : [],
       createdBy: req.body.createdBy || 'system'
     };
+
+    console.log('İşlenmiş anons verileri:', announcementData);
 
     const announcement = new Announcement(announcementData);
     const newAnnouncement = await announcement.save();
