@@ -20,7 +20,6 @@ export const DateRangeSelect = ({ form }: DateRangeSelectProps) => {
     const currentValue = form.getValues(field);
     const newDate = new Date(date);
     
-    // Mevcut saat bilgisini koru
     if (currentValue) {
       newDate.setHours(currentValue.getHours(), currentValue.getMinutes());
     } else {
@@ -28,15 +27,14 @@ export const DateRangeSelect = ({ form }: DateRangeSelectProps) => {
       newDate.setHours(now.getHours(), now.getMinutes());
     }
     
-    form.setValue(field, newDate, { shouldValidate: true });
+    form.setValue(field, newDate, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
     
-    // Bitiş tarihi kontrolü
     if (field === "startDate") {
       const endDate = form.getValues("endDate");
       if (!endDate || endDate <= newDate) {
         const newEndDate = new Date(newDate);
         newEndDate.setHours(newDate.getHours() + 1);
-        form.setValue("endDate", newEndDate, { shouldValidate: true });
+        form.setValue("endDate", newEndDate, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
       }
     }
   };
@@ -47,15 +45,14 @@ export const DateRangeSelect = ({ form }: DateRangeSelectProps) => {
     const newDate = new Date(currentDate);
     newDate.setHours(hours, minutes);
     
-    form.setValue(field, newDate, { shouldValidate: true });
+    form.setValue(field, newDate, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
     
-    // Bitiş saati kontrolü
     if (field === "startDate") {
       const endDate = form.getValues("endDate");
       if (!endDate || endDate <= newDate) {
         const newEndDate = new Date(newDate);
         newEndDate.setHours(newDate.getHours() + 1);
-        form.setValue("endDate", newEndDate, { shouldValidate: true });
+        form.setValue("endDate", newEndDate, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
       }
     }
   };
@@ -108,7 +105,7 @@ export const DateRangeSelect = ({ form }: DateRangeSelectProps) => {
                   mode="single"
                   selected={field.value}
                   onSelect={(date) => handleDateSelect("startDate", date)}
-                  disabled={(date) => date < new Date()}
+                  disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                   initialFocus
                 />
               </PopoverContent>
@@ -166,7 +163,8 @@ export const DateRangeSelect = ({ form }: DateRangeSelectProps) => {
                   onSelect={(date) => handleDateSelect("endDate", date)}
                   disabled={(date) => {
                     const startDate = form.getValues("startDate");
-                    return date < new Date() || (startDate && date < startDate);
+                    return date < new Date(new Date().setHours(0, 0, 0, 0)) || 
+                           (startDate && date < new Date(startDate.setHours(0, 0, 0, 0)));
                   }}
                   initialFocus
                 />
