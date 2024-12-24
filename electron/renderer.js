@@ -7,11 +7,11 @@ const playbackStateManager = require('./services/audio/PlaybackStateManager');
 const UIManager = require('./services/ui/UIManager');
 const AnnouncementAudioService = require('./services/audio/AnnouncementAudioService');
 
-const audio = document.getElementById('audioPlayer');
-const audioHandler = new AudioEventHandler(audio);
+const playlistAudio = document.getElementById('audioPlayer');
+const audioHandler = new AudioEventHandler(playlistAudio);
 
 // Initialize volume
-audio.volume = 0.7; // 70%
+playlistAudio.volume = 0.7; // 70%
 
 document.getElementById('closeButton').addEventListener('click', () => {
     window.close();
@@ -20,8 +20,8 @@ document.getElementById('closeButton').addEventListener('click', () => {
 // Anons kontrolleri
 ipcRenderer.on('play-announcement', async (event, announcement) => {
   // Mevcut çalan şarkıyı duraklat
-  if (!audio.paused) {
-    audio.pause();
+  if (!playlistAudio.paused) {
+    playlistAudio.pause();
   }
 
   // Anonsu çal
@@ -29,19 +29,19 @@ ipcRenderer.on('play-announcement', async (event, announcement) => {
   
   if (!success) {
     // Hata durumunda şarkıyı devam ettir
-    audio.play().catch(err => console.error('Resume playback error:', err));
+    playlistAudio.play().catch(err => console.error('Resume playback error:', err));
   }
 });
 
 ipcRenderer.on('pause-playback', () => {
-  if (audio && !audio.paused) {
-    audio.pause();
+  if (playlistAudio && !playlistAudio.paused) {
+    playlistAudio.pause();
   }
 });
 
 ipcRenderer.on('resume-playback', () => {
-  if (audio && audio.paused) {
-    audio.play().catch(err => console.error('Resume playback error:', err));
+  if (playlistAudio && playlistAudio.paused) {
+    playlistAudio.play().catch(err => console.error('Resume playback error:', err));
   }
 });
 
@@ -63,28 +63,25 @@ ipcRenderer.on('error', (event, message) => {
 // Volume control from WebSocket
 ipcRenderer.on('set-volume', (event, volume) => {
     console.log('Setting volume to:', volume);
-    if (audio) {
-        const normalizedVolume = volume / 100;
-        audio.volume = normalizedVolume;
-        ipcRenderer.send('volume-changed', volume);
-    }
+    audioHandler.setVolume(volume);
+    ipcRenderer.send('volume-changed', volume);
 });
 
 // Restart playback from WebSocket
 ipcRenderer.on('restart-playback', () => {
   console.log('Restarting playback');
-  if (audio) {
-    audio.currentTime = 0;
-    audio.play().catch(err => console.error('Playback error:', err));
+  if (playlistAudio) {
+    playlistAudio.currentTime = 0;
+    playlistAudio.play().catch(err => console.error('Playback error:', err));
   }
 });
 
 // Toggle playback from WebSocket
 ipcRenderer.on('toggle-playback', () => {
-  console.log('Toggle playback, current state:', audio.paused);
-  if (audio) {
-    if (audio.paused) {
-      audio.play()
+  console.log('Toggle playback, current state:', playlistAudio.paused);
+  if (playlistAudio) {
+    if (playlistAudio.paused) {
+      playlistAudio.play()
         .then(() => {
           console.log('Playback started successfully');
           ipcRenderer.send('playback-status-changed', true);
@@ -94,7 +91,7 @@ ipcRenderer.on('toggle-playback', () => {
           ipcRenderer.send('playback-status-changed', false);
         });
     } else {
-      audio.pause();
+      playlistAudio.pause();
       console.log('Playback paused');
       ipcRenderer.send('playback-status-changed', false);
     }
@@ -230,7 +227,7 @@ ipcRenderer.on('playlist-received', (event, playlist) => {
 });
 
 // Audio event listeners
-audio.addEventListener('ended', () => {
+playlistAudio.addEventListener('ended', () => {
   console.log('Song ended, playing next');
   ipcRenderer.invoke('song-ended');
 });
@@ -239,8 +236,8 @@ ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
   console.log('Updating player with song:', currentSong);
   if (currentSong && currentSong.localPath) {
     const normalizedPath = currentSong.localPath.replace(/\\/g, '/');
-    audio.src = normalizedPath;
-    audio.play().catch(err => console.error('Playback error:', err));
+    playlistAudio.src = normalizedPath;
+    playlistAudio.play().catch(err => console.error('Playback error:', err));
     
     // Şarkı değiştiğinde görsel bilgileri güncelle
     displayPlaylists();
