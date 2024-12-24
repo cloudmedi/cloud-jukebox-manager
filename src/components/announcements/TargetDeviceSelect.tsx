@@ -1,12 +1,14 @@
+import { useState } from "react";
 import { FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { Search } from "lucide-react";
-import { useState } from "react";
-import { toast } from "sonner";
-import { Device, DeviceGroup } from "@/services/deviceService";
+import { Device, DeviceGroup } from "./types/announcement";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface TargetDeviceSelectProps {
   form: any;
@@ -15,61 +17,43 @@ interface TargetDeviceSelectProps {
 export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
   const [openDevices, setOpenDevices] = useState(false);
   const [openGroups, setOpenGroups] = useState(false);
-  const [deviceSearch, setDeviceSearch] = useState("");
-  const [groupSearch, setGroupSearch] = useState("");
 
-  const { data: devices = [], isLoading: isDevicesLoading, error: devicesError } = useQuery({
+  const { data: devices = [], isLoading: isDevicesLoading } = useQuery({
     queryKey: ["devices"],
     queryFn: async () => {
-      try {
-        const response = await fetch("http://localhost:5000/api/devices");
-        if (!response.ok) throw new Error("Cihazlar yüklenemedi");
-        return response.json();
-      } catch (error) {
-        console.error("Cihaz yükleme hatası:", error);
-        toast.error("Cihazlar yüklenirken bir hata oluştu");
-        return [];
-      }
-    },
-    initialData: []
+      const response = await fetch("http://localhost:5000/api/devices");
+      if (!response.ok) throw new Error("Cihazlar yüklenemedi");
+      return response.json();
+    }
   });
 
-  const { data: groups = [], isLoading: isGroupsLoading, error: groupsError } = useQuery({
+  const { data: groups = [], isLoading: isGroupsLoading } = useQuery({
     queryKey: ["device-groups"],
     queryFn: async () => {
-      try {
-        const response = await fetch("http://localhost:5000/api/device-groups");
-        if (!response.ok) throw new Error("Gruplar yüklenemedi");
-        return response.json();
-      } catch (error) {
-        console.error("Grup yükleme hatası:", error);
-        toast.error("Gruplar yüklenirken bir hata oluştu");
-        return [];
-      }
-    },
-    initialData: []
+      const response = await fetch("http://localhost:5000/api/device-groups");
+      if (!response.ok) throw new Error("Gruplar yüklenemedi");
+      return response.json();
+    }
   });
 
-  const filteredDevices = Array.isArray(devices) ? devices.filter((device: Device) =>
-    device?.name?.toLowerCase().includes(deviceSearch.toLowerCase()) ||
-    device?.location?.toLowerCase().includes(deviceSearch.toLowerCase())
-  ) : [];
+  const handleDeviceSelect = (deviceId: string) => {
+    const currentDevices = form.watch("targetDevices") || [];
+    const updatedDevices = currentDevices.includes(deviceId)
+      ? currentDevices.filter(id => id !== deviceId)
+      : [...currentDevices, deviceId];
+    form.setValue("targetDevices", updatedDevices);
+  };
 
-  const filteredGroups = Array.isArray(groups) ? groups.filter((group: DeviceGroup) =>
-    group?.name?.toLowerCase().includes(groupSearch.toLowerCase())
-  ) : [];
-
-  if (isDevicesLoading || isGroupsLoading) {
-    return (
-      <div className="space-y-4">
-        <div className="h-[40px] bg-muted animate-pulse rounded-md" />
-        <div className="h-[40px] bg-muted animate-pulse rounded-md" />
-      </div>
-    );
-  }
+  const handleGroupSelect = (groupId: string) => {
+    const currentGroups = form.watch("targetGroups") || [];
+    const updatedGroups = currentGroups.includes(groupId)
+      ? currentGroups.filter(id => id !== groupId)
+      : [...currentGroups, groupId];
+    form.setValue("targetGroups", updatedGroups);
+  };
 
   return (
-    <div className="grid grid-cols-2 gap-4">
+    <div className="space-y-4">
       <FormField
         control={form.control}
         name="targetDevices"
@@ -84,44 +68,63 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
                   aria-expanded={openDevices}
                   className="w-full justify-between"
                 >
-                  {field.value?.[0]
-                    ? devices.find((device: Device) => device._id === field.value?.[0])?.name || "Cihaz seçin..."
+                  {field.value?.length 
+                    ? `${field.value.length} cihaz seçildi`
                     : "Cihaz seçin..."}
-                  <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-full p-0">
                 <Command>
-                  <CommandInput
-                    placeholder="Cihaz ara..."
-                    value={deviceSearch}
-                    onValueChange={setDeviceSearch}
-                  />
+                  <CommandInput placeholder="Cihaz ara..." />
                   <CommandEmpty>Cihaz bulunamadı.</CommandEmpty>
-                  <CommandGroup className="max-h-[300px] overflow-auto">
-                    {filteredDevices.map((device: Device) => (
-                      <CommandItem
-                        key={device._id}
-                        value={device._id}
-                        onSelect={(currentValue) => {
-                          field.onChange([currentValue]);
-                          setOpenDevices(false);
-                        }}
-                      >
-                        <div className="flex flex-col">
-                          <span className="font-medium">{device.name || "İsimsiz Cihaz"}</span>
-                          {device.location && (
-                            <span className="text-sm text-muted-foreground">
-                              {device.location}
-                            </span>
-                          )}
-                        </div>
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
+                  <ScrollArea className="h-[200px]">
+                    <CommandGroup>
+                      {devices.map((device: Device) => (
+                        <CommandItem
+                          key={device._id}
+                          value={device._id}
+                          onSelect={() => handleDeviceSelect(device._id)}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              field.value?.includes(device._id) ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <div className="flex flex-col">
+                            <span>{device.name}</span>
+                            {device.location && (
+                              <span className="text-sm text-muted-foreground">
+                                {device.location}
+                              </span>
+                            )}
+                          </div>
+                          <Badge
+                            variant={device.isOnline ? "success" : "destructive"}
+                            className="ml-auto"
+                          >
+                            {device.isOnline ? "Çevrimiçi" : "Çevrimdışı"}
+                          </Badge>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </ScrollArea>
                 </Command>
               </PopoverContent>
             </Popover>
+            {field.value?.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {field.value.map((deviceId: string) => {
+                  const device = devices.find((d: Device) => d._id === deviceId);
+                  return device && (
+                    <Badge key={deviceId} variant="secondary">
+                      {device.name}
+                    </Badge>
+                  );
+                })}
+              </div>
+            )}
           </FormItem>
         )}
       />
@@ -140,37 +143,63 @@ export const TargetDeviceSelect = ({ form }: TargetDeviceSelectProps) => {
                   aria-expanded={openGroups}
                   className="w-full justify-between"
                 >
-                  {field.value?.[0]
-                    ? groups.find((group: DeviceGroup) => group._id === field.value?.[0])?.name || "Grup seçin..."
+                  {field.value?.length 
+                    ? `${field.value.length} grup seçildi`
                     : "Grup seçin..."}
-                  <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-full p-0">
                 <Command>
-                  <CommandInput
-                    placeholder="Grup ara..."
-                    value={groupSearch}
-                    onValueChange={setGroupSearch}
-                  />
+                  <CommandInput placeholder="Grup ara..." />
                   <CommandEmpty>Grup bulunamadı.</CommandEmpty>
-                  <CommandGroup className="max-h-[300px] overflow-auto">
-                    {filteredGroups.map((group: DeviceGroup) => (
-                      <CommandItem
-                        key={group._id}
-                        value={group._id}
-                        onSelect={(currentValue) => {
-                          field.onChange([currentValue]);
-                          setOpenGroups(false);
-                        }}
-                      >
-                        {group.name || "İsimsiz Grup"}
-                      </CommandItem>
-                    ))}
-                  </CommandGroup>
+                  <ScrollArea className="h-[200px]">
+                    <CommandGroup>
+                      {groups.map((group: DeviceGroup) => (
+                        <CommandItem
+                          key={group._id}
+                          value={group._id}
+                          onSelect={() => handleGroupSelect(group._id)}
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              field.value?.includes(group._id) ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          <div className="flex flex-col">
+                            <span>{group.name}</span>
+                            {group.description && (
+                              <span className="text-sm text-muted-foreground">
+                                {group.description}
+                              </span>
+                            )}
+                          </div>
+                          <Badge
+                            variant={group.status === 'active' ? "success" : "secondary"}
+                            className="ml-auto"
+                          >
+                            {group.status === 'active' ? "Aktif" : "Pasif"}
+                          </Badge>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </ScrollArea>
                 </Command>
               </PopoverContent>
             </Popover>
+            {field.value?.length > 0 && (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {field.value.map((groupId: string) => {
+                  const group = groups.find((g: DeviceGroup) => g._id === groupId);
+                  return group && (
+                    <Badge key={groupId} variant="secondary">
+                      {group.name}
+                    </Badge>
+                  );
+                })}
+              </div>
+            )}
           </FormItem>
         )}
       />
