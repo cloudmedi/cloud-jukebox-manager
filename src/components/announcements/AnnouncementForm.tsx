@@ -7,7 +7,7 @@ import { BasicInfoForm } from "./BasicInfoForm";
 import { PlaybackScheduleForm } from "./PlaybackScheduleForm";
 import { Form } from "@/components/ui/form";
 import { AudioUpload } from "./form/AudioUpload";
-import { TargetSelect } from "@/components/schedule/TargetSelect";
+import { TargetSelector } from "./form/TargetSelector";
 import { AnnouncementFormData } from "./types/announcement";
 
 const API_URL = "http://localhost:5000/api";
@@ -39,7 +39,7 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
       },
       duration: announcement?.duration || 0,
       immediateInterrupt: announcement?.immediateInterrupt || false,
-      createdBy: "system" // Sabit bir değer atıyoruz
+      createdBy: "system"
     },
   });
 
@@ -83,29 +83,18 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
       const formData = new FormData();
       
       // Form verilerini backend'in beklediği formata dönüştür
-      const requestData = {
-        ...data,
-        targetDevices: data.targets.devices,
-        targetGroups: data.targets.groups,
-        createdBy: "system",
-        immediateInterrupt: data.immediateInterrupt || false
-      };
-
-      // FormData'ya her bir alanı ekle
-      Object.entries(requestData).forEach(([key, value]) => {
+      Object.entries(data).forEach(([key, value]) => {
         if (key === 'startDate' || key === 'endDate') {
-          formData.append(key, value instanceof Date ? value.toISOString() : value);
-        } else if (key === 'targetDevices' || key === 'targetGroups') {
-          formData.append(key, JSON.stringify(value));
-        } else if (key !== 'audioFile' && key !== 'targets') {
-          formData.append(key, typeof value === 'string' ? value : JSON.stringify(value));
+          formData.append(key, value instanceof Date ? value.toISOString() : String(value));
+        } else if (key === 'targets') {
+          formData.append('targetDevices', JSON.stringify(value.devices));
+          formData.append('targetGroups', JSON.stringify(value.groups));
+        } else if (key === 'audioFile' && value instanceof File) {
+          formData.append(key, value);
+        } else {
+          formData.append(key, String(value));
         }
       });
-
-      // Ses dosyasını ekle
-      if (data.audioFile) {
-        formData.append('audioFile', data.audioFile);
-      }
 
       await createAnnouncementMutation.mutateAsync(formData);
     } catch (error) {
@@ -125,8 +114,8 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <BasicInfoForm form={form} />
         <PlaybackScheduleForm form={form} />
-        <TargetSelect form={form} />
-
+        <TargetSelector form={form} />
+        
         {!announcement && (
           <AudioUpload
             form={form}
