@@ -72,42 +72,15 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
     },
   });
 
-  const updateAnnouncementMutation = useMutation({
-    mutationFn: async (data: AnnouncementFormData) => {
-      const response = await fetch(`${API_URL}/announcements/${announcement._id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-      });
-      
-      if (!response.ok) {
-        throw new Error("Anons güncelleme başarısız");
-      }
-      
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["announcements"] });
-      toast({
-        title: "Başarılı",
-        description: "Anons başarıyla güncellendi",
-      });
-      if (onSuccess) onSuccess();
-    },
-    onError: (error: Error) => {
-      toast({
-        variant: "destructive",
-        title: "Hata",
-        description: error.message,
-      });
-    },
-  });
-
   const handleSubmit = async (data: AnnouncementFormData) => {
     if (announcement) {
-      await updateAnnouncementMutation.mutateAsync(data);
+      // Güncelleme işlemi için veri yapısını düzenle
+      const updateData = {
+        ...data,
+        targetDevices: data.targets.devices,
+        targetGroups: data.targets.groups,
+      };
+      await updateAnnouncementMutation.mutateAsync(updateData);
       return;
     }
 
@@ -117,18 +90,26 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
     try {
       const formData = new FormData();
       
-      // Temel bilgiler
-      Object.keys(data).forEach(key => {
+      // Temel bilgileri ekle
+      const requestData = {
+        ...data,
+        targetDevices: data.targets.devices,
+        targetGroups: data.targets.groups,
+      };
+
+      // FormData'ya her bir alanı ekle
+      Object.keys(requestData).forEach(key => {
         if (key === 'startDate' || key === 'endDate') {
-          const date = data[key as keyof AnnouncementFormData];
+          const date = requestData[key as keyof typeof requestData];
           if (date instanceof Date) {
             formData.append(key, date.toISOString());
           }
-        } else if (key !== 'audioFile') {
-          formData.append(key, JSON.stringify(data[key as keyof AnnouncementFormData]));
+        } else if (key !== 'audioFile' && key !== 'targets') {
+          formData.append(key, JSON.stringify(requestData[key as keyof typeof requestData]));
         }
       });
 
+      // Ses dosyasını ekle
       if (data.audioFile) {
         formData.append('audioFile', data.audioFile);
       }
