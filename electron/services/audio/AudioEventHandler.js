@@ -14,7 +14,9 @@ class AudioEventHandler {
     // Playlist audio event listeners
     this.playlistAudio.addEventListener('ended', () => {
       console.log('Song ended, playing next');
-      ipcRenderer.invoke('song-ended');
+      if (!this.isAnnouncementPlaying) {
+        ipcRenderer.invoke('song-ended');
+      }
     });
 
     this.playlistAudio.addEventListener('play', () => {
@@ -45,12 +47,16 @@ class AudioEventHandler {
     });
 
     this.campaignAudio.addEventListener('ended', () => {
-      console.log('Campaign ended');
+      console.log('Campaign ended, moving to next song');
       this.isAnnouncementPlaying = false;
-      if (this.wasPlaylistPlaying) {
-        console.log('Resuming playlist');
-        this.playlistAudio.play().catch(err => console.error('Resume playback error:', err));
-      }
+      
+      // Kampanya bittiğinde bir sonraki şarkıya geç
+      ipcRenderer.invoke('song-ended').then(() => {
+        if (this.wasPlaylistPlaying) {
+          console.log('Resuming playlist with next song');
+          this.playlistAudio.play().catch(err => console.error('Resume playback error:', err));
+        }
+      });
     });
   }
 
