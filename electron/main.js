@@ -8,7 +8,7 @@ let tray = null;
 let store;
 
 async function initializeStore() {
-  const { default: Store } = await import('electron-store');
+  const Store = (await import('electron-store')).default;
   store = new Store();
 }
 
