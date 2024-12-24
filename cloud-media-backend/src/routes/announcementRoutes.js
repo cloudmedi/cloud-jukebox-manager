@@ -72,15 +72,21 @@ router.post('/', upload.single('audioFile'), async (req, res) => {
       endDate: endDate,
       scheduleType: req.body.scheduleType,
       status: 'active',
-      createdBy: 'system'
+      createdBy: 'system',
+      immediateInterrupt: req.body.immediateInterrupt === 'true'
     };
 
     // Zamanlama tipine göre ek alanları ekle
-    if (req.body.scheduleType === 'interval') {
-      if (!req.body.interval || isNaN(req.body.interval)) {
-        throw new Error('Geçersiz aralık değeri');
+    if (req.body.scheduleType === 'songs') {
+      if (!req.body.songInterval || isNaN(req.body.songInterval)) {
+        throw new Error('Geçersiz şarkı aralığı değeri');
       }
-      announcementData.minuteInterval = parseInt(req.body.interval);
+      announcementData.songInterval = parseInt(req.body.songInterval);
+    } else if (req.body.scheduleType === 'minutes') {
+      if (!req.body.minuteInterval || isNaN(req.body.minuteInterval)) {
+        throw new Error('Geçersiz dakika aralığı değeri');
+      }
+      announcementData.minuteInterval = parseInt(req.body.minuteInterval);
     } else if (req.body.scheduleType === 'specific') {
       if (!req.body['specificTimes[]']) {
         throw new Error('En az bir saat belirtilmelidir');
@@ -91,16 +97,19 @@ router.post('/', upload.single('audioFile'), async (req, res) => {
     }
 
     // Hedef cihaz ve grupları ekle
-    announcementData.targetDevices = Array.isArray(req.body['targetDevices[]'])
-      ? req.body['targetDevices[]']
-      : req.body['targetDevices[]']
-        ? [req.body['targetDevices[]']]
+    const targetDevices = req.body['targetDevices[]'] || req.body.targetDevices;
+    const targetGroups = req.body['targetGroups[]'] || req.body.targetGroups;
+
+    announcementData.targetDevices = Array.isArray(targetDevices)
+      ? targetDevices
+      : targetDevices
+        ? [targetDevices]
         : [];
 
-    announcementData.targetGroups = Array.isArray(req.body['targetGroups[]'])
-      ? req.body['targetGroups[]']
-      : req.body['targetGroups[]']
-        ? [req.body['targetGroups[]']]
+    announcementData.targetGroups = Array.isArray(targetGroups)
+      ? targetGroups
+      : targetGroups
+        ? [targetGroups]
         : [];
 
     // En az bir hedef seçilmiş olmalı
