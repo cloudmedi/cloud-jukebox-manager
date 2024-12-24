@@ -1,77 +1,68 @@
 package com.cloudmedia.ui;
 
+import com.cloudmedia.service.TokenService;
 import javafx.geometry.Insets;
 import javafx.geometry.Pos;
-import javafx.scene.control.Button;
-import javafx.scene.control.Label;
-import javafx.scene.control.TextField;
+import javafx.scene.control.*;
 import javafx.scene.layout.VBox;
-import javafx.scene.text.Font;
-import javafx.scene.text.FontWeight;
+import javafx.scene.paint.Color;
 
 public class TokenScreen extends VBox {
-    private final TextField tokenField;
-    private final Label errorLabel;
-    private final TokenValidationCallback callback;
+    private TextField tokenField;
+    private Label statusLabel;
+    private TokenValidationCallback callback;
+    private TokenService tokenService;
 
     public TokenScreen(TokenValidationCallback callback) {
         this.callback = callback;
-        
-        // Ana container ayarları
+        this.tokenService = new TokenService();
+        setupUI();
+    }
+
+    private void setupUI() {
         setAlignment(Pos.CENTER);
-        setSpacing(20);
+        setSpacing(15);
         setPadding(new Insets(20));
-        setStyle("-fx-background-color: #1a1b1e;");
 
-        // Başlık
         Label titleLabel = new Label("Cloud Media Player");
-        titleLabel.setFont(Font.font("System", FontWeight.BOLD, 24));
-        titleLabel.setStyle("-fx-text-fill: white;");
+        titleLabel.setStyle("-fx-font-size: 24px; -fx-font-weight: bold;");
 
-        // Bilgi metni
-        Label infoLabel = new Label("Lütfen 6 haneli token kodunu girin");
-        infoLabel.setStyle("-fx-text-fill: #a1a1aa;");
-
-        // Token giriş alanı
         tokenField = new TextField();
+        tokenField.setPromptText("6 haneli token");
         tokenField.setMaxWidth(200);
-        tokenField.setPromptText("Token");
-        tokenField.setStyle("-fx-background-color: #27272a; -fx-text-fill: white; -fx-prompt-text-fill: #71717a;");
         
-        // Token uzunluğunu 6 karakter ile sınırla
-        tokenField.textProperty().addListener((observable, oldValue, newValue) -> {
-            if (newValue.length() > 6) {
-                tokenField.setText(oldValue);
-            }
-        });
-
-        // Doğrula butonu
         Button validateButton = new Button("Doğrula");
-        validateButton.setStyle("-fx-background-color: #3b82f6; -fx-text-fill: white;");
         validateButton.setOnAction(e -> validateToken());
 
-        // Hata mesajı etiketi
-        errorLabel = new Label();
-        errorLabel.setStyle("-fx-text-fill: #ef4444;");
-        errorLabel.setVisible(false);
+        statusLabel = new Label();
+        statusLabel.setTextFill(Color.RED);
 
-        // Componentleri ekle
-        getChildren().addAll(titleLabel, infoLabel, tokenField, validateButton, errorLabel);
+        getChildren().addAll(titleLabel, tokenField, validateButton, statusLabel);
+    }
+
+    public void setGeneratedToken(String token) {
+        tokenField.setText(token);
     }
 
     private void validateToken() {
         String token = tokenField.getText();
-        if (token.length() != 6) {
-            showError("Token 6 haneli olmalıdır");
+        if (token == null || token.length() != 6) {
+            statusLabel.setText("Token 6 haneli olmalıdır");
+            statusLabel.setTextFill(Color.RED);
             return;
         }
 
-        // Token doğrulama işlemi
-        callback.onTokenValidated(token);
-    }
-
-    private void showError(String message) {
-        errorLabel.setText(message);
-        errorLabel.setVisible(true);
+        tokenService.validateToken(
+            token,
+            () -> {
+                statusLabel.setText("Token doğrulandı");
+                statusLabel.setTextFill(Color.GREEN);
+                callback.onValidated(token);
+            },
+            errorMessage -> {
+                statusLabel.setText(errorMessage);
+                statusLabel.setTextFill(Color.RED);
+            }
+        );
     }
 }
