@@ -9,7 +9,8 @@ class SongBasedHandler {
 
   onSongEnd() {
     this.songCounter++;
-    console.log(`Song ended, counter: ${this.songCounter}`);
+    console.log(`\n--- Şarkı Bazlı Anons Kontrolü ---`);
+    console.log(`Şarkı sayacı: ${this.songCounter}`);
     
     const announcements = this.store.get('announcements', []);
     const now = new Date();
@@ -21,22 +22,30 @@ class SongBasedHandler {
         new Date(announcement.endDate) >= now
       )
       .forEach(announcement => {
-        console.log(`Checking song-based announcement ${announcement._id}`);
-        console.log(`Song counter: ${this.songCounter}, Interval: ${announcement.songInterval}`);
+        console.log(`\nAnons Kontrolü (${announcement._id}):`);
+        console.log(`- Başlangıç: ${announcement.startDate}`);
+        console.log(`- Bitiş: ${announcement.endDate}`);
+        console.log(`- Şarkı aralığı: ${announcement.songInterval}`);
+        console.log(`- Mevcut sayaç: ${this.songCounter}`);
+        console.log(`- Mod hesabı: ${this.songCounter % announcement.songInterval}`);
         
         if (this.songCounter % announcement.songInterval === 0) {
-          console.log(`Playing song-based announcement ${announcement._id}`);
+          console.log('✓ Anons çalma koşulu sağlandı, çalınıyor...');
           this.playAnnouncement(announcement);
         } else {
-          console.log(`Skipping announcement ${announcement._id}, waiting for ${announcement.songInterval - (this.songCounter % announcement.songInterval)} more songs`);
+          console.log(`× Anons çalma koşulu sağlanmadı. ${announcement.songInterval - (this.songCounter % announcement.songInterval)} şarkı sonra çalınacak`);
         }
       });
   }
 
   playAnnouncement(announcement) {
     const mainWindow = BrowserWindow.getAllWindows()[0];
-    if (!mainWindow) return;
+    if (!mainWindow) {
+      console.error('Ana pencere bulunamadı!');
+      return;
+    }
 
+    console.log('Anons çalma isteği gönderiliyor...');
     mainWindow.webContents.send('play-announcement', announcement);
   }
 }
