@@ -33,18 +33,6 @@ function createWindow() {
         mainWindow.webContents.openDevTools();
     }
 
-    // Pencere kapatıldığında sistem tepsisine küçült
-    mainWindow.on('close', function (event) {
-        if (!app.isQuitting) {
-            event.preventDefault();
-            mainWindow.hide();
-            if (tray === null) {
-                createTray();
-            }
-        }
-        return false;
-    });
-
     // Uygulama başladığında son kaydedilen playlist'i kontrol et
     const deviceInfo = store.get('deviceInfo');
     if (deviceInfo && deviceInfo.token) {
@@ -57,13 +45,23 @@ function createWindow() {
             
             // Pencere yüklendikten sonra playlist'i başlat
             mainWindow.webContents.on('did-finish-load', () => {
-                setTimeout(() => {
-                    console.log('Window loaded, sending auto-play command');
-                    mainWindow.webContents.send('auto-play-playlist', lastPlaylist);
-                }, 1000); // Kısa bir gecikme ekleyerek tüm sistemlerin hazır olmasını sağla
+                console.log('Window loaded, sending auto-play command');
+                mainWindow.webContents.send('auto-play-playlist', lastPlaylist);
             });
         }
     }
+
+    // Pencere kapatıldığında sistem tepsisine küçült
+    mainWindow.on('close', function (event) {
+        if (!app.isQuitting) {
+            event.preventDefault();
+            mainWindow.hide();
+            if (tray === null) {
+                createTray();
+            }
+        }
+        return false;
+    });
 }
 
 function createTray() {
