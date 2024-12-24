@@ -2,6 +2,7 @@ const WebSocket = require('ws');
 const Store = require('electron-store');
 const { BrowserWindow, app } = require('electron');
 const playlistHandler = require('./playlist/PlaylistHandler');
+const announcementHandler = require('./announcement/AnnouncementHandler');
 const store = new Store();
 
 class WebSocketService {
@@ -37,22 +38,33 @@ class WebSocketService {
     });
 
     // Command handler
-    this.addMessageHandler('command', (message) => {
+    this.addMessageHandler('command', async (message) => {
       console.log('Command message received:', message);
       const mainWindow = BrowserWindow.getAllWindows()[0];
       
       switch (message.command) {
+        case 'playAnnouncement':
+          try {
+            const processedAnnouncement = await announcementHandler.handleAnnouncement(message.announcement);
+            if (mainWindow) {
+              mainWindow.webContents.send('play-announcement', processedAnnouncement);
+            }
+          } catch (error) {
+            console.error('Error processing announcement:', error);
+          }
+          break;
+
         case 'restart':
           console.log('Restarting application...');
           app.relaunch();
           app.exit(0);
           break;
           
-        // Other command handlers can be added here
-      }
-      
-      if (mainWindow) {
-        mainWindow.webContents.send(message.command, message.data);
+        default:
+          if (mainWindow) {
+            mainWindow.webContents.send(message.command, message.data);
+          }
+          break;
       }
     });
   }
