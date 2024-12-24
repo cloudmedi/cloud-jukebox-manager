@@ -1,40 +1,21 @@
-import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { FormField, FormItem, FormLabel } from "@/components/ui/form";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
+import { DeviceSelect } from "./DeviceSelect";
+import { DeviceGroupSelect } from "./DeviceGroupSelect";
 import { Badge } from "@/components/ui/badge";
-import { Check, ChevronsUpDown } from "lucide-react";
-import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { UseFormReturn } from "react-hook-form";
-import { AnnouncementFormData, Device, DeviceGroup } from "../types/announcement";
 
 interface TargetSelectorProps {
-  form: UseFormReturn<AnnouncementFormData>;
+  form: any;
 }
 
 export const TargetSelector = ({ form }: TargetSelectorProps) => {
-  const [openDevices, setOpenDevices] = useState(false);
-  const [openGroups, setOpenGroups] = useState(false);
-
   const { data: devices = [] } = useQuery({
-    queryKey: ["devices"],
-    queryFn: async () => {
-      const response = await fetch("http://localhost:5000/api/devices");
-      if (!response.ok) throw new Error("Cihazlar yüklenemedi");
-      return response.json();
-    }
+    queryKey: ["devices"]
   });
 
   const { data: groups = [] } = useQuery({
-    queryKey: ["device-groups"],
-    queryFn: async () => {
-      const response = await fetch("http://localhost:5000/api/device-groups");
-      if (!response.ok) throw new Error("Gruplar yüklenemedi");
-      return response.json();
-    }
+    queryKey: ["device-groups"]
   });
 
   const handleDeviceSelect = (deviceId: string) => {
@@ -53,67 +34,35 @@ export const TargetSelector = ({ form }: TargetSelectorProps) => {
     form.setValue("targetGroups", updatedGroups);
   };
 
+  const selectedDevices = form.watch("targetDevices") || [];
+  const selectedGroups = form.watch("targetGroups") || [];
+
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <FormField
         control={form.control}
         name="targetDevices"
-        render={({ field }) => (
+        render={() => (
           <FormItem>
             <FormLabel>Hedef Cihazlar</FormLabel>
-            <Popover open={openDevices} onOpenChange={setOpenDevices}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={openDevices}
-                  className="w-full justify-between"
-                >
-                  {field.value?.length 
-                    ? `${field.value.length} cihaz seçildi`
-                    : "Cihaz seçin..."}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-full p-0">
-                <Command>
-                  <CommandInput placeholder="Cihaz ara..." />
-                  <CommandEmpty>Cihaz bulunamadı.</CommandEmpty>
-                  <ScrollArea className="h-[200px]">
-                    <CommandGroup>
-                      {devices.map((device: Device) => (
-                        <CommandItem
-                          key={device._id}
-                          value={device._id}
-                          onSelect={() => handleDeviceSelect(device._id)}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              field.value?.includes(device._id) ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          <div className="flex flex-col">
-                            <span>{device.name}</span>
-                            {device.location && (
-                              <span className="text-sm text-muted-foreground">
-                                {device.location}
-                              </span>
-                            )}
-                          </div>
-                          <Badge
-                            variant={device.isOnline ? "success" : "destructive"}
-                            className="ml-auto"
-                          >
-                            {device.isOnline ? "Çevrimiçi" : "Çevrimdışı"}
-                          </Badge>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </ScrollArea>
-                </Command>
-              </PopoverContent>
-            </Popover>
+            <DeviceSelect
+              selectedDevices={selectedDevices}
+              onDeviceSelect={handleDeviceSelect}
+            />
+            {selectedDevices.length > 0 && (
+              <ScrollArea className="h-20 w-full rounded-md border p-2">
+                <div className="flex flex-wrap gap-2">
+                  {selectedDevices.map(deviceId => {
+                    const device = devices.find((d: any) => d._id === deviceId);
+                    return device && (
+                      <Badge key={deviceId} variant="secondary">
+                        {device.name}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            )}
           </FormItem>
         )}
       />
@@ -121,62 +70,27 @@ export const TargetSelector = ({ form }: TargetSelectorProps) => {
       <FormField
         control={form.control}
         name="targetGroups"
-        render={({ field }) => (
+        render={() => (
           <FormItem>
             <FormLabel>Hedef Gruplar</FormLabel>
-            <Popover open={openGroups} onOpenChange={setOpenGroups}>
-              <PopoverTrigger asChild>
-                <Button
-                  variant="outline"
-                  role="combobox"
-                  aria-expanded={openGroups}
-                  className="w-full justify-between"
-                >
-                  {field.value?.length 
-                    ? `${field.value.length} grup seçildi`
-                    : "Grup seçin..."}
-                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-full p-0">
-                <Command>
-                  <CommandInput placeholder="Grup ara..." />
-                  <CommandEmpty>Grup bulunamadı.</CommandEmpty>
-                  <ScrollArea className="h-[200px]">
-                    <CommandGroup>
-                      {groups.map((group: DeviceGroup) => (
-                        <CommandItem
-                          key={group._id}
-                          value={group._id}
-                          onSelect={() => handleGroupSelect(group._id)}
-                        >
-                          <Check
-                            className={cn(
-                              "mr-2 h-4 w-4",
-                              field.value?.includes(group._id) ? "opacity-100" : "opacity-0"
-                            )}
-                          />
-                          <div className="flex flex-col">
-                            <span>{group.name}</span>
-                            {group.description && (
-                              <span className="text-sm text-muted-foreground">
-                                {group.description}
-                              </span>
-                            )}
-                          </div>
-                          <Badge
-                            variant={group.status === 'active' ? "success" : "secondary"}
-                            className="ml-auto"
-                          >
-                            {group.status === 'active' ? "Aktif" : "Pasif"}
-                          </Badge>
-                        </CommandItem>
-                      ))}
-                    </CommandGroup>
-                  </ScrollArea>
-                </Command>
-              </PopoverContent>
-            </Popover>
+            <DeviceGroupSelect
+              selectedGroups={selectedGroups}
+              onGroupSelect={handleGroupSelect}
+            />
+            {selectedGroups.length > 0 && (
+              <ScrollArea className="h-20 w-full rounded-md border p-2">
+                <div className="flex flex-wrap gap-2">
+                  {selectedGroups.map(groupId => {
+                    const group = groups.find((g: any) => g._id === groupId);
+                    return group && (
+                      <Badge key={groupId} variant="secondary">
+                        {group.name}
+                      </Badge>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            )}
           </FormItem>
         )}
       />
