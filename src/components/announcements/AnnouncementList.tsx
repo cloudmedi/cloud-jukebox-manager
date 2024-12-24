@@ -11,6 +11,7 @@ import {
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Volume2, Clock, Users } from "lucide-react";
+import { AnnouncementActions } from "./AnnouncementActions";
 
 export const AnnouncementList = () => {
   const { data: announcements = [] } = useQuery({
@@ -58,6 +59,7 @@ export const AnnouncementList = () => {
             <TableHead>Tarih Aralığı</TableHead>
             <TableHead>Hedefler</TableHead>
             <TableHead>Durum</TableHead>
+            <TableHead className="text-right">İşlemler</TableHead>
           </TableRow>
         </TableHeader>
         <TableBody>
@@ -107,6 +109,9 @@ export const AnnouncementList = () => {
                 </div>
               </TableCell>
               <TableCell>{getStatusBadge(announcement.status)}</TableCell>
+              <TableCell className="text-right">
+                <AnnouncementActions announcement={announcement} />
+              </TableCell>
             </TableRow>
           ))}
         </TableBody>
