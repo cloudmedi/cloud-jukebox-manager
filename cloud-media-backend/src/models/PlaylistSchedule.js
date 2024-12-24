@@ -48,7 +48,6 @@ playlistScheduleSchema.methods.checkConflict = async function() {
     _id: { $ne: this._id }
   };
 
-  // Hedef cihaz veya grupları kontrol et
   if (this.targets.devices.length > 0 || this.targets.groups.length > 0) {
     query.$or = [
       { 'targets.devices': { $in: this.targets.devices } },
@@ -58,19 +57,17 @@ playlistScheduleSchema.methods.checkConflict = async function() {
 
   const startDate = new Date(this.startDate);
   const endDate = new Date(this.endDate);
-  const startTime = startDate.getHours() * 60 + startDate.getMinutes();
-  const endTime = endDate.getHours() * 60 + endDate.getMinutes();
+
+  // Convert times to minutes for easier comparison
+  const startMinutes = startDate.getHours() * 60 + startDate.getMinutes();
+  const endMinutes = endDate.getHours() * 60 + endDate.getMinutes();
 
   switch (this.repeatType) {
     case 'once':
       query.$and = [{
         repeatType: 'once',
-        $or: [
-          {
-            startDate: { $lt: endDate },
-            endDate: { $gt: startDate }
-          }
-        ]
+        startDate: { $lt: endDate },
+        endDate: { $gt: startDate }
       }];
       break;
 
@@ -80,14 +77,47 @@ playlistScheduleSchema.methods.checkConflict = async function() {
           {
             repeatType: 'daily',
             $expr: {
-              $or: [
-                {
-                  $and: [
-                    { $lte: [{ $add: [{ $multiply: [{ $hour: '$startDate' }, 60] }, { $minute: '$startDate' }] }, endTime] },
-                    { $gte: [{ $add: [{ $multiply: [{ $hour: '$startDate' }, 60] }, { $minute: '$startDate' }] }, startTime] }
+              $let: {
+                vars: {
+                  scheduleStart: { 
+                    $add: [
+                      { $multiply: [{ $hour: '$startDate' }, 60] }, 
+                      { $minute: '$startDate' }
+                    ]
+                  },
+                  scheduleEnd: { 
+                    $add: [
+                      { $multiply: [{ $hour: '$endDate' }, 60] }, 
+                      { $minute: '$endDate' }
+                    ]
+                  }
+                },
+                in: {
+                  $or: [
+                    // Check if schedule start time falls within our time range
+                    {
+                      $and: [
+                        { $gte: ['$$scheduleStart', startMinutes] },
+                        { $lte: ['$$scheduleStart', endMinutes] }
+                      ]
+                    },
+                    // Check if schedule end time falls within our time range
+                    {
+                      $and: [
+                        { $gte: ['$$scheduleEnd', startMinutes] },
+                        { $lte: ['$$scheduleEnd', endMinutes] }
+                      ]
+                    },
+                    // Check if schedule encompasses our time range
+                    {
+                      $and: [
+                        { $lte: ['$$scheduleStart', startMinutes] },
+                        { $gte: ['$$scheduleEnd', endMinutes] }
+                      ]
+                    }
                   ]
                 }
-              ]
+              }
             }
           },
           {
@@ -108,14 +138,38 @@ playlistScheduleSchema.methods.checkConflict = async function() {
               $and: [
                 { $eq: [{ $dayOfWeek: '$startDate' }, { $dayOfWeek: startDate }] },
                 {
-                  $or: [
-                    {
-                      $and: [
-                        { $lte: [{ $hour: '$startDate' }, endDate.getHours()] },
-                        { $gte: [{ $hour: '$endDate' }, startDate.getHours()] }
+                  $let: {
+                    vars: {
+                      scheduleStart: { 
+                        $add: [
+                          { $multiply: [{ $hour: '$startDate' }, 60] }, 
+                          { $minute: '$startDate' }
+                        ]
+                      },
+                      scheduleEnd: { 
+                        $add: [
+                          { $multiply: [{ $hour: '$endDate' }, 60] }, 
+                          { $minute: '$endDate' }
+                        ]
+                      }
+                    },
+                    in: {
+                      $or: [
+                        { $and: [
+                          { $gte: ['$$scheduleStart', startMinutes] },
+                          { $lte: ['$$scheduleStart', endMinutes] }
+                        ]},
+                        { $and: [
+                          { $gte: ['$$scheduleEnd', startMinutes] },
+                          { $lte: ['$$scheduleEnd', endMinutes] }
+                        ]},
+                        { $and: [
+                          { $lte: ['$$scheduleStart', startMinutes] },
+                          { $gte: ['$$scheduleEnd', endMinutes] }
+                        ]}
                       ]
                     }
-                  ]
+                  }
                 }
               ]
             }
@@ -138,14 +192,38 @@ playlistScheduleSchema.methods.checkConflict = async function() {
               $and: [
                 { $eq: [{ $dayOfMonth: '$startDate' }, { $dayOfMonth: startDate }] },
                 {
-                  $or: [
-                    {
-                      $and: [
-                        { $lte: [{ $hour: '$startDate' }, endDate.getHours()] },
-                        { $gte: [{ $hour: '$endDate' }, startDate.getHours()] }
+                  $let: {
+                    vars: {
+                      scheduleStart: { 
+                        $add: [
+                          { $multiply: [{ $hour: '$startDate' }, 60] }, 
+                          { $minute: '$startDate' }
+                        ]
+                      },
+                      scheduleEnd: { 
+                        $add: [
+                          { $multiply: [{ $hour: '$endDate' }, 60] }, 
+                          { $minute: '$endDate' }
+                        ]
+                      }
+                    },
+                    in: {
+                      $or: [
+                        { $and: [
+                          { $gte: ['$$scheduleStart', startMinutes] },
+                          { $lte: ['$$scheduleStart', endMinutes] }
+                        ]},
+                        { $and: [
+                          { $gte: ['$$scheduleEnd', startMinutes] },
+                          { $lte: ['$$scheduleEnd', endMinutes] }
+                        ]},
+                        { $and: [
+                          { $lte: ['$$scheduleStart', startMinutes] },
+                          { $gte: ['$$scheduleEnd', endMinutes] }
+                        ]}
                       ]
                     }
-                  ]
+                  }
                 }
               ]
             }
