@@ -20,7 +20,7 @@ class AudioManager {
       console.log('Anons başladı');
       this.isAnnouncementPlaying = true;
       
-      // Playlist çalıyorsa durdur
+      // Playlist çalıyorsa durdur ve durumu kaydet
       if (!this.playlistAudio.paused) {
         this.wasPlaylistPlaying = true;
         this.playlistAudio.pause();
@@ -33,7 +33,9 @@ class AudioManager {
       
       // Eğer playlist çalıyorduysa devam et
       if (this.wasPlaylistPlaying) {
-        this.playlistAudio.play();
+        this.playlistAudio.play().catch(err => {
+          console.error('Playlist devam ettirme hatası:', err);
+        });
         this.wasPlaylistPlaying = false;
       }
     });
@@ -44,7 +46,9 @@ class AudioManager {
       
       // Hata durumunda da playlist'e devam et
       if (this.wasPlaylistPlaying) {
-        this.playlistAudio.play();
+        this.playlistAudio.play().catch(err => {
+          console.error('Playlist devam ettirme hatası:', err);
+        });
         this.wasPlaylistPlaying = false;
       }
     });
