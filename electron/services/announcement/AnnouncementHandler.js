@@ -31,11 +31,16 @@ class AnnouncementHandler {
       
       const localPath = path.join(announcementDir, fileName);
 
-      // Download audio file
-      const audioUrl = `http://localhost:5000/${announcement.audioFile}`;
-      await downloadFile(audioUrl, localPath, (progress) => {
-        console.log(`Announcement download progress: ${progress}%`);
-      });
+      // Download audio file if it doesn't exist
+      if (!fs.existsSync(localPath)) {
+        console.log('Downloading announcement file:', announcement.audioFile);
+        const audioUrl = `http://localhost:5000/${announcement.audioFile}`;
+        await downloadFile(audioUrl, localPath, (progress) => {
+          console.log(`Announcement download progress: ${progress}%`);
+        });
+      } else {
+        console.log('Announcement file already exists:', localPath);
+      }
 
       // Store announcement with local path
       const storedAnnouncement = {
@@ -56,6 +61,28 @@ class AnnouncementHandler {
 
   getStoredAnnouncement(id) {
     return this.store.get(`announcements.${id}`);
+  }
+
+  cleanupOldAnnouncements() {
+    try {
+      const announcements = this.store.get('announcements', {});
+      const currentTime = new Date().getTime();
+      
+      Object.entries(announcements).forEach(([id, announcement]) => {
+        if (new Date(announcement.endDate).getTime() < currentTime) {
+          // Remove from store
+          const announcementDir = path.join(this.downloadPath, id);
+          if (fs.existsSync(announcementDir)) {
+            fs.rmSync(announcementDir, { recursive: true });
+          }
+          delete announcements[id];
+        }
+      });
+      
+      this.store.set('announcements', announcements);
+    } catch (error) {
+      console.error('Error cleaning up old announcements:', error);
+    }
   }
 }
 

@@ -22,7 +22,17 @@ ipcRenderer.on('play-announcement', (event, announcement) => {
     
     announcementAudio.play().catch(err => {
       console.error('Announcement playback error:', err);
+      ipcRenderer.send('announcement-error', {
+        type: 'playback',
+        error: err.message
+      });
     });
+
+    // Anons bittiğinde event gönder
+    announcementAudio.onended = () => {
+      console.log('Announcement finished playing');
+      ipcRenderer.send('announcement-finished');
+    };
   }
 });
 

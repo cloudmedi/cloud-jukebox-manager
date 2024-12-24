@@ -51,6 +51,10 @@ class WebSocketMessageHandler {
         }
         break;
 
+      case 'stopAnnouncement':
+        this.announcementPlayer.stopAnnouncement();
+        break;
+
       case 'restart':
         console.log('Restarting application...');
         setTimeout(() => {

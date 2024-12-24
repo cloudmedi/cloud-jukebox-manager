@@ -6,6 +6,7 @@ class AnnouncementPlayer {
     this.store = new Store();
     this.currentAnnouncement = null;
     this.wasPlaying = false;
+    this.playbackTimeout = null;
   }
 
   async playAnnouncement(announcement) {
@@ -27,14 +28,21 @@ class AnnouncementPlayer {
       }
 
       // Play announcement
+      this.currentAnnouncement = announcement;
       mainWindow.webContents.send('play-announcement', announcement);
       
-      // Resume playlist after announcement ends
-      setTimeout(() => {
+      // Set timeout to stop announcement after duration
+      if (this.playbackTimeout) {
+        clearTimeout(this.playbackTimeout);
+      }
+      
+      this.playbackTimeout = setTimeout(() => {
         this.stopAnnouncement();
       }, announcement.duration * 1000);
+
     } catch (error) {
       console.error('Error playing announcement:', error);
+      this.stopAnnouncement(); // Attempt to recover
       throw error;
     }
   }
@@ -49,11 +57,23 @@ class AnnouncementPlayer {
     console.log('Stopping announcement');
     mainWindow.webContents.send('stop-announcement');
     
+    // Clear timeout
+    if (this.playbackTimeout) {
+      clearTimeout(this.playbackTimeout);
+      this.playbackTimeout = null;
+    }
+    
     // Resume playlist if it was playing before
     if (this.wasPlaying) {
       console.log('Resuming playlist');
       mainWindow.webContents.send('resume-playlist');
     }
+
+    this.currentAnnouncement = null;
+  }
+
+  getCurrentAnnouncement() {
+    return this.currentAnnouncement;
   }
 }
 
