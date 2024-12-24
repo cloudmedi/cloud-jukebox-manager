@@ -7,7 +7,7 @@ import { BasicInfoForm } from "./BasicInfoForm";
 import { PlaybackScheduleForm } from "./PlaybackScheduleForm";
 import { Form } from "@/components/ui/form";
 import { AudioUpload } from "./form/AudioUpload";
-import { TargetSelector } from "./form/TargetSelector";
+import { TargetSelect } from "@/components/schedule/TargetSelect";
 import { AnnouncementFormData } from "./types/announcement";
 
 const API_URL = "http://localhost:5000/api";
@@ -33,8 +33,10 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
       songInterval: announcement?.songInterval || 1,
       minuteInterval: announcement?.minuteInterval || 5,
       specificTimes: announcement?.specificTimes || [],
-      targetDevices: announcement?.targetDevices || [],
-      targetGroups: announcement?.targetGroups || [],
+      targets: {
+        devices: announcement?.targetDevices || [],
+        groups: announcement?.targetGroups || []
+      },
       duration: announcement?.duration || 0
     },
   });
@@ -149,7 +151,7 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <BasicInfoForm form={form} />
         <PlaybackScheduleForm form={form} />
-        <TargetSelector form={form} />
+        <TargetSelect form={form} />
 
         {!announcement && (
           <AudioUpload
