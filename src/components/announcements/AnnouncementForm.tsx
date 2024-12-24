@@ -13,14 +13,31 @@ import { useState } from "react";
 const STEPS = ["basic", "schedule", "targets"] as const;
 type Step = typeof STEPS[number];
 
+interface AnnouncementFormData {
+  title: string;
+  content: string;
+  audioFile: File | null;
+  duration: number;
+  startDate: Date | null;
+  endDate: Date | null;
+  scheduleType: "songs" | "minutes" | "specific";
+  songInterval?: number;
+  minuteInterval?: number;
+  specificTimes?: string[];
+  immediateInterrupt: boolean;
+  targetDevices: string[];
+  targetGroups: string[];
+}
+
 export const AnnouncementForm = () => {
   const [currentStep, setCurrentStep] = useState<Step>("basic");
   
-  const form = useForm({
+  const form = useForm<AnnouncementFormData>({
     defaultValues: {
       title: "",
       content: "",
       audioFile: null,
+      duration: 0,
       startDate: null,
       endDate: null,
       scheduleType: "songs",
@@ -49,7 +66,7 @@ export const AnnouncementForm = () => {
           toast.error("Lütfen başlangıç ve bitiş tarihlerini seçin");
           return false;
         }
-        if (scheduleType === "specific" && form.getValues("specificTimes").length === 0) {
+        if (scheduleType === "specific" && form.getValues("specificTimes")?.length === 0) {
           toast.error("Lütfen en az bir saat seçin");
           return false;
         }
@@ -79,7 +96,7 @@ export const AnnouncementForm = () => {
     }
   };
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: AnnouncementFormData) => {
     if (!validateStep("targets")) return;
 
     try {
@@ -88,20 +105,22 @@ export const AnnouncementForm = () => {
       // Temel bilgiler
       formData.append("title", data.title);
       formData.append("content", data.content);
-      formData.append("audioFile", data.audioFile);
+      if (data.audioFile) {
+        formData.append("audioFile", data.audioFile);
+      }
       formData.append("duration", data.duration?.toString() || "0");
       
       // Zamanlama bilgileri
-      formData.append("startDate", data.startDate.toISOString());
-      formData.append("endDate", data.endDate.toISOString());
+      if (data.startDate) formData.append("startDate", data.startDate.toISOString());
+      if (data.endDate) formData.append("endDate", data.endDate.toISOString());
       formData.append("scheduleType", data.scheduleType);
       formData.append("immediateInterrupt", data.immediateInterrupt.toString());
 
       if (data.scheduleType === "songs") {
-        formData.append("songInterval", data.songInterval.toString());
+        formData.append("songInterval", data.songInterval?.toString() || "1");
       } else if (data.scheduleType === "minutes") {
-        formData.append("minuteInterval", data.minuteInterval.toString());
-      } else if (data.scheduleType === "specific") {
+        formData.append("minuteInterval", data.minuteInterval?.toString() || "");
+      } else if (data.scheduleType === "specific" && data.specificTimes) {
         data.specificTimes.forEach((time: string) => {
           formData.append("specificTimes[]", time);
         });
