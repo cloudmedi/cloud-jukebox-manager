@@ -1,7 +1,17 @@
 const { ipcMain, app } = require('electron');
-const Store = require('electron-store');
-const store = new Store();
 const websocketService = require('./websocketService');
+
+let store;
+
+(async () => {
+  try {
+    const { default: Store } = await import('electron-store');
+    store = new Store();
+    console.log('Store initialized in audioService');
+  } catch (error) {
+    console.error('Error initializing store:', error);
+  }
+})();
 
 class AudioService {
   constructor() {
@@ -10,8 +20,19 @@ class AudioService {
     this.currentIndex = 0;
     this.queue = [];
     this.isPlaying = false;
+    this.initializeService();
+  }
+
+  async initializeService() {
+    // Wait for store to be initialized
+    while (!store) {
+      console.log('Waiting for store to initialize...');
+      await new Promise(resolve => setTimeout(resolve, 100));
+    }
+    
     this.setupIpcHandlers();
     this.setupWebSocketHandlers();
+    console.log('AudioService initialized');
   }
 
   setupWebSocketHandlers() {
@@ -90,21 +111,23 @@ class AudioService {
   }
 
   setupIpcHandlers() {
+    if (!store) {
+      console.warn('Store not initialized when setting up IPC handlers');
+      return;
+    }
+
     ipcMain.handle('play-playlist', async (event, playlist) => {
       console.log('Playing playlist:', playlist);
       
-      // Mevcut çalan playlist'i durdur
       if (this.isPlaying) {
         event.sender.send('toggle-playback');
       }
       
-      // Yeni playlist'i ayarla
       this.queue = [...playlist.songs];
       this.playlist = playlist;
       this.currentIndex = 0;
       this.isPlaying = true;
       
-      // İlk şarkıyı çal
       const firstSong = this.queue[this.currentIndex];
       if (firstSong) {
         event.sender.send('update-player', {
@@ -113,7 +136,6 @@ class AudioService {
           isPlaying: true
         });
 
-        // Playlist durumunu güncelle
         websocketService.sendMessage({
           type: 'playlistStatus',
           status: 'loaded',
@@ -200,4 +222,13 @@ class AudioService {
   }
 }
 
-module.exports = new AudioService();
+// Wait for store initialization before exporting
+let audioService;
+(async () => {
+  while (!store) {
+    await new Promise(resolve => setTimeout(resolve, 100));
+  }
+  audioService = new AudioService();
+})();
+
+module.exports = audioService;
