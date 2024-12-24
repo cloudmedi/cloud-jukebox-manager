@@ -29,7 +29,11 @@ interface Announcement {
   title: string;
   content: string;
   status: string;
-  targetDevices: string[];
+  targetDevices: Array<{
+    _id: string;
+    name: string;
+    token: string;
+  }>;
   targetGroups: string[];
   startDate: string;
   endDate: string;
@@ -73,11 +77,11 @@ export const AnnouncementActions = ({ announcement }: AnnouncementActionsProps) 
   const handleSendToDevices = async () => {
     try {
       // Hedef cihazlara anonsu gönder
-      announcement.targetDevices.forEach(deviceId => {
+      announcement.targetDevices.forEach(device => {
         websocketService.sendMessage({
           type: 'command',
           command: 'playAnnouncement',
-          token: deviceId, // deviceId yerine token kullanıyoruz
+          token: device.token, // Düzeltme: device.token kullanıyoruz
           announcement: {
             _id: announcement._id,
             title: announcement.title,
@@ -113,17 +117,6 @@ export const AnnouncementActions = ({ announcement }: AnnouncementActionsProps) 
     }
   };
 
-  const convertToFormData = (announcement: Announcement): Partial<AnnouncementFormData> => {
-    return {
-      ...announcement,
-      startDate: new Date(announcement.startDate),
-      endDate: new Date(announcement.endDate),
-      targetDevices: announcement.targetDevices,
-      targetGroups: announcement.targetGroups,
-      audioFile: undefined // audioFile'ı undefined olarak ayarlıyoruz çünkü File tipinde olmalı
-    };
-  };
-
   return (
     <>
       <DropdownMenu>
@@ -154,7 +147,7 @@ export const AnnouncementActions = ({ announcement }: AnnouncementActionsProps) 
             <DialogTitle>Anons Düzenle</DialogTitle>
           </DialogHeader>
           <AnnouncementForm 
-            initialData={convertToFormData(announcement)}
+            initialData={announcement}
             mode="update"
             onSuccess={() => {
               setIsEditDialogOpen(false);
