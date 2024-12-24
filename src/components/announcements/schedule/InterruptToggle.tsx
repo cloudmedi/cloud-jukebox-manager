@@ -1,12 +1,11 @@
 import { FormField } from "@/components/ui/form";
 import { Label } from "@/components/ui/label";
-import { UseFormReturn } from "react-hook-form";
+import { useFormContext } from "react-hook-form";
+import { AnnouncementFormData } from "../form/types";
 
-interface InterruptToggleProps {
-  form: UseFormReturn<any>;
-}
+export const InterruptToggle = () => {
+  const form = useFormContext<AnnouncementFormData>();
 
-export const InterruptToggle = ({ form }: InterruptToggleProps) => {
   return (
     <FormField
       control={form.control}

@@ -6,13 +6,12 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { CalendarIcon } from "lucide-react";
-import { UseFormReturn } from "react-hook-form";
+import { useFormContext } from "react-hook-form";
+import { AnnouncementFormData } from "../form/types";
 
-interface DateRangePickerProps {
-  form: UseFormReturn<any>;
-}
+export const DateRangePicker = () => {
+  const form = useFormContext<AnnouncementFormData>();
 
-export const DateRangePicker = ({ form }: DateRangePickerProps) => {
   return (
     <div className="grid grid-cols-2 gap-4">
       <FormField

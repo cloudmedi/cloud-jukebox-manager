@@ -1,9 +1,9 @@
 import { useFormContext } from "react-hook-form";
-import { AnnouncementFormData } from "./types";
 import { DateRangePicker } from "../schedule/DateRangePicker";
 import { ScheduleTypeSelector } from "../schedule/ScheduleTypeSelector";
 import { SpecificTimeSelector } from "../schedule/SpecificTimeSelector";
 import { InterruptToggle } from "../schedule/InterruptToggle";
+import { AnnouncementFormData } from "./types";
 
 export const ScheduleSettings = () => {
   const form = useFormContext<AnnouncementFormData>();

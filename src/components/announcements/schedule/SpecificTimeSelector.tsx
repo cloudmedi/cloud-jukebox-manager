@@ -3,18 +3,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Plus, X } from "lucide-react";
-import { UseFormReturn } from "react-hook-form";
+import { useFormContext } from "react-hook-form";
 import { toast } from "sonner";
+import { AnnouncementFormData } from "../form/types";
 
-interface SpecificTimeSelectorProps {
-  form: UseFormReturn<any>;
-  visible: boolean;
-}
-
-export const SpecificTimeSelector = ({ form, visible }: SpecificTimeSelectorProps) => {
+export const SpecificTimeSelector = () => {
   const [specificTimes, setSpecificTimes] = useState<string[]>([""]);
-
-  if (!visible) return null;
+  const form = useFormContext<AnnouncementFormData>();
 
   const addTimeSlot = () => {
     if (specificTimes.length >= 10) {

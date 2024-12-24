@@ -2,14 +2,11 @@ import { FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { UseFormReturn } from "react-hook-form";
+import { useFormContext } from "react-hook-form";
+import { AnnouncementFormData } from "../form/types";
 
-interface ScheduleTypeSelectorProps {
-  form: UseFormReturn<any>;
-}
-
-export const ScheduleTypeSelector = ({ form }: ScheduleTypeSelectorProps) => {
-  const scheduleType = form.watch("scheduleType");
+export const ScheduleTypeSelector = () => {
+  const form = useFormContext<AnnouncementFormData>();
 
   return (
     <FormField
