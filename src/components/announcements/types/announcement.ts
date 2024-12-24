@@ -18,6 +18,7 @@ export interface Device {
   name: string;
   location?: string;
   isOnline: boolean;
+  status?: string;
 }
 
 export interface DeviceGroup {
