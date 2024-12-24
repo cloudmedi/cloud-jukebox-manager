@@ -35,35 +35,32 @@ const Schedule = () => {
         method: 'DELETE'
       });
       if (!response.ok) {
-        throw new Error('Zamanlama silinemedi');
+        const error = await response.json();
+        throw new Error(error.message || 'Zamanlama silinemedi');
       }
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["playlist-schedules"] });
       toast.success("Zamanlama başarıyla silindi");
     },
-    onError: () => {
-      toast.error("Zamanlama silinirken bir hata oluştu");
+    onError: (error: Error) => {
+      toast.error(`Hata: ${error.message}`);
     }
   });
 
   const handleDateSelect = (selectInfo: any) => {
-    const start = new Date(selectInfo.start);
-    
-    // Seçilen saati koru
-    const selectedStartDate = new Date(start);
-    
-    // Bitiş saati başlangıçtan 1 saat sonra olsun
-    const selectedEndDate = new Date(selectedStartDate);
-    selectedEndDate.setHours(selectedStartDate.getHours() + 1);
-    
+    const selectedStartDate = new Date(selectInfo.start);
     setSelectedDate(selectedStartDate);
     setIsDialogOpen(true);
   };
 
-  const handleEventClick = (clickInfo: any) => {
+  const handleEventClick = async (clickInfo: any) => {
     if (window.confirm('Bu zamanlamayı silmek istediğinize emin misiniz?')) {
-      deleteScheduleMutation.mutate(clickInfo.event.id);
+      try {
+        await deleteScheduleMutation.mutateAsync(clickInfo.event.id);
+      } catch (error) {
+        console.error('Silme hatası:', error);
+      }
     }
   };
 

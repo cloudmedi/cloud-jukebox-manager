@@ -7,6 +7,9 @@ const getTimeInMinutes = (date) => {
 const checkScheduleConflict = async (schedule) => {
   const PlaylistSchedule = mongoose.model('PlaylistSchedule');
   
+  const startDate = new Date(schedule.startDate);
+  const endDate = new Date(schedule.endDate);
+  
   // Base query to find potential conflicts
   const query = {
     status: 'active',
@@ -14,16 +17,20 @@ const checkScheduleConflict = async (schedule) => {
   };
 
   // Only check conflicts if devices or groups are selected
-  if (schedule.targets.devices.length > 0 || schedule.targets.groups.length > 0) {
-    query.$or = [
-      { 'targets.devices': { $in: schedule.targets.devices } },
-      { 'targets.groups': { $in: schedule.targets.groups } }
-    ];
+  if (schedule.targets.devices.length === 0 && schedule.targets.groups.length === 0) {
+    return false;
   }
 
-  const startDate = new Date(schedule.startDate);
-  const endDate = new Date(schedule.endDate);
+  // Add target device/group conditions
+  query.$or = [];
+  if (schedule.targets.devices.length > 0) {
+    query.$or.push({ 'targets.devices': { $in: schedule.targets.devices } });
+  }
+  if (schedule.targets.groups.length > 0) {
+    query.$or.push({ 'targets.groups': { $in: schedule.targets.groups } });
+  }
 
+  // Add time-based conditions based on repeat type
   switch (schedule.repeatType) {
     case 'once':
       query.startDate = { $lt: endDate };
@@ -31,84 +38,91 @@ const checkScheduleConflict = async (schedule) => {
       break;
 
     case 'daily':
-      // For daily schedules, we only need to check time overlap
       const startMinutes = getTimeInMinutes(startDate);
       const endMinutes = getTimeInMinutes(endDate);
       
-      query.$and = [
-        { repeatType: 'daily' },
-        {
-          $expr: {
-            $let: {
-              vars: {
-                existingStart: { $hour: '$startDate' },
-                existingEnd: { $hour: '$endDate' }
-              },
-              in: {
-                $or: [
-                  {
-                    $and: [
-                      { $lte: [{ $multiply: ['$$existingStart', 60] }, endMinutes] },
-                      { $gte: [{ $multiply: ['$$existingEnd', 60] }, startMinutes] }
-                    ]
-                  }
-                ]
-              }
-            }
+      query.repeatType = 'daily';
+      query.$expr = {
+        $and: [
+          {
+            $lte: [
+              { $add: [
+                { $multiply: [{ $hour: '$startDate' }, 60] },
+                { $minute: '$startDate' }
+              ]},
+              endMinutes
+            ]
+          },
+          {
+            $gte: [
+              { $add: [
+                { $multiply: [{ $hour: '$endDate' }, 60] },
+                { $minute: '$endDate' }
+              ]},
+              startMinutes
+            ]
           }
-        }
-      ];
+        ]
+      };
       break;
 
     case 'weekly':
+      query.repeatType = 'weekly';
       query.$and = [
-        { repeatType: 'weekly' },
         { $expr: { $eq: [{ $dayOfWeek: '$startDate' }, { $dayOfWeek: startDate }] } },
         {
           $expr: {
-            $let: {
-              vars: {
-                existingStart: { $hour: '$startDate' },
-                existingEnd: { $hour: '$endDate' }
+            $and: [
+              {
+                $lte: [
+                  { $add: [
+                    { $multiply: [{ $hour: '$startDate' }, 60] },
+                    { $minute: '$startDate' }
+                  ]},
+                  getTimeInMinutes(endDate)
+                ]
               },
-              in: {
-                $or: [
-                  {
-                    $and: [
-                      { $lte: [{ $multiply: ['$$existingStart', 60] }, getTimeInMinutes(endDate)] },
-                      { $gte: [{ $multiply: ['$$existingEnd', 60] }, getTimeInMinutes(startDate)] }
-                    ]
-                  }
+              {
+                $gte: [
+                  { $add: [
+                    { $multiply: [{ $hour: '$endDate' }, 60] },
+                    { $minute: '$endDate' }
+                  ]},
+                  getTimeInMinutes(startDate)
                 ]
               }
-            }
+            ]
           }
         }
       ];
       break;
 
     case 'monthly':
+      query.repeatType = 'monthly';
       query.$and = [
-        { repeatType: 'monthly' },
         { $expr: { $eq: [{ $dayOfMonth: '$startDate' }, { $dayOfMonth: startDate }] } },
         {
           $expr: {
-            $let: {
-              vars: {
-                existingStart: { $hour: '$startDate' },
-                existingEnd: { $hour: '$endDate' }
+            $and: [
+              {
+                $lte: [
+                  { $add: [
+                    { $multiply: [{ $hour: '$startDate' }, 60] },
+                    { $minute: '$startDate' }
+                  ]},
+                  getTimeInMinutes(endDate)
+                ]
               },
-              in: {
-                $or: [
-                  {
-                    $and: [
-                      { $lte: [{ $multiply: ['$$existingStart', 60] }, getTimeInMinutes(endDate)] },
-                      { $gte: [{ $multiply: ['$$existingEnd', 60] }, getTimeInMinutes(startDate)] }
-                    ]
-                  }
+              {
+                $gte: [
+                  { $add: [
+                    { $multiply: [{ $hour: '$endDate' }, 60] },
+                    { $minute: '$endDate' }
+                  ]},
+                  getTimeInMinutes(startDate)
                 ]
               }
-            }
+            ]
           }
         }
       ];
