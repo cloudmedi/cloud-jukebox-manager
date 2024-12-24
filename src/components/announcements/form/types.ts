@@ -3,6 +3,7 @@ export type FormSteps = "basic" | "schedule" | "targets";
 export type ScheduleType = "songs" | "minutes" | "specific";
 
 export interface AnnouncementFormData {
+  _id?: string;
   title: string;
   content: string;
   audioFile: File | null;
@@ -16,6 +17,7 @@ export interface AnnouncementFormData {
   immediateInterrupt: boolean;
   targetDevices: Array<string>;
   targetGroups: Array<string>;
+  status?: string;
 }
 
 export interface Device {

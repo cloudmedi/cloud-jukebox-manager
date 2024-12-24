@@ -131,11 +131,20 @@ export const AnnouncementActions = ({ announcement }: AnnouncementActionsProps) 
 
   const convertToFormData = (announcement: Announcement): Partial<AnnouncementFormData> => {
     return {
-      ...announcement,
+      _id: announcement._id,
+      title: announcement.title,
+      content: announcement.content,
       startDate: new Date(announcement.startDate),
       endDate: new Date(announcement.endDate),
       targetDevices: announcement.targetDevices.map(device => device._id),
       targetGroups: announcement.targetGroups,
+      scheduleType: announcement.scheduleType as ScheduleType,
+      specificTimes: announcement.specificTimes || [],
+      songInterval: announcement.songInterval,
+      minuteInterval: announcement.minuteInterval,
+      immediateInterrupt: announcement.immediateInterrupt,
+      duration: announcement.duration,
+      status: announcement.status,
       audioFile: undefined
     };
   };
