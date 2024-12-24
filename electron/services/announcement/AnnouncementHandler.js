@@ -21,31 +21,29 @@ class AnnouncementHandler {
     try {
       console.log('Handling announcement:', announcement);
       
-      // Anons için yerel dosya yolu oluştur
+      // Create directory for announcement
       const fileName = path.basename(announcement.audioFile);
       const announcementDir = path.join(this.downloadPath, announcement._id);
       
-      // Anons klasörünü oluştur
       if (!fs.existsSync(announcementDir)) {
         fs.mkdirSync(announcementDir, { recursive: true });
       }
       
       const localPath = path.join(announcementDir, fileName);
 
-      // Ses dosyasını indir
+      // Download audio file
       const audioUrl = `http://localhost:5000/${announcement.audioFile}`;
       await downloadFile(audioUrl, localPath, (progress) => {
         console.log(`Announcement download progress: ${progress}%`);
       });
 
-      // Anonsu local path ile birlikte sakla
+      // Store announcement with local path
       const storedAnnouncement = {
         ...announcement,
         localPath,
         status: 'downloaded'
       };
 
-      // Store'a kaydet
       this.store.set(`announcements.${announcement._id}`, storedAnnouncement);
       console.log('Announcement stored successfully:', storedAnnouncement);
 

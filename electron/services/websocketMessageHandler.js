@@ -1,12 +1,14 @@
-const { BrowserWindow, app } = require('electron');
+const { BrowserWindow } = require('electron');
 const Store = require('electron-store');
-const announcementHandler = require('./announcement/AnnouncementHandler');
-const announcementPlayer = require('./announcement/AnnouncementPlayer');
+const AnnouncementHandler = require('./announcement/AnnouncementHandler');
+const AnnouncementPlayer = require('./announcement/AnnouncementPlayer');
 
 class WebSocketMessageHandler {
   constructor() {
     this.handlers = new Map();
     this.store = new Store();
+    this.announcementHandler = new AnnouncementHandler();
+    this.announcementPlayer = new AnnouncementPlayer();
     this.initializeHandlers();
   }
 
@@ -41,10 +43,8 @@ class WebSocketMessageHandler {
       case 'playAnnouncement':
         try {
           console.log('Processing announcement:', message.announcement);
-          // Anonsu indir ve sakla
-          const storedAnnouncement = await announcementHandler.handleAnnouncement(message.announcement);
-          // Anonsu oynat
-          await announcementPlayer.playAnnouncement(storedAnnouncement);
+          const storedAnnouncement = await this.announcementHandler.handleAnnouncement(message.announcement);
+          await this.announcementPlayer.playAnnouncement(storedAnnouncement);
         } catch (error) {
           console.error('Error handling announcement:', error);
           throw error;
@@ -59,11 +59,30 @@ class WebSocketMessageHandler {
         }, 1000);
         break;
 
-      default:
+      case 'setVolume':
+        console.log('Setting volume to:', message.volume);
         const mainWindow = BrowserWindow.getAllWindows()[0];
         if (mainWindow) {
-          mainWindow.webContents.send(message.command, message.data);
+          mainWindow.webContents.send('set-volume', message.volume);
         }
+        break;
+
+      case 'play':
+        const playWindow = BrowserWindow.getAllWindows()[0];
+        if (playWindow) {
+          playWindow.webContents.send('toggle-playback');
+        }
+        break;
+
+      case 'pause':
+        const pauseWindow = BrowserWindow.getAllWindows()[0];
+        if (pauseWindow) {
+          pauseWindow.webContents.send('toggle-playback');
+        }
+        break;
+
+      default:
+        console.log('Unknown command:', message.command);
         break;
     }
   }
@@ -78,7 +97,7 @@ class WebSocketMessageHandler {
         throw new Error('Invalid playlist data');
       }
 
-      // Playlist'i store'a kaydet
+      // Store playlist
       const playlists = this.store.get('playlists', []);
       const existingIndex = playlists.findIndex(p => p._id === playlist._id);
       
@@ -90,7 +109,7 @@ class WebSocketMessageHandler {
       
       this.store.set('playlists', playlists);
 
-      // Renderer'a bildir
+      // Notify renderer
       mainWindow.webContents.send('playlist-received', playlist);
       console.log('Playlist processed successfully:', playlist.name);
     } catch (error) {

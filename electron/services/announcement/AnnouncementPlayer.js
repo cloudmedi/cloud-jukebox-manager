@@ -16,20 +16,20 @@ class AnnouncementPlayer {
         throw new Error('Main window not found');
       }
 
-      // Mevcut playlist durumunu kaydet
+      // Save current playlist state
       this.wasPlaying = this.store.get('playback.isPlaying', false);
       console.log('Current playback state:', this.wasPlaying);
       
-      // Playlist'i duraklat
+      // Pause playlist if it's playing
       if (this.wasPlaying) {
         console.log('Pausing playlist for announcement');
         mainWindow.webContents.send('pause-playlist');
       }
 
-      // Anonsu oynat
+      // Play announcement
       mainWindow.webContents.send('play-announcement', announcement);
       
-      // Anons bitiminde playlist'e geri dön
+      // Resume playlist after announcement ends
       setTimeout(() => {
         this.stopAnnouncement();
       }, announcement.duration * 1000);
@@ -49,7 +49,7 @@ class AnnouncementPlayer {
     console.log('Stopping announcement');
     mainWindow.webContents.send('stop-announcement');
     
-    // Eğer playlist çalıyorduysa devam et
+    // Resume playlist if it was playing before
     if (this.wasPlaying) {
       console.log('Resuming playlist');
       mainWindow.webContents.send('resume-playlist');
