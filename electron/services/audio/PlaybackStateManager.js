@@ -9,14 +9,25 @@ class PlaybackStateManager {
   savePlaybackState(isPlaying) {
     this.store.set('playbackState', {
       isPlaying,
-      timestamp: new Date().toISOString()
+      timestamp: new Date().toISOString(),
+      lastPlaylistId: this.store.get('currentPlaylistId')
     });
-    console.log('Playback state saved:', isPlaying);
+    console.log('Playback state saved:', { isPlaying, playlistId: this.store.get('currentPlaylistId') });
   }
 
   getPlaybackState() {
     const state = this.store.get('playbackState');
-    return state ? state.isPlaying : true; // Varsayılan olarak true
+    console.log('Retrieved playback state:', state);
+    return state ? state.isPlaying : true; // Varsayılan olarak true döndür
+  }
+
+  setCurrentPlaylistId(playlistId) {
+    this.store.set('currentPlaylistId', playlistId);
+    console.log('Current playlist ID set:', playlistId);
+  }
+
+  getCurrentPlaylistId() {
+    return this.store.get('currentPlaylistId');
   }
 }
 

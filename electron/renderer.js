@@ -43,54 +43,68 @@ ipcRenderer.on('set-volume', (event, volume) => {
 
 // Restart playback from WebSocket
 ipcRenderer.on('restart-playback', () => {
-  console.log('Restarting playback');
-  if (audio) {
-    audio.currentTime = 0;
-    audio.play().catch(err => console.error('Playback error:', err));
-  }
+    console.log('Restarting playback');
+    if (audio) {
+        audio.currentTime = 0;
+        audio.play().catch(err => console.error('Playback error:', err));
+    }
 });
 
 // Toggle playback from WebSocket
 ipcRenderer.on('toggle-playback', () => {
-  console.log('Toggle playback, current state:', audio.paused);
-  if (audio) {
-    if (audio.paused) {
-      audio.play()
-        .then(() => {
-          console.log('Playback started successfully');
-          ipcRenderer.send('playback-status-changed', true);
-        })
-        .catch(err => {
-          console.error('Playback error:', err);
-          ipcRenderer.send('playback-status-changed', false);
-        });
-    } else {
-      audio.pause();
-      console.log('Playback paused');
-      ipcRenderer.send('playback-status-changed', false);
+    console.log('Toggle playback, current state:', audio.paused);
+    if (audio) {
+        if (audio.paused) {
+            audio.play()
+                .then(() => {
+                    console.log('Playback started successfully');
+                    ipcRenderer.send('playback-status-changed', true);
+                })
+                .catch(err => {
+                    console.error('Playback error:', err);
+                    ipcRenderer.send('playback-status-changed', false);
+                });
+        } else {
+            audio.pause();
+            console.log('Playback paused');
+            ipcRenderer.send('playback-status-changed', false);
+        }
     }
-  }
 });
 
 // Otomatik playlist başlatma
 ipcRenderer.on('auto-play-playlist', (event, playlist) => {
-  console.log('Auto-playing playlist:', playlist);
-  if (playlist && playlist.songs && playlist.songs.length > 0) {
-    const shouldAutoPlay = playbackStateManager.getPlaybackState();
-    displayPlaylists();
-    
-    if (shouldAutoPlay) {
-      console.log('Auto-playing based on saved state');
-      ipcRenderer.invoke('play-playlist', playlist);
-    } else {
-      console.log('Not auto-playing due to saved state');
-      // Playlist'i yükle ama oynatma
-      ipcRenderer.invoke('load-playlist', playlist);
+    console.log('Auto-playing playlist:', playlist);
+    if (playlist && playlist.songs && playlist.songs.length > 0) {
+        const shouldAutoPlay = playbackStateManager.getPlaybackState();
+        displayPlaylists();
+        
+        console.log('Should auto-play:', shouldAutoPlay);
+        
+        if (shouldAutoPlay) {
+            console.log('Auto-playing based on saved state');
+            playbackStateManager.setCurrentPlaylistId(playlist._id);
+            ipcRenderer.invoke('play-playlist', playlist)
+                .then(() => {
+                    console.log('Playlist started successfully');
+                })
+                .catch(err => {
+                    console.error('Error starting playlist:', err);
+                });
+        } else {
+            console.log('Loading playlist without auto-play');
+            playbackStateManager.setCurrentPlaylistId(playlist._id);
+            ipcRenderer.invoke('load-playlist', playlist)
+                .then(() => {
+                    console.log('Playlist loaded successfully');
+                })
+                .catch(err => {
+                    console.error('Error loading playlist:', err);
+                });
+        }
     }
-  }
 });
 
-// Anons oynatma
 ipcRenderer.on('play-announcement', (event, announcement) => {
   console.log('Playing announcement:', announcement);
   
