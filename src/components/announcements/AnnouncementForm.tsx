@@ -116,24 +116,31 @@ export const AnnouncementForm = () => {
       formData.append("scheduleType", data.scheduleType);
       formData.append("immediateInterrupt", data.immediateInterrupt.toString());
 
-      if (data.scheduleType === "songs") {
-        formData.append("songInterval", data.songInterval?.toString() || "1");
-      } else if (data.scheduleType === "minutes") {
-        formData.append("minuteInterval", data.minuteInterval?.toString() || "");
+      if (data.scheduleType === "songs" && data.songInterval) {
+        formData.append("songInterval", data.songInterval.toString());
+      } else if (data.scheduleType === "minutes" && data.minuteInterval) {
+        formData.append("minuteInterval", data.minuteInterval.toString());
       } else if (data.scheduleType === "specific" && data.specificTimes) {
-        data.specificTimes.forEach((time: string) => {
+        data.specificTimes.forEach((time) => {
           formData.append("specificTimes[]", time);
         });
       }
 
-      // Hedef cihaz ve gruplar
-      data.targetDevices.forEach((deviceId: string) => {
-        formData.append("targetDevices[]", deviceId);
-      });
+      // Hedef cihaz ve grupları ekle
+      console.log("Seçili cihazlar:", data.targetDevices);
+      console.log("Seçili gruplar:", data.targetGroups);
 
-      data.targetGroups.forEach((groupId: string) => {
-        formData.append("targetGroups[]", groupId);
-      });
+      if (data.targetDevices && data.targetDevices.length > 0) {
+        data.targetDevices.forEach((deviceId) => {
+          formData.append("targetDevices[]", deviceId);
+        });
+      }
+
+      if (data.targetGroups && data.targetGroups.length > 0) {
+        data.targetGroups.forEach((groupId) => {
+          formData.append("targetGroups[]", groupId);
+        });
+      }
 
       const response = await fetch("http://localhost:5000/api/announcements", {
         method: "POST",
@@ -149,7 +156,7 @@ export const AnnouncementForm = () => {
       form.reset();
       setCurrentStep("basic");
     } catch (error: any) {
-      toast.error(`Hata: ${error.message}`);
+      toast.error(`Anons oluşturma hatası: ${error.message}`);
       console.error("Anons oluşturma hatası:", error);
     }
   };

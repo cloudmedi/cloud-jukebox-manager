@@ -56,16 +56,14 @@ export const TargetSelection = ({ form }: TargetSelectionProps) => {
         <FormLabel>Hedef Cihazlar</FormLabel>
         <div className="grid grid-cols-2 gap-4 mt-2 max-h-[300px] overflow-y-auto">
           {filteredDevices.map((device: any) => (
-            <label
+            <FormField
               key={device._id}
-              className="flex items-center p-4 border rounded-lg hover:bg-accent cursor-pointer"
-            >
-              <FormField
-                control={form.control}
-                name="targetDevices"
-                render={({ field }) => (
+              control={form.control}
+              name="targetDevices"
+              render={({ field }) => (
+                <label className="flex items-center p-4 border rounded-lg hover:bg-accent cursor-pointer">
                   <Checkbox
-                    checked={field.value?.includes(device._id)}
+                    checked={(field.value || []).includes(device._id)}
                     onCheckedChange={(checked) => {
                       const current = field.value || [];
                       const updated = checked
@@ -74,13 +72,13 @@ export const TargetSelection = ({ form }: TargetSelectionProps) => {
                       field.onChange(updated);
                     }}
                   />
-                )}
-              />
-              <div className="ml-3">
-                <p className="font-medium">{device.name}</p>
-                <p className="text-sm text-muted-foreground">{device.location}</p>
-              </div>
-            </label>
+                  <div className="ml-3">
+                    <p className="font-medium">{device.name}</p>
+                    <p className="text-sm text-muted-foreground">{device.location}</p>
+                  </div>
+                </label>
+              )}
+            />
           ))}
         </div>
       </div>
@@ -89,16 +87,14 @@ export const TargetSelection = ({ form }: TargetSelectionProps) => {
         <FormLabel>Hedef Gruplar</FormLabel>
         <div className="grid grid-cols-2 gap-4 mt-2 max-h-[300px] overflow-y-auto">
           {filteredGroups.map((group: any) => (
-            <label
+            <FormField
               key={group._id}
-              className="flex items-center p-4 border rounded-lg hover:bg-accent cursor-pointer"
-            >
-              <FormField
-                control={form.control}
-                name="targetGroups"
-                render={({ field }) => (
+              control={form.control}
+              name="targetGroups"
+              render={({ field }) => (
+                <label className="flex items-center p-4 border rounded-lg hover:bg-accent cursor-pointer">
                   <Checkbox
-                    checked={field.value?.includes(group._id)}
+                    checked={(field.value || []).includes(group._id)}
                     onCheckedChange={(checked) => {
                       const current = field.value || [];
                       const updated = checked
@@ -107,15 +103,15 @@ export const TargetSelection = ({ form }: TargetSelectionProps) => {
                       field.onChange(updated);
                     }}
                   />
-                )}
-              />
-              <div className="ml-3">
-                <p className="font-medium">{group.name}</p>
-                <p className="text-sm text-muted-foreground">
-                  {group.devices?.length || 0} cihaz
-                </p>
-              </div>
-            </label>
+                  <div className="ml-3">
+                    <p className="font-medium">{group.name}</p>
+                    <p className="text-sm text-muted-foreground">
+                      {group.devices?.length || 0} cihaz
+                    </p>
+                  </div>
+                </label>
+              )}
+            />
           ))}
         </div>
       </div>
