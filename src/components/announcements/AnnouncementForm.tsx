@@ -33,10 +33,8 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
       songInterval: announcement?.songInterval || 1,
       minuteInterval: announcement?.minuteInterval || 5,
       specificTimes: announcement?.specificTimes || [],
-      targets: {
-        devices: announcement?.targetDevices || [],
-        groups: announcement?.targetGroups || []
-      },
+      targetDevices: announcement?.targetDevices || [],
+      targetGroups: announcement?.targetGroups || [],
       duration: announcement?.duration || 0,
       immediateInterrupt: announcement?.immediateInterrupt || false,
       createdBy: "system"
@@ -86,11 +84,10 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
       Object.entries(data).forEach(([key, value]) => {
         if (key === 'startDate' || key === 'endDate') {
           formData.append(key, value instanceof Date ? value.toISOString() : String(value));
-        } else if (key === 'targets') {
-          formData.append('targetDevices', JSON.stringify(value.devices));
-          formData.append('targetGroups', JSON.stringify(value.groups));
         } else if (key === 'audioFile' && value instanceof File) {
           formData.append(key, value);
+        } else if (key === 'targetDevices' || key === 'targetGroups') {
+          formData.append(key, JSON.stringify(value));
         } else {
           formData.append(key, String(value));
         }

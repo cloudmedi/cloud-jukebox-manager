@@ -9,12 +9,10 @@ export interface AnnouncementFormData {
   songInterval?: number;
   minuteInterval?: number;
   specificTimes?: string[];
-  targets: {
-    devices: string[];
-    groups: string[];
-  };
-  immediateInterrupt?: boolean;
-  createdBy?: string;
+  targetDevices: string[];
+  targetGroups: string[];
+  immediateInterrupt: boolean;
+  createdBy: string;
 }
 
 export interface Device {

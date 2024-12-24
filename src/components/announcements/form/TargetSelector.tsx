@@ -16,7 +16,7 @@ interface TargetSelectorProps {
 }
 
 export const TargetSelector = ({ form }: TargetSelectorProps) => {
-  const [selectedType, setSelectedType] = useState<"device" | "group">("device");
+  const [selectedType, setSelectedType] = useState<"devices" | "groups">("devices");
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: devices = [] } = useQuery({
@@ -38,22 +38,22 @@ export const TargetSelector = ({ form }: TargetSelectorProps) => {
   });
 
   const handleDeviceSelect = (deviceId: string) => {
-    const currentDevices = form.watch("targets.devices") || [];
+    const currentDevices = form.getValues("targetDevices") || [];
     const updatedDevices = currentDevices.includes(deviceId)
       ? currentDevices.filter(id => id !== deviceId)
       : [...currentDevices, deviceId];
-    form.setValue("targets.devices", updatedDevices);
+    form.setValue("targetDevices", updatedDevices);
   };
 
   const handleGroupSelect = (groupId: string) => {
-    const currentGroups = form.watch("targets.groups") || [];
+    const currentGroups = form.getValues("targetGroups") || [];
     const updatedGroups = currentGroups.includes(groupId)
       ? currentGroups.filter(id => id !== groupId)
       : [...currentGroups, groupId];
-    form.setValue("targets.groups", updatedGroups);
+    form.setValue("targetGroups", updatedGroups);
   };
 
-  const filteredItems = selectedType === "device" 
+  const filteredItems = selectedType === "devices" 
     ? devices.filter((device: Device) => 
         device.name.toLowerCase().includes(searchQuery.toLowerCase())
       )
@@ -61,23 +61,23 @@ export const TargetSelector = ({ form }: TargetSelectorProps) => {
         group.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
 
-  const selectedDevices = form.watch("targets.devices") || [];
-  const selectedGroups = form.watch("targets.groups") || [];
+  const selectedDevices = form.watch("targetDevices") || [];
+  const selectedGroups = form.watch("targetGroups") || [];
 
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2">
         <Button
           type="button"
-          variant={selectedType === "device" ? "default" : "outline"}
-          onClick={() => setSelectedType("device")}
+          variant={selectedType === "devices" ? "default" : "outline"}
+          onClick={() => setSelectedType("devices")}
         >
           Cihazlar
         </Button>
         <Button
           type="button"
-          variant={selectedType === "group" ? "default" : "outline"}
-          onClick={() => setSelectedType("group")}
+          variant={selectedType === "groups" ? "default" : "outline"}
+          onClick={() => setSelectedType("groups")}
         >
           Gruplar
         </Button>
@@ -85,13 +85,13 @@ export const TargetSelector = ({ form }: TargetSelectorProps) => {
 
       <FormField
         control={form.control}
-        name={selectedType === "device" ? "targets.devices" : "targets.groups"}
+        name={selectedType === "devices" ? "targetDevices" : "targetGroups"}
         render={() => (
           <FormItem>
-            <FormLabel>{selectedType === "device" ? "Cihazlar" : "Gruplar"}</FormLabel>
+            <FormLabel>{selectedType === "devices" ? "Cihazlar" : "Gruplar"}</FormLabel>
             <Command className="border rounded-lg">
               <CommandInput 
-                placeholder={`${selectedType === "device" ? "Cihaz" : "Grup"} ara...`}
+                placeholder={`${selectedType === "devices" ? "Cihaz" : "Grup"} ara...`}
                 value={searchQuery}
                 onValueChange={setSearchQuery}
               />
@@ -103,7 +103,7 @@ export const TargetSelector = ({ form }: TargetSelectorProps) => {
                       key={item._id}
                       value={item._id}
                       onSelect={() => 
-                        selectedType === "device" 
+                        selectedType === "devices" 
                           ? handleDeviceSelect(item._id)
                           : handleGroupSelect(item._id)
                       }
@@ -113,7 +113,7 @@ export const TargetSelector = ({ form }: TargetSelectorProps) => {
                           <Check
                             className={cn(
                               "mr-2 h-4 w-4",
-                              ((selectedType === "device" ? selectedDevices : selectedGroups).includes(item._id))
+                              ((selectedType === "devices" ? selectedDevices : selectedGroups).includes(item._id))
                                 ? "opacity-100"
                                 : "opacity-0"
                             )}
@@ -127,7 +127,7 @@ export const TargetSelector = ({ form }: TargetSelectorProps) => {
                             )}
                           </div>
                         </div>
-                        {selectedType === "device" && 'isOnline' in item && (
+                        {selectedType === "devices" && 'isOnline' in item && (
                           <Badge
                             variant={item.isOnline ? "success" : "destructive"}
                             className="ml-auto"
@@ -135,7 +135,7 @@ export const TargetSelector = ({ form }: TargetSelectorProps) => {
                             {item.isOnline ? "Çevrimiçi" : "Çevrimdışı"}
                           </Badge>
                         )}
-                        {selectedType === "group" && 'status' in item && (
+                        {selectedType === "groups" && 'status' in item && (
                           <Badge
                             variant={item.status === 'active' ? "success" : "secondary"}
                             className="ml-auto"
