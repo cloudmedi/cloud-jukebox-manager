@@ -72,6 +72,46 @@ ipcRenderer.on('toggle-playback', () => {
   }
 });
 
+// Anons event listener'larını ekle
+ipcRenderer.on('play-announcement', (event, announcement) => {
+  console.log('Playing announcement:', announcement);
+  
+  // Mevcut müziği duraklat
+  if (!audio.paused) {
+    audio.pause();
+  }
+
+  // Anons ses dosyasını yükle ve oynat
+  audio.src = announcement.localPath;
+  audio.volume = audio.volume; // Mevcut ses seviyesini koru
+  
+  audio.play().catch(err => {
+    console.error('Anons oynatma hatası:', err);
+  });
+
+  // Anons bittiğinde playlist'e geri dön
+  audio.onended = () => {
+    console.log('Announcement ended, resuming playlist');
+    const playlists = store.get('playlists', []);
+    if (playlists.length > 0) {
+      const lastPlaylist = playlists[playlists.length - 1];
+      ipcRenderer.invoke('play-playlist', lastPlaylist);
+    }
+  };
+});
+
+ipcRenderer.on('stop-announcement', () => {
+  if (!audio.paused) {
+    audio.pause();
+  }
+  // Playlist'e geri dön
+  const playlists = store.get('playlists', []);
+  if (playlists.length > 0) {
+    const lastPlaylist = playlists[playlists.length - 1];
+    ipcRenderer.invoke('play-playlist', lastPlaylist);
+  }
+});
+
 // Otomatik playlist başlatma
 ipcRenderer.on('auto-play-playlist', (event, playlist) => {
   console.log('Auto-playing playlist:', playlist);
@@ -223,6 +263,3 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM loaded, displaying playlists');
   displayPlaylists();
 });
-
-// Diğer event listener'lar
-
