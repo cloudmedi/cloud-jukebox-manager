@@ -12,20 +12,20 @@ const announcementAudio = new Audio();
 // Initialize volume
 audio.volume = 0.7; // 70%
 
-// Anons oynatma eventi
+// Anons olayları
 ipcRenderer.on('play-announcement', (event, announcement) => {
   console.log('Playing announcement:', announcement);
   
   if (announcement.localPath) {
     announcementAudio.src = announcement.localPath;
     announcementAudio.volume = audio.volume;
+    
     announcementAudio.play().catch(err => {
       console.error('Announcement playback error:', err);
     });
   }
 });
 
-// Anons durdurma eventi
 ipcRenderer.on('stop-announcement', () => {
   console.log('Stopping announcement');
   if (announcementAudio) {
@@ -34,7 +34,7 @@ ipcRenderer.on('stop-announcement', () => {
   }
 });
 
-// Playlist duraklatma eventi
+// Playlist olayları
 ipcRenderer.on('pause-playlist', () => {
   console.log('Pausing playlist for announcement');
   if (audio) {
@@ -42,7 +42,6 @@ ipcRenderer.on('pause-playlist', () => {
   }
 });
 
-// Playlist devam ettirme eventi
 ipcRenderer.on('resume-playlist', () => {
   console.log('Resuming playlist after announcement');
   if (audio) {
@@ -265,5 +264,6 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Diğer event listener'lar
+
 
 
