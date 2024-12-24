@@ -81,8 +81,7 @@ export const DateRangePicker = () => {
                   onSelect={field.onChange}
                   disabled={(date) =>
                     date < new Date() ||
-                    (form.getValues("startDate") &&
-                      date < form.getValues("startDate"))
+                    (form.getValues("startDate") && date < form.getValues("startDate"))
                   }
                   initialFocus
                 />
