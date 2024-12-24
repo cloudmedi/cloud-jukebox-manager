@@ -7,6 +7,7 @@ const store = new Store();
 
 class PlaylistHandler {
   constructor() {
+    this.store = new Store();
     this.downloadPath = path.join(app.getPath('userData'), 'downloads');
     this.ensureDirectoryExists(this.downloadPath);
   }
