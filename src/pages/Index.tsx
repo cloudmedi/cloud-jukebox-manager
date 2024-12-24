@@ -1,6 +1,6 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { Plus, Music2, PlayCircle } from "lucide-react";
+import { Plus, Music2, PlayCircle, Send, Upload, Bell } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { PlaylistCard } from "@/components/playlists/PlaylistCard";
 import { useToast } from "@/hooks/use-toast";
@@ -30,21 +30,24 @@ const Index = () => {
   }
 
   return (
-    <div className="space-y-8 px-6 py-8">
+    <div className="space-y-8 p-6">
       {/* Hero Section */}
-      <div className="flex items-center justify-between">
-        <div>
+      <div className="relative overflow-hidden rounded-lg bg-gradient-to-br from-indigo-500/30 to-purple-500/30 p-8">
+        <div className="relative z-10">
           <h1 className="text-4xl font-bold tracking-tight mb-2">
             Hoş Geldiniz
           </h1>
-          <p className="text-muted-foreground">
-            Playlistlerinizi yönetin ve cihazlara gönderin
+          <p className="text-muted-foreground max-w-xl mb-6">
+            Playlistlerinizi yönetin ve cihazlara gönderin. Müzik koleksiyonunuzu organize edin ve kontrol edin.
           </p>
+          <Button onClick={() => navigate("/playlists/new")} size="lg" className="bg-primary hover:bg-primary/90">
+            <Plus className="mr-2 h-5 w-5" />
+            Yeni Playlist
+          </Button>
         </div>
-        <Button onClick={() => navigate("/playlists/new")} size="lg">
-          <Plus className="mr-2 h-5 w-5" />
-          Yeni Playlist
-        </Button>
+        <div className="absolute right-0 top-0 w-1/3 h-full opacity-10">
+          <Music2 className="w-full h-full" />
+        </div>
       </div>
 
       {/* Recent Playlists Section */}
@@ -75,8 +78,8 @@ const Index = () => {
             </Button>
           </div>
         ) : (
-          <ScrollArea className="h-[400px] rounded-md">
-            <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 2xl:grid-cols-6 gap-4">
+          <ScrollArea className="h-[300px] rounded-md pb-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-4">
               {playlists.map((playlist) => (
                 <PlaylistCard
                   key={playlist._id}
@@ -89,7 +92,6 @@ const Index = () => {
                   }}
                   onEdit={(id) => navigate(`/playlists/${id}/edit`)}
                   onPlay={(id) => {
-                    // Show player in MainLayout
                     const mainLayout = document.querySelector('.main-layout');
                     if (mainLayout) {
                       mainLayout.setAttribute('data-player-visible', 'true');
@@ -102,36 +104,60 @@ const Index = () => {
         )}
       </div>
 
-      {/* Quick Actions */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        <div className="p-6 rounded-lg bg-gradient-to-br from-blue-500/10 to-purple-500/10 border">
-          <h3 className="font-semibold mb-2">Hızlı Gönderim</h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            Playlistleri tek tıkla cihazlara gönderin
-          </p>
-          <Button variant="secondary" className="w-full" onClick={() => navigate("/devices")}>
-            Cihazları Yönet
-          </Button>
-        </div>
-        
-        <div className="p-6 rounded-lg bg-gradient-to-br from-green-500/10 to-emerald-500/10 border">
-          <h3 className="font-semibold mb-2">Şarkı Yönetimi</h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            Şarkılarınızı düzenleyin ve yenilerini ekleyin
-          </p>
-          <Button variant="secondary" className="w-full" onClick={() => navigate("/upload")}>
-            Şarkıları Yönet
-          </Button>
+      {/* Quick Actions Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {/* Hızlı Gönderim */}
+        <div className="group relative overflow-hidden rounded-lg border bg-gradient-to-br from-blue-500/5 via-blue-500/10 to-purple-500/5 p-6 hover:shadow-md transition-all duration-300">
+          <div className="relative z-10">
+            <Send className="h-8 w-8 mb-4 text-blue-500" />
+            <h3 className="font-semibold mb-2">Hızlı Gönderim</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Playlistleri tek tıkla cihazlara gönderin
+            </p>
+            <Button 
+              variant="secondary" 
+              className="w-full bg-white/10 hover:bg-white/20"
+              onClick={() => navigate("/devices")}
+            >
+              Cihazları Yönet
+            </Button>
+          </div>
         </div>
 
-        <div className="p-6 rounded-lg bg-gradient-to-br from-orange-500/10 to-red-500/10 border">
-          <h3 className="font-semibold mb-2">Anonslar</h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            Anonsları yönetin ve zamanlamalar oluşturun
-          </p>
-          <Button variant="secondary" className="w-full" onClick={() => navigate("/announcements")}>
-            Anonsları Yönet
-          </Button>
+        {/* Şarkı Yönetimi */}
+        <div className="group relative overflow-hidden rounded-lg border bg-gradient-to-br from-green-500/5 via-green-500/10 to-emerald-500/5 p-6 hover:shadow-md transition-all duration-300">
+          <div className="relative z-10">
+            <Upload className="h-8 w-8 mb-4 text-green-500" />
+            <h3 className="font-semibold mb-2">Şarkı Yönetimi</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Şarkılarınızı düzenleyin ve yenilerini ekleyin
+            </p>
+            <Button 
+              variant="secondary" 
+              className="w-full bg-white/10 hover:bg-white/20"
+              onClick={() => navigate("/upload")}
+            >
+              Şarkıları Yönet
+            </Button>
+          </div>
+        </div>
+
+        {/* Anonslar */}
+        <div className="group relative overflow-hidden rounded-lg border bg-gradient-to-br from-orange-500/5 via-orange-500/10 to-red-500/5 p-6 hover:shadow-md transition-all duration-300">
+          <div className="relative z-10">
+            <Bell className="h-8 w-8 mb-4 text-orange-500" />
+            <h3 className="font-semibold mb-2">Anonslar</h3>
+            <p className="text-sm text-muted-foreground mb-4">
+              Anonsları yönetin ve zamanlamalar oluşturun
+            </p>
+            <Button 
+              variant="secondary" 
+              className="w-full bg-white/10 hover:bg-white/20"
+              onClick={() => navigate("/announcements")}
+            >
+              Anonsları Yönet
+            </Button>
+          </div>
         </div>
       </div>
     </div>
