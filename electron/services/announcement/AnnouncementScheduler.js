@@ -1,47 +1,51 @@
-const SongBasedHandler = require('./handlers/SongBasedHandler');
-const MinuteBasedHandler = require('./handlers/MinuteBasedHandler');
-const SpecificTimeHandler = require('./handlers/SpecificTimeHandler');
+const Store = require('electron-store');
+const store = new Store();
 
 class AnnouncementScheduler {
   constructor() {
-    this.songHandler = SongBasedHandler;
-    this.minuteHandler = MinuteBasedHandler;
-    this.specificHandler = SpecificTimeHandler;
-    this.checkInterval = null;
-    this.isInitialized = false;
+    this.store = new Store();
+    this.currentSchedule = null;
+    this.initialize();
   }
 
   initialize() {
-    if (this.isInitialized) return;
-    
     console.log('Initializing AnnouncementScheduler');
-    
-    // Her dakika kontrol et
-    this.checkInterval = setInterval(() => {
-      console.log('Running scheduled checks...');
-      this.minuteHandler.check();
-      this.specificHandler.check();
-    }, 60000);
-
-    // Başlangıçta da bir kontrol yap
-    this.minuteHandler.check();
-    this.specificHandler.check();
-    
-    this.isInitialized = true;
-    console.log('AnnouncementScheduler initialized');
+    this.loadSchedule();
   }
 
-  onSongEnd() {
-    this.songHandler.onSongEnd();
+  loadSchedule() {
+    const announcements = this.store.get('announcements', []);
+    const activeAnnouncements = announcements.filter(announcement => 
+      announcement.scheduleType === 'songs' &&
+      new Date(announcement.startDate) <= new Date() &&
+      new Date(announcement.endDate) >= new Date()
+    );
+
+    if (activeAnnouncements.length > 0) {
+      this.currentSchedule = activeAnnouncements;
+      console.log('Loaded active announcements:', this.currentSchedule);
+    }
+  }
+
+  checkSchedule(songCounter) {
+    if (!this.currentSchedule || this.currentSchedule.length === 0) {
+      console.log('No active announcements');
+      return null;
+    }
+
+    // Her anons için kontrol et
+    for (const announcement of this.currentSchedule) {
+      if (songCounter % announcement.songInterval === 0) {
+        console.log(`Announcement triggered after ${songCounter} songs`);
+        return announcement;
+      }
+    }
+
+    return null;
   }
 
   cleanup() {
-    if (this.checkInterval) {
-      clearInterval(this.checkInterval);
-      this.checkInterval = null;
-    }
-    this.isInitialized = false;
-    console.log('AnnouncementScheduler cleaned up');
+    this.currentSchedule = null;
   }
 }
 
