@@ -57,7 +57,7 @@ public class TokenScreen extends VBox {
             () -> {
                 statusLabel.setText("Token doğrulandı");
                 statusLabel.setTextFill(Color.GREEN);
-                callback.onValidated(token);
+                callback.onTokenValidated(token); // Düzeltildi: onValidated -> onTokenValidated
             },
             errorMessage -> {
                 statusLabel.setText(errorMessage);
