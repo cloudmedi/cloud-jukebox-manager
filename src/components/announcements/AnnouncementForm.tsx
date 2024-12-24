@@ -38,39 +38,54 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
         groups: announcement?.targetGroups || []
       },
       duration: announcement?.duration || 0,
-      createdBy: "system" // Geçici olarak sabit bir değer
+      createdBy: "system"
     },
   });
 
   const createAnnouncementMutation = useMutation({
     mutationFn: async (data: AnnouncementFormData) => {
-      console.log('Backend\'e gönderilecek veriler:', data);
+      console.log('Form verileri:', data);
+
+      const formData = new FormData();
+      
+      // Form verilerini FormData'ya ekle
+      formData.append('title', data.title);
+      formData.append('content', data.content);
+      if (data.audioFile) {
+        formData.append('audioFile', data.audioFile);
+      }
+      formData.append('duration', String(data.duration));
+      formData.append('startDate', data.startDate.toISOString());
+      formData.append('endDate', data.endDate.toISOString());
+      formData.append('scheduleType', data.scheduleType);
+      if (data.songInterval) {
+        formData.append('songInterval', String(data.songInterval));
+      }
+      if (data.minuteInterval) {
+        formData.append('minuteInterval', String(data.minuteInterval));
+      }
+      if (data.specificTimes) {
+        data.specificTimes.forEach(time => {
+          formData.append('specificTimes', time);
+        });
+      }
+      data.targets.devices.forEach(deviceId => {
+        formData.append('targetDevices', deviceId);
+      });
+      data.targets.groups.forEach(groupId => {
+        formData.append('targetGroups', groupId);
+      });
+      formData.append('createdBy', data.createdBy);
+
+      console.log('FormData içeriği:', Array.from(formData.entries()));
 
       const response = await fetch(`${API_URL}/announcements`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title: data.title,
-          content: data.content,
-          audioFile: data.audioFile,
-          duration: data.duration,
-          startDate: data.startDate,
-          endDate: data.endDate,
-          scheduleType: data.scheduleType,
-          songInterval: data.songInterval,
-          minuteInterval: data.minuteInterval,
-          specificTimes: data.specificTimes,
-          targetDevices: data.targets.devices,
-          targetGroups: data.targets.groups,
-          createdBy: data.createdBy
-        }),
+        body: formData
       });
       
       if (!response.ok) {
         const errorData = await response.json();
-        console.error('Backend yanıt detayları:', errorData);
         throw new Error(errorData.message || "Anons oluşturma başarısız");
       }
       
@@ -95,61 +110,8 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
     },
   });
 
-  const updateAnnouncementMutation = useMutation({
-    mutationFn: async (data: AnnouncementFormData) => {
-      console.log('Anons güncelleme verileri:', data);
-
-      const response = await fetch(`${API_URL}/announcements/${announcement._id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          title: data.title,
-          content: data.content,
-          duration: data.duration,
-          startDate: data.startDate,
-          endDate: data.endDate,
-          scheduleType: data.scheduleType,
-          songInterval: data.songInterval,
-          minuteInterval: data.minuteInterval,
-          specificTimes: data.specificTimes,
-          targetDevices: data.targets.devices,
-          targetGroups: data.targets.groups
-        }),
-      });
-      
-      if (!response.ok) {
-        throw new Error("Anons güncelleme başarısız");
-      }
-      
-      return response.json();
-    },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["announcements"] });
-      toast({
-        title: "Başarılı",
-        description: "Anons başarıyla güncellendi",
-      });
-      if (onSuccess) onSuccess();
-    },
-    onError: (error: Error) => {
-      toast({
-        variant: "destructive",
-        title: "Hata",
-        description: error.message,
-      });
-    },
-  });
-
   const handleSubmit = async (data: AnnouncementFormData) => {
     console.log('Form verileri gönderilmeden önce:', data);
-    
-    if (announcement) {
-      await updateAnnouncementMutation.mutateAsync(data);
-      return;
-    }
-
     try {
       await createAnnouncementMutation.mutateAsync(data);
     } catch (error) {

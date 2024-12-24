@@ -37,19 +37,19 @@ export const TargetSelector = ({ form }: TargetSelectorProps) => {
   });
 
   const handleDeviceSelect = (deviceId: string) => {
-    const currentDevices = form.watch("targetDevices") || [];
+    const currentDevices = form.watch("targets.devices") || [];
     const updatedDevices = currentDevices.includes(deviceId)
       ? currentDevices.filter(id => id !== deviceId)
       : [...currentDevices, deviceId];
-    form.setValue("targetDevices", updatedDevices);
+    form.setValue("targets.devices", updatedDevices);
   };
 
   const handleGroupSelect = (groupId: string) => {
-    const currentGroups = form.watch("targetGroups") || [];
+    const currentGroups = form.watch("targets.groups") || [];
     const updatedGroups = currentGroups.includes(groupId)
       ? currentGroups.filter(id => id !== groupId)
       : [...currentGroups, groupId];
-    form.setValue("targetGroups", updatedGroups);
+    form.setValue("targets.groups", updatedGroups);
   };
 
   const filteredItems = selectedType === "device" 
@@ -61,8 +61,8 @@ export const TargetSelector = ({ form }: TargetSelectorProps) => {
         group.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
 
-  const selectedDevices = form.watch("targetDevices") || [];
-  const selectedGroups = form.watch("targetGroups") || [];
+  const selectedDevices = form.watch("targets.devices") || [];
+  const selectedGroups = form.watch("targets.groups") || [];
 
   return (
     <div className="space-y-4">
@@ -85,7 +85,7 @@ export const TargetSelector = ({ form }: TargetSelectorProps) => {
 
       <FormField
         control={form.control}
-        name={selectedType === "device" ? "targetDevices" : "targetGroups"}
+        name={selectedType === "device" ? "targets.devices" : "targets.groups"}
         render={() => (
           <FormItem>
             <FormLabel>{selectedType === "device" ? "Cihazlar" : "Gruplar"}</FormLabel>
@@ -153,8 +153,7 @@ export const TargetSelector = ({ form }: TargetSelectorProps) => {
         )}
       />
 
-      {/* Seçili öğeleri göster */}
-      {(selectedType === "device" ? selectedDevices : selectedGroups).length > 0 && (
+      {(selectedDevices.length > 0 || selectedGroups.length > 0) && (
         <ScrollArea className="h-20 w-full rounded-md border p-2">
           <div className="flex flex-wrap gap-2">
             {selectedType === "device"
