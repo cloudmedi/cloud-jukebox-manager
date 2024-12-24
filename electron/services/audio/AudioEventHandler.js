@@ -50,10 +50,10 @@ class AudioEventHandler {
       console.log('Campaign ended, moving to next song');
       this.isAnnouncementPlaying = false;
       
-      // Kampanya bittiğinde bir sonraki şarkıya geç
+      // Kampanya bittiğinde bir sonraki şarkıya geç ve çal
       ipcRenderer.invoke('song-ended').then(() => {
         if (this.wasPlaylistPlaying) {
-          console.log('Resuming playlist with next song');
+          console.log('Starting next song after campaign');
           this.playlistAudio.play().catch(err => console.error('Resume playback error:', err));
         }
       });
@@ -62,18 +62,20 @@ class AudioEventHandler {
 
   // Kampanya çalma metodu
   async playCampaign(audioUrl) {
-    if (audioUrl) {
-      console.log('Playing campaign:', audioUrl);
-      try {
-        this.campaignAudio.src = audioUrl;
-        await this.campaignAudio.play();
-        return true;
-      } catch (err) {
-        console.error('Campaign playback error:', err);
-        return false;
-      }
+    if (!audioUrl) {
+      console.error('No audio URL provided for campaign');
+      return false;
     }
-    return false;
+
+    console.log('Playing campaign:', audioUrl);
+    try {
+      this.campaignAudio.src = audioUrl;
+      await this.campaignAudio.play();
+      return true;
+    } catch (err) {
+      console.error('Campaign playback error:', err);
+      return false;
+    }
   }
 
   // Ses seviyesi kontrolü
