@@ -15,23 +15,24 @@ class AnnouncementAudioService {
 
   setupEventListeners() {
     this.audioElement.addEventListener('loadeddata', () => {
+      console.log('Kampanya ses dosyası yüklendi');
       AnnouncementLogger.logAudioState(this.audioElement);
     });
 
     this.audioElement.addEventListener('play', () => {
-      AnnouncementLogger.logPlaybackStart();
       console.log('Kampanya çalmaya başladı');
+      AnnouncementLogger.logPlaybackStart();
     });
 
     this.audioElement.addEventListener('ended', () => {
-      AnnouncementLogger.logPlaybackEnd();
       console.log('Kampanya bitti');
+      AnnouncementLogger.logPlaybackEnd();
       this.cleanup();
     });
 
     this.audioElement.addEventListener('error', (error) => {
-      AnnouncementLogger.logError('Kampanya Çalma', error);
       console.error('Kampanya çalma hatası:', error);
+      AnnouncementLogger.logError('Kampanya Çalma', error);
       this.cleanup();
     });
   }
@@ -56,10 +57,6 @@ class AnnouncementAudioService {
 
       if (!announcement.localPath) {
         throw new Error('Kampanya dosya yolu bulunamadı');
-      }
-
-      if (!AnnouncementLogger.logFileCheck(announcement.localPath)) {
-        throw new Error('Kampanya dosyası bulunamadı');
       }
 
       console.log('Kampanya başlatılıyor:', announcement.localPath);
