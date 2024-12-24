@@ -2,7 +2,6 @@ const { app } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 const { downloadFile } = require('../downloadUtils');
-const store = new Store();
 
 class AnnouncementHandler {
   constructor() {
