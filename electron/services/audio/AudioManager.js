@@ -124,11 +124,39 @@ class AudioManager {
   }
 
   setPlaylistVolume(volume) {
-    this.playlistAudio.volume = volume;
+    console.log('Setting playlist volume to:', volume);
+    if (volume >= 0 && volume <= 1) {
+      this.playlistAudio.volume = volume;
+      console.log('New playlist volume:', this.playlistAudio.volume);
+    } else {
+      console.error('Invalid volume value:', volume);
+    }
+  }
+
+  getPlaylistVolume() {
+    return this.playlistAudio.volume;
+  }
+
+  setAnnouncementVolume(volume) {
+    console.log('Setting announcement volume to:', volume);
+    if (volume >= 0 && volume <= 1) {
+      this.announcementAudio.volume = volume;
+      console.log('New announcement volume:', this.announcementAudio.volume);
+    } else {
+      console.error('Invalid volume value:', volume);
+    }
+  }
+
+  getAnnouncementVolume() {
+    return this.announcementAudio.volume;
   }
 
   getPlaylistAudio() {
     return this.playlistAudio;
+  }
+
+  getAnnouncementAudio() {
+    return this.announcementAudio;
   }
 }
 
