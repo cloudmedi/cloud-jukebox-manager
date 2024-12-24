@@ -88,11 +88,10 @@ router.patch('/:id', async (req, res) => {
 // Zamanlama sil
 router.delete('/:id', async (req, res) => {
   try {
-    const schedule = await PlaylistSchedule.findById(req.params.id);
-    if (!schedule) {
+    const result = await PlaylistSchedule.deleteOne({ _id: req.params.id });
+    if (result.deletedCount === 0) {
       return res.status(404).json({ message: 'Zamanlama bulunamadı' });
     }
-    await PlaylistSchedule.deleteOne({ _id: req.params.id });
     res.json({ message: 'Zamanlama silindi' });
   } catch (error) {
     res.status(500).json({ message: error.message });
