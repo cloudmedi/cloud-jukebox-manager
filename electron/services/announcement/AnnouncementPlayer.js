@@ -10,14 +10,20 @@ class AnnouncementPlayer {
 
   async playAnnouncement(announcement) {
     try {
+      console.log('Playing announcement:', announcement);
       const mainWindow = BrowserWindow.getAllWindows()[0];
-      if (!mainWindow) return;
+      if (!mainWindow) {
+        console.error('No main window found');
+        return;
+      }
 
       // Mevcut playlist durumunu kaydet
       this.wasPlaying = this.store.get('playback.isPlaying', false);
+      console.log('Current playback state:', this.wasPlaying);
       
       // Playlist'i duraklat
       if (this.wasPlaying) {
+        console.log('Pausing playlist for announcement');
         mainWindow.webContents.send('pause-playlist');
       }
 
@@ -35,12 +41,17 @@ class AnnouncementPlayer {
 
   stopAnnouncement() {
     const mainWindow = BrowserWindow.getAllWindows()[0];
-    if (!mainWindow) return;
+    if (!mainWindow) {
+      console.error('No main window found');
+      return;
+    }
 
+    console.log('Stopping announcement');
     mainWindow.webContents.send('stop-announcement');
     
     // Eğer playlist çalıyorduysa devam et
     if (this.wasPlaying) {
+      console.log('Resuming playlist');
       mainWindow.webContents.send('resume-playlist');
     }
   }

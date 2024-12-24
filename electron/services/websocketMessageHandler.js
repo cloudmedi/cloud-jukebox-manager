@@ -1,8 +1,5 @@
 const { BrowserWindow, app } = require('electron');
-const { downloadFile } = require('./downloadUtils');
 const Store = require('electron-store');
-const path = require('path');
-const fs = require('fs');
 const announcementHandler = require('./announcement/AnnouncementHandler');
 const announcementPlayer = require('./announcement/AnnouncementPlayer');
 
@@ -43,6 +40,7 @@ class WebSocketMessageHandler {
     switch (message.command) {
       case 'playAnnouncement':
         try {
+          console.log('Processing announcement:', message.announcement);
           // Anonsu indir ve sakla
           const storedAnnouncement = await announcementHandler.handleAnnouncement(message.announcement);
           // Anonsu oynat
@@ -70,75 +68,37 @@ class WebSocketMessageHandler {
   }
 
   async handlePlaylist(message) {
-    console.log('Handling playlist:', message);
     const mainWindow = BrowserWindow.getAllWindows()[0];
     if (!mainWindow) return;
 
-    const playlist = message.data;
-    if (!playlist || !playlist.songs) {
-      console.error('Invalid playlist data:', playlist);
-      return;
-    }
-
-    // Playlist için indirme klasörünü oluştur
-    const userDataPath = app.getPath('userData');
-    const playlistDir = path.join(
-      userDataPath,
-      'downloads',
-      playlist._id
-    );
-
-    if (!fs.existsSync(playlistDir)) {
-      fs.mkdirSync(playlistDir, { recursive: true });
-    }
-
-    // Store'a kaydedilecek playlist objesi
-    const storedPlaylist = {
-      _id: playlist._id,
-      name: playlist.name,
-      artwork: playlist.artwork,
-      songs: []
-    };
-
-    // Her şarkıyı indir ve localPath'leri ekle
-    for (const song of playlist.songs) {
-      try {
-        console.log('Processing song:', song);
-        const songUrl = `${playlist.baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
-        const filename = `${song._id}${path.extname(song.filePath)}`;
-        const localPath = path.join(playlistDir, filename);
-
-        mainWindow.webContents.send('download-progress', {
-          songName: song.name,
-          progress: 0
-        });
-
-        await downloadFile(songUrl, localPath, (progress) => {
-          mainWindow.webContents.send('download-progress', {
-            songName: song.name,
-            progress
-          });
-        });
-
-        // Şarkıyı localPath ile birlikte playlist'e ekle
-        storedPlaylist.songs.push({
-          ...song,
-          localPath
-        });
-
-      } catch (error) {
-        console.error(`Error downloading song ${song.name}:`, error);
-        mainWindow.webContents.send('download-error', {
-          songName: song.name,
-          error: error.message
-        });
+    try {
+      const playlist = message.data;
+      if (!playlist || !playlist.songs) {
+        throw new Error('Invalid playlist data');
       }
+
+      // Playlist'i store'a kaydet
+      const playlists = this.store.get('playlists', []);
+      const existingIndex = playlists.findIndex(p => p._id === playlist._id);
+      
+      if (existingIndex !== -1) {
+        playlists[existingIndex] = playlist;
+      } else {
+        playlists.push(playlist);
+      }
+      
+      this.store.set('playlists', playlists);
+
+      // Renderer'a bildir
+      mainWindow.webContents.send('playlist-received', playlist);
+      console.log('Playlist processed successfully:', playlist.name);
+    } catch (error) {
+      console.error('Error processing playlist:', error);
+      mainWindow.webContents.send('error', {
+        type: 'error',
+        message: 'Playlist işlenirken bir hata oluştu'
+      });
     }
-
-    console.log('Storing playlist with localPaths:', storedPlaylist);
-
-    // Playlist'i store'a kaydet ve UI'ı güncelle
-    mainWindow.webContents.send('playlist-received', storedPlaylist);
   }
 
   sendToRenderer(channel, data) {

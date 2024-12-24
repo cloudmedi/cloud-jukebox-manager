@@ -32,6 +32,7 @@ class AnnouncementHandler {
 
       // Store'a kaydet
       this.store.set(`announcements.${announcement._id}`, storedAnnouncement);
+      console.log('Announcement stored successfully:', storedAnnouncement);
 
       return storedAnnouncement;
     } catch (error) {
