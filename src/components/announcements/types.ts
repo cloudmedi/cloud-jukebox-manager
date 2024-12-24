@@ -1,19 +1,21 @@
-export interface AnnouncementFormData {
+export interface Announcement {
+  _id?: string;
   title: string;
   content: string;
   audioFile?: File;
   duration: number;
-  startDate: Date;
-  endDate: Date;
-  scheduleType: 'songs' | 'minutes' | 'specific';
-  songInterval?: number;
-  minuteInterval?: number;
-  specificTimes?: string[];
+  schedule: {
+    startDate: Date;
+    endDate: Date;
+    type: 'interval' | 'specific';
+    interval?: number;
+    specificTimes?: string[];
+  };
   targets: {
     devices: string[];
     groups: string[];
   };
-  createdBy: string;
+  status: 'active' | 'inactive' | 'completed';
 }
 
 export interface Device {
@@ -21,7 +23,6 @@ export interface Device {
   name: string;
   location?: string;
   isOnline: boolean;
-  status?: string;
 }
 
 export interface DeviceGroup {
