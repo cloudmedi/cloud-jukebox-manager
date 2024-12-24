@@ -6,7 +6,6 @@ import { ScheduleSettings } from "./form/ScheduleSettings";
 import { TargetSelection } from "./form/TargetSelection";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { AnnouncementFormData } from "./form/types";
 
 const formSchema = z.object({
   title: z.string().min(1, "Başlık zorunludur"),
@@ -24,15 +23,19 @@ const formSchema = z.object({
   targetGroups: z.array(z.string())
 });
 
+export type AnnouncementFormData = z.infer<typeof formSchema>;
+
 interface AnnouncementFormProps {
   defaultValues?: Partial<AnnouncementFormData>;
   onSubmit: (data: AnnouncementFormData) => void;
+  onSuccess?: () => void;
   isSubmitting?: boolean;
 }
 
 export const AnnouncementForm = ({
   defaultValues,
   onSubmit,
+  onSuccess,
   isSubmitting = false
 }: AnnouncementFormProps) => {
   const form = useForm<AnnouncementFormData>({
@@ -59,6 +62,9 @@ export const AnnouncementForm = ({
     try {
       await onSubmit(data);
       toast.success("Anons başarıyla kaydedildi");
+      if (onSuccess) {
+        onSuccess();
+      }
     } catch (error) {
       toast.error("Anons kaydedilirken bir hata oluştu");
       console.error("Form submission error:", error);
@@ -68,7 +74,7 @@ export const AnnouncementForm = ({
   return (
     <FormProvider {...form}>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-8">
-        <BasicInfo form={form} />
+        <BasicInfo />
         <ScheduleSettings />
         <TargetSelection />
         

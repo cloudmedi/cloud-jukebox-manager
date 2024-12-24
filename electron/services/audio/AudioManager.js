@@ -18,7 +18,9 @@ class AudioManager {
     // Playlist audio events
     this.playlistAudio.addEventListener('ended', () => {
       console.log('Song ended, checking for announcement...');
-      this.handleSongEnd();
+      if (!this.isAnnouncementPlaying) {
+        ipcRenderer.invoke('song-ended');
+      }
     });
 
     this.playlistAudio.addEventListener('play', () => {
@@ -44,7 +46,7 @@ class AudioManager {
     });
 
     this.campaignAudio.addEventListener('ended', () => {
-      console.log('Announcement ended, resuming playlist');
+      console.log('Announcement ended');
       this.isAnnouncementPlaying = false;
       this.currentAnnouncement = null;
       
@@ -55,15 +57,6 @@ class AudioManager {
         }
       });
     });
-  }
-
-  handleSongEnd() {
-    this.songCounter++;
-    console.log(`Song counter: ${this.songCounter}`);
-    
-    if (!this.isAnnouncementPlaying) {
-      ipcRenderer.invoke('check-announcement-schedule', this.songCounter);
-    }
   }
 
   async playAnnouncement(announcement) {

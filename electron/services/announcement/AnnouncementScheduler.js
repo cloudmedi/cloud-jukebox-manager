@@ -4,6 +4,7 @@ const store = new Store();
 class AnnouncementScheduler {
   constructor() {
     this.store = new Store();
+    this.songCounter = 0;
     this.currentSchedule = null;
     this.initialize();
   }
@@ -27,16 +28,26 @@ class AnnouncementScheduler {
     }
   }
 
-  checkSchedule(songCounter) {
-    if (!this.currentSchedule || this.currentSchedule.length === 0) {
-      console.log('No active announcements');
+  onSongEnd() {
+    this.songCounter++;
+    console.log('\n=== ŞARKI BAZLI ANONS KONTROLÜ ===');
+    console.log(`Şarkı sayacı: ${this.songCounter}`);
+    
+    if (!this.currentSchedule) {
+      console.log('Aktif anons bulunamadı');
       return null;
     }
 
-    // Her anons için kontrol et
+    // Her aktif anons için kontrol et
     for (const announcement of this.currentSchedule) {
-      if (songCounter % announcement.songInterval === 0) {
-        console.log(`Announcement triggered after ${songCounter} songs`);
+      console.log(`\nAnons Kontrolü (${announcement._id}):`);
+      console.log(`- Başlangıç: ${announcement.startDate}`);
+      console.log(`- Bitiş: ${announcement.endDate}`);
+      console.log(`- Şarkı aralığı: ${announcement.songInterval}`);
+      console.log(`- Mevcut sayaç: ${this.songCounter}`);
+      
+      if (this.songCounter % announcement.songInterval === 0) {
+        console.log('✓ Anons çalma koşulu sağlandı');
         return announcement;
       }
     }
@@ -44,8 +55,29 @@ class AnnouncementScheduler {
     return null;
   }
 
+  checkSchedule() {
+    if (!this.currentSchedule || this.currentSchedule.length === 0) {
+      return null;
+    }
+
+    // Her anons için kontrol et
+    for (const announcement of this.currentSchedule) {
+      if (this.songCounter % announcement.songInterval === 0) {
+        return announcement;
+      }
+    }
+
+    return null;
+  }
+
+  resetCounter() {
+    this.songCounter = 0;
+    console.log('Şarkı sayacı sıfırlandı');
+  }
+
   cleanup() {
     this.currentSchedule = null;
+    this.resetCounter();
   }
 }
 
