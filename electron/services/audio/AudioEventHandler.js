@@ -13,8 +13,8 @@ class AudioEventHandler {
   setupEventListeners() {
     // Playlist audio event listeners
     this.playlistAudio.addEventListener('ended', () => {
-      console.log('Song ended, playing next');
       if (!this.isAnnouncementPlaying) {
+        console.log('Song ended, playing next');
         ipcRenderer.invoke('song-ended');
       }
     });
@@ -47,13 +47,13 @@ class AudioEventHandler {
     });
 
     this.campaignAudio.addEventListener('ended', () => {
-      console.log('Campaign ended, moving to next song');
+      console.log('Campaign ended');
       this.isAnnouncementPlaying = false;
       
-      // Kampanya bittiğinde bir sonraki şarkıya geç ve çal
+      // Anons bittiğinde bir sonraki şarkıya geç
       ipcRenderer.invoke('song-ended').then(() => {
         if (this.wasPlaylistPlaying) {
-          console.log('Starting next song after campaign');
+          console.log('Resuming playlist after campaign');
           this.playlistAudio.play().catch(err => console.error('Resume playback error:', err));
         }
       });
