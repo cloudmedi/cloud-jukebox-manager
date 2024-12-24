@@ -81,20 +81,14 @@ export const AnnouncementActions = ({ announcement }: AnnouncementActionsProps) 
         websocketService.sendMessage({
           type: 'command',
           command: 'playAnnouncement',
-          token: device.token,
+          token: device.token, // Düzeltme: device.token kullanıyoruz
           announcement: {
             _id: announcement._id,
             title: announcement.title,
             content: announcement.content,
             audioFile: announcement.audioFile,
             duration: announcement.duration,
-            immediateInterrupt: announcement.immediateInterrupt,
-            startDate: announcement.startDate,
-            endDate: announcement.endDate,
-            scheduleType: announcement.scheduleType,
-            specificTimes: announcement.specificTimes,
-            songInterval: announcement.songInterval,
-            minuteInterval: announcement.minuteInterval
+            immediateInterrupt: announcement.immediateInterrupt
           }
         });
       });
@@ -111,13 +105,7 @@ export const AnnouncementActions = ({ announcement }: AnnouncementActionsProps) 
             content: announcement.content,
             audioFile: announcement.audioFile,
             duration: announcement.duration,
-            immediateInterrupt: announcement.immediateInterrupt,
-            startDate: announcement.startDate,
-            endDate: announcement.endDate,
-            scheduleType: announcement.scheduleType,
-            specificTimes: announcement.specificTimes,
-            songInterval: announcement.songInterval,
-            minuteInterval: announcement.minuteInterval
+            immediateInterrupt: announcement.immediateInterrupt
           }
         });
       });
@@ -127,17 +115,6 @@ export const AnnouncementActions = ({ announcement }: AnnouncementActionsProps) 
       console.error('Send error:', error);
       toast.error('Anons gönderilemedi');
     }
-  };
-
-  const convertToFormData = (announcement: Announcement): Partial<AnnouncementFormData> => {
-    return {
-      ...announcement,
-      startDate: new Date(announcement.startDate),
-      endDate: new Date(announcement.endDate),
-      targetDevices: announcement.targetDevices.map(device => device._id),
-      targetGroups: announcement.targetGroups,
-      audioFile: undefined
-    };
   };
 
   return (
@@ -170,7 +147,7 @@ export const AnnouncementActions = ({ announcement }: AnnouncementActionsProps) 
             <DialogTitle>Anons Düzenle</DialogTitle>
           </DialogHeader>
           <AnnouncementForm 
-            initialData={convertToFormData(announcement)}
+            initialData={announcement}
             mode="update"
             onSuccess={() => {
               setIsEditDialogOpen(false);
