@@ -22,7 +22,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { AnnouncementForm } from "./AnnouncementForm";
 import websocketService from "@/services/websocketService";
-import { AnnouncementFormData } from "./form/types";
+import { AnnouncementFormData, ScheduleType } from "./form/types";
 
 interface Announcement {
   _id: string;
