@@ -7,60 +7,11 @@ const UIManager = require('./services/ui/UIManager');
 
 const audio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(audio);
-const announcementAudio = new Audio();
 
 // Initialize volume
 audio.volume = 0.7; // 70%
 
-// Anons olayları
-ipcRenderer.on('play-announcement', (event, announcement) => {
-  console.log('Playing announcement:', announcement);
-  
-  if (announcement.localPath) {
-    announcementAudio.src = announcement.localPath;
-    announcementAudio.volume = audio.volume;
-    
-    announcementAudio.play().catch(err => {
-      console.error('Announcement playback error:', err);
-      ipcRenderer.send('announcement-error', {
-        type: 'playback',
-        error: err.message
-      });
-    });
-
-    // Anons bittiğinde event gönder
-    announcementAudio.onended = () => {
-      console.log('Announcement finished playing');
-      ipcRenderer.send('announcement-finished');
-    };
-  }
-});
-
-ipcRenderer.on('stop-announcement', () => {
-  console.log('Stopping announcement');
-  if (announcementAudio) {
-    announcementAudio.pause();
-    announcementAudio.currentTime = 0;
-  }
-});
-
-// Playlist olayları
-ipcRenderer.on('pause-playlist', () => {
-  console.log('Pausing playlist for announcement');
-  if (audio) {
-    audio.pause();
-  }
-});
-
-ipcRenderer.on('resume-playlist', () => {
-  console.log('Resuming playlist after announcement');
-  if (audio) {
-    audio.play().catch(err => {
-      console.error('Playlist resume error:', err);
-    });
-  }
-});
-
+// Close button event listener
 document.getElementById('closeButton').addEventListener('click', () => {
     window.close();
 });
@@ -274,6 +225,4 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Diğer event listener'lar
-
-
 

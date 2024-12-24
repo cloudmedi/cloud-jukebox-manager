@@ -1,14 +1,13 @@
-const { BrowserWindow } = require('electron');
+const { BrowserWindow, app } = require('electron');
+const { downloadFile } = require('./downloadUtils');
 const Store = require('electron-store');
-const AnnouncementHandler = require('./announcement/AnnouncementHandler');
-const AnnouncementPlayer = require('./announcement/AnnouncementPlayer');
+const path = require('path');
+const fs = require('fs');
 
 class WebSocketMessageHandler {
   constructor() {
     this.handlers = new Map();
     this.store = new Store();
-    this.announcementHandler = new AnnouncementHandler();
-    this.announcementPlayer = new AnnouncementPlayer();
     this.initializeHandlers();
   }
 
@@ -36,25 +35,11 @@ class WebSocketMessageHandler {
     }
   }
 
-  async handleCommand(message) {
+  handleCommand(message) {
     console.log('Handling command:', message);
-    
+    const mainWindow = BrowserWindow.getAllWindows()[0];
+
     switch (message.command) {
-      case 'playAnnouncement':
-        try {
-          console.log('Processing announcement:', message.announcement);
-          const storedAnnouncement = await this.announcementHandler.handleAnnouncement(message.announcement);
-          await this.announcementPlayer.playAnnouncement(storedAnnouncement);
-        } catch (error) {
-          console.error('Error handling announcement:', error);
-          throw error;
-        }
-        break;
-
-      case 'stopAnnouncement':
-        this.announcementPlayer.stopAnnouncement();
-        break;
-
       case 'restart':
         console.log('Restarting application...');
         setTimeout(() => {
@@ -62,67 +47,85 @@ class WebSocketMessageHandler {
           app.exit(0);
         }, 1000);
         break;
-
-      case 'setVolume':
-        console.log('Setting volume to:', message.volume);
-        const mainWindow = BrowserWindow.getAllWindows()[0];
-        if (mainWindow) {
-          mainWindow.webContents.send('set-volume', message.volume);
-        }
-        break;
-
-      case 'play':
-        const playWindow = BrowserWindow.getAllWindows()[0];
-        if (playWindow) {
-          playWindow.webContents.send('toggle-playback');
-        }
-        break;
-
-      case 'pause':
-        const pauseWindow = BrowserWindow.getAllWindows()[0];
-        if (pauseWindow) {
-          pauseWindow.webContents.send('toggle-playback');
-        }
-        break;
-
+        
       default:
-        console.log('Unknown command:', message.command);
+        if (mainWindow) {
+          mainWindow.webContents.send(message.command, message.data);
+        }
         break;
     }
   }
 
   async handlePlaylist(message) {
+    console.log('Handling playlist:', message);
     const mainWindow = BrowserWindow.getAllWindows()[0];
     if (!mainWindow) return;
 
-    try {
-      const playlist = message.data;
-      if (!playlist || !playlist.songs) {
-        throw new Error('Invalid playlist data');
-      }
-
-      // Store playlist
-      const playlists = this.store.get('playlists', []);
-      const existingIndex = playlists.findIndex(p => p._id === playlist._id);
-      
-      if (existingIndex !== -1) {
-        playlists[existingIndex] = playlist;
-      } else {
-        playlists.push(playlist);
-      }
-      
-      this.store.set('playlists', playlists);
-
-      // Notify renderer
-      mainWindow.webContents.send('playlist-received', playlist);
-      console.log('Playlist processed successfully:', playlist.name);
-    } catch (error) {
-      console.error('Error processing playlist:', error);
-      mainWindow.webContents.send('error', {
-        type: 'error',
-        message: 'Playlist işlenirken bir hata oluştu'
-      });
+    const playlist = message.data;
+    if (!playlist || !playlist.songs) {
+      console.error('Invalid playlist data:', playlist);
+      return;
     }
+
+    // Playlist için indirme klasörünü oluştur
+    const userDataPath = app.getPath('userData');
+    const playlistDir = path.join(
+      userDataPath,
+      'downloads',
+      playlist._id
+    );
+
+    if (!fs.existsSync(playlistDir)) {
+      fs.mkdirSync(playlistDir, { recursive: true });
+    }
+
+    // Store'a kaydedilecek playlist objesi
+    const storedPlaylist = {
+      _id: playlist._id,
+      name: playlist.name,
+      artwork: playlist.artwork,
+      songs: []
+    };
+
+    // Her şarkıyı indir ve localPath'leri ekle
+    for (const song of playlist.songs) {
+      try {
+        console.log('Processing song:', song);
+        const songUrl = `${playlist.baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
+        const filename = `${song._id}${path.extname(song.filePath)}`;
+        const localPath = path.join(playlistDir, filename);
+
+        mainWindow.webContents.send('download-progress', {
+          songName: song.name,
+          progress: 0
+        });
+
+        await downloadFile(songUrl, localPath, (progress) => {
+          mainWindow.webContents.send('download-progress', {
+            songName: song.name,
+            progress
+          });
+        });
+
+        // Şarkıyı localPath ile birlikte playlist'e ekle
+        storedPlaylist.songs.push({
+          ...song,
+          localPath
+        });
+
+      } catch (error) {
+        console.error(`Error downloading song ${song.name}:`, error);
+        mainWindow.webContents.send('download-error', {
+          songName: song.name,
+          error: error.message
+        });
+      }
+    }
+
+    console.log('Storing playlist with localPaths:', storedPlaylist);
+
+    // Playlist'i store'a kaydet ve UI'ı güncelle
+    mainWindow.webContents.send('playlist-received', storedPlaylist);
   }
 
   sendToRenderer(channel, data) {

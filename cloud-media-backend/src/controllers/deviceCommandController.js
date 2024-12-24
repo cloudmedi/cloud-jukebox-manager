@@ -16,6 +16,7 @@ const restartDevice = async (req, res) => {
     if (sent) {
       res.json({ message: 'Cihaz yeniden başlatılıyor' });
     } else {
+      // Create offline notification
       await Notification.create({
         type: 'device',
         title: 'Cihaz Çevrimdışı',
@@ -46,6 +47,7 @@ const setVolume = async (req, res) => {
     if (sent) {
       await device.setVolume(volume);
       
+      // Check volume threshold
       if (volume >= 80) {
         await Notification.create({
           type: 'device',
@@ -60,40 +62,6 @@ const setVolume = async (req, res) => {
       res.status(404).json({ message: 'Cihaz çevrimiçi değil' });
     }
   } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-const playAnnouncement = async (req, res) => {
-  try {
-    const device = await Device.findById(req.params.id);
-    if (!device) {
-      return res.status(404).json({ message: 'Cihaz bulunamadı' });
-    }
-
-    console.log('Sending announcement to device:', device.token);
-    
-    const sent = req.wss.sendToDevice(device.token, {
-      type: 'command',
-      command: 'playAnnouncement',
-      announcement: req.body.announcement
-    });
-
-    if (sent) {
-      console.log('Announcement sent successfully');
-      res.json({ message: 'Anons oynatma komutu gönderildi' });
-    } else {
-      console.log('Device is offline, creating notification');
-      await Notification.create({
-        type: 'device',
-        title: 'Anons Gönderilemedi',
-        message: `${device.name} cihazı çevrimdışı olduğu için anons gönderilemedi`,
-        read: false
-      });
-      res.status(404).json({ message: 'Cihaz çevrimiçi değil' });
-    }
-  } catch (error) {
-    console.error('Error sending announcement:', error);
     res.status(500).json({ message: error.message });
   }
 };
@@ -114,9 +82,52 @@ const setPower = async (req, res) => {
   }
 };
 
+const playAnnouncement = async (req, res) => {
+  try {
+    const device = await Device.findById(req.params.id);
+    if (!device) {
+      return res.status(404).json({ message: 'Cihaz bulunamadı' });
+    }
+
+    const sent = req.wss.sendToDevice(device.token, {
+      type: 'command',
+      command: 'playAnnouncement',
+      announcement: req.body.announcement
+    });
+
+    if (sent) {
+      res.json({ message: 'Anons oynatma komutu gönderildi' });
+    } else {
+      await Notification.create({
+        type: 'device',
+        title: 'Anons Gönderilemedi',
+        message: `${device.name} cihazı çevrimdışı olduğu için anons gönderilemedi`,
+        read: false
+      });
+      res.status(404).json({ message: 'Cihaz çevrimiçi değil' });
+    }
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const emergencyStop = async (req, res) => {
+  try {
+    const device = await Device.findById(req.params.id);
+    if (!device) {
+      return res.status(404).json({ message: 'Cihaz bulunamadı' });
+    }
+
+    res.json({ message: 'Cihaz acil olarak durduruldu' });
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   restartDevice,
   setVolume,
   setPower,
-  playAnnouncement
+  playAnnouncement,
+  emergencyStop
 };

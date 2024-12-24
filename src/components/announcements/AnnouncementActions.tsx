@@ -22,7 +22,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { AnnouncementForm } from "./AnnouncementForm";
 import websocketService from "@/services/websocketService";
-import { AnnouncementFormData, ScheduleType } from "./form/types";
+import { AnnouncementFormData } from "./form/types";
 
 interface Announcement {
   _id: string;
@@ -131,20 +131,11 @@ export const AnnouncementActions = ({ announcement }: AnnouncementActionsProps) 
 
   const convertToFormData = (announcement: Announcement): Partial<AnnouncementFormData> => {
     return {
-      _id: announcement._id,
-      title: announcement.title,
-      content: announcement.content,
+      ...announcement,
       startDate: new Date(announcement.startDate),
       endDate: new Date(announcement.endDate),
       targetDevices: announcement.targetDevices.map(device => device._id),
       targetGroups: announcement.targetGroups,
-      scheduleType: announcement.scheduleType as ScheduleType,
-      specificTimes: announcement.specificTimes || [],
-      songInterval: announcement.songInterval,
-      minuteInterval: announcement.minuteInterval,
-      immediateInterrupt: announcement.immediateInterrupt,
-      duration: announcement.duration,
-      status: announcement.status,
       audioFile: undefined
     };
   };
