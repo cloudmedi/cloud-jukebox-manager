@@ -3,7 +3,6 @@ const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
 const Store = require('electron-store');
-
 const store = new Store();
 
 class PlaylistHandler {
@@ -19,12 +18,6 @@ class PlaylistHandler {
   }
 
   async handlePlaylist(playlist) {
-    // Wait for store to be initialized
-    if (!store) {
-      await new Promise(resolve => setTimeout(resolve, 100));
-      return this.handlePlaylist(playlist);
-    }
-
     try {
       console.log('Handling playlist:', playlist.name);
       

@@ -1,11 +1,11 @@
-import { FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
-import { CalendarIcon, Clock } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { ScheduleFormData } from "./types";
 
@@ -14,57 +14,14 @@ interface DateRangeSelectProps {
 }
 
 export const DateRangeSelect = ({ form }: DateRangeSelectProps) => {
-  const handleDateSelect = (field: "startDate" | "endDate", date: Date | undefined) => {
-    if (!date) return;
-    
-    const currentValue = form.getValues(field);
-    const newDate = new Date(date);
-    
-    if (currentValue) {
-      newDate.setHours(currentValue.getHours(), currentValue.getMinutes());
-    } else {
-      const now = new Date();
-      newDate.setHours(now.getHours(), now.getMinutes());
-    }
-    
-    form.setValue(field, newDate, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-    
-    if (field === "startDate") {
-      const endDate = form.getValues("endDate");
-      if (!endDate || endDate <= newDate) {
-        const newEndDate = new Date(newDate);
-        newEndDate.setHours(newDate.getHours() + 1);
-        form.setValue("endDate", newEndDate, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-      }
-    }
-  };
-
-  const handleTimeChange = (field: "startDate" | "endDate", timeStr: string) => {
-    const [hours, minutes] = timeStr.split(":").map(Number);
-    const currentDate = form.getValues(field) || new Date();
-    const newDate = new Date(currentDate);
-    newDate.setHours(hours, minutes);
-    
-    form.setValue(field, newDate, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-    
-    if (field === "startDate") {
-      const endDate = form.getValues("endDate");
-      if (!endDate || endDate <= newDate) {
-        const newEndDate = new Date(newDate);
-        newEndDate.setHours(newDate.getHours() + 1);
-        form.setValue("endDate", newEndDate, { shouldValidate: true, shouldDirty: true, shouldTouch: true });
-      }
-    }
-  };
-
   return (
     <div className="grid grid-cols-2 gap-4">
       <FormField
         control={form.control}
         name="startDate"
         render={({ field }) => (
-          <FormItem className="flex flex-col">
-            <FormLabel>Başlangıç Tarihi ve Saati</FormLabel>
+          <FormItem>
+            <FormLabel>Başlangıç Tarihi</FormLabel>
             <Popover>
               <PopoverTrigger asChild>
                 <FormControl>
@@ -76,41 +33,24 @@ export const DateRangeSelect = ({ form }: DateRangeSelectProps) => {
                     )}
                   >
                     {field.value ? (
-                      format(field.value, "dd MMM yyyy HH:mm", { locale: tr })
+                      format(field.value, "PPP", { locale: tr })
                     ) : (
-                      <span>Tarih ve saat seçin</span>
+                      <span>Tarih seçin</span>
                     )}
-                    <div className="ml-auto flex items-center gap-2">
-                      <Clock className="h-4 w-4 opacity-50" />
-                      <CalendarIcon className="h-4 w-4 opacity-50" />
-                    </div>
+                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                   </Button>
                 </FormControl>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <div className="p-4 border-b">
-                  <div className="space-y-2">
-                    <div>
-                      <label className="text-sm font-medium">Saat</label>
-                      <input
-                        type="time"
-                        className="w-full px-2 py-1 border rounded"
-                        value={field.value ? format(field.value, "HH:mm") : ""}
-                        onChange={(e) => handleTimeChange("startDate", e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
                 <Calendar
                   mode="single"
                   selected={field.value}
-                  onSelect={(date) => handleDateSelect("startDate", date)}
-                  disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
+                  onSelect={field.onChange}
+                  disabled={(date) => date < new Date()}
                   initialFocus
                 />
               </PopoverContent>
             </Popover>
-            <FormMessage />
           </FormItem>
         )}
       />
@@ -119,8 +59,8 @@ export const DateRangeSelect = ({ form }: DateRangeSelectProps) => {
         control={form.control}
         name="endDate"
         render={({ field }) => (
-          <FormItem className="flex flex-col">
-            <FormLabel>Bitiş Tarihi ve Saati</FormLabel>
+          <FormItem>
+            <FormLabel>Bitiş Tarihi</FormLabel>
             <Popover>
               <PopoverTrigger asChild>
                 <FormControl>
@@ -132,45 +72,27 @@ export const DateRangeSelect = ({ form }: DateRangeSelectProps) => {
                     )}
                   >
                     {field.value ? (
-                      format(field.value, "dd MMM yyyy HH:mm", { locale: tr })
+                      format(field.value, "PPP", { locale: tr })
                     ) : (
-                      <span>Tarih ve saat seçin</span>
+                      <span>Tarih seçin</span>
                     )}
-                    <div className="ml-auto flex items-center gap-2">
-                      <Clock className="h-4 w-4 opacity-50" />
-                      <CalendarIcon className="h-4 w-4 opacity-50" />
-                    </div>
+                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                   </Button>
                 </FormControl>
               </PopoverTrigger>
               <PopoverContent className="w-auto p-0" align="start">
-                <div className="p-4 border-b">
-                  <div className="space-y-2">
-                    <div>
-                      <label className="text-sm font-medium">Saat</label>
-                      <input
-                        type="time"
-                        className="w-full px-2 py-1 border rounded"
-                        value={field.value ? format(field.value, "HH:mm") : ""}
-                        onChange={(e) => handleTimeChange("endDate", e.target.value)}
-                      />
-                    </div>
-                  </div>
-                </div>
                 <Calendar
                   mode="single"
                   selected={field.value}
-                  onSelect={(date) => handleDateSelect("endDate", date)}
-                  disabled={(date) => {
-                    const startDate = form.getValues("startDate");
-                    return date < new Date(new Date().setHours(0, 0, 0, 0)) || 
-                           (startDate && date < new Date(startDate.setHours(0, 0, 0, 0)));
-                  }}
+                  onSelect={field.onChange}
+                  disabled={(date) =>
+                    date < new Date() ||
+                    (form.getValues("startDate") && date < form.getValues("startDate"))
+                  }
                   initialFocus
                 />
               </PopoverContent>
             </Popover>
-            <FormMessage />
           </FormItem>
         )}
       />

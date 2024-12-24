@@ -1,5 +1,4 @@
 const mongoose = require('mongoose');
-const { checkScheduleConflict } = require('../utils/scheduleConflict');
 
 const playlistScheduleSchema = new mongoose.Schema({
   playlist: {
@@ -43,8 +42,24 @@ const playlistScheduleSchema = new mongoose.Schema({
   timestamps: true
 });
 
+// Zamanlama çakışması kontrolü
 playlistScheduleSchema.methods.checkConflict = async function() {
-  return checkScheduleConflict(this);
+  const conflictingSchedules = await this.constructor.find({
+    $or: [
+      {
+        startDate: { $lte: this.endDate },
+        endDate: { $gte: this.startDate }
+      }
+    ],
+    status: 'active',
+    _id: { $ne: this._id },
+    $or: [
+      { 'targets.devices': { $in: this.targets.devices } },
+      { 'targets.groups': { $in: this.targets.groups } }
+    ]
+  });
+  
+  return conflictingSchedules.length > 0;
 };
 
 const PlaylistSchedule = mongoose.model('PlaylistSchedule', playlistScheduleSchema);

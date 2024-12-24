@@ -4,29 +4,36 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
+import { useSelectedSongsStore } from "@/store/selectedSongsStore";
+import { Song } from "@/types/song";
 
 interface SongTableHeaderProps {
   showCheckbox?: boolean;
-  allSongs?: any[];
+  allSongs?: Song[];
   sortConfig?: {
     key: string;
     direction: string;
   };
   onSort?: (key: string) => void;
-  onSelectAll?: (checked: boolean) => void;
-  selectedCount?: number;
 }
 
 export const SongTableHeader = ({ 
   showCheckbox = false, 
   allSongs = [],
   sortConfig,
-  onSort,
-  onSelectAll,
-  selectedCount = 0
+  onSort 
 }: SongTableHeaderProps) => {
-  const isAllSelected = allSongs.length > 0 && selectedCount === allSongs.length;
-  const isPartiallySelected = selectedCount > 0 && selectedCount < allSongs.length;
+  const { selectedSongs, addSong, clearSelection } = useSelectedSongsStore();
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      allSongs.forEach(song => addSong(song));
+    } else {
+      clearSelection();
+    }
+  };
+
+  const isAllSelected = allSongs.length > 0 && selectedSongs.length === allSongs.length;
 
   return (
     <TableHeader>
@@ -35,15 +42,8 @@ export const SongTableHeader = ({
           <TableHead className="w-[50px]">
             <Checkbox
               checked={isAllSelected}
-              onCheckedChange={onSelectAll}
+              onCheckedChange={handleSelectAll}
               aria-label="Tümünü seç"
-              className="ml-2"
-              ref={(checkbox: HTMLButtonElement | null) => {
-                if (checkbox) {
-                  // @ts-ignore
-                  checkbox.indeterminate = isPartiallySelected;
-                }
-              }}
             />
           </TableHead>
         )}

@@ -6,8 +6,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { DateRange } from "react-day-picker";
-import { DateTimeRangePicker } from "@/components/reports/device-playback/DateTimeRangePicker";
 
 interface SongFiltersProps {
   searchTerm: string;
@@ -15,8 +13,6 @@ interface SongFiltersProps {
   selectedGenre: string;
   onGenreChange: (value: string) => void;
   genres: string[];
-  dateRange: DateRange | undefined;
-  onDateRangeChange: (range: DateRange | undefined) => void;
 }
 
 export const SongFilters = ({
@@ -25,8 +21,6 @@ export const SongFilters = ({
   selectedGenre,
   onGenreChange,
   genres,
-  dateRange,
-  onDateRangeChange,
 }: SongFiltersProps) => {
   return (
     <div className="flex flex-col sm:flex-row gap-4">
@@ -49,15 +43,6 @@ export const SongFilters = ({
           ))}
         </SelectContent>
       </Select>
-      <div className="w-[300px]">
-        <DateTimeRangePicker
-          dateRange={dateRange}
-          timeRange={{ startTime: "00:00", endTime: "23:59" }}
-          onDateRangeChange={onDateRangeChange}
-          onTimeRangeChange={() => {}}
-          showDownloadButton={false}
-        />
-      </div>
     </div>
   );
 };

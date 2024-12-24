@@ -8,28 +8,9 @@ import { DateRangeSelect } from "./DateRangeSelect";
 import { RepeatTypeSelect } from "./RepeatTypeSelect";
 import { TargetSelect } from "./TargetSelect";
 import { ScheduleFormData } from "./types";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { scheduleFormSchema } from "./validation";
 
-interface PlaylistScheduleFormProps {
-  initialDate?: Date | null;
-  onSuccess?: () => void;
-}
-
-export const PlaylistScheduleForm = ({ initialDate, onSuccess }: PlaylistScheduleFormProps) => {
-  const form = useForm<ScheduleFormData>({
-    resolver: zodResolver(scheduleFormSchema),
-    defaultValues: {
-      startDate: initialDate || new Date(),
-      endDate: initialDate ? new Date(initialDate.getTime() + 60 * 60 * 1000) : new Date(new Date().getTime() + 60 * 60 * 1000),
-      repeatType: "once",
-      targets: {
-        devices: [],
-        groups: []
-      }
-    }
-  });
-
+export const PlaylistScheduleForm = ({ onSuccess }: { onSuccess?: () => void }) => {
+  const form = useForm<ScheduleFormData>();
   const queryClient = useQueryClient();
 
   const createScheduleMutation = useMutation({
@@ -53,12 +34,12 @@ export const PlaylistScheduleForm = ({ initialDate, onSuccess }: PlaylistSchedul
       return response.json();
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["playlist-schedules"] });
       toast.success("Zamanlama başarıyla oluşturuldu");
+      queryClient.invalidateQueries({ queryKey: ["playlist-schedules"] });
       form.reset();
       onSuccess?.();
     },
-    onError: (error: Error) => {
+    onError: (error) => {
       toast.error(`Hata: ${error.message}`);
     },
   });
@@ -75,16 +56,8 @@ export const PlaylistScheduleForm = ({ initialDate, onSuccess }: PlaylistSchedul
         <RepeatTypeSelect form={form} />
         <TargetSelect form={form} />
         
-        <div className="flex justify-end gap-2">
-          <Button variant="outline" type="button" onClick={() => form.reset()}>
-            Sıfırla
-          </Button>
-          <Button 
-            type="submit" 
-            disabled={createScheduleMutation.isPending}
-          >
-            {createScheduleMutation.isPending ? "Oluşturuluyor..." : "Zamanla"}
-          </Button>
+        <div className="flex justify-end">
+          <Button type="submit">Zamanla</Button>
         </div>
       </form>
     </Form>

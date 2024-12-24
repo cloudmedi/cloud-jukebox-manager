@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const PlaylistSchedule = require('../models/PlaylistSchedule');
 
-// Get all schedules
+// Tüm zamanlamaları getir
 router.get('/', async (req, res) => {
   try {
     const schedules = await PlaylistSchedule.find()
@@ -15,7 +15,7 @@ router.get('/', async (req, res) => {
   }
 });
 
-// Get specific schedule
+// Belirli bir zamanlamayı getir
 router.get('/:id', async (req, res) => {
   try {
     const schedule = await PlaylistSchedule.findById(req.params.id)
@@ -31,12 +31,12 @@ router.get('/:id', async (req, res) => {
   }
 });
 
-// Create new schedule
+// Yeni zamanlama oluştur
 router.post('/', async (req, res) => {
   const schedule = new PlaylistSchedule({
     playlist: req.body.playlist,
-    startDate: new Date(req.body.startDate),
-    endDate: new Date(req.body.endDate),
+    startDate: req.body.startDate,
+    endDate: req.body.endDate,
     repeatType: req.body.repeatType,
     targets: {
       devices: req.body.targets.devices || [],
@@ -46,6 +46,7 @@ router.post('/', async (req, res) => {
   });
 
   try {
+    // Çakışma kontrolü
     const hasConflict = await schedule.checkConflict();
     if (hasConflict) {
       return res.status(400).json({ 
@@ -60,7 +61,7 @@ router.post('/', async (req, res) => {
   }
 });
 
-// Update schedule
+// Zamanlama güncelle
 router.patch('/:id', async (req, res) => {
   try {
     const schedule = await PlaylistSchedule.findById(req.params.id);
@@ -68,9 +69,7 @@ router.patch('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Zamanlama bulunamadı' });
     }
 
-    if (req.body.startDate) req.body.startDate = new Date(req.body.startDate);
-    if (req.body.endDate) req.body.endDate = new Date(req.body.endDate);
-
+    // Güncelleme öncesi çakışma kontrolü
     const updatedSchedule = Object.assign(schedule, req.body);
     const hasConflict = await updatedSchedule.checkConflict();
     if (hasConflict) {
@@ -86,20 +85,21 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
-// Delete schedule - UPDATED to use deleteOne instead of remove
+// Zamanlama sil
 router.delete('/:id', async (req, res) => {
   try {
-    const result = await PlaylistSchedule.findByIdAndDelete(req.params.id);
-    if (!result) {
+    const schedule = await PlaylistSchedule.findById(req.params.id);
+    if (!schedule) {
       return res.status(404).json({ message: 'Zamanlama bulunamadı' });
     }
+    await schedule.remove();
     res.json({ message: 'Zamanlama silindi' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
 
-// Get active schedules
+// Aktif zamanlamaları getir
 router.get('/active/now', async (req, res) => {
   try {
     const now = new Date();

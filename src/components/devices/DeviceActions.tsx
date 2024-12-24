@@ -23,7 +23,7 @@ import {
   Play,
   Pause,
 } from "lucide-react";
-import { useState, useCallback, useEffect } from "react";
+import { useState } from "react";
 import { deviceService, Device } from "@/services/deviceService";
 import VolumeControlDialog from "./VolumeControlDialog";
 import GroupManagementDialog from "./GroupManagementDialog";
@@ -41,7 +41,7 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  const handleRestart = useCallback(async () => {
+  const handleRestart = async () => {
     if (!window.confirm('Cihazı yeniden başlatmak istediğinizden emin misiniz?')) return;
     
     try {
@@ -55,9 +55,9 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
       console.error('Restart error:', error);
       toast.error('Yeniden başlatma komutu gönderilemedi');
     }
-  }, [device.token]);
+  };
 
-  const handlePlayPause = useCallback(async () => {
+  const handlePlayPause = async () => {
     try {
       websocketService.sendMessage({
         type: 'command',
@@ -69,9 +69,9 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
       console.error('Play/Pause error:', error);
       toast.error('Komut gönderilemedi');
     }
-  }, [device.token, device.isPlaying]);
+  };
 
-  const handleVolumeChange = useCallback(async (volume: number) => {
+  const handleVolumeChange = async (volume: number) => {
     try {
       websocketService.sendMessage({
         type: 'command',
@@ -85,52 +85,38 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
       console.error('Volume control error:', error);
       toast.error('Ses seviyesi değiştirme komutu gönderilemedi');
     }
-  }, [device.token]);
+  };
 
-  const handlePowerToggle = useCallback(async () => {
+  const handlePowerToggle = async () => {
     try {
       await deviceService.togglePower(device._id, device.isOnline);
       queryClient.invalidateQueries({ queryKey: ['devices'] });
     } catch (error) {
       console.error('Power toggle error:', error);
-      toast.error('Güç durumu değiştirilemedi');
     }
-  }, [device._id, device.isOnline, queryClient]);
+  };
 
-  const handleGroupChange = useCallback(async (groupId: string | null) => {
+  const handleGroupChange = async (groupId: string | null) => {
     try {
       await deviceService.updateGroup(device._id, groupId);
       queryClient.invalidateQueries({ queryKey: ['devices'] });
       queryClient.invalidateQueries({ queryKey: ['device-groups'] });
       setIsGroupDialogOpen(false);
-      toast.success('Grup güncellendi');
     } catch (error) {
       console.error('Group management error:', error);
-      toast.error('Grup güncellenemedi');
     }
-  }, [device._id, queryClient]);
+  };
 
-  const handleDelete = useCallback(async () => {
+  const handleDelete = async () => {
     if (!window.confirm('Cihazı silmek istediğinizden emin misiniz?')) return;
     
     try {
       await deviceService.deleteDevice(device._id);
       queryClient.invalidateQueries({ queryKey: ['devices'] });
-      toast.success('Cihaz silindi');
     } catch (error) {
       console.error('Delete error:', error);
-      toast.error('Cihaz silinemedi');
     }
-  }, [device._id, queryClient]);
-
-  useEffect(() => {
-    return () => {
-      // Cleanup any subscriptions or event listeners here
-      setIsVolumeDialogOpen(false);
-      setIsGroupDialogOpen(false);
-      setIsDetailsDialogOpen(false);
-    };
-  }, []);
+  };
 
   return (
     <>
@@ -140,7 +126,7 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
             <MoreVertical className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="bg-background border shadow-lg">
+        <DropdownMenuContent align="end">
           <DropdownMenuItem onClick={handlePlayPause}>
             {device.isPlaying ? (
               <Pause className="mr-2 h-4 w-4" />
@@ -169,7 +155,7 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
             <Info className="mr-2 h-4 w-4" />
             Cihaz Detayları
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleDelete} className="text-destructive">
+          <DropdownMenuItem onClick={handleDelete} className="text-red-600">
             <Trash2 className="mr-2 h-4 w-4" />
             Cihazı Sil
           </DropdownMenuItem>
@@ -178,9 +164,6 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
 
       <Dialog open={isVolumeDialogOpen} onOpenChange={setIsVolumeDialogOpen}>
         <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Ses Kontrolü</DialogTitle>
-          </DialogHeader>
           <VolumeControlDialog
             currentVolume={device.volume}
             onVolumeChange={handleVolumeChange}
