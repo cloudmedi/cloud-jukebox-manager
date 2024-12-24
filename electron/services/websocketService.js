@@ -1,13 +1,9 @@
 const WebSocket = require('ws');
 const { BrowserWindow, app } = require('electron');
+const Store = require('electron-store');
 const playlistHandler = require('./playlist/PlaylistHandler');
 
-let store;
-
-(async () => {
-  const { default: Store } = await import('electron-store');
-  store = new Store();
-})();
+const store = new Store();
 
 class WebSocketService {
   constructor() {

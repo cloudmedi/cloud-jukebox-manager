@@ -2,13 +2,9 @@ const { app } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
+const Store = require('electron-store');
 
-let store;
-
-(async () => {
-  const { default: Store } = await import('electron-store');
-  store = new Store();
-})();
+const store = new Store();
 
 class PlaylistHandler {
   constructor() {
