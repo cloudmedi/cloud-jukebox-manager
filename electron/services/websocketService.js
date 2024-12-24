@@ -1,8 +1,13 @@
 const WebSocket = require('ws');
-const Store = require('electron-store');
 const { BrowserWindow, app } = require('electron');
 const playlistHandler = require('./playlist/PlaylistHandler');
-const store = new Store();
+
+let store;
+
+(async () => {
+  const { default: Store } = await import('electron-store');
+  store = new Store();
+})();
 
 class WebSocketService {
   constructor() {
@@ -58,6 +63,12 @@ class WebSocketService {
   }
 
   connect() {
+    if (!store) {
+      console.log('Store not initialized yet');
+      setTimeout(() => this.connect(), 100);
+      return;
+    }
+
     const deviceInfo = store.get('deviceInfo');
     if (!deviceInfo || !deviceInfo.token) {
       console.log('No device info found');
