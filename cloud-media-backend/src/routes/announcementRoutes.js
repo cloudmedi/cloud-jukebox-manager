@@ -3,13 +3,19 @@ const router = express.Router();
 const multer = require('multer');
 const path = require('path');
 const Announcement = require('../models/Announcement');
+const fs = require('fs');
 
 // Multer yapılandırması
 const storage = multer.diskStorage({
-  destination: function (req, file, cb) {
-    cb(null, 'uploads/announcements');
+  destination: (req, file, cb) => {
+    const uploadDir = 'uploads/announcements';
+    // Klasör yoksa oluştur
+    if (!fs.existsSync(uploadDir)) {
+      fs.mkdirSync(uploadDir, { recursive: true });
+    }
+    cb(null, uploadDir);
   },
-  filename: function (req, file, cb) {
+  filename: (req, file, cb) => {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
     cb(null, uniqueSuffix + path.extname(file.originalname));
   }
@@ -41,34 +47,38 @@ router.get('/', async (req, res) => {
 
 // Yeni anons oluştur
 router.post('/', upload.single('audioFile'), async (req, res) => {
-  console.log('Gelen form verileri:', req.body);
-  console.log('Gelen dosya:', req.file);
+  console.log('Yeni anons isteği alındı');
+  console.log('Form verileri:', req.body);
+  console.log('Dosya bilgisi:', req.file);
+
+  let uploadedFile = null;
 
   try {
     if (!req.file) {
-      return res.status(400).json({ message: 'Ses dosyası zorunludur' });
+      throw new Error('Ses dosyası zorunludur');
     }
+    uploadedFile = req.file;
 
-    // Array verilerini düzgün şekilde parse et
-    const targetDevices = Array.isArray(req.body['targetDevices[]']) 
-      ? req.body['targetDevices[]'] 
-      : req.body['targetDevices[]'] 
-        ? [req.body['targetDevices[]']] 
-        : [];
+    // Array verilerini parse et
+    const targetDevices = req.body['targetDevices[]'] 
+      ? Array.isArray(req.body['targetDevices[]'])
+        ? req.body['targetDevices[]']
+        : [req.body['targetDevices[]']]
+      : [];
 
-    const targetGroups = Array.isArray(req.body['targetGroups[]'])
-      ? req.body['targetGroups[]']
-      : req.body['targetGroups[]']
-        ? [req.body['targetGroups[]']]
-        : [];
+    const targetGroups = req.body['targetGroups[]']
+      ? Array.isArray(req.body['targetGroups[]'])
+        ? req.body['targetGroups[]']
+        : [req.body['targetGroups[]']]
+      : [];
 
-    const specificTimes = Array.isArray(req.body['specificTimes[]'])
-      ? req.body['specificTimes[]']
-      : req.body['specificTimes[]']
-        ? [req.body['specificTimes[]']]
-        : [];
+    const specificTimes = req.body['specificTimes[]']
+      ? Array.isArray(req.body['specificTimes[]'])
+        ? req.body['specificTimes[]']
+        : [req.body['specificTimes[]']]
+      : [];
 
-    console.log('Parse edilmiş veriler:', {
+    console.log('İşlenmiş array verileri:', {
       targetDevices,
       targetGroups,
       specificTimes
@@ -91,21 +101,23 @@ router.post('/', upload.single('audioFile'), async (req, res) => {
       createdBy: req.body.createdBy || 'system'
     };
 
-    console.log('İşlenmiş anons verileri:', announcementData);
+    console.log('Oluşturulacak anons verileri:', announcementData);
 
     const announcement = new Announcement(announcementData);
     const newAnnouncement = await announcement.save();
     
+    console.log('Anons başarıyla oluşturuldu:', newAnnouncement._id);
     res.status(201).json(newAnnouncement);
   } catch (error) {
     console.error('Anons oluşturma hatası:', error);
+    
     // Hata durumunda yüklenen dosyayı temizle
-    if (req.file) {
-      const fs = require('fs');
-      fs.unlink(req.file.path, (err) => {
+    if (uploadedFile) {
+      fs.unlink(uploadedFile.path, (err) => {
         if (err) console.error('Dosya silinirken hata:', err);
       });
     }
+
     res.status(400).json({ 
       message: error.message,
       validationErrors: error.errors
