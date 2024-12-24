@@ -22,6 +22,7 @@ import { useState } from "react";
 import { toast } from "sonner";
 import { AnnouncementForm } from "./AnnouncementForm";
 import websocketService from "@/services/websocketService";
+import { AnnouncementFormData } from "./form/types";
 
 interface Announcement {
   _id: string;
@@ -38,6 +39,7 @@ interface Announcement {
   minuteInterval?: number;
   immediateInterrupt: boolean;
   duration: number;
+  audioFile: string;
 }
 
 interface AnnouncementActionsProps {
@@ -79,7 +81,10 @@ export const AnnouncementActions = ({ announcement }: AnnouncementActionsProps) 
           announcement: {
             _id: announcement._id,
             title: announcement.title,
-            content: announcement.content
+            content: announcement.content,
+            audioFile: announcement.audioFile,
+            duration: announcement.duration,
+            immediateInterrupt: announcement.immediateInterrupt
           }
         });
       });
@@ -93,7 +98,10 @@ export const AnnouncementActions = ({ announcement }: AnnouncementActionsProps) 
           announcement: {
             _id: announcement._id,
             title: announcement.title,
-            content: announcement.content
+            content: announcement.content,
+            audioFile: announcement.audioFile,
+            duration: announcement.duration,
+            immediateInterrupt: announcement.immediateInterrupt
           }
         });
       });
@@ -103,6 +111,16 @@ export const AnnouncementActions = ({ announcement }: AnnouncementActionsProps) 
       console.error('Send error:', error);
       toast.error('Anons gönderilemedi');
     }
+  };
+
+  const convertToFormData = (announcement: Announcement): Partial<AnnouncementFormData> => {
+    return {
+      ...announcement,
+      startDate: new Date(announcement.startDate),
+      endDate: new Date(announcement.endDate),
+      targetDevices: announcement.targetDevices,
+      targetGroups: announcement.targetGroups,
+    };
   };
 
   return (
@@ -135,7 +153,7 @@ export const AnnouncementActions = ({ announcement }: AnnouncementActionsProps) 
             <DialogTitle>Anons Düzenle</DialogTitle>
           </DialogHeader>
           <AnnouncementForm 
-            initialData={announcement}
+            initialData={convertToFormData(announcement)}
             mode="update"
             onSuccess={() => {
               setIsEditDialogOpen(false);
