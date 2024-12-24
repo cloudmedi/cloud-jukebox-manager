@@ -2,8 +2,13 @@ const { app } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
-const Store = require('electron-store');
-const store = new Store();
+
+let store;
+
+(async () => {
+  const { default: Store } = await import('electron-store');
+  store = new Store();
+})();
 
 class PlaylistHandler {
   constructor() {
@@ -18,6 +23,12 @@ class PlaylistHandler {
   }
 
   async handlePlaylist(playlist) {
+    // Wait for store to be initialized
+    if (!store) {
+      await new Promise(resolve => setTimeout(resolve, 100));
+      return this.handlePlaylist(playlist);
+    }
+
     try {
       console.log('Handling playlist:', playlist.name);
       
