@@ -92,7 +92,7 @@ router.delete('/:id', async (req, res) => {
     if (!schedule) {
       return res.status(404).json({ message: 'Zamanlama bulunamadı' });
     }
-    await schedule.remove();
+    await PlaylistSchedule.deleteOne({ _id: req.params.id });
     res.json({ message: 'Zamanlama silindi' });
   } catch (error) {
     res.status(500).json({ message: error.message });
