@@ -14,6 +14,9 @@ class AudioService {
     this.isPlaying = false;
     this.setupIpcHandlers();
     this.setupWebSocketHandlers();
+    
+    // AnnouncementScheduler'ı başlat
+    AnnouncementScheduler.initialize();
   }
 
   setupWebSocketHandlers() {
@@ -161,6 +164,7 @@ class AudioService {
     });
 
     ipcMain.handle('song-ended', (event) => {
+      // Anons kontrolü için song-ended eventi
       AnnouncementScheduler.onSongEnd();
       this.handleNextSong(event);
     });
