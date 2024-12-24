@@ -1,5 +1,5 @@
 const { ipcRenderer } = require('electron');
-const Store = require('electron-store').default;
+const Store = require('electron-store');
 const store = new Store();
 const AudioEventHandler = require('./services/audio/AudioEventHandler');
 const playbackStateManager = require('./services/audio/PlaybackStateManager');

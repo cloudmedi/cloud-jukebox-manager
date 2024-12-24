@@ -1,6 +1,6 @@
 const WebSocket = require('ws');
 const { BrowserWindow, app } = require('electron');
-const Store = require('electron-store').default;
+const Store = require('electron-store');
 const playlistHandler = require('./playlist/PlaylistHandler');
 const store = new Store();
 
