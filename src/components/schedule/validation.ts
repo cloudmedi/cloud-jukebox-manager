@@ -16,11 +16,14 @@ export const scheduleFormSchema = z.object({
   targets: z.object({
     devices: z.array(z.string()),
     groups: z.array(z.string()),
-  })
-  .refine((data) => data.devices.length > 0 || data.groups.length > 0, {
+  }).refine((data) => data.devices.length > 0 || data.groups.length > 0, {
     message: "En az bir cihaz veya grup seçilmelidir",
   }),
-}).refine((data) => data.endDate > data.startDate, {
+}).refine((data) => {
+  const startDate = new Date(data.startDate);
+  const endDate = new Date(data.endDate);
+  return endDate > startDate;
+}, {
   message: "Bitiş tarihi başlangıç tarihinden sonra olmalıdır",
   path: ["endDate"],
 });

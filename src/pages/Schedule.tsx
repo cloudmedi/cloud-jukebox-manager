@@ -8,7 +8,6 @@ import { Calendar, List } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { PlaylistScheduleForm } from "@/components/schedule/PlaylistScheduleForm";
 import { useQuery } from "@tanstack/react-query";
-import { toast } from "sonner";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 
@@ -30,6 +29,11 @@ const Schedule = () => {
 
   const handleDateSelect = (selectInfo: any) => {
     const selectedDate = new Date(selectInfo.start);
+    // Saat bilgisini koru
+    selectedDate.setHours(
+      new Date().getHours(),
+      new Date().getMinutes()
+    );
     setSelectedDate(selectedDate);
     setIsDialogOpen(true);
   };

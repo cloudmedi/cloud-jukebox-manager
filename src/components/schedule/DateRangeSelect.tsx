@@ -14,68 +14,50 @@ interface DateRangeSelectProps {
 }
 
 export const DateRangeSelect = ({ form }: DateRangeSelectProps) => {
-  const handleStartDateSelect = (date: Date | undefined) => {
+  const handleDateSelect = (field: "startDate" | "endDate", date: Date | undefined) => {
     if (!date) return;
     
-    // Mevcut saat bilgisini koru
-    const currentStartDate = form.getValues("startDate");
+    const currentValue = form.getValues(field);
     const newDate = new Date(date);
-    if (currentStartDate) {
-      newDate.setHours(currentStartDate.getHours(), currentStartDate.getMinutes());
+    
+    // Mevcut saat bilgisini koru
+    if (currentValue) {
+      newDate.setHours(currentValue.getHours(), currentValue.getMinutes());
     } else {
       const now = new Date();
       newDate.setHours(now.getHours(), now.getMinutes());
     }
     
-    form.setValue("startDate", newDate);
+    form.setValue(field, newDate, { shouldValidate: true });
     
     // Bitiş tarihi kontrolü
-    const endDate = form.getValues("endDate");
-    if (!endDate || endDate <= newDate) {
-      const newEndDate = new Date(newDate);
-      newEndDate.setHours(newDate.getHours() + 1);
-      form.setValue("endDate", newEndDate);
+    if (field === "startDate") {
+      const endDate = form.getValues("endDate");
+      if (!endDate || endDate <= newDate) {
+        const newEndDate = new Date(newDate);
+        newEndDate.setHours(newDate.getHours() + 1);
+        form.setValue("endDate", newEndDate, { shouldValidate: true });
+      }
     }
   };
 
-  const handleEndDateSelect = (date: Date | undefined) => {
-    if (!date) return;
-    
-    // Mevcut saat bilgisini koru
-    const currentEndDate = form.getValues("endDate");
-    const newDate = new Date(date);
-    if (currentEndDate) {
-      newDate.setHours(currentEndDate.getHours(), currentEndDate.getMinutes());
-    } else {
-      const startDate = form.getValues("startDate");
-      newDate.setHours(startDate.getHours() + 1, startDate.getMinutes());
-    }
-    
-    form.setValue("endDate", newDate);
-  };
-
-  const handleStartTimeChange = (timeStr: string) => {
+  const handleTimeChange = (field: "startDate" | "endDate", timeStr: string) => {
     const [hours, minutes] = timeStr.split(":").map(Number);
-    const currentDate = form.getValues("startDate") || new Date();
+    const currentDate = form.getValues(field) || new Date();
     const newDate = new Date(currentDate);
     newDate.setHours(hours, minutes);
-    form.setValue("startDate", newDate);
+    
+    form.setValue(field, newDate, { shouldValidate: true });
     
     // Bitiş saati kontrolü
-    const endDate = form.getValues("endDate");
-    if (!endDate || endDate <= newDate) {
-      const newEndDate = new Date(newDate);
-      newEndDate.setHours(newDate.getHours() + 1);
-      form.setValue("endDate", newEndDate);
+    if (field === "startDate") {
+      const endDate = form.getValues("endDate");
+      if (!endDate || endDate <= newDate) {
+        const newEndDate = new Date(newDate);
+        newEndDate.setHours(newDate.getHours() + 1);
+        form.setValue("endDate", newEndDate, { shouldValidate: true });
+      }
     }
-  };
-
-  const handleEndTimeChange = (timeStr: string) => {
-    const [hours, minutes] = timeStr.split(":").map(Number);
-    const currentDate = form.getValues("endDate") || new Date();
-    const newDate = new Date(currentDate);
-    newDate.setHours(hours, minutes);
-    form.setValue("endDate", newDate);
   };
 
   return (
@@ -117,7 +99,7 @@ export const DateRangeSelect = ({ form }: DateRangeSelectProps) => {
                         type="time"
                         className="w-full px-2 py-1 border rounded"
                         value={field.value ? format(field.value, "HH:mm") : ""}
-                        onChange={(e) => handleStartTimeChange(e.target.value)}
+                        onChange={(e) => handleTimeChange("startDate", e.target.value)}
                       />
                     </div>
                   </div>
@@ -125,7 +107,7 @@ export const DateRangeSelect = ({ form }: DateRangeSelectProps) => {
                 <Calendar
                   mode="single"
                   selected={field.value}
-                  onSelect={handleStartDateSelect}
+                  onSelect={(date) => handleDateSelect("startDate", date)}
                   disabled={(date) => date < new Date()}
                   initialFocus
                 />
@@ -173,7 +155,7 @@ export const DateRangeSelect = ({ form }: DateRangeSelectProps) => {
                         type="time"
                         className="w-full px-2 py-1 border rounded"
                         value={field.value ? format(field.value, "HH:mm") : ""}
-                        onChange={(e) => handleEndTimeChange(e.target.value)}
+                        onChange={(e) => handleTimeChange("endDate", e.target.value)}
                       />
                     </div>
                   </div>
@@ -181,7 +163,7 @@ export const DateRangeSelect = ({ form }: DateRangeSelectProps) => {
                 <Calendar
                   mode="single"
                   selected={field.value}
-                  onSelect={handleEndDateSelect}
+                  onSelect={(date) => handleDateSelect("endDate", date)}
                   disabled={(date) => {
                     const startDate = form.getValues("startDate");
                     return date < new Date() || (startDate && date < startDate);
