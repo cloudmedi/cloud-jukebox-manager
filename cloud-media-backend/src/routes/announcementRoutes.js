@@ -5,6 +5,7 @@ const path = require('path');
 const Announcement = require('../models/Announcement');
 const fs = require('fs');
 
+// Multer yapılandırması
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {
     const uploadDir = 'uploads/announcements';
@@ -27,9 +28,13 @@ const upload = multer({
     } else {
       cb(new Error('Sadece ses dosyaları yüklenebilir'));
     }
+  },
+  limits: {
+    fileSize: 10 * 1024 * 1024 // 10MB limit
   }
 });
 
+// Yeni anons oluştur
 router.post('/', upload.single('audioFile'), async (req, res) => {
   console.log('Yeni anons isteği alındı:', req.body);
   let uploadedFile = null;
@@ -40,40 +45,72 @@ router.post('/', upload.single('audioFile'), async (req, res) => {
     }
     uploadedFile = req.file;
 
+    // Form verilerini doğrula
+    if (!req.body.title || !req.body.content || !req.body.duration) {
+      throw new Error('Eksik form alanları');
+    }
+
+    // Tarih alanlarını kontrol et
+    const startDate = new Date(req.body.startDate);
+    const endDate = new Date(req.body.endDate);
+    
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      throw new Error('Geçersiz tarih formatı');
+    }
+
+    if (endDate <= startDate) {
+      throw new Error('Bitiş tarihi başlangıç tarihinden sonra olmalıdır');
+    }
+
+    // Anons verilerini hazırla
     const announcementData = {
       title: req.body.title,
       content: req.body.content,
       audioFile: req.file.path,
       duration: parseFloat(req.body.duration),
-      startDate: new Date(req.body.startDate),
-      endDate: new Date(req.body.endDate),
+      startDate: startDate,
+      endDate: endDate,
       scheduleType: req.body.scheduleType,
-      targetDevices: Array.isArray(req.body['targetDevices[]']) 
-        ? req.body['targetDevices[]'] 
-        : req.body['targetDevices[]'] 
-          ? [req.body['targetDevices[]']] 
-          : [],
-      targetGroups: Array.isArray(req.body['targetGroups[]'])
-        ? req.body['targetGroups[]']
-        : req.body['targetGroups[]']
-          ? [req.body['targetGroups[]']]
-          : [],
       status: 'active',
       createdBy: 'system'
     };
 
+    // Zamanlama tipine göre ek alanları ekle
     if (req.body.scheduleType === 'interval') {
+      if (!req.body.interval || isNaN(req.body.interval)) {
+        throw new Error('Geçersiz aralık değeri');
+      }
       announcementData.minuteInterval = parseInt(req.body.interval);
-    } else {
+    } else if (req.body.scheduleType === 'specific') {
+      if (!req.body['specificTimes[]']) {
+        throw new Error('En az bir saat belirtilmelidir');
+      }
       announcementData.specificTimes = Array.isArray(req.body['specificTimes[]'])
         ? req.body['specificTimes[]']
-        : req.body['specificTimes[]']
-          ? [req.body['specificTimes[]']]
-          : [];
+        : [req.body['specificTimes[]']];
+    }
+
+    // Hedef cihaz ve grupları ekle
+    announcementData.targetDevices = Array.isArray(req.body['targetDevices[]'])
+      ? req.body['targetDevices[]']
+      : req.body['targetDevices[]']
+        ? [req.body['targetDevices[]']]
+        : [];
+
+    announcementData.targetGroups = Array.isArray(req.body['targetGroups[]'])
+      ? req.body['targetGroups[]']
+      : req.body['targetGroups[]']
+        ? [req.body['targetGroups[]']]
+        : [];
+
+    // En az bir hedef seçilmiş olmalı
+    if (announcementData.targetDevices.length === 0 && announcementData.targetGroups.length === 0) {
+      throw new Error('En az bir hedef cihaz veya grup seçilmelidir');
     }
 
     console.log('Oluşturulacak anons:', announcementData);
 
+    // Anonsu kaydet
     const announcement = new Announcement(announcementData);
     const savedAnnouncement = await announcement.save();
     
@@ -82,6 +119,7 @@ router.post('/', upload.single('audioFile'), async (req, res) => {
   } catch (error) {
     console.error('Anons oluşturma hatası:', error);
     
+    // Hata durumunda yüklenen dosyayı temizle
     if (uploadedFile) {
       fs.unlink(uploadedFile.path, (err) => {
         if (err) console.error('Dosya silinirken hata:', err);
@@ -95,6 +133,7 @@ router.post('/', upload.single('audioFile'), async (req, res) => {
   }
 });
 
+// Tüm anosları getir
 router.get('/', async (req, res) => {
   try {
     const announcements = await Announcement.find()
@@ -108,6 +147,7 @@ router.get('/', async (req, res) => {
   }
 });
 
+// Belirli bir cihaz için aktif anosları getir
 router.get('/device/:deviceId', async (req, res) => {
   try {
     const now = new Date();
@@ -128,6 +168,7 @@ router.get('/device/:deviceId', async (req, res) => {
   }
 });
 
+// Yardımcı fonksiyon: Cihazın grup ID'lerini getir
 async function getDeviceGroupIds(deviceId) {
   const Device = require('../models/Device');
   const device = await Device.findById(deviceId);
