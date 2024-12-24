@@ -2,6 +2,8 @@ const { ipcMain, app } = require('electron');
 const Store = require('electron-store');
 const store = new Store();
 const websocketService = require('./websocketService');
+const announcementHandler = require('./announcement/AnnouncementHandler');
+const announcementPlayer = require('./announcement/AnnouncementPlayer');
 
 class AudioService {
   constructor() {
@@ -15,7 +17,7 @@ class AudioService {
   }
 
   setupWebSocketHandlers() {
-    websocketService.addMessageHandler('command', (message) => {
+    websocketService.addMessageHandler('command', async (message) => {
       console.log('Received command:', message);
       switch (message.command) {
         case 'setVolume':
@@ -30,10 +32,25 @@ class AudioService {
         case 'pause':
           this.handlePause();
           break;
+        case 'playAnnouncement':
+          await this.handleAnnouncement(message.announcement);
+          break;
         default:
           console.log('Unknown command:', message.command);
       }
     });
+  }
+
+  async handleAnnouncement(announcement) {
+    try {
+      // Anonsu indir ve local path ekle
+      const processedAnnouncement = await announcementHandler.handleAnnouncement(announcement);
+      
+      // Anonsu çal
+      await announcementPlayer.playAnnouncement(processedAnnouncement);
+    } catch (error) {
+      console.error('Error handling announcement:', error);
+    }
   }
 
   handleVolumeChange(volume) {

@@ -16,6 +16,44 @@ document.getElementById('closeButton').addEventListener('click', () => {
     window.close();
 });
 
+// Anons kontrolleri
+ipcRenderer.on('play-announcement', (event, announcement) => {
+  console.log('Playing announcement:', announcement);
+  
+  if (!announcement.localPath) {
+    console.error('No local path for announcement');
+    return;
+  }
+
+  // Mevcut ses durumunu kaydet
+  const currentVolume = audio.volume;
+  
+  // Anons için ses ayarını yap
+  audio.volume = 1.0;
+  
+  // Anonsu çal
+  audio.src = announcement.localPath;
+  audio.play().catch(err => console.error('Announcement playback error:', err));
+  
+  // Anons bittiğinde orijinal ses seviyesine dön
+  audio.onended = () => {
+    audio.volume = currentVolume;
+    ipcRenderer.send('announcement-ended');
+  };
+});
+
+ipcRenderer.on('pause-playback', () => {
+  if (audio && !audio.paused) {
+    audio.pause();
+  }
+});
+
+ipcRenderer.on('resume-playback', () => {
+  if (audio && audio.paused) {
+    audio.play().catch(err => console.error('Resume playback error:', err));
+  }
+});
+
 // WebSocket bağlantı durumu
 ipcRenderer.on('websocket-status', (event, isConnected) => {
     UIManager.updateConnectionStatus(isConnected);
@@ -225,4 +263,5 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Diğer event listener'lar
+
 
