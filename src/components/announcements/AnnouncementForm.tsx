@@ -37,7 +37,9 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
         devices: announcement?.targetDevices || [],
         groups: announcement?.targetGroups || []
       },
-      duration: announcement?.duration || 0
+      duration: announcement?.duration || 0,
+      immediateInterrupt: announcement?.immediateInterrupt || false,
+      createdBy: "system" // Sabit bir değer atıyoruz
     },
   });
 
@@ -49,7 +51,8 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
       });
       
       if (!response.ok) {
-        throw new Error("Anons oluşturma başarısız");
+        const error = await response.json();
+        throw new Error(error.message || "Anons oluşturma başarısız");
       }
       
       return response.json();
@@ -73,39 +76,29 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
   });
 
   const handleSubmit = async (data: AnnouncementFormData) => {
-    if (announcement) {
-      // Güncelleme işlemi için veri yapısını düzenle
-      const updateData = {
-        ...data,
-        targetDevices: data.targets.devices,
-        targetGroups: data.targets.groups,
-      };
-      await updateAnnouncementMutation.mutateAsync(updateData);
-      return;
-    }
-
     setUploading(true);
     setProgress(0);
 
     try {
       const formData = new FormData();
       
-      // Temel bilgileri ekle
+      // Form verilerini backend'in beklediği formata dönüştür
       const requestData = {
         ...data,
         targetDevices: data.targets.devices,
         targetGroups: data.targets.groups,
+        createdBy: "system",
+        immediateInterrupt: data.immediateInterrupt || false
       };
 
       // FormData'ya her bir alanı ekle
-      Object.keys(requestData).forEach(key => {
+      Object.entries(requestData).forEach(([key, value]) => {
         if (key === 'startDate' || key === 'endDate') {
-          const date = requestData[key as keyof typeof requestData];
-          if (date instanceof Date) {
-            formData.append(key, date.toISOString());
-          }
+          formData.append(key, value instanceof Date ? value.toISOString() : value);
+        } else if (key === 'targetDevices' || key === 'targetGroups') {
+          formData.append(key, JSON.stringify(value));
         } else if (key !== 'audioFile' && key !== 'targets') {
-          formData.append(key, JSON.stringify(requestData[key as keyof typeof requestData]));
+          formData.append(key, typeof value === 'string' ? value : JSON.stringify(value));
         }
       });
 

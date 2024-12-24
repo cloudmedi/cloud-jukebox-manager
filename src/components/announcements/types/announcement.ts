@@ -13,6 +13,8 @@ export interface AnnouncementFormData {
     devices: string[];
     groups: string[];
   };
+  immediateInterrupt?: boolean;
+  createdBy?: string;
 }
 
 export interface Device {
