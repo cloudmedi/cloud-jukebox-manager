@@ -20,18 +20,21 @@ class AnnouncementAudioService {
       AnnouncementLogger.logPlaybackStart();
     });
 
-    this.audioElement.addEventListener('timeupdate', () => {
-      AnnouncementLogger.logPlaybackProgress(this.audioElement.currentTime);
-    });
-
     this.audioElement.addEventListener('ended', () => {
       AnnouncementLogger.logPlaybackEnd();
-      ipcRenderer.send('announcement-ended');
+      this.cleanup();
     });
 
     this.audioElement.addEventListener('error', (error) => {
       AnnouncementLogger.logError('Audio Playback', error);
+      this.cleanup();
     });
+  }
+
+  cleanup() {
+    console.log('Cleaning up announcement audio');
+    this.audioElement.src = '';
+    ipcRenderer.send('announcement-ended');
   }
 
   async playAnnouncement(announcement) {
@@ -46,16 +49,14 @@ class AnnouncementAudioService {
         throw new Error('Anons dosyası bulunamadı');
       }
 
-      // Ses ayarını yap
       this.audioElement.volume = 1.0;
-
-      // Dosyayı yükle ve çal
       this.audioElement.src = announcement.localPath;
       await this.audioElement.play();
 
       return true;
     } catch (error) {
       AnnouncementLogger.logError('Anons Çalma', error);
+      this.cleanup();
       return false;
     }
   }

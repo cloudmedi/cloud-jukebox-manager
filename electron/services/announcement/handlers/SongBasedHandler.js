@@ -6,6 +6,7 @@ class SongBasedHandler {
     this.store = new Store();
     this.songCounter = 0;
     this.isProcessingAnnouncement = false;
+    this.lastAnnouncementTime = 0;
   }
 
   onSongEnd() {
@@ -14,18 +15,25 @@ class SongBasedHandler {
       return;
     }
 
+    const now = Date.now();
+    // En az 5 saniye geçmeden yeni anons kontrolü yapma
+    if (now - this.lastAnnouncementTime < 5000) {
+      console.log('Skipping announcement check, too soon after last announcement');
+      return;
+    }
+
     this.songCounter++;
     console.log('\n=== ŞARKI BAZLI ANONS KONTROLÜ ===');
     console.log(`Şarkı sayacı: ${this.songCounter}`);
     
     const announcements = this.store.get('announcements', []);
-    const now = new Date();
+    const currentTime = new Date();
 
     announcements
       .filter(announcement => 
         announcement.scheduleType === 'songs' &&
-        new Date(announcement.startDate) <= now &&
-        new Date(announcement.endDate) >= now
+        new Date(announcement.startDate) <= currentTime &&
+        new Date(announcement.endDate) >= currentTime
       )
       .forEach(announcement => {
         console.log(`\nAnons Kontrolü (${announcement._id}):`);
@@ -33,11 +41,11 @@ class SongBasedHandler {
         console.log(`- Bitiş: ${announcement.endDate}`);
         console.log(`- Şarkı aralığı: ${announcement.songInterval}`);
         console.log(`- Mevcut sayaç: ${this.songCounter}`);
-        console.log(`- Mod hesabı: ${this.songCounter % announcement.songInterval}`);
         
         if (this.songCounter % announcement.songInterval === 0) {
           console.log('✓ Anons çalma koşulu sağlandı, çalınıyor...');
           this.isProcessingAnnouncement = true;
+          this.lastAnnouncementTime = now;
           this.playAnnouncement(announcement);
         } else {
           console.log(`× Anons çalma koşulu sağlanmadı. ${announcement.songInterval - (this.songCounter % announcement.songInterval)} şarkı sonra çalınacak`);
@@ -56,7 +64,7 @@ class SongBasedHandler {
     console.log('Anons çalma isteği gönderiliyor...');
     mainWindow.webContents.send('play-announcement', announcement);
     
-    // Anons bittiğinde isProcessingAnnouncement'ı false yap
+    // Anons bittiğinde state'i temizle
     mainWindow.webContents.once('ipc-message', (event, channel) => {
       if (channel === 'announcement-ended') {
         console.log('Anons bitti, işlem durumu sıfırlanıyor');
