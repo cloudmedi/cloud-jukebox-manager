@@ -37,19 +37,41 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
         devices: announcement?.targetDevices || [],
         groups: announcement?.targetGroups || []
       },
-      duration: announcement?.duration || 0
+      duration: announcement?.duration || 0,
+      createdBy: "system" // Geçici olarak sabit bir değer
     },
   });
 
   const createAnnouncementMutation = useMutation({
-    mutationFn: async (formData: FormData) => {
+    mutationFn: async (data: AnnouncementFormData) => {
+      console.log('Backend\'e gönderilecek veriler:', data);
+
       const response = await fetch(`${API_URL}/announcements`, {
         method: "POST",
-        body: formData,
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          title: data.title,
+          content: data.content,
+          audioFile: data.audioFile,
+          duration: data.duration,
+          startDate: data.startDate,
+          endDate: data.endDate,
+          scheduleType: data.scheduleType,
+          songInterval: data.songInterval,
+          minuteInterval: data.minuteInterval,
+          specificTimes: data.specificTimes,
+          targetDevices: data.targets.devices,
+          targetGroups: data.targets.groups,
+          createdBy: data.createdBy
+        }),
       });
       
       if (!response.ok) {
-        throw new Error("Anons oluşturma başarısız");
+        const errorData = await response.json();
+        console.error('Backend yanıt detayları:', errorData);
+        throw new Error(errorData.message || "Anons oluşturma başarısız");
       }
       
       return response.json();
@@ -64,6 +86,7 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
       form.reset();
     },
     onError: (error: Error) => {
+      console.error('Form gönderme hatası:', error);
       toast({
         variant: "destructive",
         title: "Hata",
@@ -74,12 +97,26 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
 
   const updateAnnouncementMutation = useMutation({
     mutationFn: async (data: AnnouncementFormData) => {
+      console.log('Anons güncelleme verileri:', data);
+
       const response = await fetch(`${API_URL}/announcements/${announcement._id}`, {
         method: "PATCH",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify({
+          title: data.title,
+          content: data.content,
+          duration: data.duration,
+          startDate: data.startDate,
+          endDate: data.endDate,
+          scheduleType: data.scheduleType,
+          songInterval: data.songInterval,
+          minuteInterval: data.minuteInterval,
+          specificTimes: data.specificTimes,
+          targetDevices: data.targets.devices,
+          targetGroups: data.targets.groups
+        }),
       });
       
       if (!response.ok) {
@@ -109,71 +146,18 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
     console.log('Form verileri gönderilmeden önce:', data);
     
     if (announcement) {
-      console.log('Anons güncelleme isteği:', data);
       await updateAnnouncementMutation.mutateAsync(data);
       return;
     }
 
-    setUploading(true);
-    setProgress(0);
-
     try {
-      const formData = new FormData();
-      
-      // Form verilerini logla
-      console.log('FormData oluşturuluyor:', {
-        ...data,
-        audioFile: data.audioFile ? {
-          name: data.audioFile.name,
-          type: data.audioFile.type,
-          size: data.audioFile.size
-        } : null
-      });
-      
-      // Temel bilgiler
-      Object.keys(data).forEach(key => {
-        if (key === 'startDate' || key === 'endDate') {
-          const date = data[key as keyof AnnouncementFormData];
-          if (date instanceof Date) {
-            formData.append(key, date.toISOString());
-            console.log(`${key} eklendi:`, date.toISOString());
-          }
-        } else if (key !== 'audioFile') {
-          formData.append(key, JSON.stringify(data[key as keyof AnnouncementFormData]));
-          console.log(`${key} eklendi:`, data[key as keyof AnnouncementFormData]);
-        }
-      });
-
-      if (data.audioFile) {
-        formData.append('audioFile', data.audioFile);
-        console.log('Ses dosyası eklendi:', {
-          name: data.audioFile.name,
-          type: data.audioFile.type,
-          size: data.audioFile.size
-        });
-      }
-
-      console.log('Backend\'e gönderilecek final FormData içeriği:', 
-        Array.from(formData.entries()).reduce((acc, [key, value]) => ({
-          ...acc,
-          [key]: value instanceof File ? {
-            name: value.name,
-            type: value.type,
-            size: value.size
-          } : value
-        }), {})
-      );
-
-      await createAnnouncementMutation.mutateAsync(formData);
+      await createAnnouncementMutation.mutateAsync(data);
     } catch (error) {
       console.error('Form gönderme hatası detayları:', {
         error,
         stack: error instanceof Error ? error.stack : undefined,
         message: error instanceof Error ? error.message : 'Bilinmeyen hata'
       });
-    } finally {
-      setUploading(false);
-      setProgress(0);
     }
   };
 

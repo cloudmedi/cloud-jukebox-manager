@@ -13,6 +13,7 @@ export interface AnnouncementFormData {
     devices: string[];
     groups: string[];
   };
+  createdBy?: string;
 }
 
 export interface Device {
