@@ -1,3 +1,5 @@
+const fs = require('fs');
+
 class AnnouncementLogger {
   static logAnnouncementRequest(announcement) {
     console.log('\n=== ANONS ÇALMA İSTEĞİ ALINDI ===');
@@ -12,7 +14,7 @@ class AnnouncementLogger {
   static logFileCheck(path) {
     console.log('\n=== DOSYA KONTROLÜ ===');
     console.log('Kontrol edilen dosya yolu:', path);
-    const exists = require('fs').existsSync(path);
+    const exists = fs.existsSync(path);
     console.log(exists ? '✓ Dosya mevcut' : '❌ Dosya bulunamadı');
     return exists;
   }
@@ -27,7 +29,8 @@ class AnnouncementLogger {
       muted: audio.muted,
       readyState: audio.readyState,
       networkState: audio.networkState,
-      error: audio.error
+      error: audio.error,
+      src: audio.src
     });
   }
 

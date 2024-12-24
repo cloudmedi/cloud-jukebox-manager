@@ -5,7 +5,7 @@ const store = new Store();
 const AudioEventHandler = require('./services/audio/AudioEventHandler');
 const playbackStateManager = require('./services/audio/PlaybackStateManager');
 const UIManager = require('./services/ui/UIManager');
-const AnnouncementLogger = require('./services/logging/AnnouncementLogger');
+const AnnouncementAudioService = require('./services/audio/AnnouncementAudioService');
 
 const audio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(audio);
@@ -18,77 +18,19 @@ document.getElementById('closeButton').addEventListener('click', () => {
 });
 
 // Anons kontrolleri
-ipcRenderer.on('play-announcement', (event, announcement) => {
-  AnnouncementLogger.logAnnouncementRequest(announcement);
-  
-  if (!announcement.localPath) {
-    AnnouncementLogger.logError('Dosya Yolu Kontrolü', new Error('Anons için local path bulunamadı'));
-    return;
+ipcRenderer.on('play-announcement', async (event, announcement) => {
+  // Mevcut çalan şarkıyı duraklat
+  if (!audio.paused) {
+    audio.pause();
   }
 
-  // Dosya varlığını kontrol et
-  if (!AnnouncementLogger.logFileCheck(announcement.localPath)) {
-    return;
-  }
-
-  // Mevcut ses durumunu kaydet
-  const currentVolume = audio.volume;
-  AnnouncementLogger.logVolumeChange(currentVolume, 1.0);
-  
-  // Audio element durumunu kontrol et
-  AnnouncementLogger.logAudioState(audio);
-  
-  // Anons için ses ayarını yap
-  audio.volume = 1.0;
-  
   // Anonsu çal
-  AnnouncementLogger.logPlaybackStart();
-  audio.src = announcement.localPath;
+  const success = await AnnouncementAudioService.playAnnouncement(announcement);
   
-  audio.play()
-    .then(() => {
-      console.log('✓ Anons başarıyla çalmaya başladı');
-    })
-    .catch(err => {
-      AnnouncementLogger.logError('Çalma Başlatma', err);
-      audio.volume = currentVolume;
-    });
-  
-  // Audio element durumunu dinle
-  const playingHandler = () => {
-    AnnouncementLogger.logPlaybackProgress(audio.currentTime);
-  };
-  
-  const endedHandler = () => {
-    AnnouncementLogger.logPlaybackEnd();
-    audio.volume = currentVolume;
-    AnnouncementLogger.logVolumeChange(1.0, currentVolume);
-    ipcRenderer.send('announcement-ended');
-    
-    // Event listener'ları temizle
-    audio.removeEventListener('timeupdate', playingHandler);
-    audio.removeEventListener('ended', endedHandler);
-  };
-  
-  const errorHandler = (error) => {
-    AnnouncementLogger.logError('Çalma Sırasında', error);
-    audio.volume = currentVolume;
-    // Event listener'ları temizle
-    audio.removeEventListener('timeupdate', playingHandler);
-    audio.removeEventListener('ended', endedHandler);
-    audio.removeEventListener('error', errorHandler);
-  };
-
-  const loadedHandler = () => {
-    console.log('✓ Anons dosyası yüklendi');
-    AnnouncementLogger.logAudioState(audio);
-  };
-  
-  // Event listener'ları ekle
-  audio.addEventListener('timeupdate', playingHandler);
-  audio.addEventListener('ended', endedHandler);
-  audio.addEventListener('error', errorHandler);
-  audio.addEventListener('loadeddata', loadedHandler);
+  if (!success) {
+    // Hata durumunda şarkıyı devam ettir
+    audio.play().catch(err => console.error('Resume playback error:', err));
+  }
 });
 
 ipcRenderer.on('pause-playback', () => {
@@ -310,4 +252,3 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM loaded, displaying playlists');
   displayPlaylists();
 });
-
