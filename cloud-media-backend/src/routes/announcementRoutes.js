@@ -245,35 +245,56 @@ router.put('/:id', upload.single('audioFile'), async (req, res) => {
         throw new Error('Geçersiz şarkı aralığı değeri');
       }
       updateData.songInterval = parseInt(req.body.songInterval);
+      updateData.minuteInterval = null;
+      updateData.specificTimes = [];
     } else if (req.body.scheduleType === 'minutes') {
       if (!req.body.minuteInterval || isNaN(req.body.minuteInterval)) {
         throw new Error('Geçersiz dakika aralığı değeri');
       }
       updateData.minuteInterval = parseInt(req.body.minuteInterval);
+      updateData.songInterval = null;
+      updateData.specificTimes = [];
     } else if (req.body.scheduleType === 'specific') {
-      if (!req.body['specificTimes[]']) {
+      if (!req.body.specificTimes) {
         throw new Error('En az bir saat belirtilmelidir');
       }
-      updateData.specificTimes = Array.isArray(req.body['specificTimes[]'])
-        ? req.body['specificTimes[]']
-        : [req.body['specificTimes[]']];
+      updateData.specificTimes = Array.isArray(req.body.specificTimes) 
+        ? req.body.specificTimes 
+        : [req.body.specificTimes];
+      updateData.songInterval = null;
+      updateData.minuteInterval = null;
     }
 
     // Hedef cihaz ve grupları güncelle
-    const targetDevices = req.body['targetDevices[]'] || req.body.targetDevices;
-    const targetGroups = req.body['targetGroups[]'] || req.body.targetGroups;
+    let targetDevices = req.body.targetDevices;
+    let targetGroups = req.body.targetGroups;
 
-    updateData.targetDevices = Array.isArray(targetDevices)
-      ? targetDevices
-      : targetDevices
-        ? [targetDevices]
-        : [];
+    // targetDevices'ı düzgün bir array'e dönüştür
+    if (typeof targetDevices === 'string') {
+      try {
+        targetDevices = JSON.parse(targetDevices);
+      } catch (e) {
+        targetDevices = [targetDevices];
+      }
+    }
+    
+    // targetGroups'u düzgün bir array'e dönüştür
+    if (typeof targetGroups === 'string') {
+      try {
+        targetGroups = JSON.parse(targetGroups);
+      } catch (e) {
+        targetGroups = [targetGroups];
+      }
+    }
+
+    // Array içindeki string'leri temizle ve geçerli ID'leri al
+    updateData.targetDevices = Array.isArray(targetDevices) 
+      ? targetDevices.map(id => typeof id === 'object' ? id._id || id.id : id).filter(Boolean)
+      : [];
 
     updateData.targetGroups = Array.isArray(targetGroups)
-      ? targetGroups
-      : targetGroups
-        ? [targetGroups]
-        : [];
+      ? targetGroups.map(id => typeof id === 'object' ? id._id || id.id : id).filter(Boolean)
+      : [];
 
     // En az bir hedef seçilmiş olmalı
     if (updateData.targetDevices.length === 0 && updateData.targetGroups.length === 0) {
