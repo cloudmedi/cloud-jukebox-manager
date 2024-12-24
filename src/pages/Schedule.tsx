@@ -28,13 +28,26 @@ const Schedule = () => {
   });
 
   const handleDateSelect = (selectInfo: any) => {
-    const selectedDate = new Date(selectInfo.start);
-    // Saat bilgisini koru
-    selectedDate.setHours(
-      new Date().getHours(),
-      new Date().getMinutes()
-    );
-    setSelectedDate(selectedDate);
+    // Seçilen başlangıç ve bitiş tarihlerini al
+    const start = new Date(selectInfo.start);
+    const end = new Date(selectInfo.end);
+
+    // Başlangıç saatini koru
+    const startHours = start.getHours();
+    const startMinutes = start.getMinutes();
+
+    // Bitiş saati başlangıçtan 1 saat sonra olsun
+    const endHours = startHours + 1;
+    const endMinutes = startMinutes;
+
+    // Tarihleri güncelle
+    const selectedStartDate = new Date(start);
+    selectedStartDate.setHours(startHours, startMinutes);
+
+    const selectedEndDate = new Date(end);
+    selectedEndDate.setHours(endHours, endMinutes);
+
+    setSelectedDate(selectedStartDate);
     setIsDialogOpen(true);
   };
 
