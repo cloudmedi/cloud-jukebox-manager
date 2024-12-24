@@ -15,7 +15,16 @@ const storage = multer.diskStorage({
   }
 });
 
-const upload = multer({ storage: storage });
+const upload = multer({ 
+  storage: storage,
+  fileFilter: (req, file, cb) => {
+    if (file.mimetype.startsWith('audio/')) {
+      cb(null, true);
+    } else {
+      cb(new Error('Sadece ses dosyaları yüklenebilir'));
+    }
+  }
+});
 
 // Tüm anosları getir
 router.get('/', async (req, res) => {
@@ -59,6 +68,12 @@ router.post('/', upload.single('audioFile'), async (req, res) => {
         ? [req.body['specificTimes[]']]
         : [];
 
+    console.log('Parse edilmiş veriler:', {
+      targetDevices,
+      targetGroups,
+      specificTimes
+    });
+
     const announcementData = {
       title: req.body.title,
       content: req.body.content,
@@ -84,6 +99,13 @@ router.post('/', upload.single('audioFile'), async (req, res) => {
     res.status(201).json(newAnnouncement);
   } catch (error) {
     console.error('Anons oluşturma hatası:', error);
+    // Hata durumunda yüklenen dosyayı temizle
+    if (req.file) {
+      const fs = require('fs');
+      fs.unlink(req.file.path, (err) => {
+        if (err) console.error('Dosya silinirken hata:', err);
+      });
+    }
     res.status(400).json({ 
       message: error.message,
       validationErrors: error.errors
