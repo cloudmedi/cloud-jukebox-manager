@@ -9,11 +9,11 @@ import { TargetSelection } from "./form/TargetSelection";
 import { Volume2, Clock, Users, ArrowLeft, ArrowRight } from "lucide-react";
 import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
-import { FormSteps } from "./form/types";
+import { FormSteps, AnnouncementFormData } from "./form/types";
 
 interface AnnouncementFormProps {
   onSuccess?: () => void;
-  initialData?: any;
+  initialData?: Partial<AnnouncementFormData>;
   mode?: 'create' | 'update';
 }
 
@@ -21,7 +21,7 @@ export const AnnouncementForm = ({ onSuccess, initialData, mode = 'create' }: An
   const [currentStep, setCurrentStep] = useState<FormSteps>("basic");
   const queryClient = useQueryClient();
   
-  const form = useForm({
+  const form = useForm<AnnouncementFormData>({
     defaultValues: {
       title: "",
       content: "",
@@ -41,34 +41,25 @@ export const AnnouncementForm = ({ onSuccess, initialData, mode = 'create' }: An
 
   useEffect(() => {
     if (initialData && mode === 'update') {
-      // Form verilerini ayarla
       Object.keys(initialData).forEach(key => {
+        const value = initialData[key as keyof AnnouncementFormData];
         if (key === 'startDate' || key === 'endDate') {
-          form.setValue(key, new Date(initialData[key]));
-        } else if (key === 'targetDevices') {
-          // Hedef cihazları doğru formatta ayarla
-          const devices = Array.isArray(initialData[key]) 
-            ? initialData[key].map((device: any) => 
-                typeof device === 'string' ? device : device._id || device.id
+          form.setValue(key as keyof AnnouncementFormData, value ? new Date(value as string) : null);
+        } else if (key === 'targetDevices' || key === 'targetGroups') {
+          const ids = Array.isArray(value) 
+            ? value.map((item: any) => 
+                typeof item === 'string' ? item : item._id || item.id
               ).filter(Boolean)
             : [];
-          form.setValue('targetDevices', devices);
-        } else if (key === 'targetGroups') {
-          // Hedef grupları doğru formatta ayarla
-          const groups = Array.isArray(initialData[key])
-            ? initialData[key].map((group: any) =>
-                typeof group === 'string' ? group : group._id || group.id
-              ).filter(Boolean)
-            : [];
-          form.setValue('targetGroups', groups);
+          form.setValue(key as keyof AnnouncementFormData, ids);
         } else {
-          form.setValue(key, initialData[key]);
+          form.setValue(key as keyof AnnouncementFormData, value as any);
         }
       });
     }
   }, [initialData, form, mode]);
 
-  const onSubmit = async (data: any) => {
+  const onSubmit = async (data: AnnouncementFormData) => {
     try {
       const formData = new FormData();
       
@@ -96,32 +87,18 @@ export const AnnouncementForm = ({ onSuccess, initialData, mode = 'create' }: An
         });
       }
 
-      // Hedef cihaz ve grupları doğru formatta ekle
-      const targetDevices = Array.isArray(data.targetDevices) 
-        ? data.targetDevices.map((device: any) => 
-            typeof device === 'string' ? device : device._id || device.id
-          ).filter(Boolean)
-        : [];
-
-      const targetGroups = Array.isArray(data.targetGroups)
-        ? data.targetGroups.map((group: any) =>
-            typeof group === 'string' ? group : group._id || group.id
-          ).filter(Boolean)
-        : [];
-
-      // Her bir cihaz ID'sini ayrı ayrı ekle
-      targetDevices.forEach((deviceId: string) => {
+      // Hedef cihaz ve grupları ekle
+      data.targetDevices.forEach((deviceId: string) => {
         formData.append("targetDevices[]", deviceId);
       });
 
-      // Her bir grup ID'sini ayrı ayrı ekle
-      targetGroups.forEach((groupId: string) => {
+      data.targetGroups.forEach((groupId: string) => {
         formData.append("targetGroups[]", groupId);
       });
 
       const url = mode === 'create' 
         ? "http://localhost:5000/api/announcements"
-        : `http://localhost:5000/api/announcements/${initialData._id}`;
+        : `http://localhost:5000/api/announcements/${initialData?._id}`;
 
       const response = await fetch(url, {
         method: mode === 'create' ? "POST" : "PUT",
