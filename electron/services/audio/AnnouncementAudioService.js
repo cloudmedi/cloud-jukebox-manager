@@ -3,7 +3,11 @@ const AnnouncementLogger = require('../logging/AnnouncementLogger');
 
 class AnnouncementAudioService {
   constructor() {
-    this.audioElement = new Audio();
+    this.audioElement = document.getElementById('campaignPlayer');
+    if (!this.audioElement) {
+      console.error('Campaign player element not found!');
+      return;
+    }
     this.setupEventListeners();
   }
 
@@ -41,10 +45,6 @@ class AnnouncementAudioService {
       if (!AnnouncementLogger.logFileCheck(announcement.localPath)) {
         throw new Error('Anons dosyası bulunamadı');
       }
-
-      // Mevcut ses durumunu kaydet
-      const currentVolume = this.audioElement.volume;
-      AnnouncementLogger.logVolumeChange(currentVolume, 1.0);
 
       // Ses ayarını yap
       this.audioElement.volume = 1.0;
