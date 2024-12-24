@@ -1,31 +1,15 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
-const fs = require('fs');
 const path = require('path');
 const Announcement = require('../models/Announcement');
-
-// Upload dizinini oluştur
-const createUploadDirs = () => {
-  const uploadDir = path.join(__dirname, '../../uploads');
-  const announcementsDir = path.join(uploadDir, 'announcements');
-  
-  if (!fs.existsSync(uploadDir)) {
-    fs.mkdirSync(uploadDir, { recursive: true });
-  }
-  
-  if (!fs.existsSync(announcementsDir)) {
-    fs.mkdirSync(announcementsDir, { recursive: true });
-  }
-  
-  return announcementsDir;
-};
 
 // Multer yapılandırması
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    const uploadDir = createUploadDirs();
-    cb(null, uploadDir);
+    // Var olan uploads klasörünü kullan
+    const uploadsDir = path.join(__dirname, '../../uploads/announcements');
+    cb(null, uploadsDir);
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -93,16 +77,6 @@ router.post('/', upload.single('audioFile'), async (req, res) => {
     res.status(201).json(newAnnouncement);
   } catch (error) {
     console.error('Anons oluşturma hatası:', error);
-    
-    // Dosya yüklendiyse ve hata oluştuysa dosyayı sil
-    if (req.file) {
-      fs.unlink(req.file.path, (unlinkError) => {
-        if (unlinkError) {
-          console.error('Dosya silme hatası:', unlinkError);
-        }
-      });
-    }
-
     res.status(400).json({ 
       message: error.message,
       validationErrors: error.errors

@@ -16,6 +16,21 @@ export interface AnnouncementFormData {
   createdBy: string;
 }
 
+export interface Device {
+  _id: string;
+  name: string;
+  location?: string;
+  isOnline: boolean;
+  status?: string;
+}
+
+export interface DeviceGroup {
+  _id: string;
+  name: string;
+  description?: string;
+  status: 'active' | 'inactive';
+}
+
 export interface ScheduleFormData extends AnnouncementFormData {
   playlist?: string;
   repeatType?: string;
