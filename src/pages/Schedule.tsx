@@ -7,14 +7,16 @@ import { Button } from "@/components/ui/button";
 import { Calendar, List } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { PlaylistScheduleForm } from "@/components/schedule/PlaylistScheduleForm";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import { toast } from "sonner";
 
 const Schedule = () => {
   const [view, setView] = useState<"timeGridWeek" | "dayGridMonth">("timeGridWeek");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const queryClient = useQueryClient();
 
   const { data: schedules, isLoading } = useQuery({
     queryKey: ["playlist-schedules"],
@@ -27,28 +29,42 @@ const Schedule = () => {
     },
   });
 
+  const deleteScheduleMutation = useMutation({
+    mutationFn: async (scheduleId: string) => {
+      const response = await fetch(`http://localhost:5000/api/playlist-schedules/${scheduleId}`, {
+        method: 'DELETE'
+      });
+      if (!response.ok) {
+        throw new Error('Zamanlama silinemedi');
+      }
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["playlist-schedules"] });
+      toast.success("Zamanlama başarıyla silindi");
+    },
+    onError: () => {
+      toast.error("Zamanlama silinirken bir hata oluştu");
+    }
+  });
+
   const handleDateSelect = (selectInfo: any) => {
-    // Seçilen başlangıç ve bitiş tarihlerini al
     const start = new Date(selectInfo.start);
-    const end = new Date(selectInfo.end);
-
-    // Başlangıç saatini koru
-    const startHours = start.getHours();
-    const startMinutes = start.getMinutes();
-
-    // Bitiş saati başlangıçtan 1 saat sonra olsun
-    const endHours = startHours + 1;
-    const endMinutes = startMinutes;
-
-    // Tarihleri güncelle
+    
+    // Seçilen saati koru
     const selectedStartDate = new Date(start);
-    selectedStartDate.setHours(startHours, startMinutes);
-
-    const selectedEndDate = new Date(end);
-    selectedEndDate.setHours(endHours, endMinutes);
-
+    
+    // Bitiş saati başlangıçtan 1 saat sonra olsun
+    const selectedEndDate = new Date(selectedStartDate);
+    selectedEndDate.setHours(selectedStartDate.getHours() + 1);
+    
     setSelectedDate(selectedStartDate);
     setIsDialogOpen(true);
+  };
+
+  const handleEventClick = (clickInfo: any) => {
+    if (window.confirm('Bu zamanlamayı silmek istediğinize emin misiniz?')) {
+      deleteScheduleMutation.mutate(clickInfo.event.id);
+    }
   };
 
   const handleScheduleCreate = () => {
@@ -113,6 +129,7 @@ const Schedule = () => {
           weekends={true}
           events={events}
           select={handleDateSelect}
+          eventClick={handleEventClick}
           height="auto"
           locale="tr"
           slotMinTime="00:00:00"
