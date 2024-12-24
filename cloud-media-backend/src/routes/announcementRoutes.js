@@ -184,4 +184,126 @@ async function getDeviceGroupIds(deviceId) {
   return device ? [device.groupId] : [];
 }
 
+// Update existing announcement
+router.put('/:id', upload.single('audioFile'), async (req, res) => {
+  console.log('Anons güncelleme isteği alındı:', req.body);
+  let uploadedFile = null;
+
+  try {
+    const announcementId = req.params.id;
+    const existingAnnouncement = await Announcement.findById(announcementId);
+    
+    if (!existingAnnouncement) {
+      throw new Error('Anons bulunamadı');
+    }
+
+    // Form verilerini doğrula
+    if (!req.body.title || !req.body.content) {
+      throw new Error('Eksik form alanları');
+    }
+
+    // Tarih alanlarını kontrol et
+    const startDate = new Date(req.body.startDate);
+    const endDate = new Date(req.body.endDate);
+    
+    if (isNaN(startDate.getTime()) || isNaN(endDate.getTime())) {
+      throw new Error('Geçersiz tarih formatı');
+    }
+
+    if (endDate <= startDate) {
+      throw new Error('Bitiş tarihi başlangıç tarihinden sonra olmalıdır');
+    }
+
+    // Güncelleme verilerini hazırla
+    const updateData = {
+      title: req.body.title,
+      content: req.body.content,
+      startDate: startDate,
+      endDate: endDate,
+      scheduleType: req.body.scheduleType,
+      status: 'active',
+      immediateInterrupt: req.body.immediateInterrupt === 'true'
+    };
+
+    // Eğer yeni ses dosyası yüklendiyse
+    if (req.file) {
+      uploadedFile = req.file;
+      updateData.audioFile = req.file.path;
+      updateData.duration = parseFloat(req.body.duration);
+      
+      // Eski ses dosyasını sil
+      if (existingAnnouncement.audioFile) {
+        fs.unlink(existingAnnouncement.audioFile, (err) => {
+          if (err) console.error('Eski ses dosyası silinirken hata:', err);
+        });
+      }
+    }
+
+    // Zamanlama tipine göre ek alanları ekle
+    if (req.body.scheduleType === 'songs') {
+      if (!req.body.songInterval || isNaN(req.body.songInterval)) {
+        throw new Error('Geçersiz şarkı aralığı değeri');
+      }
+      updateData.songInterval = parseInt(req.body.songInterval);
+    } else if (req.body.scheduleType === 'minutes') {
+      if (!req.body.minuteInterval || isNaN(req.body.minuteInterval)) {
+        throw new Error('Geçersiz dakika aralığı değeri');
+      }
+      updateData.minuteInterval = parseInt(req.body.minuteInterval);
+    } else if (req.body.scheduleType === 'specific') {
+      if (!req.body['specificTimes[]']) {
+        throw new Error('En az bir saat belirtilmelidir');
+      }
+      updateData.specificTimes = Array.isArray(req.body['specificTimes[]'])
+        ? req.body['specificTimes[]']
+        : [req.body['specificTimes[]']];
+    }
+
+    // Hedef cihaz ve grupları güncelle
+    const targetDevices = req.body['targetDevices[]'] || req.body.targetDevices;
+    const targetGroups = req.body['targetGroups[]'] || req.body.targetGroups;
+
+    updateData.targetDevices = Array.isArray(targetDevices)
+      ? targetDevices
+      : targetDevices
+        ? [targetDevices]
+        : [];
+
+    updateData.targetGroups = Array.isArray(targetGroups)
+      ? targetGroups
+      : targetGroups
+        ? [targetGroups]
+        : [];
+
+    // En az bir hedef seçilmiş olmalı
+    if (updateData.targetDevices.length === 0 && updateData.targetGroups.length === 0) {
+      throw new Error('En az bir hedef cihaz veya grup seçilmelidir');
+    }
+
+    // Anonsu güncelle
+    const updatedAnnouncement = await Announcement.findByIdAndUpdate(
+      announcementId,
+      updateData,
+      { new: true }
+    );
+    
+    console.log('Anons başarıyla güncellendi:', updatedAnnouncement._id);
+    res.json(updatedAnnouncement);
+  } catch (error) {
+    console.error('Anons güncelleme hatası:', error);
+    
+    // Hata durumunda yüklenen dosyayı temizle
+    if (uploadedFile) {
+      fs.unlink(uploadedFile.path, (err) => {
+        if (err) console.error('Dosya silinirken hata:', err);
+      });
+    }
+
+    res.status(400).json({
+      message: error.message,
+      validationErrors: error.errors
+    });
+  }
+});
+
 module.exports = router;

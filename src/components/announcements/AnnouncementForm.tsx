@@ -7,35 +7,49 @@ import { BasicInfo } from "./form/BasicInfo";
 import { ScheduleSettings } from "./form/ScheduleSettings";
 import { TargetSelection } from "./form/TargetSelection";
 import { Volume2, Clock, Users, ArrowLeft, ArrowRight } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { FormSteps } from "./form/types";
 
 interface AnnouncementFormProps {
   onSuccess?: () => void;
+  initialData?: any;
+  mode?: 'create' | 'update';
 }
 
-export const AnnouncementForm = ({ onSuccess }: AnnouncementFormProps) => {
+export const AnnouncementForm = ({ onSuccess, initialData, mode = 'create' }: AnnouncementFormProps) => {
   const [currentStep, setCurrentStep] = useState<FormSteps>("basic");
   const queryClient = useQueryClient();
   
   const form = useForm({
     defaultValues: {
-      title: "",
-      content: "",
+      title: initialData?.title || "",
+      content: initialData?.content || "",
       audioFile: null,
-      duration: 0,
-      startDate: null,
-      endDate: null,
-      scheduleType: "songs",
-      songInterval: 1,
-      minuteInterval: null,
-      specificTimes: [],
-      immediateInterrupt: false,
-      targetDevices: [],
-      targetGroups: []
+      duration: initialData?.duration || 0,
+      startDate: initialData?.startDate ? new Date(initialData.startDate) : new Date(),
+      endDate: initialData?.endDate ? new Date(initialData.endDate) : null,
+      scheduleType: initialData?.scheduleType || "songs",
+      songInterval: initialData?.songInterval || 1,
+      minuteInterval: initialData?.minuteInterval || null,
+      specificTimes: initialData?.specificTimes || [],
+      immediateInterrupt: initialData?.immediateInterrupt || false,
+      targetDevices: initialData?.targetDevices || [],
+      targetGroups: initialData?.targetGroups || []
     }
   });
+
+  useEffect(() => {
+    if (initialData && mode === 'update') {
+      Object.keys(initialData).forEach(key => {
+        if (key === 'startDate' || key === 'endDate') {
+          form.setValue(key, new Date(initialData[key]));
+        } else {
+          form.setValue(key, initialData[key]);
+        }
+      });
+    }
+  }, [initialData, form, mode]);
 
   const onSubmit = async (data: any) => {
     try {
@@ -74,8 +88,12 @@ export const AnnouncementForm = ({ onSuccess }: AnnouncementFormProps) => {
         formData.append("targetGroups[]", groupId);
       });
 
-      const response = await fetch("http://localhost:5000/api/announcements", {
-        method: "POST",
+      const url = mode === 'create' 
+        ? "http://localhost:5000/api/announcements"
+        : `http://localhost:5000/api/announcements/${initialData._id}`;
+
+      const response = await fetch(url, {
+        method: mode === 'create' ? "POST" : "PUT",
         body: formData
       });
 
@@ -84,14 +102,14 @@ export const AnnouncementForm = ({ onSuccess }: AnnouncementFormProps) => {
         throw new Error(error.message);
       }
 
-      toast.success("Anons başarıyla oluşturuldu");
+      toast.success(mode === 'create' ? "Anons başarıyla oluşturuldu" : "Anons başarıyla güncellendi");
       queryClient.invalidateQueries({ queryKey: ["announcements"] });
       form.reset();
       setCurrentStep("basic");
       onSuccess?.();
     } catch (error: any) {
       toast.error(`Hata: ${error.message}`);
-      console.error("Anons oluşturma hatası:", error);
+      console.error(mode === 'create' ? "Anons oluşturma hatası:" : "Anons güncelleme hatası:", error);
     }
   };
 
@@ -145,7 +163,7 @@ export const AnnouncementForm = ({ onSuccess }: AnnouncementFormProps) => {
 
           {currentStep === "targets" ? (
             <Button type="submit">
-              Anonsu Oluştur
+              {mode === 'create' ? 'Anonsu Oluştur' : 'Anonsu Güncelle'}
             </Button>
           ) : (
             <Button

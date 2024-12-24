@@ -17,8 +17,6 @@ import {
   Trash2,
   MoreVertical,
   Send,
-  Play,
-  Pause,
 } from "lucide-react";
 import { useState } from "react";
 import { toast } from "sonner";
@@ -32,6 +30,14 @@ interface Announcement {
   status: string;
   targetDevices: string[];
   targetGroups: string[];
+  startDate: string;
+  endDate: string;
+  scheduleType: string;
+  specificTimes?: string[];
+  songInterval?: number;
+  minuteInterval?: number;
+  immediateInterrupt: boolean;
+  duration: number;
 }
 
 interface AnnouncementActionsProps {
@@ -129,7 +135,8 @@ export const AnnouncementActions = ({ announcement }: AnnouncementActionsProps) 
             <DialogTitle>Anons Düzenle</DialogTitle>
           </DialogHeader>
           <AnnouncementForm 
-            announcement={announcement}
+            initialData={announcement}
+            mode="update"
             onSuccess={() => {
               setIsEditDialogOpen(false);
               queryClient.invalidateQueries({ queryKey: ['announcements'] });
