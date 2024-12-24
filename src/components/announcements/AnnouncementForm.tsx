@@ -42,64 +42,67 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
 
   const createAnnouncementMutation = useMutation({
     mutationFn: async (data: AnnouncementFormData) => {
-      try {
-        const formData = new FormData();
-        
-        // Temel form verilerini ekle
-        formData.append('title', data.title);
-        formData.append('content', data.content);
-        if (data.audioFile) {
-          formData.append('audioFile', data.audioFile);
-        }
-        formData.append('duration', String(data.duration));
-        formData.append('startDate', data.startDate.toISOString());
-        formData.append('endDate', data.endDate.toISOString());
-        formData.append('scheduleType', data.scheduleType);
-        
-        // İsteğe bağlı alanları kontrol et ve ekle
-        if (data.songInterval) {
-          formData.append('songInterval', String(data.songInterval));
-        }
-        if (data.minuteInterval) {
-          formData.append('minuteInterval', String(data.minuteInterval));
-        }
-        if (data.specificTimes && data.specificTimes.length > 0) {
-          data.specificTimes.forEach(time => {
-            formData.append('specificTimes[]', time);
-          });
-        }
-        
-        // Hedef cihaz ve grupları ekle
-        if (data.targets.devices && data.targets.devices.length > 0) {
-          data.targets.devices.forEach(deviceId => {
-            formData.append('targetDevices[]', deviceId);
-          });
-        }
-        if (data.targets.groups && data.targets.groups.length > 0) {
-          data.targets.groups.forEach(groupId => {
-            formData.append('targetGroups[]', groupId);
-          });
-        }
-        
-        formData.append('createdBy', data.createdBy);
-
-        console.log('Form verileri:', Object.fromEntries(formData));
-
-        const response = await fetch("http://localhost:5000/api/announcements", {
-          method: "POST",
-          body: formData
-        });
-        
-        if (!response.ok) {
-          const errorData = await response.json();
-          throw new Error(errorData.message || "Anons oluşturma başarısız");
-        }
-        
-        return response.json();
-      } catch (error) {
-        console.error('Form gönderme hatası:', error);
-        throw error;
+      console.log('Form verileri:', data);
+      
+      const formData = new FormData();
+      
+      // Temel form verilerini ekle
+      formData.append('title', data.title);
+      formData.append('content', data.content);
+      formData.append('startDate', data.startDate.toISOString());
+      formData.append('endDate', data.endDate.toISOString());
+      formData.append('scheduleType', data.scheduleType);
+      formData.append('duration', String(data.duration));
+      
+      // Ses dosyası kontrolü ve eklenmesi
+      if (data.audioFile) {
+        formData.append('audioFile', data.audioFile);
+        console.log('Ses dosyası eklendi:', data.audioFile.name);
       }
+      
+      // Zamanlama verilerini ekle
+      if (data.songInterval) {
+        formData.append('songInterval', String(data.songInterval));
+      }
+      if (data.minuteInterval) {
+        formData.append('minuteInterval', String(data.minuteInterval));
+      }
+      if (data.specificTimes && data.specificTimes.length > 0) {
+        data.specificTimes.forEach(time => {
+          formData.append('specificTimes[]', time);
+        });
+      }
+      
+      // Hedef cihaz ve grupları ekle
+      if (data.targets.devices && data.targets.devices.length > 0) {
+        data.targets.devices.forEach(deviceId => {
+          formData.append('targetDevices[]', deviceId);
+        });
+      }
+      if (data.targets.groups && data.targets.groups.length > 0) {
+        data.targets.groups.forEach(groupId => {
+          formData.append('targetGroups[]', groupId);
+        });
+      }
+      
+      formData.append('createdBy', data.createdBy);
+
+      console.log('FormData içeriği:', Object.fromEntries(formData));
+
+      const response = await fetch("http://localhost:5000/api/announcements", {
+        method: "POST",
+        body: formData
+      });
+      
+      if (!response.ok) {
+        const errorData = await response.json();
+        console.error('API Hatası:', errorData);
+        throw new Error(errorData.message || "Anons oluşturma başarısız");
+      }
+      
+      const result = await response.json();
+      console.log('API Yanıtı:', result);
+      return result;
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["announcements"] });
@@ -134,7 +137,9 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
     const audio = new Audio();
     audio.src = URL.createObjectURL(file);
     audio.onloadedmetadata = () => {
-      form.setValue('duration', Math.ceil(audio.duration));
+      const duration = Math.ceil(audio.duration);
+      console.log('Ses dosyası süresi:', duration);
+      form.setValue('duration', duration);
     };
   };
 

@@ -7,11 +7,11 @@ const Announcement = require('../models/Announcement');
 // Multer yapılandırması
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, path.join(__dirname, '../../uploads/announcements'));
+    cb(null, 'uploads/announcements');
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
-    cb(null, uniqueSuffix + '-' + file.originalname);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
   }
 });
 
@@ -41,23 +41,23 @@ router.post('/', upload.single('audioFile'), async (req, res) => {
     }
 
     // Array verilerini düzgün şekilde parse et
-    const targetDevices = req.body['targetDevices[]'] 
-      ? Array.isArray(req.body['targetDevices[]']) 
-        ? req.body['targetDevices[]'] 
-        : [req.body['targetDevices[]']]
-      : [];
+    const targetDevices = Array.isArray(req.body['targetDevices[]']) 
+      ? req.body['targetDevices[]'] 
+      : req.body['targetDevices[]'] 
+        ? [req.body['targetDevices[]']] 
+        : [];
 
-    const targetGroups = req.body['targetGroups[]']
-      ? Array.isArray(req.body['targetGroups[]'])
-        ? req.body['targetGroups[]']
-        : [req.body['targetGroups[]']]
-      : [];
+    const targetGroups = Array.isArray(req.body['targetGroups[]'])
+      ? req.body['targetGroups[]']
+      : req.body['targetGroups[]']
+        ? [req.body['targetGroups[]']]
+        : [];
 
-    const specificTimes = req.body['specificTimes[]']
-      ? Array.isArray(req.body['specificTimes[]'])
-        ? req.body['specificTimes[]']
-        : [req.body['specificTimes[]']]
-      : [];
+    const specificTimes = Array.isArray(req.body['specificTimes[]'])
+      ? req.body['specificTimes[]']
+      : req.body['specificTimes[]']
+        ? [req.body['specificTimes[]']]
+        : [];
 
     const announcementData = {
       title: req.body.title,
@@ -107,6 +107,7 @@ router.get('/device/:deviceId', async (req, res) => {
     
     res.json(deviceAnnouncements);
   } catch (error) {
+    console.error('Cihaz anoslarını getirme hatası:', error);
     res.status(500).json({ message: error.message });
   }
 });
