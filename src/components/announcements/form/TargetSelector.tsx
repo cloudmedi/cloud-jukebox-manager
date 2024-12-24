@@ -1,13 +1,12 @@
 import { useState } from "react";
 import { FormField, FormItem, FormLabel } from "@/components/ui/form";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { Check } from "lucide-react";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
 import { useQuery } from "@tanstack/react-query";
-import { Device, DeviceGroup } from "../types/announcement";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { UseFormReturn } from "react-hook-form";
 import { AnnouncementFormData } from "../types/announcement";
 
@@ -16,7 +15,7 @@ interface TargetSelectorProps {
 }
 
 export const TargetSelector = ({ form }: TargetSelectorProps) => {
-  const [selectedType, setSelectedType] = useState<"devices" | "groups">("devices");
+  const [selectedType, setSelectedType] = useState<"device" | "group">("device");
   const [searchQuery, setSearchQuery] = useState("");
 
   const { data: devices = [] } = useQuery({
@@ -38,7 +37,7 @@ export const TargetSelector = ({ form }: TargetSelectorProps) => {
   });
 
   const handleDeviceSelect = (deviceId: string) => {
-    const currentDevices = form.getValues("targetDevices") || [];
+    const currentDevices = form.watch("targetDevices") || [];
     const updatedDevices = currentDevices.includes(deviceId)
       ? currentDevices.filter(id => id !== deviceId)
       : [...currentDevices, deviceId];
@@ -46,18 +45,19 @@ export const TargetSelector = ({ form }: TargetSelectorProps) => {
   };
 
   const handleGroupSelect = (groupId: string) => {
-    const currentGroups = form.getValues("targetGroups") || [];
+    const currentGroups = form.watch("targetGroups") || [];
     const updatedGroups = currentGroups.includes(groupId)
       ? currentGroups.filter(id => id !== groupId)
       : [...currentGroups, groupId];
     form.setValue("targetGroups", updatedGroups);
   };
 
-  const filteredItems = selectedType === "devices" 
-    ? devices.filter((device: Device) => 
-        device.name.toLowerCase().includes(searchQuery.toLowerCase())
+  const filteredItems = selectedType === "device" 
+    ? devices.filter((device: any) => 
+        device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        device.location?.toLowerCase().includes(searchQuery.toLowerCase())
       )
-    : groups.filter((group: DeviceGroup) => 
+    : groups.filter((group: any) => 
         group.name.toLowerCase().includes(searchQuery.toLowerCase())
       );
 
@@ -69,15 +69,15 @@ export const TargetSelector = ({ form }: TargetSelectorProps) => {
       <div className="flex items-center gap-2">
         <Button
           type="button"
-          variant={selectedType === "devices" ? "default" : "outline"}
-          onClick={() => setSelectedType("devices")}
+          variant={selectedType === "device" ? "default" : "outline"}
+          onClick={() => setSelectedType("device")}
         >
           Cihazlar
         </Button>
         <Button
           type="button"
-          variant={selectedType === "groups" ? "default" : "outline"}
-          onClick={() => setSelectedType("groups")}
+          variant={selectedType === "group" ? "default" : "outline"}
+          onClick={() => setSelectedType("group")}
         >
           Gruplar
         </Button>
@@ -85,25 +85,25 @@ export const TargetSelector = ({ form }: TargetSelectorProps) => {
 
       <FormField
         control={form.control}
-        name={selectedType === "devices" ? "targetDevices" : "targetGroups"}
+        name={selectedType === "device" ? "targetDevices" : "targetGroups"}
         render={() => (
           <FormItem>
-            <FormLabel>{selectedType === "devices" ? "Cihazlar" : "Gruplar"}</FormLabel>
+            <FormLabel>{selectedType === "device" ? "Cihazlar" : "Gruplar"}</FormLabel>
             <Command className="border rounded-lg">
               <CommandInput 
-                placeholder={`${selectedType === "devices" ? "Cihaz" : "Grup"} ara...`}
+                placeholder={`${selectedType === "device" ? "Cihaz" : "Grup"} ara...`}
                 value={searchQuery}
                 onValueChange={setSearchQuery}
               />
               <CommandEmpty>Sonuç bulunamadı.</CommandEmpty>
               <ScrollArea className="h-[200px]">
                 <CommandGroup>
-                  {filteredItems.map((item: Device | DeviceGroup) => (
+                  {filteredItems.map((item: any) => (
                     <CommandItem
                       key={item._id}
                       value={item._id}
                       onSelect={() => 
-                        selectedType === "devices" 
+                        selectedType === "device" 
                           ? handleDeviceSelect(item._id)
                           : handleGroupSelect(item._id)
                       }
@@ -113,21 +113,21 @@ export const TargetSelector = ({ form }: TargetSelectorProps) => {
                           <Check
                             className={cn(
                               "mr-2 h-4 w-4",
-                              ((selectedType === "devices" ? selectedDevices : selectedGroups).includes(item._id))
+                              (selectedType === "device" ? selectedDevices : selectedGroups).includes(item._id)
                                 ? "opacity-100"
                                 : "opacity-0"
                             )}
                           />
                           <div className="flex flex-col">
                             <span>{item.name}</span>
-                            {'location' in item && item.location && (
+                            {item.location && (
                               <span className="text-sm text-muted-foreground">
                                 {item.location}
                               </span>
                             )}
                           </div>
                         </div>
-                        {selectedType === "devices" && 'isOnline' in item && (
+                        {selectedType === "device" && (
                           <Badge
                             variant={item.isOnline ? "success" : "destructive"}
                             className="ml-auto"
@@ -135,7 +135,7 @@ export const TargetSelector = ({ form }: TargetSelectorProps) => {
                             {item.isOnline ? "Çevrimiçi" : "Çevrimdışı"}
                           </Badge>
                         )}
-                        {selectedType === "groups" && 'status' in item && (
+                        {selectedType === "group" && (
                           <Badge
                             variant={item.status === 'active' ? "success" : "secondary"}
                             className="ml-auto"
@@ -152,6 +152,31 @@ export const TargetSelector = ({ form }: TargetSelectorProps) => {
           </FormItem>
         )}
       />
+
+      {/* Seçili öğeleri göster */}
+      {(selectedType === "device" ? selectedDevices : selectedGroups).length > 0 && (
+        <ScrollArea className="h-20 w-full rounded-md border p-2">
+          <div className="flex flex-wrap gap-2">
+            {selectedType === "device"
+              ? selectedDevices.map(deviceId => {
+                  const device = devices.find((d: any) => d._id === deviceId);
+                  return device && (
+                    <Badge key={deviceId} variant="secondary">
+                      {device.name}
+                    </Badge>
+                  );
+                })
+              : selectedGroups.map(groupId => {
+                  const group = groups.find((g: any) => g._id === groupId);
+                  return group && (
+                    <Badge key={groupId} variant="secondary">
+                      {group.name}
+                    </Badge>
+                  );
+                })}
+          </div>
+        </ScrollArea>
+      )}
     </div>
   );
 };

@@ -7,7 +7,7 @@ import { BasicInfoForm } from "./BasicInfoForm";
 import { PlaybackScheduleForm } from "./PlaybackScheduleForm";
 import { Form } from "@/components/ui/form";
 import { AudioUpload } from "./form/AudioUpload";
-import { TargetSelector } from "./form/TargetSelector";
+import { TargetSelect } from "@/components/schedule/TargetSelect";
 import { AnnouncementFormData } from "./types/announcement";
 
 const API_URL = "http://localhost:5000/api";
@@ -33,11 +33,11 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
       songInterval: announcement?.songInterval || 1,
       minuteInterval: announcement?.minuteInterval || 5,
       specificTimes: announcement?.specificTimes || [],
-      targetDevices: announcement?.targetDevices || [],
-      targetGroups: announcement?.targetGroups || [],
-      duration: announcement?.duration || 0,
-      immediateInterrupt: announcement?.immediateInterrupt || false,
-      createdBy: "system"
+      targets: {
+        devices: announcement?.targetDevices || [],
+        groups: announcement?.targetGroups || []
+      },
+      duration: announcement?.duration || 0
     },
   });
 
@@ -49,8 +49,7 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
       });
       
       if (!response.ok) {
-        const error = await response.json();
-        throw new Error(error.message || "Anons oluşturma başarısız");
+        throw new Error("Anons oluşturma başarısız");
       }
       
       return response.json();
@@ -73,25 +72,66 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
     },
   });
 
+  const updateAnnouncementMutation = useMutation({
+    mutationFn: async (data: AnnouncementFormData) => {
+      const response = await fetch(`${API_URL}/announcements/${announcement._id}`, {
+        method: "PATCH",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+      });
+      
+      if (!response.ok) {
+        throw new Error("Anons güncelleme başarısız");
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["announcements"] });
+      toast({
+        title: "Başarılı",
+        description: "Anons başarıyla güncellendi",
+      });
+      if (onSuccess) onSuccess();
+    },
+    onError: (error: Error) => {
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: error.message,
+      });
+    },
+  });
+
   const handleSubmit = async (data: AnnouncementFormData) => {
+    if (announcement) {
+      await updateAnnouncementMutation.mutateAsync(data);
+      return;
+    }
+
     setUploading(true);
     setProgress(0);
 
     try {
       const formData = new FormData();
       
-      // Form verilerini backend'in beklediği formata dönüştür
-      Object.entries(data).forEach(([key, value]) => {
+      // Temel bilgiler
+      Object.keys(data).forEach(key => {
         if (key === 'startDate' || key === 'endDate') {
-          formData.append(key, value instanceof Date ? value.toISOString() : String(value));
-        } else if (key === 'audioFile' && value instanceof File) {
-          formData.append(key, value);
-        } else if (key === 'targetDevices' || key === 'targetGroups') {
-          formData.append(key, JSON.stringify(value));
-        } else {
-          formData.append(key, String(value));
+          const date = data[key as keyof AnnouncementFormData];
+          if (date instanceof Date) {
+            formData.append(key, date.toISOString());
+          }
+        } else if (key !== 'audioFile') {
+          formData.append(key, JSON.stringify(data[key as keyof AnnouncementFormData]));
         }
       });
+
+      if (data.audioFile) {
+        formData.append('audioFile', data.audioFile);
+      }
 
       await createAnnouncementMutation.mutateAsync(formData);
     } catch (error) {
@@ -111,8 +151,8 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
       <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
         <BasicInfoForm form={form} />
         <PlaybackScheduleForm form={form} />
-        <TargetSelector form={form} />
-        
+        <TargetSelect form={form} />
+
         {!announcement && (
           <AudioUpload
             form={form}
