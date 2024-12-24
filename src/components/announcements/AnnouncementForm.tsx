@@ -9,9 +9,14 @@ import { ScheduleSettings } from "./ScheduleSettings";
 import { TargetSelection } from "./TargetSelection";
 import { Volume2, Clock, Users, ArrowLeft, ArrowRight } from "lucide-react";
 import { useState } from "react";
+import { useQueryClient } from "@tanstack/react-query";
 
 const STEPS = ["basic", "schedule", "targets"] as const;
 type Step = typeof STEPS[number];
+
+interface AnnouncementFormProps {
+  onSuccess?: () => void;
+}
 
 interface AnnouncementFormData {
   title: string;
@@ -29,8 +34,9 @@ interface AnnouncementFormData {
   targetGroups: string[];
 }
 
-export const AnnouncementForm = () => {
+export const AnnouncementForm = ({ onSuccess }: AnnouncementFormProps) => {
   const [currentStep, setCurrentStep] = useState<Step>("basic");
+  const queryClient = useQueryClient();
   
   const form = useForm<AnnouncementFormData>({
     defaultValues: {
@@ -146,8 +152,10 @@ export const AnnouncementForm = () => {
       }
 
       toast.success("Anons başarıyla oluşturuldu");
+      queryClient.invalidateQueries({ queryKey: ["announcements"] });
       form.reset();
       setCurrentStep("basic");
+      onSuccess?.();
     } catch (error: any) {
       toast.error(`Hata: ${error.message}`);
       console.error("Anons oluşturma hatası:", error);
@@ -155,62 +163,71 @@ export const AnnouncementForm = () => {
   };
 
   return (
-    <Card className="p-6">
-      <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-          <Tabs value={currentStep} onValueChange={(value) => setCurrentStep(value as Step)}>
-            <TabsList className="grid w-full grid-cols-3 mb-6">
-              <TabsTrigger value="basic">
-                <Volume2 className="w-4 h-4 mr-2" />
-                Temel Bilgiler
-              </TabsTrigger>
-              <TabsTrigger value="schedule">
-                <Clock className="w-4 h-4 mr-2" />
-                Zamanlama
-              </TabsTrigger>
-              <TabsTrigger value="targets">
-                <Users className="w-4 h-4 mr-2" />
-                Hedef Seçimi
-              </TabsTrigger>
-            </TabsList>
+    <div className="space-y-6">
+      <Tabs value={currentStep} onValueChange={(value) => setCurrentStep(value as Step)}>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="basic">
+            <Volume2 className="w-4 h-4 mr-2" />
+            Temel Bilgiler
+          </TabsTrigger>
+          <TabsTrigger value="schedule">
+            <Clock className="w-4 h-4 mr-2" />
+            Zamanlama
+          </TabsTrigger>
+          <TabsTrigger value="targets">
+            <Users className="w-4 h-4 mr-2" />
+            Hedef Seçimi
+          </TabsTrigger>
+        </TabsList>
 
-            <TabsContent value="basic">
-              <BasicInfo form={form} />
-            </TabsContent>
+        <TabsContent value="basic">
+          <BasicInfo form={form} />
+        </TabsContent>
 
-            <TabsContent value="schedule">
-              <ScheduleSettings form={form} />
-            </TabsContent>
+        <TabsContent value="schedule">
+          <ScheduleSettings form={form} />
+        </TabsContent>
 
-            <TabsContent value="targets">
-              <TargetSelection form={form} />
-            </TabsContent>
-          </Tabs>
+        <TabsContent value="targets">
+          <TargetSelection form={form} />
+        </TabsContent>
+      </Tabs>
 
-          <div className="flex justify-between">
-            <Button
-              type="button"
-              variant="outline"
-              onClick={goToPreviousStep}
-              disabled={currentStep === "basic"}
-            >
-              <ArrowLeft className="w-4 h-4 mr-2" />
-              Geri
-            </Button>
+      <div className="flex justify-between">
+        <Button
+          type="button"
+          variant="outline"
+          onClick={() => {
+            const currentIndex = STEPS.indexOf(currentStep);
+            if (currentIndex > 0) {
+              setCurrentStep(STEPS[currentIndex - 1]);
+            }
+          }}
+          disabled={currentStep === "basic"}
+        >
+          <ArrowLeft className="w-4 h-4 mr-2" />
+          Geri
+        </Button>
 
-            {currentStep === "targets" ? (
-              <Button type="submit">
-                Anonsu Oluştur
-              </Button>
-            ) : (
-              <Button type="button" onClick={goToNextStep}>
-                İleri
-                <ArrowRight className="w-4 h-4 ml-2" />
-              </Button>
-            )}
-          </div>
-        </form>
-      </Form>
-    </Card>
+        {currentStep === "targets" ? (
+          <Button type="button" onClick={form.handleSubmit(onSubmit)}>
+            Anonsu Oluştur
+          </Button>
+        ) : (
+          <Button
+            type="button"
+            onClick={() => {
+              const currentIndex = STEPS.indexOf(currentStep);
+              if (currentIndex < STEPS.length - 1 && validateStep(currentStep)) {
+                setCurrentStep(STEPS[currentIndex + 1]);
+              }
+            }}
+          >
+            İleri
+            <ArrowRight className="w-4 h-4 ml-2" />
+          </Button>
+        )}
+      </div>
+    </div>
   );
 };
