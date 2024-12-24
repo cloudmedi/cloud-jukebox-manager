@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "Cloud Media Player Desktop Application",
   "main": "main.js",
+  "type": "module",
   "scripts": {
     "start": "electron .",
     "dev": "electron ."
