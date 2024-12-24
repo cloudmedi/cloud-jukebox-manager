@@ -8,9 +8,17 @@ import { tr } from "date-fns/locale";
 import { CalendarIcon } from "lucide-react";
 import { useFormContext } from "react-hook-form";
 import { AnnouncementFormData } from "../form/types";
+import { useEffect } from "react";
 
 export const DateRangePicker = () => {
   const form = useFormContext<AnnouncementFormData>();
+
+  // Bileşen yüklendiğinde bugünün tarihini otomatik olarak set et
+  useEffect(() => {
+    if (!form.getValues("startDate")) {
+      form.setValue("startDate", new Date());
+    }
+  }, [form]);
 
   return (
     <div className="grid grid-cols-2 gap-4">
@@ -42,7 +50,7 @@ export const DateRangePicker = () => {
                   mode="single"
                   selected={field.value}
                   onSelect={field.onChange}
-                  disabled={(date) => date < new Date()}
+                  disabled={(date) => date < new Date(new Date().setHours(0, 0, 0, 0))}
                   initialFocus
                 />
               </PopoverContent>
@@ -80,7 +88,7 @@ export const DateRangePicker = () => {
                   selected={field.value}
                   onSelect={field.onChange}
                   disabled={(date) =>
-                    date < new Date() ||
+                    date < new Date(new Date().setHours(0, 0, 0, 0)) ||
                     (form.getValues("startDate") && date < form.getValues("startDate"))
                   }
                   initialFocus
