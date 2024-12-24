@@ -27,12 +27,16 @@ class MessageHandler {
         break;
 
       case 'command':
-        await this.commandHandler.handleCommand(data);
+        // token değerini kullanarak komutu gönder
+        const success = await this.commandHandler.handleCommand({
+          ...data,
+          token: data.token // deviceId yerine token kullanıyoruz
+        });
         ws.send(JSON.stringify({
           type: 'commandStatus',
           token: data.token,
           command: data.command,
-          success: true
+          success
         }));
         break;
 

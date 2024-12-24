@@ -77,7 +77,7 @@ export const AnnouncementActions = ({ announcement }: AnnouncementActionsProps) 
         websocketService.sendMessage({
           type: 'command',
           command: 'playAnnouncement',
-          deviceId,
+          token: deviceId, // deviceId yerine token kullanıyoruz
           announcement: {
             _id: announcement._id,
             title: announcement.title,
@@ -120,6 +120,7 @@ export const AnnouncementActions = ({ announcement }: AnnouncementActionsProps) 
       endDate: new Date(announcement.endDate),
       targetDevices: announcement.targetDevices,
       targetGroups: announcement.targetGroups,
+      audioFile: undefined // audioFile'ı undefined olarak ayarlıyoruz çünkü File tipinde olmalı
     };
   };
 
