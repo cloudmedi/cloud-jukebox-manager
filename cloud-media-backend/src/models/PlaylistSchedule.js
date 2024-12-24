@@ -42,7 +42,6 @@ const playlistScheduleSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Gelişmiş çakışma kontrolü
 playlistScheduleSchema.methods.checkConflict = async function() {
   const query = {
     status: 'active',
@@ -57,85 +56,104 @@ playlistScheduleSchema.methods.checkConflict = async function() {
     ];
   }
 
-  // Tekrar tipine göre tarih kontrolü
+  const startDate = new Date(this.startDate);
+  const endDate = new Date(this.endDate);
+  const startTime = startDate.getHours() * 60 + startDate.getMinutes();
+  const endTime = endDate.getHours() * 60 + endDate.getMinutes();
+
   switch (this.repeatType) {
     case 'once':
       query.$and = [{
+        repeatType: 'once',
         $or: [
           {
-            startDate: { $lte: this.endDate },
-            endDate: { $gte: this.startDate }
+            startDate: { $lt: endDate },
+            endDate: { $gt: startDate }
           }
         ]
       }];
       break;
 
     case 'daily':
-      // Günlük tekrar için saat bazlı kontrol
-      const startTime = this.startDate.getHours() * 60 + this.startDate.getMinutes();
-      const endTime = this.endDate.getHours() * 60 + this.endDate.getMinutes();
-      
       query.$and = [{
         $or: [
           {
             repeatType: 'daily',
             $expr: {
-              $and: [
-                { $lte: [{ $add: [{ $multiply: [{ $hour: '$startDate' }, 60] }, { $minute: '$startDate' }] }, endTime] },
-                { $gte: [{ $add: [{ $multiply: [{ $hour: '$endDate' }, 60] }, { $minute: '$endDate' }] }, startTime] }
+              $or: [
+                {
+                  $and: [
+                    { $lte: [{ $add: [{ $multiply: [{ $hour: '$startDate' }, 60] }, { $minute: '$startDate' }] }, endTime] },
+                    { $gte: [{ $add: [{ $multiply: [{ $hour: '$startDate' }, 60] }, { $minute: '$startDate' }] }, startTime] }
+                  ]
+                }
               ]
             }
           },
           {
             repeatType: { $ne: 'daily' },
-            startDate: { $lte: this.endDate },
-            endDate: { $gte: this.startDate }
+            startDate: { $lt: endDate },
+            endDate: { $gt: startDate }
           }
         ]
       }];
       break;
 
     case 'weekly':
-      // Haftalık tekrar için gün ve saat kontrolü
       query.$and = [{
         $or: [
           {
             repeatType: 'weekly',
             $expr: {
               $and: [
-                { $eq: [{ $dayOfWeek: '$startDate' }, { $dayOfWeek: this.startDate }] },
-                { $lte: [{ $hour: '$startDate' }, { $hour: this.endDate }] },
-                { $gte: [{ $hour: '$endDate' }, { $hour: this.startDate }] }
+                { $eq: [{ $dayOfWeek: '$startDate' }, { $dayOfWeek: startDate }] },
+                {
+                  $or: [
+                    {
+                      $and: [
+                        { $lte: [{ $hour: '$startDate' }, endDate.getHours()] },
+                        { $gte: [{ $hour: '$endDate' }, startDate.getHours()] }
+                      ]
+                    }
+                  ]
+                }
               ]
             }
           },
           {
             repeatType: { $ne: 'weekly' },
-            startDate: { $lte: this.endDate },
-            endDate: { $gte: this.startDate }
+            startDate: { $lt: endDate },
+            endDate: { $gt: startDate }
           }
         ]
       }];
       break;
 
     case 'monthly':
-      // Aylık tekrar için ayın günü ve saat kontrolü
       query.$and = [{
         $or: [
           {
             repeatType: 'monthly',
             $expr: {
               $and: [
-                { $eq: [{ $dayOfMonth: '$startDate' }, { $dayOfMonth: this.startDate }] },
-                { $lte: [{ $hour: '$startDate' }, { $hour: this.endDate }] },
-                { $gte: [{ $hour: '$endDate' }, { $hour: this.startDate }] }
+                { $eq: [{ $dayOfMonth: '$startDate' }, { $dayOfMonth: startDate }] },
+                {
+                  $or: [
+                    {
+                      $and: [
+                        { $lte: [{ $hour: '$startDate' }, endDate.getHours()] },
+                        { $gte: [{ $hour: '$endDate' }, startDate.getHours()] }
+                      ]
+                    }
+                  ]
+                }
               ]
             }
           },
           {
             repeatType: { $ne: 'monthly' },
-            startDate: { $lte: this.endDate },
-            endDate: { $gte: this.startDate }
+            startDate: { $lt: endDate },
+            endDate: { $gt: startDate }
           }
         ]
       }];
