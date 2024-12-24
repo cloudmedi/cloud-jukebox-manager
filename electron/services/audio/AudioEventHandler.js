@@ -7,7 +7,7 @@ class AudioEventHandler {
     this.playlistAudio = playlistAudio;
     this.campaignAudio = document.getElementById('campaignPlayer');
     
-    // Initialize handlers
+    // Handler'ları başlat
     this.announcementHandler = new AnnouncementEventHandler(
       this.playlistAudio,
       this.campaignAudio
@@ -16,8 +16,9 @@ class AudioEventHandler {
     this.playlistHandler = new PlaylistEventHandler(
       this.playlistAudio,
       () => {
+        // Sadece kampanya çalmıyorken sonraki şarkıya geç
         if (!this.announcementHandler.isPlaying()) {
-          console.log('Song ended naturally, invoking song-ended');
+          console.log('Şarkı bitti, sıradaki şarkıya geçiliyor');
           require('electron').ipcRenderer.invoke('song-ended');
         }
       }
@@ -25,6 +26,7 @@ class AudioEventHandler {
   }
 
   async playCampaign(audioUrl) {
+    console.log('Kampanya çalma isteği:', audioUrl);
     return this.announcementHandler.playAnnouncement(audioUrl);
   }
 

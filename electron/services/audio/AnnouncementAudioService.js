@@ -5,10 +5,12 @@ class AnnouncementAudioService {
   constructor() {
     this.audioElement = document.getElementById('campaignPlayer');
     if (!this.audioElement) {
-      console.error('Campaign player element not found!');
+      console.error('Kampanya player elementi bulunamadı!');
       return;
     }
     this.setupEventListeners();
+    this.lastAnnouncementTime = 0;
+    this.minAnnouncementInterval = 5000; // 5 saniye
   }
 
   setupEventListeners() {
@@ -18,44 +20,56 @@ class AnnouncementAudioService {
 
     this.audioElement.addEventListener('play', () => {
       AnnouncementLogger.logPlaybackStart();
+      console.log('Kampanya çalmaya başladı');
     });
 
     this.audioElement.addEventListener('ended', () => {
       AnnouncementLogger.logPlaybackEnd();
+      console.log('Kampanya bitti');
       this.cleanup();
     });
 
     this.audioElement.addEventListener('error', (error) => {
-      AnnouncementLogger.logError('Audio Playback', error);
+      AnnouncementLogger.logError('Kampanya Çalma', error);
+      console.error('Kampanya çalma hatası:', error);
       this.cleanup();
     });
   }
 
   cleanup() {
-    console.log('Cleaning up announcement audio');
+    console.log('Kampanya temizleniyor');
     this.audioElement.src = '';
+    this.lastAnnouncementTime = Date.now();
     ipcRenderer.send('announcement-ended');
   }
 
   async playAnnouncement(announcement) {
     try {
+      // Minimum süre kontrolü
+      const now = Date.now();
+      if (now - this.lastAnnouncementTime < this.minAnnouncementInterval) {
+        console.log('Kampanyalar arası minimum süre bekleniyor');
+        return false;
+      }
+
       AnnouncementLogger.logAnnouncementRequest(announcement);
 
       if (!announcement.localPath) {
-        throw new Error('Anons dosya yolu bulunamadı');
+        throw new Error('Kampanya dosya yolu bulunamadı');
       }
 
       if (!AnnouncementLogger.logFileCheck(announcement.localPath)) {
-        throw new Error('Anons dosyası bulunamadı');
+        throw new Error('Kampanya dosyası bulunamadı');
       }
 
-      this.audioElement.volume = 1.0;
+      console.log('Kampanya başlatılıyor:', announcement.localPath);
       this.audioElement.src = announcement.localPath;
       await this.audioElement.play();
 
       return true;
     } catch (error) {
-      AnnouncementLogger.logError('Anons Çalma', error);
+      AnnouncementLogger.logError('Kampanya Çalma', error);
+      console.error('Kampanya çalma hatası:', error);
       this.cleanup();
       return false;
     }
