@@ -1,6 +1,6 @@
 const { app, BrowserWindow, ipcMain, Tray, Menu } = require('electron');
 const path = require('path');
-const Store = require('electron-store').default;
+const Store = require('electron-store');
 const store = new Store();
 const websocketService = require('./services/websocketService');
 require('./services/audioService');
@@ -33,7 +33,6 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   }
 
-  // Pencere kapatıldığında sistem tepsisine küçült
   mainWindow.on('close', function (event) {
     if (!app.isQuitting) {
       event.preventDefault();
@@ -45,7 +44,6 @@ function createWindow() {
     return false;
   });
 
-  // Uygulama başladığında son kaydedilen playlist'i kontrol et
   const deviceInfo = store.get('deviceInfo');
   if (deviceInfo && deviceInfo.token) {
     websocketService.connect(deviceInfo.token);
@@ -63,19 +61,17 @@ function createWindow() {
 
 function createTray() {
   try {
-    // Tray ikonu oluştur
     const iconPath = path.join(__dirname, 'icon.png');
     console.log('Tray icon path:', iconPath);
     
     tray = new Tray(iconPath);
     
-    // Tray menüsünü oluştur
     const contextMenu = Menu.buildFromTemplate([
       {
         label: 'Show App',
         click: function() {
           mainWindow.show();
-          mainWindow.focus(); // Pencereyi ön plana getir
+          mainWindow.focus();
         }
       },
       {
@@ -87,20 +83,17 @@ function createTray() {
       }
     ]);
 
-    // Tray ayarlarını yap
     tray.setToolTip('Cloud Media Player');
     tray.setContextMenu(contextMenu);
 
-    // Tray ikonuna çift tıklandığında uygulamayı göster
     tray.on('double-click', () => {
       mainWindow.show();
-      mainWindow.focus(); // Pencereyi ön plana getir
+      mainWindow.focus();
     });
     
-    // Tray ikonuna tek tıklandığında uygulamayı göster
     tray.on('click', () => {
       mainWindow.show();
-      mainWindow.focus(); // Pencereyi ön plana getir
+      mainWindow.focus();
     });
     
     console.log('Tray created successfully');
