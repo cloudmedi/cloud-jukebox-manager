@@ -2,8 +2,8 @@ const { ipcMain, app } = require('electron');
 const Store = require('electron-store');
 const store = new Store();
 const websocketService = require('./websocketService');
-const announcementHandler = require('./announcement/AnnouncementHandler');
-const announcementPlayer = require('./announcement/AnnouncementPlayer');
+const AnnouncementManager = require('./announcement/AnnouncementManager');
+const AnnouncementScheduler = require('./announcement/AnnouncementScheduler');
 
 class AudioService {
   constructor() {
@@ -43,11 +43,9 @@ class AudioService {
 
   async handleAnnouncement(announcement) {
     try {
-      // Anonsu indir ve local path ekle
-      const processedAnnouncement = await announcementHandler.handleAnnouncement(announcement);
-      
-      // Anonsu çal
-      await announcementPlayer.playAnnouncement(processedAnnouncement);
+      // Anonsu indir ve hazırla
+      const processedAnnouncement = await AnnouncementManager.handleNewAnnouncement(announcement);
+      console.log('Announcement processed:', processedAnnouncement);
     } catch (error) {
       console.error('Error handling announcement:', error);
     }
@@ -162,44 +160,17 @@ class AudioService {
       }
     });
 
-    ipcMain.handle('play-pause', (event) => {
-      this.isPlaying = !this.isPlaying;
-      event.sender.send('toggle-playback');
-      return true;
-    });
-
-    ipcMain.handle('next-song', (event) => {
-      if (this.queue.length > 0) {
-        this.currentIndex = (this.currentIndex + 1) % this.queue.length;
-        const nextSong = this.queue[this.currentIndex];
-        
-        event.sender.send('update-player', {
-          playlist: this.playlist,
-          currentSong: nextSong,
-          isPlaying: true
-        });
-        return true;
-      }
-      return false;
-    });
-
-    ipcMain.handle('prev-song', (event) => {
-      if (this.queue.length > 0) {
-        this.currentIndex = (this.currentIndex - 1 + this.queue.length) % this.queue.length;
-        const prevSong = this.queue[this.currentIndex];
-        
-        event.sender.send('update-player', {
-          playlist: this.playlist,
-          currentSong: prevSong,
-          isPlaying: true
-        });
-        return true;
-      }
-      return false;
-    });
-
     ipcMain.handle('song-ended', (event) => {
+      AnnouncementScheduler.onSongEnd();
       this.handleNextSong(event);
+    });
+
+    // Anons bittiğinde çağrılacak
+    ipcMain.on('announcement-ended', () => {
+      const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
+      if (mainWindow && this.isPlaying) {
+        mainWindow.webContents.send('resume-playback');
+      }
     });
   }
 
