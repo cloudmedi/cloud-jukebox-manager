@@ -1,11 +1,12 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Button } from "@/components/ui/button";
-import { Upload } from "lucide-react";
+import { Upload, Play, Pause, Volume2 } from "lucide-react";
 import { UseFormReturn } from "react-hook-form";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 interface BasicInfoProps {
   form: UseFormReturn<any>;
@@ -13,29 +14,48 @@ interface BasicInfoProps {
 
 export const BasicInfo = ({ form }: BasicInfoProps) => {
   const [audioFile, setAudioFile] = useState<File | null>(null);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const handleAudioUpload = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (file) {
-      if (!file.type.startsWith("audio/")) {
-        toast.error("Lütfen geçerli bir ses dosyası seçin");
-        return;
-      }
-
-      const audio = new Audio();
-      audio.src = URL.createObjectURL(file);
-      
-      audio.onloadedmetadata = () => {
-        setAudioFile(file);
-        form.setValue("audioFile", file);
-        form.setValue("duration", Math.ceil(audio.duration));
-        toast.success("Ses dosyası yüklendi");
-      };
-
-      audio.onerror = () => {
-        toast.error("Ses dosyası yüklenirken hata oluştu");
-      };
+  const handleAudioUpload = (file: File) => {
+    if (!file.type.startsWith("audio/")) {
+      toast.error("Lütfen geçerli bir ses dosyası seçin");
+      return;
     }
+
+    const audio = new Audio();
+    audio.src = URL.createObjectURL(file);
+    
+    audio.onloadedmetadata = () => {
+      setAudioFile(file);
+      form.setValue("audioFile", file);
+      form.setValue("duration", Math.ceil(audio.duration));
+      audioRef.current = audio;
+      toast.success("Ses dosyası yüklendi");
+    };
+
+    audio.onerror = () => {
+      toast.error("Ses dosyası yüklenirken hata oluştu");
+    };
+  };
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault();
+    setIsDragging(false);
+    const file = e.dataTransfer.files[0];
+    if (file) handleAudioUpload(file);
+  };
+
+  const togglePlay = () => {
+    if (!audioRef.current) return;
+    
+    if (isPlaying) {
+      audioRef.current.pause();
+    } else {
+      audioRef.current.play();
+    }
+    setIsPlaying(!isPlaying);
   };
 
   return (
@@ -64,24 +84,51 @@ export const BasicInfo = ({ form }: BasicInfoProps) => {
 
       <FormItem>
         <FormLabel>Ses Dosyası</FormLabel>
-        <div className="border-2 border-dashed rounded-lg p-6">
+        <div
+          className={cn(
+            "border-2 border-dashed rounded-lg p-6 transition-colors",
+            isDragging ? "border-primary bg-primary/10" : "border-border",
+            audioFile ? "bg-accent/50" : ""
+          )}
+          onDragOver={(e) => {
+            e.preventDefault();
+            setIsDragging(true);
+          }}
+          onDragLeave={() => setIsDragging(false)}
+          onDrop={handleDrop}
+        >
           <div className="flex flex-col items-center justify-center gap-4">
             <div className="bg-primary/10 p-4 rounded-full">
               <Upload className="h-8 w-8 text-primary" />
             </div>
             
             {audioFile ? (
-              <div className="text-center">
+              <div className="text-center space-y-2">
                 <p className="font-medium">{audioFile.name}</p>
                 <p className="text-sm text-muted-foreground">
                   Süre: {Math.floor(form.getValues("duration") / 60)}:
                   {String(form.getValues("duration") % 60).padStart(2, "0")}
                 </p>
+                <div className="flex items-center justify-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="icon"
+                    onClick={togglePlay}
+                  >
+                    {isPlaying ? (
+                      <Pause className="h-4 w-4" />
+                    ) : (
+                      <Play className="h-4 w-4" />
+                    )}
+                  </Button>
+                  <Volume2 className="h-4 w-4 text-muted-foreground" />
+                </div>
               </div>
             ) : (
               <div className="text-center">
                 <p className="text-sm text-muted-foreground">
-                  MP3 formatında ses dosyası yükleyin
+                  Ses dosyasını sürükleyip bırakın veya seçin
                 </p>
                 <Button
                   type="button"
@@ -101,7 +148,10 @@ export const BasicInfo = ({ form }: BasicInfoProps) => {
             type="file"
             accept="audio/*"
             className="hidden"
-            onChange={handleAudioUpload}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) handleAudioUpload(file);
+            }}
           />
         </div>
       </FormItem>

@@ -2,12 +2,17 @@ import { useQuery } from "@tanstack/react-query";
 import { FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { UseFormReturn } from "react-hook-form";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Input } from "@/components/ui/input";
+import { useState } from "react";
+import { Search } from "lucide-react";
 
 interface TargetSelectionProps {
   form: UseFormReturn<any>;
 }
 
 export const TargetSelection = ({ form }: TargetSelectionProps) => {
+  const [searchQuery, setSearchQuery] = useState("");
+
   const { data: devices = [] } = useQuery({
     queryKey: ["devices"],
     queryFn: async () => {
@@ -26,12 +31,31 @@ export const TargetSelection = ({ form }: TargetSelectionProps) => {
     },
   });
 
+  const filteredDevices = devices.filter((device: any) =>
+    device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    device.location?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const filteredGroups = groups.filter((group: any) =>
+    group.name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   return (
     <div className="space-y-6">
+      <div className="relative">
+        <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+        <Input
+          placeholder="Cihaz veya grup ara..."
+          value={searchQuery}
+          onChange={(e) => setSearchQuery(e.target.value)}
+          className="pl-9"
+        />
+      </div>
+
       <div>
         <FormLabel>Hedef Cihazlar</FormLabel>
-        <div className="grid grid-cols-2 gap-4 mt-2">
-          {devices.map((device: any) => (
+        <div className="grid grid-cols-2 gap-4 mt-2 max-h-[300px] overflow-y-auto">
+          {filteredDevices.map((device: any) => (
             <label
               key={device._id}
               className="flex items-center p-4 border rounded-lg hover:bg-accent cursor-pointer"
@@ -63,8 +87,8 @@ export const TargetSelection = ({ form }: TargetSelectionProps) => {
 
       <div>
         <FormLabel>Hedef Gruplar</FormLabel>
-        <div className="grid grid-cols-2 gap-4 mt-2">
-          {groups.map((group: any) => (
+        <div className="grid grid-cols-2 gap-4 mt-2 max-h-[300px] overflow-y-auto">
+          {filteredGroups.map((group: any) => (
             <label
               key={group._id}
               className="flex items-center p-4 border rounded-lg hover:bg-accent cursor-pointer"
