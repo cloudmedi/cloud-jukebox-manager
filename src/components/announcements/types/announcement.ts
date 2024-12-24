@@ -30,8 +30,3 @@ export interface DeviceGroup {
   description?: string;
   status: 'active' | 'inactive';
 }
-
-export interface ScheduleFormData extends AnnouncementFormData {
-  playlist?: string;
-  repeatType?: string;
-}

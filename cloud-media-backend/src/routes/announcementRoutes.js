@@ -195,7 +195,7 @@ router.get('/device/:deviceId', async (req, res) => {
 async function getDeviceGroupIds(deviceId) {
   const Device = require('../models/Device');
   const device = await Device.findById(deviceId);
-  return device ? device.groups : [];
+  return device ? device.groupId : [];
 }
 
 module.exports = router;

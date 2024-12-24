@@ -10,8 +10,6 @@ import { AudioUpload } from "./form/AudioUpload";
 import { TargetSelect } from "@/components/schedule/TargetSelect";
 import { AnnouncementFormData } from "./types/announcement";
 
-const API_URL = "http://localhost:5000/api";
-
 interface AnnouncementFormProps {
   announcement?: any;
   onSuccess?: () => void;
@@ -44,8 +42,6 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
 
   const createAnnouncementMutation = useMutation({
     mutationFn: async (data: AnnouncementFormData) => {
-      console.log('Form verileri:', data);
-
       const formData = new FormData();
       
       // Form verilerini FormData'ya ekle
@@ -58,28 +54,50 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
       formData.append('startDate', data.startDate.toISOString());
       formData.append('endDate', data.endDate.toISOString());
       formData.append('scheduleType', data.scheduleType);
+      
       if (data.songInterval) {
         formData.append('songInterval', String(data.songInterval));
       }
       if (data.minuteInterval) {
         formData.append('minuteInterval', String(data.minuteInterval));
       }
-      if (data.specificTimes) {
+      if (data.specificTimes && data.specificTimes.length > 0) {
         data.specificTimes.forEach(time => {
           formData.append('specificTimes', time);
         });
       }
-      data.targets.devices.forEach(deviceId => {
-        formData.append('targetDevices', deviceId);
-      });
-      data.targets.groups.forEach(groupId => {
-        formData.append('targetGroups', groupId);
-      });
+      
+      // Hedef cihaz ve grupları ekle
+      if (data.targets.devices && data.targets.devices.length > 0) {
+        data.targets.devices.forEach(deviceId => {
+          formData.append('targetDevices', deviceId);
+        });
+      }
+      if (data.targets.groups && data.targets.groups.length > 0) {
+        data.targets.groups.forEach(groupId => {
+          formData.append('targetGroups', groupId);
+        });
+      }
+      
       formData.append('createdBy', data.createdBy);
 
-      console.log('FormData içeriği:', Array.from(formData.entries()));
+      console.log('Gönderilen form verileri:', {
+        title: data.title,
+        content: data.content,
+        audioFile: data.audioFile?.name,
+        duration: data.duration,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        scheduleType: data.scheduleType,
+        songInterval: data.songInterval,
+        minuteInterval: data.minuteInterval,
+        specificTimes: data.specificTimes,
+        targetDevices: data.targets.devices,
+        targetGroups: data.targets.groups,
+        createdBy: data.createdBy
+      });
 
-      const response = await fetch(`${API_URL}/announcements`, {
+      const response = await fetch("http://localhost:5000/api/announcements", {
         method: "POST",
         body: formData
       });
@@ -111,20 +129,21 @@ const AnnouncementForm = ({ announcement, onSuccess }: AnnouncementFormProps) =>
   });
 
   const handleSubmit = async (data: AnnouncementFormData) => {
-    console.log('Form verileri gönderilmeden önce:', data);
     try {
       await createAnnouncementMutation.mutateAsync(data);
     } catch (error) {
-      console.error('Form gönderme hatası detayları:', {
-        error,
-        stack: error instanceof Error ? error.stack : undefined,
-        message: error instanceof Error ? error.message : 'Bilinmeyen hata'
-      });
+      console.error('Form gönderme hatası:', error);
     }
   };
 
   const handleFileSelect = (file: File) => {
     form.setValue('audioFile', file);
+    // Ses dosyasının süresini hesapla
+    const audio = new Audio();
+    audio.src = URL.createObjectURL(file);
+    audio.onloadedmetadata = () => {
+      form.setValue('duration', Math.ceil(audio.duration));
+    };
   };
 
   return (
