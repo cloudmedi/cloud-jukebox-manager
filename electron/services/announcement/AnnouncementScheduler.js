@@ -1,83 +1,47 @@
-const Store = require('electron-store');
-const store = new Store();
+const SongBasedHandler = require('./handlers/SongBasedHandler');
+const MinuteBasedHandler = require('./handlers/MinuteBasedHandler');
+const SpecificTimeHandler = require('./handlers/SpecificTimeHandler');
 
 class AnnouncementScheduler {
   constructor() {
-    this.store = new Store();
-    this.songCounter = 0;
-    this.currentSchedule = null;
-    this.initialize();
+    this.songHandler = SongBasedHandler;
+    this.minuteHandler = MinuteBasedHandler;
+    this.specificHandler = SpecificTimeHandler;
+    this.checkInterval = null;
+    this.isInitialized = false;
   }
 
   initialize() {
+    if (this.isInitialized) return;
+    
     console.log('Initializing AnnouncementScheduler');
-    this.loadSchedule();
-  }
+    
+    // Her dakika kontrol et
+    this.checkInterval = setInterval(() => {
+      console.log('Running scheduled checks...');
+      this.minuteHandler.check();
+      this.specificHandler.check();
+    }, 60000);
 
-  loadSchedule() {
-    const announcements = this.store.get('announcements', []);
-    const activeAnnouncements = announcements.filter(announcement => 
-      announcement.scheduleType === 'songs' &&
-      new Date(announcement.startDate) <= new Date() &&
-      new Date(announcement.endDate) >= new Date()
-    );
-
-    if (activeAnnouncements.length > 0) {
-      this.currentSchedule = activeAnnouncements;
-      console.log('Loaded active announcements:', this.currentSchedule);
-    }
+    // Başlangıçta da bir kontrol yap
+    this.minuteHandler.check();
+    this.specificHandler.check();
+    
+    this.isInitialized = true;
+    console.log('AnnouncementScheduler initialized');
   }
 
   onSongEnd() {
-    this.songCounter++;
-    console.log('\n=== ŞARKI BAZLI ANONS KONTROLÜ ===');
-    console.log(`Şarkı sayacı: ${this.songCounter}`);
-    
-    if (!this.currentSchedule) {
-      console.log('Aktif anons bulunamadı');
-      return null;
-    }
-
-    // Her aktif anons için kontrol et
-    for (const announcement of this.currentSchedule) {
-      console.log(`\nAnons Kontrolü (${announcement._id}):`);
-      console.log(`- Başlangıç: ${announcement.startDate}`);
-      console.log(`- Bitiş: ${announcement.endDate}`);
-      console.log(`- Şarkı aralığı: ${announcement.songInterval}`);
-      console.log(`- Mevcut sayaç: ${this.songCounter}`);
-      
-      if (this.songCounter % announcement.songInterval === 0) {
-        console.log('✓ Anons çalma koşulu sağlandı');
-        return announcement;
-      }
-    }
-
-    return null;
-  }
-
-  checkSchedule() {
-    if (!this.currentSchedule || this.currentSchedule.length === 0) {
-      return null;
-    }
-
-    // Her anons için kontrol et
-    for (const announcement of this.currentSchedule) {
-      if (this.songCounter % announcement.songInterval === 0) {
-        return announcement;
-      }
-    }
-
-    return null;
-  }
-
-  resetCounter() {
-    this.songCounter = 0;
-    console.log('Şarkı sayacı sıfırlandı');
+    this.songHandler.onSongEnd();
   }
 
   cleanup() {
-    this.currentSchedule = null;
-    this.resetCounter();
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval);
+      this.checkInterval = null;
+    }
+    this.isInitialized = false;
+    console.log('AnnouncementScheduler cleaned up');
   }
 }
 

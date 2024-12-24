@@ -7,29 +7,11 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Plus } from "lucide-react";
-import { AnnouncementForm, AnnouncementFormData } from "./AnnouncementForm";
+import { AnnouncementForm } from "./AnnouncementForm";
 import { useState } from "react";
-import { useQueryClient } from "@tanstack/react-query";
 
 export const CreateAnnouncementDialog = () => {
   const [open, setOpen] = useState(false);
-  const queryClient = useQueryClient();
-
-  const handleSubmit = async (data: AnnouncementFormData) => {
-    const response = await fetch("http://localhost:5000/api/announcements", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify(data),
-    });
-
-    if (!response.ok) {
-      throw new Error("Anons oluşturulurken bir hata oluştu");
-    }
-
-    queryClient.invalidateQueries({ queryKey: ["announcements"] });
-  };
 
   return (
     <Dialog open={open} onOpenChange={setOpen}>
@@ -43,10 +25,7 @@ export const CreateAnnouncementDialog = () => {
         <DialogHeader>
           <DialogTitle>Yeni Anons Oluştur</DialogTitle>
         </DialogHeader>
-        <AnnouncementForm 
-          onSubmit={handleSubmit}
-          onSuccess={() => setOpen(false)}
-        />
+        <AnnouncementForm onSuccess={() => setOpen(false)} />
       </DialogContent>
     </Dialog>
   );
