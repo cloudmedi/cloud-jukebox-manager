@@ -86,11 +86,11 @@ router.patch('/:id', async (req, res) => {
   }
 });
 
-// Delete schedule
+// Delete schedule - UPDATED to use deleteOne instead of remove
 router.delete('/:id', async (req, res) => {
   try {
-    const result = await PlaylistSchedule.deleteOne({ _id: req.params.id });
-    if (result.deletedCount === 0) {
+    const result = await PlaylistSchedule.findByIdAndDelete(req.params.id);
+    if (!result) {
       return res.status(404).json({ message: 'Zamanlama bulunamadı' });
     }
     res.json({ message: 'Zamanlama silindi' });
