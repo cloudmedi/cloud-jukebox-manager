@@ -18,28 +18,39 @@ document.getElementById('closeButton').addEventListener('click', () => {
 
 // Anons kontrolleri
 ipcRenderer.on('play-announcement', (event, announcement) => {
-  console.log('Anons çalma isteği alındı:', announcement);
+  console.log('\n=== ANONS ÇALMA İSTEĞİ ALINDI ===');
+  console.log('Anons detayları:', announcement);
   
   if (!announcement.localPath) {
-    console.error('Anons için local path bulunamadı');
+    console.error('❌ Anons için local path bulunamadı');
     return;
   }
 
   // Dosya varlığını kontrol et
+  console.log('Dosya kontrolü:', announcement.localPath);
   if (!fs.existsSync(announcement.localPath)) {
-    console.error('Anons dosyası bulunamadı:', announcement.localPath);
+    console.error('❌ Anons dosyası bulunamadı:', announcement.localPath);
     return;
   }
 
-  console.log('Anons dosyası mevcut:', announcement.localPath);
+  console.log('✓ Anons dosyası mevcut:', announcement.localPath);
   
   // Mevcut ses durumunu kaydet
   const currentVolume = audio.volume;
   console.log('Mevcut ses seviyesi:', currentVolume);
+  console.log('Ses durumu - Muted:', audio.muted);
   
   // Anons için ses ayarını yap
   audio.volume = 1.0;
   console.log('Anons için ses seviyesi ayarlandı:', audio.volume);
+  
+  // Audio element durumunu kontrol et
+  console.log('Audio element durumu:', {
+    paused: audio.paused,
+    currentTime: audio.currentTime,
+    readyState: audio.readyState,
+    networkState: audio.networkState
+  });
   
   // Anonsu çal
   console.log('Anons çalmaya başlanıyor...');
@@ -47,21 +58,21 @@ ipcRenderer.on('play-announcement', (event, announcement) => {
   
   audio.play()
     .then(() => {
-      console.log('Anons başarıyla çalmaya başladı');
+      console.log('✓ Anons başarıyla çalmaya başladı');
     })
     .catch(err => {
-      console.error('Anons çalma hatası:', err);
+      console.error('❌ Anons çalma hatası:', err);
       // Hata durumunda orijinal ses seviyesine dön
       audio.volume = currentVolume;
     });
   
   // Audio element durumunu dinle
   const playingHandler = () => {
-    console.log('Anons çalınıyor - currentTime:', audio.currentTime);
+    console.log('▶️ Anons çalınıyor - currentTime:', audio.currentTime);
   };
   
   const endedHandler = () => {
-    console.log('Anons tamamlandı');
+    console.log('✓ Anons tamamlandı');
     audio.volume = currentVolume;
     console.log('Ses seviyesi orijinal değerine döndü:', currentVolume);
     ipcRenderer.send('announcement-ended');
@@ -72,18 +83,33 @@ ipcRenderer.on('play-announcement', (event, announcement) => {
   };
   
   const errorHandler = (error) => {
-    console.error('Anons çalma sırasında hata:', error);
+    console.error('❌ Anons çalma sırasında hata:', error);
+    console.error('Hata detayları:', {
+      code: error.code,
+      message: error.message,
+      name: error.name
+    });
     audio.volume = currentVolume;
     // Event listener'ları temizle
     audio.removeEventListener('timeupdate', playingHandler);
     audio.removeEventListener('ended', endedHandler);
     audio.removeEventListener('error', errorHandler);
   };
+
+  const loadedHandler = () => {
+    console.log('✓ Anons dosyası yüklendi');
+    console.log('Audio element durumu:', {
+      duration: audio.duration,
+      readyState: audio.readyState,
+      paused: audio.paused
+    });
+  };
   
   // Event listener'ları ekle
   audio.addEventListener('timeupdate', playingHandler);
   audio.addEventListener('ended', endedHandler);
   audio.addEventListener('error', errorHandler);
+  audio.addEventListener('loadeddata', loadedHandler);
 });
 
 ipcRenderer.on('pause-playback', () => {
@@ -305,8 +331,3 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM loaded, displaying playlists');
   displayPlaylists();
 });
-
-// Diğer event listener'lar
-
-
-

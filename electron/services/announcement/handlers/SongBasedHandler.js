@@ -9,7 +9,7 @@ class SongBasedHandler {
 
   onSongEnd() {
     this.songCounter++;
-    console.log(`\n--- Şarkı Bazlı Anons Kontrolü ---`);
+    console.log('\n=== ŞARKI BAZLI ANONS KONTROLÜ ===');
     console.log(`Şarkı sayacı: ${this.songCounter}`);
     
     const announcements = this.store.get('announcements', []);
@@ -41,7 +41,7 @@ class SongBasedHandler {
   playAnnouncement(announcement) {
     const mainWindow = BrowserWindow.getAllWindows()[0];
     if (!mainWindow) {
-      console.error('Ana pencere bulunamadı!');
+      console.error('❌ Ana pencere bulunamadı!');
       return;
     }
 
