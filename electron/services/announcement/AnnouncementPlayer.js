@@ -13,8 +13,7 @@ class AnnouncementPlayer {
       console.log('Playing announcement:', announcement);
       const mainWindow = BrowserWindow.getAllWindows()[0];
       if (!mainWindow) {
-        console.error('No main window found');
-        return;
+        throw new Error('Main window not found');
       }
 
       // Mevcut playlist durumunu kaydet
@@ -36,6 +35,7 @@ class AnnouncementPlayer {
       }, announcement.duration * 1000);
     } catch (error) {
       console.error('Error playing announcement:', error);
+      throw error;
     }
   }
 

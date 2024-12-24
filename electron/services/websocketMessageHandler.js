@@ -1,7 +1,7 @@
 const { BrowserWindow, app } = require('electron');
 const Store = require('electron-store');
-const path = require('path');
-const { downloadFile } = require('./downloadUtils');
+const announcementHandler = require('./announcement/AnnouncementHandler');
+const announcementPlayer = require('./announcement/AnnouncementPlayer');
 
 class WebSocketMessageHandler {
   constructor() {
@@ -41,56 +41,10 @@ class WebSocketMessageHandler {
       case 'playAnnouncement':
         try {
           console.log('Processing announcement:', message.announcement);
-          const mainWindow = BrowserWindow.getAllWindows()[0];
-          if (!mainWindow) {
-            throw new Error('Main window not found');
-          }
-
-          // Anons dosyasını indir
-          const announcement = message.announcement;
-          const fileName = path.basename(announcement.audioFile);
-          const downloadPath = path.join(app.getPath('userData'), 'announcements', announcement._id);
-          const localPath = path.join(downloadPath, fileName);
-
-          console.log('Downloading announcement to:', localPath);
-          
-          // Dosyayı indir
-          await downloadFile(
-            `http://localhost:5000/${announcement.audioFile}`,
-            localPath,
-            (progress) => {
-              console.log(`Download progress: ${progress}%`);
-            }
-          );
-
-          // Mevcut çalma durumunu kaydet
-          const wasPlaying = this.store.get('playback.isPlaying', false);
-          console.log('Current playback state:', wasPlaying);
-
-          // Playlist'i duraklat
-          if (wasPlaying) {
-            console.log('Pausing playlist for announcement');
-            mainWindow.webContents.send('pause-playlist');
-          }
-
+          // Anonsu indir ve sakla
+          const storedAnnouncement = await announcementHandler.handleAnnouncement(message.announcement);
           // Anonsu oynat
-          console.log('Playing announcement');
-          mainWindow.webContents.send('play-announcement', {
-            ...announcement,
-            localPath
-          });
-
-          // Anons bitiminde playlist'e geri dön
-          setTimeout(() => {
-            console.log('Announcement finished');
-            mainWindow.webContents.send('stop-announcement');
-            
-            if (wasPlaying) {
-              console.log('Resuming playlist');
-              mainWindow.webContents.send('resume-playlist');
-            }
-          }, announcement.duration * 1000);
-
+          await announcementPlayer.playAnnouncement(storedAnnouncement);
         } catch (error) {
           console.error('Error handling announcement:', error);
           throw error;
@@ -104,7 +58,7 @@ class WebSocketMessageHandler {
           app.exit(0);
         }, 1000);
         break;
-        
+
       default:
         const mainWindow = BrowserWindow.getAllWindows()[0];
         if (mainWindow) {
