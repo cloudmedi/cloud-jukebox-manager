@@ -2,7 +2,7 @@ class AudioManager {
   constructor() {
     // Playlist için audio element
     this.playlistAudio = new Audio();
-    this.playlistAudio.volume = 0.7; // Başlangıç ses seviyesi 70%
+    this.playlistAudio.volume = 0.7;
 
     // Anons için ayrı audio element
     this.announcementAudio = new Audio();
@@ -43,15 +43,6 @@ class AudioManager {
       
       // Hata durumunda da playlist'i devam ettir
       this.resumePlaylistIfNeeded();
-    });
-
-    // Volume change event listeners
-    this.playlistAudio.addEventListener('volumechange', () => {
-      console.log('Playlist volume changed:', this.playlistAudio.volume);
-    });
-
-    this.announcementAudio.addEventListener('volumechange', () => {
-      console.log('Announcement volume changed:', this.announcementAudio.volume);
     });
   }
 
@@ -116,7 +107,6 @@ class AudioManager {
   async playPlaylist(src) {
     if (!this.isAnnouncementPlaying) {
       try {
-        console.log('Playing playlist from source:', src);
         this.playlistAudio.src = src;
         this.lastPlaylistSource = src;
         await this.playlistAudio.play();
@@ -130,42 +120,15 @@ class AudioManager {
   }
 
   pausePlaylist() {
-    console.log('Pausing playlist');
     this.playlistAudio.pause();
   }
 
   setPlaylistVolume(volume) {
-    console.log('Setting playlist volume to:', volume);
-    // Volume değerini 0-1 aralığına normalize et
-    const normalizedVolume = Math.min(Math.max(volume / 100, 0), 1);
-    this.playlistAudio.volume = normalizedVolume;
-    console.log('New playlist volume:', this.playlistAudio.volume);
-  }
-
-  getPlaylistVolume() {
-    // Volume değerini 0-100 aralığına çevir
-    return Math.round(this.playlistAudio.volume * 100);
-  }
-
-  setAnnouncementVolume(volume) {
-    console.log('Setting announcement volume to:', volume);
-    // Volume değerini 0-1 aralığına normalize et
-    const normalizedVolume = Math.min(Math.max(volume / 100, 0), 1);
-    this.announcementAudio.volume = normalizedVolume;
-    console.log('New announcement volume:', this.announcementAudio.volume);
-  }
-
-  getAnnouncementVolume() {
-    // Volume değerini 0-100 aralığına çevir
-    return Math.round(this.announcementAudio.volume * 100);
+    this.playlistAudio.volume = volume;
   }
 
   getPlaylistAudio() {
     return this.playlistAudio;
-  }
-
-  getAnnouncementAudio() {
-    return this.announcementAudio;
   }
 }
 
