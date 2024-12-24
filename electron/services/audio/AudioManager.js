@@ -1,6 +1,3 @@
-const { ipcRenderer } = require('electron');
-const AnnouncementLogger = require('../logging/AnnouncementLogger');
-
 class AudioManager {
   constructor() {
     // Playlist için audio element
@@ -20,26 +17,42 @@ class AudioManager {
   setupEventListeners() {
     // Anons audio event listeners
     this.announcementAudio.addEventListener('play', () => {
-      AnnouncementLogger.logPlaybackStart();
+      console.log('Anons başladı');
       this.isAnnouncementPlaying = true;
+      
+      // Playlist çalıyorsa durdur
+      if (!this.playlistAudio.paused) {
+        this.wasPlaylistPlaying = true;
+        this.playlistAudio.pause();
+      }
     });
 
     this.announcementAudio.addEventListener('ended', () => {
-      AnnouncementLogger.logPlaybackEnd();
+      console.log('Anons bitti');
       this.isAnnouncementPlaying = false;
-      this.resumePlaylistIfNeeded();
+      
+      // Eğer playlist çalıyorduysa devam et
+      if (this.wasPlaylistPlaying) {
+        this.playlistAudio.play();
+        this.wasPlaylistPlaying = false;
+      }
     });
 
     this.announcementAudio.addEventListener('error', (error) => {
-      AnnouncementLogger.logError('Anons Çalma', error);
+      console.error('Anons çalma hatası:', error);
       this.isAnnouncementPlaying = false;
-      this.resumePlaylistIfNeeded();
+      
+      // Hata durumunda da playlist'e devam et
+      if (this.wasPlaylistPlaying) {
+        this.playlistAudio.play();
+        this.wasPlaylistPlaying = false;
+      }
     });
 
     // Playlist audio event listeners
     this.playlistAudio.addEventListener('ended', () => {
       if (!this.isAnnouncementPlaying) {
-        console.log('Song ended, playing next');
+        console.log('Şarkı bitti, sıradakine geçiliyor');
         ipcRenderer.invoke('song-ended');
       }
     });
@@ -47,22 +60,13 @@ class AudioManager {
 
   async playAnnouncement(announcement) {
     try {
-      AnnouncementLogger.logAnnouncementRequest(announcement);
-      
       if (!announcement.localPath) {
         throw new Error('Anons dosya yolu bulunamadı');
       }
 
-      // Dosya kontrolü
-      AnnouncementLogger.logFileCheck(announcement.localPath);
-
-      // Mevcut playlist durumunu kaydet ve durdur
+      // Playlist durumunu kaydet ve durdur
       this.wasPlaylistPlaying = !this.playlistAudio.paused;
       this.playlistAudio.pause();
-
-      // Anons ses seviyesini ayarla
-      AnnouncementLogger.logVolumeChange(this.announcementAudio.volume, 1.0);
-      this.announcementAudio.volume = 1.0;
 
       // Anonsu çal
       this.announcementAudio.src = announcement.localPath;
@@ -70,7 +74,7 @@ class AudioManager {
 
       return true;
     } catch (error) {
-      AnnouncementLogger.logError('Anons Çalma', error);
+      console.error('Anons çalma hatası:', error);
       this.resumePlaylistIfNeeded();
       return false;
     }
@@ -79,7 +83,7 @@ class AudioManager {
   resumePlaylistIfNeeded() {
     if (this.wasPlaylistPlaying) {
       this.playlistAudio.play().catch(err => {
-        console.error('Resume playback error:', err);
+        console.error('Playlist devam ettirme hatası:', err);
       });
       this.wasPlaylistPlaying = false;
     }
