@@ -1,12 +1,31 @@
 const express = require('express');
 const router = express.Router();
 const multer = require('multer');
+const fs = require('fs');
+const path = require('path');
 const Announcement = require('../models/Announcement');
+
+// Upload dizinini oluştur
+const createUploadDirs = () => {
+  const uploadDir = path.join(__dirname, '../../uploads');
+  const announcementsDir = path.join(uploadDir, 'announcements');
+  
+  if (!fs.existsSync(uploadDir)) {
+    fs.mkdirSync(uploadDir, { recursive: true });
+  }
+  
+  if (!fs.existsSync(announcementsDir)) {
+    fs.mkdirSync(announcementsDir, { recursive: true });
+  }
+  
+  return announcementsDir;
+};
 
 // Multer yapılandırması
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
-    cb(null, 'uploads/announcements/');
+    const uploadDir = createUploadDirs();
+    cb(null, uploadDir);
   },
   filename: function (req, file, cb) {
     const uniqueSuffix = Date.now() + '-' + Math.round(Math.random() * 1E9);
@@ -24,39 +43,28 @@ router.get('/', async (req, res) => {
       .populate('targetGroups');
     res.json(announcements);
   } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Belirli bir anosu getir
-router.get('/:id', async (req, res) => {
-  try {
-    const announcement = await Announcement.findById(req.params.id)
-      .populate('targetDevices')
-      .populate('targetGroups');
-    if (!announcement) {
-      return res.status(404).json({ message: 'Anons bulunamadı' });
-    }
-    res.json(announcement);
-  } catch (error) {
+    console.error('Anosları getirme hatası:', error);
     res.status(500).json({ message: error.message });
   }
 });
 
 // Yeni anons oluştur
 router.post('/', upload.single('audioFile'), async (req, res) => {
-  console.log('Yeni anons isteği alındı:', {
-    body: req.body,
-    file: req.file,
-    headers: req.headers
-  });
-
   try {
-    // FormData'dan gelen verileri parse et
+    console.log('Yeni anons isteği alındı:', {
+      body: req.body,
+      file: req.file,
+      headers: req.headers
+    });
+
+    if (!req.file) {
+      return res.status(400).json({ message: 'Ses dosyası zorunludur' });
+    }
+
     const announcementData = {
       title: req.body.title,
       content: req.body.content,
-      audioFile: req.file ? req.file.path : null,
+      audioFile: req.file.path,
       duration: parseFloat(req.body.duration),
       startDate: new Date(req.body.startDate),
       endDate: new Date(req.body.endDate),
@@ -85,10 +93,19 @@ router.post('/', upload.single('audioFile'), async (req, res) => {
     res.status(201).json(newAnnouncement);
   } catch (error) {
     console.error('Anons oluşturma hatası:', error);
+    
+    // Dosya yüklendiyse ve hata oluştuysa dosyayı sil
+    if (req.file) {
+      fs.unlink(req.file.path, (unlinkError) => {
+        if (unlinkError) {
+          console.error('Dosya silme hatası:', unlinkError);
+        }
+      });
+    }
+
     res.status(400).json({ 
       message: error.message,
-      validationErrors: error.errors,
-      stack: error.stack
+      validationErrors: error.errors
     });
   }
 });
