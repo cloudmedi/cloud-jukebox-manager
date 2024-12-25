@@ -134,11 +134,6 @@ function displayPlaylists() {
   if (lastPlaylist) {
     const playlistElement = document.createElement('div');
     playlistElement.className = 'playlist-item';
-    
-    // Çalan şarkı ve sıradaki şarkı bilgilerini al
-    const currentSong = lastPlaylist.songs[0];
-    const nextSong = lastPlaylist.songs[1];
-    
     playlistElement.innerHTML = `
       <div class="playlist-info">
         ${lastPlaylist.artwork ? 
@@ -146,15 +141,9 @@ function displayPlaylists() {
           '<div class="playlist-artwork-placeholder"></div>'
         }
         <div class="playlist-details">
-          <h3 class="current-song-name">${currentSong?.name || 'Bilinmeyen Şarkı'}</h3>
-          <p class="current-song-artist">${currentSong?.artist || 'Bilinmeyen Sanatçı'}</p>
-          <div class="next-song">
-            <div class="next-song-label">Sıradaki:</div>
-            <div class="next-song-info">
-              <span class="next-song-name">${nextSong?.name || 'Şarkı yok'}</span> - 
-              <span class="next-song-artist">${nextSong?.artist || ''}</span>
-            </div>
-          </div>
+          <h3>${lastPlaylist.name}</h3>
+          <p>${lastPlaylist.songs[0]?.artist || 'Unknown Artist'}</p>
+          <p>${lastPlaylist.songs[0]?.name || 'No songs'}</p>
         </div>
       </div>
     `;
