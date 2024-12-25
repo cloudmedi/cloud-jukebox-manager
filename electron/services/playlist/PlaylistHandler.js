@@ -18,6 +18,12 @@ class PlaylistHandler {
   async handlePlaylist(message) {
     console.log('Handling playlist message:', message);
     
+    // Mesajın action alanını kontrol et
+    if (!message.action) {
+      console.error('No action specified in playlist message');
+      return;
+    }
+
     switch (message.action) {
       case 'songRemoved':
         await this.handleSongRemoved(message.data);
@@ -27,6 +33,7 @@ class PlaylistHandler {
         break;
       default:
         console.log('Unknown playlist action:', message.action);
+        break;
     }
   }
 
