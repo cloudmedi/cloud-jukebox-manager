@@ -19,13 +19,8 @@ class WebSocketMessageHandler {
 
   async handleMessage(message) {
     console.log('Processing message:', message);
-    
-    if (message.type === 'playlist' && message.action === 'songRemoved') {
-      await this.handleSongRemoved(message.data);
-      return;
-    }
-    
     const handler = this.handlers.get(message.type);
+    
     if (handler) {
       try {
         await handler(message);
@@ -38,60 +33,6 @@ class WebSocketMessageHandler {
       }
     } else {
       console.warn('No handler found for message type:', message.type);
-    }
-  }
-
-  async handleSongRemoved(data) {
-    try {
-      console.log('Handling song removal:', data);
-      const { songId, playlistId } = data;
-      
-      // Store'dan playlistleri al
-      const playlists = this.store.get('playlists', []);
-      const playlistIndex = playlists.findIndex(p => p._id === playlistId);
-      
-      if (playlistIndex !== -1) {
-        const playlist = playlists[playlistIndex];
-        console.log('Found playlist:', playlist.name);
-        
-        // Silinecek şarkıyı bul
-        const songToRemove = playlist.songs.find(song => song._id === songId);
-        
-        if (songToRemove && songToRemove.localPath) {
-          // Dosya sisteminden şarkıyı sil
-          try {
-            if (fs.existsSync(songToRemove.localPath)) {
-              fs.unlinkSync(songToRemove.localPath);
-              console.log('Successfully deleted local file:', songToRemove.localPath);
-            } else {
-              console.log('Local file not found:', songToRemove.localPath);
-            }
-          } catch (error) {
-            console.error('Error deleting local file:', error);
-          }
-        }
-
-        // Playlistten şarkıyı kaldır
-        playlist.songs = playlist.songs.filter(song => song._id !== songId);
-        
-        // Store'u güncelle
-        playlists[playlistIndex] = playlist;
-        this.store.set('playlists', playlists);
-        console.log('Updated playlists in store');
-        
-        // Renderer'a bildir
-        const mainWindow = BrowserWindow.getAllWindows()[0];
-        if (mainWindow) {
-          mainWindow.webContents.send('songRemoved', {
-            songId,
-            playlistId
-          });
-        }
-      } else {
-        console.log('Playlist not found:', playlistId);
-      }
-    } catch (error) {
-      console.error('Error handling song removal:', error);
     }
   }
 
@@ -113,6 +54,52 @@ class WebSocketMessageHandler {
           mainWindow.webContents.send(message.command, message.data);
         }
         break;
+    }
+  }
+
+  async handleSongRemoved(message) {
+    console.log('Handling song removal:', message);
+    const mainWindow = BrowserWindow.getAllWindows()[0];
+    if (!mainWindow) return;
+
+    const { songId, playlistId } = message.data;
+    
+    // Store'dan playlistleri al
+    const playlists = this.store.get('playlists', []);
+    
+    // İlgili playlisti bul
+    const playlistIndex = playlists.findIndex(p => p._id === playlistId);
+    
+    if (playlistIndex !== -1) {
+      console.log('Found playlist:', playlists[playlistIndex].name);
+      
+      // Playlistten şarkıyı kaldır
+      playlists[playlistIndex].songs = playlists[playlistIndex].songs.filter(
+        song => song._id !== songId
+      );
+      
+      // Store'u güncelle
+      this.store.set('playlists', playlists);
+      console.log('Updated playlists in store');
+      
+      // Renderer'a bildir
+      mainWindow.webContents.send('songRemoved', {
+        songId,
+        playlistId
+      });
+      
+      // Silinen şarkının dosyasını bul ve sil
+      const removedSong = playlists[playlistIndex].songs.find(s => s._id === songId);
+      if (removedSong && removedSong.localPath) {
+        try {
+          fs.unlinkSync(removedSong.localPath);
+          console.log('Deleted local song file:', removedSong.localPath);
+        } catch (error) {
+          console.error('Error deleting local file:', error);
+        }
+      }
+    } else {
+      console.log('Playlist not found:', playlistId);
     }
   }
 
