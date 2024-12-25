@@ -10,6 +10,7 @@ class UIManager {
         this.downloadProgressBar = document.querySelector('.download-progress-bar');
         this.downloadProgressText = document.querySelector('.download-progress-text');
         this.errorContainer = document.getElementById('errorContainer');
+        this.noPlaylistMessage = document.getElementById('noPlaylistMessage');
         
         this.initializeUI();
     }
@@ -39,10 +40,8 @@ class UIManager {
 
     updateConnectionStatus(isConnected) {
         if (isConnected) {
-            // Bağlantı başarılı olduğunda token bilgilerini gizle
             this.deviceInfoElement.style.display = 'none';
         } else {
-            // Bağlantı koptuğunda token bilgilerini göster
             this.deviceInfoElement.style.display = 'block';
         }
         
@@ -54,6 +53,13 @@ class UIManager {
         const playlistContainer = document.getElementById('playlistContainer');
         if (!playlistContainer) return;
 
+        if (!playlist || !playlist.songs || playlist.songs.length === 0) {
+            this.noPlaylistMessage.style.display = 'block';
+            playlistContainer.innerHTML = '';
+            return;
+        }
+
+        this.noPlaylistMessage.style.display = 'none';
         playlistContainer.innerHTML = '';
 
         if (playlist) {
