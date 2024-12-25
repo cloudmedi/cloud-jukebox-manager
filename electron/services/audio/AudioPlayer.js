@@ -7,43 +7,53 @@ class AudioPlayer {
   constructor() {
     this.queueManager = new QueueManager();
     this.playbackState = new PlaybackState();
-    this.audio = new Audio();
-    this.audioFader = new AudioFader();
     this.playlist = null;
-    this.isPlaying = false;
+
+    // Dual audio elements for crossfading
+    this.currentAudio = new Audio();
+    this.nextAudio = new Audio();
+
+    this.currentFader = new AudioFader();
+    this.nextFader = new AudioFader();
+
     this.volume = 1.0;
-    
-    // Connect audio element to Web Audio API
-    this.audioFader.connectSource(this.audio);
-    
+    this.isPlaying = false;
+
+    // Connect faders
+    this.currentFader.connectSource(this.currentAudio);
+    this.nextFader.connectSource(this.nextAudio);
+
     this.setupEventListeners();
+    
+    // Initialize volume
+    this.setVolume(70); // 70% default volume
   }
 
   setupEventListeners() {
-    this.audio.addEventListener('ended', () => {
-      console.log('Song ended, playing next');
+    this.currentAudio.addEventListener('ended', () => {
+      console.log('Current song ended, playing next');
       this.playNext();
     });
 
-    this.audio.addEventListener('error', (e) => {
+    this.currentAudio.addEventListener('error', (e) => {
       console.error('Audio error:', e);
       this.playNext();
     });
 
-    this.audio.addEventListener('play', () => {
+    this.currentAudio.addEventListener('play', () => {
       console.log('Audio started playing');
       this.isPlaying = true;
       this.updatePlaybackState('playing');
     });
 
-    this.audio.addEventListener('pause', () => {
+    this.currentAudio.addEventListener('pause', () => {
       console.log('Audio paused');
       this.isPlaying = false;
       this.updatePlaybackState('paused');
     });
   }
 
-  async crossfade(nextSong, duration = 2) {
+  async crossfade(nextSong, duration = 3) {
     if (!nextSong || !nextSong.localPath) {
       console.error('Next song localPath is missing:', nextSong);
       return;
@@ -53,44 +63,36 @@ class AudioPlayer {
       const normalizedPath = path.normalize(nextSong.localPath);
       console.log('Crossfading to next song:', normalizedPath);
 
-      // Yeni bir audio element oluştur ve yeni şarkıyı bağla
-      const newAudio = new Audio(normalizedPath);
-      const newAudioFader = new AudioFader();
-      newAudioFader.connectSource(newAudio);
+      // Prepare next song
+      this.nextAudio.src = normalizedPath;
+      this.nextAudio.volume = 0;
+      this.nextFader.setVolume(0);
+      await this.nextAudio.play();
 
-      // Yeni şarkıyı fade-in için hazırla
-      newAudio.volume = 0;
-      newAudioFader.setVolume(0);
-      await newAudio.play();
-
-      // Mevcut şarkıyı fade-out yaparken, yeni şarkıyı fade-in yap
+      // Start crossfade
       await Promise.all([
-        this.audioFader.fadeOut(duration),
-        newAudioFader.fadeIn(duration)
+        this.currentFader.fadeOut(duration),
+        this.nextFader.fadeIn(duration)
       ]);
 
-      // Çapraz geçiş tamamlandıktan sonra eski şarkıyı değiştir
-      this.audio.pause();
-      this.audio.src = '';
-      this.audio = newAudio;
-      this.audioFader = newAudioFader;
-      this.isPlaying = true;
+      // Switch audio elements after crossfade
+      this.currentAudio.pause();
+      this.currentAudio.src = '';
+      
+      // Swap current and next
+      [this.currentAudio, this.nextAudio] = [this.nextAudio, this.currentAudio];
+      [this.currentFader, this.nextFader] = [this.nextFader, this.currentFader];
+
+      // Reset next audio
+      this.nextAudio = new Audio();
+      this.nextFader = new AudioFader();
+      this.nextFader.connectSource(this.nextAudio);
 
       this.emitSongChange(nextSong);
+      console.log('Crossfade completed successfully');
     } catch (error) {
       console.error('Error during crossfade:', error);
       this.playNext();
-    }
-  }
-
-  async playNext() {
-    console.log('Playing next song');
-    const nextSong = this.queueManager.next();
-    if (nextSong) {
-      await this.crossfade(nextSong, 3);
-    } else {
-      console.log('No more songs in queue');
-      this.stop();
     }
   }
 
@@ -112,20 +114,20 @@ class AudioPlayer {
     try {
       const normalizedPath = path.normalize(song.localPath);
       console.log('Playing file from:', normalizedPath);
-      
-      await this.audioFader.fadeOut();
-      
-      this.audio.pause();
-      this.audio.currentTime = 0;
-      
-      this.audio.src = normalizedPath;
-      this.audio.volume = this.volume;
-      
+
+      // Fade out current audio if playing
       if (this.isPlaying) {
-        await this.audio.play();
-        await this.audioFader.fadeIn();
+        await this.currentFader.fadeOut(2);
       }
-      
+
+      this.currentAudio.src = normalizedPath;
+      this.currentAudio.volume = this.volume;
+
+      if (this.isPlaying) {
+        await this.currentAudio.play();
+        await this.currentFader.fadeIn(2);
+      }
+
       this.emitSongChange(song);
     } catch (error) {
       console.error('Error loading song:', error);
@@ -135,8 +137,8 @@ class AudioPlayer {
 
   play() {
     console.log('Play requested');
-    if (this.audio.src) {
-      this.audio.play().catch(error => {
+    if (this.currentAudio.src) {
+      this.currentAudio.play().catch(error => {
         console.error('Error playing audio:', error);
         this.playNext();
       });
@@ -148,28 +150,39 @@ class AudioPlayer {
   }
 
   pause() {
-    this.audio.pause();
+    this.currentAudio.pause();
     this.isPlaying = false;
   }
 
   stop() {
-    this.audio.pause();
-    this.audio.currentTime = 0;
+    this.currentAudio.pause();
+    this.currentAudio.currentTime = 0;
     this.isPlaying = false;
+  }
+
+  async playNext() {
+    console.log('Playing next song');
+    const nextSong = this.queueManager.next();
+    if (nextSong) {
+      await this.crossfade(nextSong, 3);
+    } else {
+      console.log('No more songs in queue');
+      this.stop();
+    }
   }
 
   playPrevious() {
     console.log('Playing previous song');
     const prevSong = this.queueManager.previous();
     if (prevSong) {
-      console.log('Previous song found:', prevSong.name);
-      this.loadCurrentSong();
+      this.crossfade(prevSong, 3);
     }
   }
 
   setVolume(volume) {
     this.volume = volume / 100;
-    this.audioFader.setVolume(this.volume);
+    this.currentFader.setVolume(this.volume);
+    this.nextFader.setVolume(this.volume);
   }
 
   updatePlaybackState(state) {
