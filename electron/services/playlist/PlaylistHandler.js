@@ -1,13 +1,11 @@
-const { app } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const axios = require('axios');
 const Store = require('electron-store');
 const store = new Store();
 
 class PlaylistHandler {
   constructor() {
-    this.downloadPath = path.join(app.getPath('userData'), 'downloads');
+    this.downloadPath = path.join(require('electron').app.getPath('userData'), 'downloads');
     this.ensureDirectoryExists(this.downloadPath);
   }
 
@@ -18,13 +16,17 @@ class PlaylistHandler {
   }
 
   async handlePlaylist(message) {
-    // Mesaj tipine göre işleme
+    console.log('Handling playlist message:', message);
+    
     switch (message.action) {
       case 'songRemoved':
         await this.handleSongRemoved(message.data);
         break;
-      default:
+      case 'send':
         await this.handleNewPlaylist(message.data);
+        break;
+      default:
+        console.log('Unknown playlist action:', message.action);
     }
   }
 
@@ -40,15 +42,19 @@ class PlaylistHandler {
       if (playlistIndex !== -1) {
         const playlist = playlists[playlistIndex];
         
+        // Önce silinecek şarkıyı bul (filtrelemeden önce)
+        const songToRemove = playlist.songs.find(song => song._id === songId);
+        
         // Şarkıyı playlistten kaldır
         playlist.songs = playlist.songs.filter(song => song._id !== songId);
         
-        // Yerel dosyayı bul ve sil
-        const removedSong = playlist.songs.find(s => s._id === songId);
-        if (removedSong && removedSong.localPath) {
+        // Eğer şarkı bulunduysa ve localPath'i varsa dosyayı sil
+        if (songToRemove && songToRemove.localPath) {
           try {
-            fs.unlinkSync(removedSong.localPath);
-            console.log('Deleted local song file:', removedSong.localPath);
+            if (fs.existsSync(songToRemove.localPath)) {
+              fs.unlinkSync(songToRemove.localPath);
+              console.log('Deleted local song file:', songToRemove.localPath);
+            }
           } catch (error) {
             console.error('Error deleting local file:', error);
           }
@@ -58,6 +64,8 @@ class PlaylistHandler {
         playlists[playlistIndex] = playlist;
         store.set('playlists', playlists);
         console.log('Updated playlist in store after song removal');
+      } else {
+        console.log('Playlist not found:', playlistId);
       }
     } catch (error) {
       console.error('Error handling song removal:', error);
@@ -67,6 +75,10 @@ class PlaylistHandler {
 
   async handleNewPlaylist(playlist) {
     try {
+      if (!playlist || !playlist.name) {
+        throw new Error('Invalid playlist data received');
+      }
+
       console.log('Handling new playlist:', playlist.name);
       
       // Playlist için klasör oluştur
