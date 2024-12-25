@@ -59,7 +59,7 @@ class AnnouncementEventHandler {
     // Son anons zamanını kaydet
     this.lastAnnouncementTime = Date.now();
     
-    // SongBasedHandler'a anonsun bittiğini bildir
+    // Anonsun bittiğini bildir
     const ipcRenderer = require('electron').ipcRenderer;
     ipcRenderer.send('announcement-ended');
     
