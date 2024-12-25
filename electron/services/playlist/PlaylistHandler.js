@@ -16,8 +16,14 @@ class PlaylistHandler {
   }
 
   async handlePlaylist(message) {
-    console.log('Handling playlist message:', message);
+    console.log('Playlist mesajı işleniyor:', message);
     
+    // Mesajın action ve data alanlarını kontrol et
+    if (!message.action) {
+      console.error('Action alanı eksik:', message);
+      return;
+    }
+
     switch (message.action) {
       case 'songRemoved':
         await this.handleSongRemoved(message.data);
@@ -26,7 +32,7 @@ class PlaylistHandler {
         await this.handleNewPlaylist(message.data);
         break;
       default:
-        console.log('Unknown playlist action:', message.action);
+        console.log('Bilinmeyen playlist action:', message.action);
     }
   }
 
