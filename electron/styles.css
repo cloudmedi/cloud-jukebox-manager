@@ -48,10 +48,14 @@ body {
 .container {
     padding: 16px;
     height: calc(100vh - 32px);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
+    overflow-y: auto;
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+    background: #1a1b1e;
+}
+
+.container::-webkit-scrollbar {
+    display: none;
 }
 
 .device-info {
@@ -61,7 +65,7 @@ body {
     padding: 24px;
     margin: 20px auto;
     max-width: 320px;
-    text-align: center;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .token-display {
@@ -69,6 +73,7 @@ body {
     font-weight: 600;
     color: #ffffff;
     margin-bottom: 16px;
+    text-align: center;
     letter-spacing: 1px;
 }
 
@@ -78,70 +83,31 @@ body {
     font-weight: 500;
     padding: 8px 16px;
     border-radius: 4px;
+    margin-top: 12px;
     transition: all 0.2s ease;
 }
 
 .connection-status.connected {
     background: rgba(255, 255, 255, 0.1);
     color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .connection-status.disconnected {
-    background: rgba(255, 68, 68, 0.1);
+    background: rgba(255, 255, 255, 0.05);
     color: #ff4444;
-}
-
-.playlist-status {
-    text-align: center;
-    padding: 32px;
-    margin: 20px auto;
-    max-width: 320px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-}
-
-.status-message {
-    font-size: 16px;
-    color: #9ca3af;
-}
-
-.loading-spinner {
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 12px;
-    margin-top: 16px;
-}
-
-.spinner {
-    width: 24px;
-    height: 24px;
-    border: 2px solid rgba(255, 255, 255, 0.1);
-    border-top-color: #ffffff;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-}
-
-.loading-text {
-    font-size: 14px;
-    color: #ffffff;
-}
-
-@keyframes spin {
-    to {
-        transform: rotate(360deg);
-    }
+    border: 1px solid rgba(255, 68, 68, 0.2);
 }
 
 .playlist-container {
-    width: 100%;
-    max-width: 320px;
-    margin: 0 auto;
-    padding: 16px;
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.1);
+    margin-top: 16px;
+}
+
+.playlist-item {
+    background: rgba(255, 255, 255, 0.05);
     border-radius: 8px;
+    padding: 12px;
+    margin-bottom: 12px;
 }
 
 .playlist-info {
@@ -155,45 +121,101 @@ body {
     height: 64px;
     border-radius: 4px;
     object-fit: cover;
+    flex-shrink: 0;
+}
+
+.playlist-artwork-placeholder {
+    width: 64px;
+    height: 64px;
+    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.1);
+    flex-shrink: 0;
 }
 
 .playlist-details {
-    flex: 1;
+    flex-grow: 1;
+    overflow: hidden;
 }
 
 .playlist-details h3 {
     font-size: 16px;
     margin-bottom: 4px;
     color: #fff;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .song-info {
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+}
+
+.song-info p {
     font-size: 14px;
     color: #9ca3af;
+    margin: 0;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.song-info .artist {
+    opacity: 0.8;
+}
+
+.song-info .song-name {
+    opacity: 0.6;
 }
 
 .download-progress {
     position: fixed;
-    bottom: 16px;
-    left: 16px;
-    right: 16px;
+    bottom: 1rem;
+    left: 1rem;
+    right: 1rem;
     background: rgba(0, 0, 0, 0.8);
-    padding: 12px;
-    border-radius: 8px;
-    display: none;
+    padding: 1rem;
+    border-radius: 4px;
 }
 
 .download-progress-bar {
     height: 4px;
     background: #ffffff;
     border-radius: 2px;
-    width: 0;
     transition: width 0.3s ease;
 }
 
 .download-progress-text {
     font-size: 12px;
     color: #fff;
-    margin-top: 8px;
+    margin-top: 0.5rem;
     text-align: center;
+}
+
+.error-container {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    max-width: 300px;
+}
+
+.error-message {
+    background: rgba(255, 68, 68, 0.1);
+    color: #ff4444;
+    padding: 0.75rem 1rem;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    animation: slideIn 0.3s ease;
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
 }

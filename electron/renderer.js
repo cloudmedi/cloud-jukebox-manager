@@ -1,5 +1,6 @@
 const { ipcRenderer } = require('electron');
 const Store = require('electron-store');
+const fs = require('fs');
 const store = new Store();
 const AudioEventHandler = require('./services/audio/AudioEventHandler');
 const AudioUpdateHandler = require('./services/audio/AudioUpdateHandler');
@@ -11,60 +12,12 @@ const PlaylistInitializer = require('./services/playlist/PlaylistInitializer');
 const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
 const audioUpdateHandler = new AudioUpdateHandler(playlistAudio);
-const playlistStatus = document.getElementById('playlistStatus');
-const loadingSpinner = playlistStatus.querySelector('.loading-spinner');
-const statusMessage = playlistStatus.querySelector('.status-message');
-const playlistContainer = document.getElementById('playlistContainer');
-const deviceInfo = document.getElementById('deviceInfo');
-const downloadProgress = document.querySelector('.download-progress');
-const downloadProgressBar = downloadProgress.querySelector('.download-progress-bar');
-const downloadProgressText = downloadProgress.querySelector('.download-progress-text');
 
 // Initialize volume
 playlistAudio.volume = 0.7; // 70%
 
 document.getElementById('closeButton').addEventListener('click', () => {
     window.close();
-});
-
-// WebSocket bağlantı durumu
-ipcRenderer.on('websocket-status', (event, isConnected) => {
-    if (isConnected) {
-        deviceInfo.style.display = 'none';
-        const hasPlaylist = store.get('currentPlaylist');
-        if (!hasPlaylist) {
-            playlistStatus.style.display = 'block';
-            statusMessage.style.display = 'block';
-            loadingSpinner.style.display = 'none';
-            playlistContainer.style.display = 'none';
-        }
-    } else {
-        deviceInfo.style.display = 'block';
-        playlistStatus.style.display = 'none';
-        playlistContainer.style.display = 'none';
-    }
-    UIManager.updateConnectionStatus(isConnected);
-});
-
-// Playlist indirme durumu
-ipcRenderer.on('playlist-download-start', () => {
-    playlistStatus.style.display = 'block';
-    statusMessage.style.display = 'none';
-    loadingSpinner.style.display = 'flex';
-    playlistContainer.style.display = 'none';
-    downloadProgress.style.display = 'block';
-});
-
-ipcRenderer.on('playlist-download-complete', () => {
-    playlistStatus.style.display = 'none';
-    downloadProgress.style.display = 'none';
-    playlistContainer.style.display = 'block';
-});
-
-// İndirme progress
-ipcRenderer.on('download-progress', (event, { songName, progress }) => {
-    downloadProgressBar.style.width = `${progress}%`;
-    downloadProgressText.textContent = `${songName} indiriliyor... ${progress}%`;
 });
 
 // Anons kontrolleri
@@ -74,6 +27,28 @@ ipcRenderer.on('play-announcement', async (event, announcement) => {
     if (!success) {
         console.error('Failed to play announcement');
     }
+});
+
+// WebSocket bağlantı durumu
+ipcRenderer.on('websocket-status', (event, isConnected) => {
+    UIManager.updateConnectionStatus(isConnected);
+});
+
+// İndirme progress
+ipcRenderer.on('download-progress', (event, { songName, progress }) => {
+    UIManager.showDownloadProgress(progress, songName);
+});
+
+// Hata mesajları
+ipcRenderer.on('error', (event, message) => {
+    UIManager.showError(message);
+});
+
+// Volume control from WebSocket
+ipcRenderer.on('set-volume', (event, volume) => {
+    console.log('Setting volume to:', volume);
+    audioHandler.setVolume(volume);
+    ipcRenderer.send('volume-changed', volume);
 });
 
 // Restart playback from WebSocket
@@ -197,4 +172,3 @@ playlistAudio.addEventListener('ended', () => {
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM loaded, initializing audio handlers');
 });
-

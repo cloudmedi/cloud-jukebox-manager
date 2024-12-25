@@ -38,6 +38,14 @@ class UIManager {
     }
 
     updateConnectionStatus(isConnected) {
+        if (isConnected) {
+            // Bağlantı başarılı olduğunda token bilgilerini gizle
+            this.deviceInfoElement.style.display = 'none';
+        } else {
+            // Bağlantı koptuğunda token bilgilerini göster
+            this.deviceInfoElement.style.display = 'block';
+        }
+        
         this.connectionStatus.className = `connection-status ${isConnected ? 'connected' : 'disconnected'}`;
         this.connectionStatus.textContent = isConnected ? 'Bağlı' : 'Bağlantı Kesildi';
     }
@@ -73,9 +81,15 @@ class UIManager {
         this.downloadProgress.style.display = 'block';
         this.downloadProgressBar.style.width = `${progress}%`;
         this.downloadProgressText.textContent = `${fileName} indiriliyor... ${progress}%`;
+        
+        if (progress >= 100) {
+            setTimeout(() => {
+                this.downloadProgress.style.display = 'none';
+            }, 1000);
+        }
     }
 
-    showError(message) {
+    showError(message, duration = 5000) {
         const errorElement = document.createElement('div');
         errorElement.className = 'error-message';
         errorElement.textContent = message;
@@ -84,7 +98,7 @@ class UIManager {
         
         setTimeout(() => {
             errorElement.remove();
-        }, 5000);
+        }, duration);
     }
 }
 
