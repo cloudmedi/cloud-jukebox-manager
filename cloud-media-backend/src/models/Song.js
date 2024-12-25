@@ -57,14 +57,19 @@ const songSchema = new mongoose.Schema({
 // Şarkı silindiğinde playlistlerden kaldır ve cihazlara bildir
 songSchema.pre('deleteOne', { document: true, query: false }, async function(next) {
   try {
+    console.log('Pre-deleteOne hook başladı. Silinen şarkı ID:', this._id);
+    
     const Playlist = mongoose.model('Playlist');
     const Device = mongoose.model('Device');
 
     // Şarkıyı içeren playlistleri bul
     const playlists = await Playlist.find({ songs: this._id });
+    console.log(`${playlists.length} adet playlist bulundu`);
     
     // Her playlist için şarkıyı kaldır ve cihazlara bildir
     for (const playlist of playlists) {
+      console.log(`Playlist işleniyor: ${playlist._id}`);
+      
       // Playlistten şarkıyı kaldır
       playlist.songs = playlist.songs.filter(songId => 
         songId.toString() !== this._id.toString()
@@ -72,13 +77,16 @@ songSchema.pre('deleteOne', { document: true, query: false }, async function(nex
       
       // Playlist'i kaydet
       await playlist.save();
+      console.log(`Şarkı playlistten kaldırıldı: ${playlist._id}`);
 
       // Bu playlist'i kullanan cihazları bul
       const devices = await Device.find({ activePlaylist: playlist._id });
+      console.log(`${devices.length} adet cihaz bulundu`);
       
       // Her cihaza silinen şarkı bilgisini gönder
       devices.forEach(device => {
         if (global.wss) {
+          console.log(`Cihaza bildirim gönderiliyor: ${device.token}`);
           global.wss.sendToDevice(device.token, {
             type: 'songRemoved',
             data: {
@@ -86,10 +94,13 @@ songSchema.pre('deleteOne', { document: true, query: false }, async function(nex
               playlistId: playlist._id
             }
           });
+        } else {
+          console.error('WebSocket sunucusu bulunamadı (global.wss undefined)');
         }
       });
     }
 
+    console.log('Pre-deleteOne hook başarıyla tamamlandı');
     next();
   } catch (error) {
     console.error('Şarkı silme hatası:', error);
