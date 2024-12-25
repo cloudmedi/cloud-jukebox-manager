@@ -1,6 +1,7 @@
 const QueueManager = require('./QueueManager');
 const PlaybackState = require('./PlaybackState');
 const path = require('path');
+const { ipcRenderer } = require('electron');
 
 class AudioPlayer {
   constructor() {
@@ -10,6 +11,7 @@ class AudioPlayer {
     this.playlist = null;
     this.isPlaying = false;
     this.volume = 1.0;
+    
     this.setupEventListeners();
   }
 
@@ -23,6 +25,18 @@ class AudioPlayer {
       console.error('Audio error:', e);
       this.playNext();
     });
+
+    this.audio.addEventListener('play', () => {
+      console.log('Audio started playing');
+      this.isPlaying = true;
+      this.updatePlaybackState('playing');
+    });
+
+    this.audio.addEventListener('pause', () => {
+      console.log('Audio paused');
+      this.isPlaying = false;
+      this.updatePlaybackState('paused');
+    });
   }
 
   loadPlaylist(playlist) {
@@ -32,6 +46,8 @@ class AudioPlayer {
     
     if (this.queueManager.getCurrentSong()) {
       this.loadCurrentSong();
+    } else {
+      console.log('No playable songs in playlist');
     }
   }
 
@@ -43,7 +59,6 @@ class AudioPlayer {
     }
 
     console.log('Loading song:', song);
-    this.emitSongChange(song);
 
     if (!song.localPath) {
       console.error('Song localPath is missing:', song);
@@ -55,34 +70,24 @@ class AudioPlayer {
       const normalizedPath = path.normalize(song.localPath);
       console.log('Playing file from:', normalizedPath);
       
+      this.audio.pause();
+      this.audio.currentTime = 0;
+      
       this.audio.src = normalizedPath;
       this.audio.volume = this.volume;
+      
+      // Emit song change event
+      this.emitSongChange(song);
       
       if (this.isPlaying) {
         this.audio.play().catch(error => {
           console.error('Error playing audio:', error);
-          this.playNext();
+          this.playNext(); // Hata durumunda sonraki şarkıya geç
         });
       }
     } catch (error) {
       console.error('Error loading song:', error);
       this.playNext();
-    }
-  }
-
-  emitSongChange(song) {
-    console.log('Emitting song change:', song);
-    if (this.playlist) {
-      const event = {
-        type: 'update-player',
-        data: {
-          playlist: this.playlist,
-          currentSong: song,
-          isPlaying: this.isPlaying
-        }
-      };
-      console.log('Emitting event:', event);
-      this.emit('songChange', event);
     }
   }
 
@@ -153,6 +158,16 @@ class AudioPlayer {
       playlist: this.playlist,
       volume: this.volume * 100
     };
+  }
+
+  emitSongChange(song) {
+    if (this.playlist) {
+      ipcRenderer.send('update-player', {
+        playlist: this.playlist,
+        currentSong: song,
+        isPlaying: this.isPlaying
+      });
+    }
   }
 }
 

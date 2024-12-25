@@ -9,7 +9,6 @@ const UIManager = require('./services/ui/UIManager');
 const AnnouncementAudioService = require('./services/audio/AnnouncementAudioService');
 const PlaylistInitializer = require('./services/playlist/PlaylistInitializer');
 
-// Audio element initialization
 const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
 const audioUpdateHandler = new AudioUpdateHandler(playlistAudio);
@@ -17,19 +16,202 @@ const audioUpdateHandler = new AudioUpdateHandler(playlistAudio);
 // Initialize volume
 playlistAudio.volume = 0.7; // 70%
 
-// Event Listeners
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('DOM loaded, initializing audio handlers');
+document.getElementById('closeButton').addEventListener('click', () => {
+    window.close();
+});
+
+// Anons kontrolleri
+ipcRenderer.on('play-announcement', async (event, announcement) => {
+  console.log('Received announcement:', announcement);
   
-  // Restore last playlist if exists
-  const lastPlaylist = store.get('currentPlaylist');
-  if (lastPlaylist) {
-    console.log('Restoring last playlist:', lastPlaylist.name);
-    audioUpdateHandler.updatePlaylistDisplay(lastPlaylist, lastPlaylist.currentSong);
+  // Anonsu çal
+  const success = await AnnouncementAudioService.playAnnouncement(announcement);
+  
+  if (!success) {
+    console.error('Failed to play announcement');
   }
 });
 
-// Playlist events
+ipcRenderer.on('pause-playback', () => {
+  if (playlistAudio && !playlistAudio.paused) {
+    playlistAudio.pause();
+  }
+});
+
+ipcRenderer.on('resume-playback', () => {
+  if (playlistAudio && playlistAudio.paused) {
+    playlistAudio.play().catch(err => console.error('Resume playback error:', err));
+  }
+});
+
+// WebSocket bağlantı durumu
+ipcRenderer.on('websocket-status', (event, isConnected) => {
+    UIManager.updateConnectionStatus(isConnected);
+});
+
+// İndirme progress
+ipcRenderer.on('download-progress', (event, { songName, progress }) => {
+    UIManager.showDownloadProgress(progress, songName);
+});
+
+// Hata mesajları
+ipcRenderer.on('error', (event, message) => {
+    UIManager.showError(message);
+});
+
+// Volume control from WebSocket
+ipcRenderer.on('set-volume', (event, volume) => {
+    console.log('Setting volume to:', volume);
+    audioHandler.setVolume(volume);
+    ipcRenderer.send('volume-changed', volume);
+});
+
+// Restart playback from WebSocket
+ipcRenderer.on('restart-playback', () => {
+  console.log('Restarting playback');
+  if (playlistAudio) {
+    playlistAudio.currentTime = 0;
+    playlistAudio.play().catch(err => console.error('Playback error:', err));
+  }
+});
+
+// Toggle playback from WebSocket
+ipcRenderer.on('toggle-playback', () => {
+  console.log('Toggle playback, current state:', playlistAudio.paused);
+  if (playlistAudio) {
+    if (playlistAudio.paused) {
+      playlistAudio.play()
+        .then(() => {
+          console.log('Playback started successfully');
+          ipcRenderer.send('playback-status-changed', true);
+        })
+        .catch(err => {
+          console.error('Playback error:', err);
+          ipcRenderer.send('playback-status-changed', false);
+        });
+    } else {
+      playlistAudio.pause();
+      console.log('Playback paused');
+      ipcRenderer.send('playback-status-changed', false);
+    }
+  }
+});
+
+// Otomatik playlist başlatma
+ipcRenderer.on('auto-play-playlist', (event, playlist) => {
+  console.log('Auto-playing playlist:', playlist);
+  if (playlist && playlist.songs && playlist.songs.length > 0) {
+    const shouldAutoPlay = playbackStateManager.getPlaybackState();
+    
+    // Playlist'i başlat ve karıştır
+    const initializedPlaylist = PlaylistInitializer.initializePlaylist(playlist);
+    
+    if (initializedPlaylist) {
+      displayPlaylists();
+      
+      if (shouldAutoPlay) {
+        console.log('Auto-playing with initialized playlist');
+        ipcRenderer.invoke('play-playlist', initializedPlaylist.playlist);
+      } else {
+        console.log('Loading initialized playlist without auto-play');
+        ipcRenderer.invoke('load-playlist', initializedPlaylist.playlist);
+      }
+    }
+  }
+});
+
+function displayPlaylists() {
+  const playlists = store.get('playlists', []);
+  const playlistContainer = document.getElementById('playlistContainer');
+  
+  if (!playlistContainer) {
+    console.error('Playlist container not found');
+    return;
+  }
+  
+  playlistContainer.innerHTML = '';
+  
+  // Son playlist'i göster
+  const lastPlaylist = playlists[playlists.length - 1];
+  if (lastPlaylist) {
+    console.log('Displaying playlist:', lastPlaylist); // Debug için
+    console.log('Artwork URL:', lastPlaylist.artwork); // Artwork URL'ini kontrol et
+    
+    const playlistElement = document.createElement('div');
+    playlistElement.className = 'playlist-item';
+    
+    // Artwork URL'ini düzelt
+    const artworkUrl = lastPlaylist.artwork 
+      ? `http://localhost:5000${lastPlaylist.artwork}` 
+      : null;
+    
+    console.log('Final artwork URL:', artworkUrl); // Son URL'i kontrol et
+    
+    playlistElement.innerHTML = `
+      <div class="playlist-info">
+        ${artworkUrl ? 
+          `<img src="${artworkUrl}" alt="${lastPlaylist.name}" class="playlist-artwork" onerror="this.onerror=null; this.src='placeholder.png'"/>` :
+          '<div class="playlist-artwork-placeholder"></div>'
+        }
+        <div class="playlist-details">
+          <h3>${lastPlaylist.name}</h3>
+          <div class="song-info">
+            <p class="artist">${lastPlaylist.songs[0]?.artist || 'Unknown Artist'}</p>
+            <p class="song-name">${lastPlaylist.songs[0]?.name || 'No songs'}</p>
+          </div>
+        </div>
+      </div>
+    `;
+    
+    playlistContainer.appendChild(playlistElement);
+    console.log('Displayed playlist:', lastPlaylist.name);
+  }
+}
+
+function deleteOldPlaylists() {
+  const playlists = store.get('playlists', []);
+  
+  // Son playlist hariç tüm playlistleri sil
+  if (playlists.length > 1) {
+    const latestPlaylist = playlists[playlists.length - 1];
+    
+    // Eski playlistlerin şarkı dosyalarını ve klasörlerini sil
+    playlists.slice(0, -1).forEach(playlist => {
+      playlist.songs.forEach(song => {
+        if (song.localPath) {
+          try {
+            // Şarkı dosyasını sil
+            fs.unlinkSync(song.localPath);
+            console.log(`Deleted song file: ${song.localPath}`);
+            
+            // Şarkının bulunduğu klasörü bul
+            const playlistDir = path.dirname(song.localPath);
+            
+            // Klasördeki tüm dosyaları sil
+            const files = fs.readdirSync(playlistDir);
+            files.forEach(file => {
+              const filePath = path.join(playlistDir, file);
+              fs.unlinkSync(filePath);
+              console.log(`Deleted file: ${filePath}`);
+            });
+            
+            // Boş klasörü sil
+            fs.rmdirSync(playlistDir);
+            console.log(`Deleted playlist directory: ${playlistDir}`);
+          } catch (error) {
+            console.error(`Error deleting files/directory: ${error}`);
+          }
+        }
+      });
+    });
+    
+    // Store'u güncelle, sadece son playlisti tut
+    store.set('playlists', [latestPlaylist]);
+    console.log('Kept only the latest playlist:', latestPlaylist.name);
+  }
+}
+
+// WebSocket mesaj dinleyicileri
 ipcRenderer.on('playlist-received', (event, playlist) => {
   console.log('New playlist received:', playlist);
   
@@ -43,7 +225,6 @@ ipcRenderer.on('playlist-received', (event, playlist) => {
   }
   
   store.set('playlists', playlists);
-  store.set('currentPlaylist', playlist);
   
   const shouldAutoPlay = playbackStateManager.getPlaybackState();
   if (shouldAutoPlay) {
@@ -54,18 +235,57 @@ ipcRenderer.on('playlist-received', (event, playlist) => {
     ipcRenderer.invoke('load-playlist', playlist);
   }
   
-  audioUpdateHandler.updatePlaylistDisplay(playlist, playlist.songs[0]);
+  deleteOldPlaylists();
+  displayPlaylists();
+  
+  new Notification('Yeni Playlist', {
+    body: `${playlist.name} playlist'i başarıyla indirildi.`
+  });
 });
 
-// Song ended event
+// Şarkı silme mesajını dinle
+ipcRenderer.on('songRemoved', (event, { songId, playlistId }) => {
+  console.log('Şarkı silme mesajı alındı:', { songId, playlistId });
+  
+  const playlists = store.get('playlists', []);
+  const playlistIndex = playlists.findIndex(p => p._id === playlistId);
+  
+  if (playlistIndex !== -1) {
+    console.log('Playlist bulundu:', playlistId);
+    // Playlistten şarkıyı kaldır
+    const removedSong = playlists[playlistIndex].songs.find(s => s._id === songId);
+    playlists[playlistIndex].songs = playlists[playlistIndex].songs.filter(
+      song => song._id !== songId
+    );
+    
+    // Store'u güncelle
+    store.set('playlists', playlists);
+    console.log('Playlist güncellendi');
+    
+    // UI'ı güncelle
+    displayPlaylists();
+    
+    // Yerel dosyayı sil
+    if (removedSong && removedSong.localPath) {
+      try {
+        fs.unlinkSync(removedSong.localPath);
+        console.log('Yerel şarkı dosyası silindi:', removedSong.localPath);
+      } catch (error) {
+        console.error('Yerel dosya silme hatası:', error);
+      }
+    }
+  } else {
+    console.log('Playlist bulunamadı:', playlistId);
+  }
+});
+
+// Audio event listeners
 playlistAudio.addEventListener('ended', () => {
   console.log('Song ended, playing next');
   ipcRenderer.invoke('song-ended');
 });
 
-// Song update event
-ipcRenderer.on('update-player', (event, data) => {
-  console.log('Received player update:', data);
-  audioUpdateHandler.updateCurrentSong(data.currentSong);
-  audioUpdateHandler.updatePlaylistDisplay(data.playlist, data.currentSong);
+// Initialize on load
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('DOM loaded, initializing audio handlers');
 });
