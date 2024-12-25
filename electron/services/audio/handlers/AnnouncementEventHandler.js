@@ -12,8 +12,10 @@ class AnnouncementEventHandler {
     // Kampanya yüklendiğinde
     this.campaignAudio.addEventListener('loadeddata', () => {
       console.log('Kampanya yüklendi');
-      if (!this.playlistAudio.paused) {
-        this.wasPlaylistPlaying = true;
+      // Playlist çalıyor mu kontrol et ve durumunu kaydet
+      this.wasPlaylistPlaying = !this.playlistAudio.paused;
+      if (this.wasPlaylistPlaying) {
+        console.log('Playlist duraklatılıyor (loadeddata)');
         this.playlistAudio.pause();
       }
     });
@@ -23,8 +25,9 @@ class AnnouncementEventHandler {
       console.log('Kampanya başladı');
       this.isAnnouncementPlaying = true;
       
-      if (this.playlistAudio && !this.playlistAudio.paused) {
-        console.log('Playlist duraklatılıyor');
+      // Playlist hala çalıyorsa duraklat
+      if (!this.playlistAudio.paused) {
+        console.log('Playlist duraklatılıyor (play)');
         this.playlistAudio.pause();
       }
     });
@@ -44,8 +47,9 @@ class AnnouncementEventHandler {
 
   resetAnnouncementState() {
     console.log('Kampanya durumu sıfırlanıyor');
+    console.log('wasPlaylistPlaying durumu:', this.wasPlaylistPlaying);
     
-    // Sadece duraklatma ve zaman sıfırlama
+    // Kampanyayı duraklat ve zamanı sıfırla
     this.campaignAudio.pause();
     this.campaignAudio.currentTime = 0;
     this.isAnnouncementPlaying = false;
@@ -59,13 +63,12 @@ class AnnouncementEventHandler {
     // Playlist'i devam ettir
     if (this.wasPlaylistPlaying) {
       console.log('Playlist kaldığı yerden devam ediyor');
-      setTimeout(() => {
-        this.playlistAudio.play().catch(err => {
-          console.error('Playlist devam ettirme hatası:', err);
-        });
-      }, 500);
+      this.playlistAudio.play().catch(err => {
+        console.error('Playlist devam ettirme hatası:', err);
+      });
     }
     
+    // wasPlaylistPlaying durumunu sıfırla
     this.wasPlaylistPlaying = false;
   }
 
@@ -85,17 +88,15 @@ class AnnouncementEventHandler {
     }
 
     try {
-      // Mevcut durumu kaydet
-      this.wasPlaylistPlaying = !this.playlistAudio.paused;
-      
       console.log('Kampanya başlatılıyor:', audioPath);
+      console.log('Mevcut playlist durumu:', this.playlistAudio.paused ? 'duraklatılmış' : 'çalıyor');
       
-      // Her seferinde src'yi yeniden ayarla ve yükle
+      // Her seferinde src'yi yeniden ayarla
       this.campaignAudio.src = audioPath;
-      this.campaignAudio.currentTime = 0;
-      await this.campaignAudio.load();
       
-      // Ses dosyasını çal
+      // Ses dosyasını yükle ve çal
+      await this.campaignAudio.load();
+      this.campaignAudio.currentTime = 0;
       await this.campaignAudio.play();
       
       return true;
