@@ -1,6 +1,6 @@
 const { BrowserWindow, app } = require('electron');
-const QueueManager = require('./SmartQueueManager');
-const PlaybackState = require('./PlaybackState');
+const QueueManager = require('./audio/QueueManager');
+const PlaybackState = require('./audio/PlaybackState');
 const path = require('path');
 
 class AudioPlayer {
