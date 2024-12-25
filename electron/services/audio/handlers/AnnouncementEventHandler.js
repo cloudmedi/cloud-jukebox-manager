@@ -38,7 +38,6 @@ class AnnouncementEventHandler {
     // Kampanya hata durumunda
     this.campaignAudio.addEventListener('error', (error) => {
       console.error('Kampanya oynatma hatası:', error);
-      // Hata durumunda sadece state'i sıfırla, ses dosyasını silme
       this.resetAnnouncementState();
     });
   }
@@ -67,6 +66,7 @@ class AnnouncementEventHandler {
       }, 500);
     }
     
+    // Önemli: wasPlaylistPlaying'i sıfırla ama src'yi silme
     this.wasPlaylistPlaying = false;
   }
 
