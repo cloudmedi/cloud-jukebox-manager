@@ -4,14 +4,19 @@ const deviceService = require('../deviceService');
 class UIManager {
     constructor() {
         this.deviceInfoElement = document.getElementById('deviceInfo');
-        this.tokenDisplay = this.deviceInfoElement.querySelector('.token-display');
-        this.connectionStatus = this.deviceInfoElement.querySelector('.connection-status');
+        this.tokenDisplay = this.deviceInfoElement?.querySelector('.token-display');
+        this.connectionStatus = this.deviceInfoElement?.querySelector('.connection-status');
         this.downloadProgress = document.querySelector('.download-progress');
         this.downloadProgressBar = document.querySelector('.download-progress-bar');
         this.downloadProgressText = document.querySelector('.download-progress-text');
         this.errorContainer = document.getElementById('errorContainer');
+        this.progressBar = document.querySelector('.progress');
+        this.currentTimeDisplay = document.querySelector('.current-time');
+        this.totalTimeDisplay = document.querySelector('.total-time');
+        this.volumeSlider = document.querySelector('.volume-slider');
         
         this.initializeUI();
+        this.setupEventListeners();
     }
 
     async initializeUI() {
@@ -33,21 +38,68 @@ class UIManager {
         }
     }
 
+    setupEventListeners() {
+        if (this.volumeSlider) {
+            this.volumeSlider.addEventListener('input', (e) => {
+                const volume = parseInt(e.target.value);
+                ipcRenderer.send('set-volume', volume);
+            });
+        }
+
+        const playPauseButton = document.querySelector('.play-pause');
+        if (playPauseButton) {
+            playPauseButton.addEventListener('click', () => {
+                ipcRenderer.send('toggle-playback');
+            });
+        }
+
+        const nextButton = document.querySelector('.next');
+        if (nextButton) {
+            nextButton.addEventListener('click', () => {
+                ipcRenderer.send('next-song');
+            });
+        }
+
+        const previousButton = document.querySelector('.previous');
+        if (previousButton) {
+            previousButton.addEventListener('click', () => {
+                ipcRenderer.send('previous-song');
+            });
+        }
+    }
+
     updateDeviceInfo(token) {
-        this.tokenDisplay.textContent = `Token: ${token}`;
+        if (this.tokenDisplay) {
+            this.tokenDisplay.textContent = `Token: ${token}`;
+        }
     }
 
     updateConnectionStatus(isConnected) {
-        if (isConnected) {
-            // Bağlantı başarılı olduğunda token bilgilerini gizle
-            this.deviceInfoElement.style.display = 'none';
-        } else {
-            // Bağlantı koptuğunda token bilgilerini göster
-            this.deviceInfoElement.style.display = 'block';
+        if (this.deviceInfoElement && this.connectionStatus) {
+            if (isConnected) {
+                this.deviceInfoElement.style.display = 'none';
+            } else {
+                this.deviceInfoElement.style.display = 'block';
+            }
+            
+            this.connectionStatus.className = `connection-status ${isConnected ? 'connected' : 'disconnected'}`;
+            this.connectionStatus.textContent = isConnected ? 'Bağlı' : 'Bağlantı Kesildi';
         }
-        
-        this.connectionStatus.className = `connection-status ${isConnected ? 'connected' : 'disconnected'}`;
-        this.connectionStatus.textContent = isConnected ? 'Bağlı' : 'Bağlantı Kesildi';
+    }
+
+    updateProgress(currentTime, duration) {
+        if (this.progressBar && this.currentTimeDisplay && this.totalTimeDisplay) {
+            const progress = (currentTime / duration) * 100;
+            this.progressBar.style.width = `${progress}%`;
+            this.currentTimeDisplay.textContent = this.formatTime(currentTime);
+            this.totalTimeDisplay.textContent = this.formatTime(duration);
+        }
+    }
+
+    formatTime(seconds) {
+        const minutes = Math.floor(seconds / 60);
+        const remainingSeconds = Math.floor(seconds % 60);
+        return `${minutes}:${remainingSeconds.toString().padStart(2, '0')}`;
     }
 
     displayPlaylists(playlist) {

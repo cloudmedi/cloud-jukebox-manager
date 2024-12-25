@@ -2,8 +2,7 @@ const { ipcRenderer } = require('electron');
 const Store = require('electron-store');
 const fs = require('fs');
 const store = new Store();
-const AudioEventHandler = require('./services/audio/AudioEventHandler');
-const playbackStateManager = require('./services/audio/PlaybackStateManager');
+const AudioPlayerService = require('./services/audio/AudioPlayerService');
 const UIManager = require('./services/ui/UIManager');
 const AnnouncementAudioService = require('./services/audio/AnnouncementAudioService');
 const PlaylistInitializer = require('./services/playlist/PlaylistInitializer');
@@ -60,7 +59,7 @@ ipcRenderer.on('error', (event, message) => {
 // Volume control from WebSocket
 ipcRenderer.on('set-volume', (event, volume) => {
     console.log('Setting volume to:', volume);
-    audioHandler.setVolume(volume);
+    AudioPlayerService.setVolume(volume);
     ipcRenderer.send('volume-changed', volume);
 });
 
@@ -274,8 +273,8 @@ ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
   console.log('Updating player with song:', currentSong);
   if (currentSong && currentSong.localPath) {
     const normalizedPath = currentSong.localPath.replace(/\\/g, '/');
-    playlistAudio.src = normalizedPath;
-    playlistAudio.play().catch(err => console.error('Playback error:', err));
+    AudioPlayerService.updateSource(normalizedPath);
+    AudioPlayerService.play().catch(err => console.error('Playback error:', err));
     
     // Şarkı değiştiğinde görsel bilgileri güncelle
     displayPlaylists();
