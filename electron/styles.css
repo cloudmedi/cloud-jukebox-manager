@@ -46,7 +46,6 @@ body {
 }
 
 .container {
-    padding: 16px;
     height: calc(100vh - 32px);
     overflow-y: auto;
     scrollbar-width: none;
@@ -55,7 +54,7 @@ body {
     display: flex;
     flex-direction: column;
     align-items: center;
-    justify-content: flex-start;
+    padding: 20px;
 }
 
 .container::-webkit-scrollbar {
@@ -67,9 +66,9 @@ body {
     border: 1px solid rgba(255, 255, 255, 0.1);
     border-radius: 8px;
     padding: 24px;
-    margin: 20px auto;
+    margin-bottom: 20px;
+    width: 100%;
     max-width: 320px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .token-display {
@@ -87,7 +86,6 @@ body {
     font-weight: 500;
     padding: 8px 16px;
     border-radius: 4px;
-    margin-top: 12px;
     transition: all 0.2s ease;
 }
 
@@ -105,9 +103,8 @@ body {
 
 .playlist-container {
     width: 100%;
-    max-width: 400px;
+    max-width: 320px;
     margin: 0 auto;
-    padding: 20px;
 }
 
 .playlist-item {
@@ -125,15 +122,15 @@ body {
 }
 
 .playlist-artwork {
-    width: 100%;
-    aspect-ratio: 1;
+    width: 320px;
+    height: 320px;
     object-fit: cover;
     border-radius: 0;
 }
 
 .playlist-artwork-placeholder {
-    width: 100%;
-    aspect-ratio: 1;
+    width: 320px;
+    height: 320px;
     background: rgba(255, 255, 255, 0.1);
     display: flex;
     align-items: center;
