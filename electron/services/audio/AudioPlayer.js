@@ -1,102 +1,57 @@
 const QueueManager = require('./QueueManager');
 const PlaybackState = require('./PlaybackState');
-const AudioFader = require('./AudioFader');
 const path = require('path');
+const { ipcRenderer } = require('electron');
 
 class AudioPlayer {
   constructor() {
     this.queueManager = new QueueManager();
     this.playbackState = new PlaybackState();
+    this.audio = new Audio();
     this.playlist = null;
-
-    // Dual audio elements for crossfading
-    this.currentAudio = new Audio();
-    this.nextAudio = new Audio();
-
-    this.currentFader = new AudioFader();
-    this.nextFader = new AudioFader();
-
-    this.volume = 1.0;
     this.isPlaying = false;
-
-    // Connect faders
-    this.currentFader.connectSource(this.currentAudio);
-    this.nextFader.connectSource(this.nextAudio);
-
-    this.setupEventListeners();
+    this.volume = 1.0;
     
-    // Initialize volume
-    this.setVolume(70); // 70% default volume
+    this.setupEventListeners();
   }
 
   setupEventListeners() {
-    this.currentAudio.addEventListener('ended', () => {
-      console.log('Current song ended, playing next');
+    this.audio.addEventListener('ended', () => {
+      console.log('Song ended, playing next');
       this.playNext();
     });
 
-    this.currentAudio.addEventListener('error', (e) => {
+    this.audio.addEventListener('error', (e) => {
       console.error('Audio error:', e);
       this.playNext();
     });
 
-    this.currentAudio.addEventListener('play', () => {
+    this.audio.addEventListener('play', () => {
       console.log('Audio started playing');
       this.isPlaying = true;
       this.updatePlaybackState('playing');
     });
 
-    this.currentAudio.addEventListener('pause', () => {
+    this.audio.addEventListener('pause', () => {
       console.log('Audio paused');
       this.isPlaying = false;
       this.updatePlaybackState('paused');
     });
   }
 
-  async crossfade(nextSong, duration = 3) {
-    if (!nextSong || !nextSong.localPath) {
-      console.error('Next song localPath is missing:', nextSong);
-      return;
-    }
-
-    try {
-      const normalizedPath = path.normalize(nextSong.localPath);
-      console.log('Crossfading to next song:', normalizedPath);
-
-      // Prepare next song
-      this.nextAudio.src = normalizedPath;
-      this.nextAudio.volume = 0;
-      this.nextFader.setVolume(0);
-      await this.nextAudio.play();
-
-      // Start crossfade
-      await Promise.all([
-        this.currentFader.fadeOut(duration),
-        this.nextFader.fadeIn(duration)
-      ]);
-
-      // Switch audio elements after crossfade
-      this.currentAudio.pause();
-      this.currentAudio.src = '';
-      
-      // Swap current and next
-      [this.currentAudio, this.nextAudio] = [this.nextAudio, this.currentAudio];
-      [this.currentFader, this.nextFader] = [this.nextFader, this.currentFader];
-
-      // Reset next audio
-      this.nextAudio = new Audio();
-      this.nextFader = new AudioFader();
-      this.nextFader.connectSource(this.nextAudio);
-
-      this.emitSongChange(nextSong);
-      console.log('Crossfade completed successfully');
-    } catch (error) {
-      console.error('Error during crossfade:', error);
-      this.playNext();
+  loadPlaylist(playlist) {
+    console.log('Loading playlist:', playlist);
+    this.playlist = playlist;
+    this.queueManager.setQueue(playlist.songs);
+    
+    if (this.queueManager.getCurrentSong()) {
+      this.loadCurrentSong();
+    } else {
+      console.log('No playable songs in playlist');
     }
   }
 
-  async loadCurrentSong() {
+  loadCurrentSong() {
     const song = this.queueManager.getCurrentSong();
     if (!song) {
       console.log('No song to load');
@@ -114,21 +69,22 @@ class AudioPlayer {
     try {
       const normalizedPath = path.normalize(song.localPath);
       console.log('Playing file from:', normalizedPath);
-
-      // Fade out current audio if playing
-      if (this.isPlaying) {
-        await this.currentFader.fadeOut(2);
-      }
-
-      this.currentAudio.src = normalizedPath;
-      this.currentAudio.volume = this.volume;
-
-      if (this.isPlaying) {
-        await this.currentAudio.play();
-        await this.currentFader.fadeIn(2);
-      }
-
+      
+      this.audio.pause();
+      this.audio.currentTime = 0;
+      
+      this.audio.src = normalizedPath;
+      this.audio.volume = this.volume;
+      
+      // Emit song change event
       this.emitSongChange(song);
+      
+      if (this.isPlaying) {
+        this.audio.play().catch(error => {
+          console.error('Error playing audio:', error);
+          this.playNext(); // Hata durumunda sonraki şarkıya geç
+        });
+      }
     } catch (error) {
       console.error('Error loading song:', error);
       this.playNext();
@@ -137,8 +93,8 @@ class AudioPlayer {
 
   play() {
     console.log('Play requested');
-    if (this.currentAudio.src) {
-      this.currentAudio.play().catch(error => {
+    if (this.audio.src) {
+      this.audio.play().catch(error => {
         console.error('Error playing audio:', error);
         this.playNext();
       });
@@ -150,21 +106,22 @@ class AudioPlayer {
   }
 
   pause() {
-    this.currentAudio.pause();
+    this.audio.pause();
     this.isPlaying = false;
   }
 
   stop() {
-    this.currentAudio.pause();
-    this.currentAudio.currentTime = 0;
+    this.audio.pause();
+    this.audio.currentTime = 0;
     this.isPlaying = false;
   }
 
-  async playNext() {
+  playNext() {
     console.log('Playing next song');
     const nextSong = this.queueManager.next();
     if (nextSong) {
-      await this.crossfade(nextSong, 3);
+      console.log('Next song found:', nextSong.name);
+      this.loadCurrentSong();
     } else {
       console.log('No more songs in queue');
       this.stop();
@@ -175,14 +132,14 @@ class AudioPlayer {
     console.log('Playing previous song');
     const prevSong = this.queueManager.previous();
     if (prevSong) {
-      this.crossfade(prevSong, 3);
+      console.log('Previous song found:', prevSong.name);
+      this.loadCurrentSong();
     }
   }
 
   setVolume(volume) {
     this.volume = volume / 100;
-    this.currentFader.setVolume(this.volume);
-    this.nextFader.setVolume(this.volume);
+    this.audio.volume = this.volume;
   }
 
   updatePlaybackState(state) {
@@ -205,7 +162,7 @@ class AudioPlayer {
 
   emitSongChange(song) {
     if (this.playlist) {
-      require('electron').ipcRenderer.send('update-player', {
+      ipcRenderer.send('update-player', {
         playlist: this.playlist,
         currentSong: song,
         isPlaying: this.isPlaying
