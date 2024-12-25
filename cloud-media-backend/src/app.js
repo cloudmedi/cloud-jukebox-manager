@@ -5,6 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const http = require('http');
 const WebSocketServer = require('./websocket/WebSocketServer');
+const AnnouncementCleanupService = require('./services/AnnouncementCleanupService');
 require('dotenv').config();
 
 const app = express();
@@ -12,6 +13,7 @@ const server = http.createServer(app);
 
 // WebSocket sunucusunu başlat
 const wss = new WebSocketServer(server);
+const cleanupService = new AnnouncementCleanupService(wss);
 
 // Connect to MongoDB
 connectDB();
@@ -53,6 +55,15 @@ app.use('/api/tokens', require('./routes/tokenRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
 
 const PORT = process.env.PORT || 5000;
+
+// Cleanup servisi başlat
+cleanupService.start();
+
+// Uygulama kapatıldığında cleanup servisini durdur
+process.on('SIGTERM', () => {
+  cleanupService.stop();
+  process.exit(0);
+});
 
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);

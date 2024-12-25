@@ -1,0 +1,54 @@
+const Store = require('electron-store');
+const fs = require('fs');
+const path = require('path');
+const { createLogger } = require('../../utils/logger');
+
+const store = new Store();
+const logger = createLogger('DeleteAnnouncementHandler');
+
+class DeleteAnnouncementHandler {
+  constructor(websocketService) {
+    this.ws = websocketService;
+  }
+
+  async handleDeleteCommand(announcementId) {
+    try {
+      // Local storage'dan kampanyayı bul
+      const announcements = store.get('announcements', []);
+      const announcement = announcements.find(a => a._id === announcementId);
+
+      if (!announcement) {
+        logger.warn(`Announcement ${announcementId} not found in local storage`);
+        this.sendDeletionStatus(announcementId, false);
+        return;
+      }
+
+      // Ses dosyasını sil
+      if (announcement.localPath && fs.existsSync(announcement.localPath)) {
+        fs.unlinkSync(announcement.localPath);
+        logger.info(`Deleted announcement audio file: ${announcement.localPath}`);
+      }
+
+      // Local storage'dan kampanyayı kaldır
+      store.set('announcements', announcements.filter(a => a._id !== announcementId));
+      
+      // Başarılı silme bildirimi gönder
+      this.sendDeletionStatus(announcementId, true);
+      
+      logger.info(`Successfully deleted announcement ${announcementId}`);
+    } catch (error) {
+      logger.error(`Error deleting announcement ${announcementId}:`, error);
+      this.sendDeletionStatus(announcementId, false);
+    }
+  }
+
+  sendDeletionStatus(announcementId, success) {
+    this.ws.sendMessage({
+      type: 'announcementDeleted',
+      announcementId,
+      success
+    });
+  }
+}
+
+module.exports = DeleteAnnouncementHandler;
