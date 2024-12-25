@@ -1,5 +1,5 @@
 const { ipcMain, globalShortcut } = require('electron');
-const audioPlayer = require('./audioPlayer');
+const audioPlayer = require('./audioPlayer').getInstance();
 
 class PlayerControls {
   constructor() {

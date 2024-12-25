@@ -1,17 +1,27 @@
-const { BrowserWindow } = require('electron');
-const QueueManager = require('./audio/QueueManager');
-const PlaybackState = require('./audio/PlaybackState');
+const { BrowserWindow, app } = require('electron');
+const QueueManager = require('./SmartQueueManager');
+const PlaybackState = require('./PlaybackState');
 const path = require('path');
 
 class AudioPlayer {
   constructor() {
-    this.queueManager = new QueueManager();
     this.playbackState = new PlaybackState();
     this.playlist = null;
     this.isPlaying = false;
     this.volume = 1.0;
+    this.window = null;
     
-    // Create hidden window for audio playback
+    // Initialize only if app is ready
+    if (app.isReady()) {
+      this.initializeWindow();
+    } else {
+      app.whenReady().then(() => {
+        this.initializeWindow();
+      });
+    }
+  }
+
+  initializeWindow() {
     this.window = new BrowserWindow({
       show: false,
       webPreferences: {
@@ -20,10 +30,7 @@ class AudioPlayer {
       }
     });
 
-    // Load audio player HTML
     this.window.loadFile(path.join(__dirname, 'audio-player.html'));
-
-    // Handle IPC messages from the audio player window
     this.setupEventListeners();
   }
 
@@ -55,9 +62,9 @@ class AudioPlayer {
   loadPlaylist(playlist) {
     console.log('Loading playlist:', playlist);
     this.playlist = playlist;
-    this.queueManager.setQueue(playlist.songs);
+    QueueManager.initializeQueue(playlist.songs);
     
-    const firstSong = this.queueManager.getCurrentSong();
+    const firstSong = QueueManager.getCurrentSong();
     if (firstSong) {
       this.loadSong(firstSong);
     } else {
@@ -66,8 +73,8 @@ class AudioPlayer {
   }
 
   loadSong(song) {
-    if (!song) {
-      console.log('No song to load');
+    if (!song || !this.window) {
+      console.log('No song to load or window not ready');
       return;
     }
 
@@ -98,24 +105,30 @@ class AudioPlayer {
   }
 
   play() {
+    if (!this.window) return;
+    
     console.log('Play requested');
     this.window.webContents.send('play-audio');
     this.isPlaying = true;
   }
 
   pause() {
+    if (!this.window) return;
+    
     this.window.webContents.send('pause-audio');
     this.isPlaying = false;
   }
 
   stop() {
+    if (!this.window) return;
+    
     this.window.webContents.send('stop-audio');
     this.isPlaying = false;
   }
 
   playNext() {
     console.log('Playing next song');
-    const nextSong = this.queueManager.next();
+    const nextSong = QueueManager.getNextSong();
     if (nextSong) {
       console.log('Next song found:', nextSong.name);
       this.loadSong(nextSong);
@@ -126,6 +139,8 @@ class AudioPlayer {
   }
 
   setVolume(volume) {
+    if (!this.window) return;
+    
     this.volume = volume / 100;
     this.window.webContents.send('set-volume', this.volume);
   }
@@ -133,7 +148,7 @@ class AudioPlayer {
   updatePlaybackState(state) {
     this.playbackState.update(
       state,
-      this.queueManager.getCurrentSong(),
+      QueueManager.getCurrentSong(),
       this.playlist,
       this.volume * 100
     );
@@ -142,11 +157,21 @@ class AudioPlayer {
   getCurrentState() {
     return {
       isPlaying: this.isPlaying,
-      currentSong: this.queueManager.getCurrentSong(),
+      currentSong: QueueManager.getCurrentSong(),
       playlist: this.playlist,
       volume: this.volume * 100
     };
   }
 }
 
-module.exports = new AudioPlayer();
+// Create a single instance after export to ensure it's only created once
+let instance = null;
+
+module.exports = {
+  getInstance: () => {
+    if (!instance) {
+      instance = new AudioPlayer();
+    }
+    return instance;
+  }
+};
