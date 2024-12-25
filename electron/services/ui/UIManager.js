@@ -34,13 +34,47 @@ class UIManager {
     }
 
     updateDeviceInfo(token) {
-        // Sadece token'ı göster
         this.tokenDisplay.textContent = `Token: ${token}`;
     }
 
     updateConnectionStatus(isConnected) {
+        if (isConnected) {
+            // Bağlantı başarılı olduğunda token bilgilerini gizle
+            this.deviceInfoElement.style.display = 'none';
+        } else {
+            // Bağlantı koptuğunda token bilgilerini göster
+            this.deviceInfoElement.style.display = 'block';
+        }
+        
         this.connectionStatus.className = `connection-status ${isConnected ? 'connected' : 'disconnected'}`;
         this.connectionStatus.textContent = isConnected ? 'Bağlı' : 'Bağlantı Kesildi';
+    }
+
+    displayPlaylists(playlist) {
+        const playlistContainer = document.getElementById('playlistContainer');
+        if (!playlistContainer) return;
+
+        playlistContainer.innerHTML = '';
+
+        if (playlist) {
+            const playlistElement = document.createElement('div');
+            playlistElement.className = 'playlist-item';
+            playlistElement.innerHTML = `
+                <div class="playlist-info">
+                    ${playlist.artwork ? 
+                        `<img src="${playlist.artwork}" alt="${playlist.name}" class="playlist-artwork"/>` :
+                        '<div class="playlist-artwork-placeholder"></div>'
+                    }
+                    <div class="playlist-details">
+                        <h3>${playlist.name}</h3>
+                        <p>${playlist.songs[0]?.artist || 'Unknown Artist'}</p>
+                        <p>${playlist.songs[0]?.name || 'No songs'}</p>
+                    </div>
+                </div>
+            `;
+            
+            playlistContainer.appendChild(playlistElement);
+        }
     }
 
     showDownloadProgress(progress, fileName) {
