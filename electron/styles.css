@@ -58,16 +58,6 @@ body {
     display: none;
 }
 
-.device-info {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    padding: 24px;
-    margin: 20px auto;
-    max-width: 320px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
 .song-item {
     background: rgba(255, 255, 255, 0.05);
     border-radius: 8px;
@@ -76,14 +66,40 @@ body {
     display: flex;
     align-items: center;
     gap: 12px;
+    transition: all 0.3s ease;
 }
 
 .song-item.current {
     border: 1px solid rgba(255, 255, 255, 0.2);
+    animation: fadeIn 0.5s ease;
 }
 
 .song-item.next {
     opacity: 0.7;
+    animation: pulse 2s infinite;
+}
+
+@keyframes fadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(-10px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes pulse {
+    0% {
+        opacity: 0.7;
+    }
+    50% {
+        opacity: 0.4;
+    }
+    100% {
+        opacity: 0.7;
+    }
 }
 
 .song-artwork {

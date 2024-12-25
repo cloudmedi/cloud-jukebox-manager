@@ -24,6 +24,14 @@ class AudioUpdateHandler {
         
         this.updateCurrentSong(currentSong);
         this.updatePlaylistDisplay(playlist, currentSong, this.nextSong);
+
+        // 3 saniye sonra yanıp sönme efekti
+        setTimeout(() => {
+          const nextSongElement = document.querySelector('.song-item.next');
+          if (nextSongElement) {
+            nextSongElement.style.animation = 'pulse 2s infinite';
+          }
+        }, 3000);
       }
     });
 
@@ -50,6 +58,7 @@ class AudioUpdateHandler {
       return;
     }
 
+    // Mevcut içeriği temizle
     playlistContainer.innerHTML = '';
     
     // Çalan şarkı
