@@ -28,12 +28,19 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
   }, [artwork]);
 
   const handleUploadClick = () => {
-    fileInputRef.current?.click();
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+      console.log("Upload button clicked, triggering file input");
+    }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log("File selection triggered");
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      console.log("No file selected");
+      return;
+    }
 
     // Check file type
     if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
@@ -55,25 +62,17 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
       return;
     }
 
-    try {
-      form.setValue("artwork", e.target.files as FileList, {
-        shouldValidate: true,
-        shouldDirty: true,
-        shouldTouch: true,
-      });
+    console.log("File passed validation, setting form value");
+    form.setValue("artwork", e.target.files as FileList, {
+      shouldValidate: true,
+      shouldDirty: true,
+      shouldTouch: true,
+    });
 
-      toast({
-        title: "Başarılı",
-        description: "Kapak resmi başarıyla yüklendi.",
-      });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Hata",
-        description: "Kapak resmi yüklenirken bir hata oluştu.",
-      });
-      console.error('Artwork upload error:', error);
-    }
+    toast({
+      title: "Başarılı",
+      description: "Kapak resmi başarıyla seçildi.",
+    });
   };
 
   return (
@@ -86,7 +85,7 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
       <FormField
         control={form.control}
         name="artwork"
-        render={({ field: { value, onChange, ...field } }) => (
+        render={() => (
           <FormItem>
             <FormControl>
               <div className="space-y-4">
@@ -114,7 +113,7 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
                       type="button"
                       variant="outline" 
                       onClick={handleUploadClick}
-                      className="w-full"
+                      className="w-full cursor-pointer"
                     >
                       <ImagePlus className="mr-2 h-5 w-5" />
                       {previewUrl ? "Resmi Değiştir" : "Kapak Resmi Seç"}
@@ -131,7 +130,10 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
                   accept="image/jpeg,image/jpg,image/png,image/webp"
                   className="hidden"
                   onChange={handleFileChange}
-                  {...field}
+                  onClick={(e) => {
+                    // Reset the input value to allow selecting the same file again
+                    (e.target as HTMLInputElement).value = '';
+                  }}
                 />
               </div>
             </FormControl>
