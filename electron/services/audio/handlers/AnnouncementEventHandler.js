@@ -70,7 +70,7 @@ class AnnouncementEventHandler {
         this.playlistAudio.play().catch(err => {
           console.error('Playlist devam ettirme hatası:', err);
         });
-      }, 500); // Kısa bir gecikme ekleyerek ses çakışmasını önle
+      }, 500);
     }
     
     // wasPlaylistPlaying durumunu sıfırla
@@ -99,6 +99,7 @@ class AnnouncementEventHandler {
       // Önce playlist'i duraklat
       if (!this.playlistAudio.paused) {
         console.log('Playlist duraklatılıyor');
+        this.wasPlaylistPlaying = true;
         this.playlistAudio.pause();
       }
       

@@ -6,6 +6,7 @@ class MinuteBasedHandler {
     this.store = new Store();
     this.lastPlayTimes = new Map();
     this.isProcessingAnnouncement = false;
+    this.wasPlaylistPlaying = false;
   }
 
   check() {
@@ -45,10 +46,25 @@ class MinuteBasedHandler {
       return;
     }
 
-    // Anons bittiğinde flag'i sıfırla
+    // Playlist durumunu kontrol et
+    const playlistAudio = mainWindow.webContents.executeJavaScript('document.getElementById("audioPlayer").paused')
+      .then(isPaused => {
+        this.wasPlaylistPlaying = !isPaused;
+        console.log('Playlist playing state before announcement:', !isPaused);
+      })
+      .catch(err => {
+        console.error('Error checking playlist state:', err);
+      });
+
+    // Anons bittiğinde flag'i sıfırla ve playlist'i devam ettir
     require('electron').ipcMain.once('announcement-ended', () => {
       console.log('Minute-based announcement ended, resetting flag');
       this.isProcessingAnnouncement = false;
+      
+      if (this.wasPlaylistPlaying) {
+        console.log('Resuming playlist after minute-based announcement');
+        mainWindow.webContents.send('resume-playback');
+      }
     });
 
     mainWindow.webContents.send('play-announcement', announcement);
