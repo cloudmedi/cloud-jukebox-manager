@@ -3,10 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <title>Cloud Media Player</title>
-    <link rel="stylesheet" href="styles/base.css">
-    <link rel="stylesheet" href="styles/titlebar.css">
-    <link rel="stylesheet" href="styles/playlist.css">
-    <link rel="stylesheet" href="styles/progress.css">
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <div class="titlebar">
@@ -14,6 +11,11 @@
         <button class="titlebar-button close" id="closeButton">✕</button>
     </div>
     <div class="container">
+        <div id="deviceInfo" class="device-info">
+            <div class="token-display"></div>
+            <div class="connection-status"></div>
+        </div>
+
         <div id="playlistContainer" class="playlist-container">
             <!-- Playlistler buraya eklenecek -->
         </div>
