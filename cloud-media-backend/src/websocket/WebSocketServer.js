@@ -213,25 +213,19 @@ class WebSocketServer {
   }
 
   sendToDevice(token, message) {
-    console.log(`[WebSocketServer] Cihaza mesaj gönderiliyor - Token: ${token}`, message);
+    console.log(`Sending message to device ${token}:`, message);
     let sent = false;
     this.wss.clients.forEach(client => {
       if (client.deviceToken === token && client.readyState === WebSocket.OPEN) {
         try {
-          console.log(`[WebSocketServer] Client bulundu, mesaj gönderiliyor: ${token}`);
           client.send(JSON.stringify(message));
           sent = true;
-          console.log(`[WebSocketServer] Mesaj başarıyla gönderildi: ${token}`);
+          console.log(`Message sent successfully to device ${token}`);
         } catch (error) {
-          console.error(`[WebSocketServer] Mesaj gönderme hatası - Token: ${token}:`, error);
+          console.error(`Error sending message to device ${token}:`, error);
         }
       }
     });
-    
-    if (!sent) {
-      console.log(`[WebSocketServer] Hedef cihaz bulunamadı veya bağlı değil: ${token}`);
-    }
-    
     return sent;
   }
 

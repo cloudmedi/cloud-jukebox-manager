@@ -139,35 +139,26 @@ router.patch('/:id', async (req, res) => {
 // Şarkı sil
 router.delete('/:id', async (req, res) => {
   try {
-    console.log('Şarkı silme isteği alındı:', req.params.id);
-    
     const song = await Song.findById(req.params.id);
     if (!song) {
-      console.log('Şarkı bulunamadı:', req.params.id);
       return res.status(404).json({ message: 'Şarkı bulunamadı' });
     }
 
-    console.log('Şarkı dosyası siliniyor:', song.filePath);
     // Şarkı dosyasını sil
     if (song.filePath && fs.existsSync(song.filePath)) {
       fs.unlinkSync(song.filePath);
-      console.log('Şarkı dosyası silindi');
     }
 
     // Artwork dosyasını sil
     if (song.artwork) {
-      console.log('Artwork dosyası siliniyor:', song.artwork);
       const artworkPath = path.join('uploads', song.artwork);
       if (fs.existsSync(artworkPath)) {
         fs.unlinkSync(artworkPath);
-        console.log('Artwork dosyası silindi');
       }
     }
 
-    console.log('Şarkı veritabanından siliniyor...');
     // Pre-remove hook'unu tetiklemek için findOneAndDelete kullan
     await Song.findOneAndDelete({ _id: song._id });
-    console.log('Şarkı başarıyla silindi');
 
     res.json({ message: 'Şarkı başarıyla silindi' });
   } catch (error) {
