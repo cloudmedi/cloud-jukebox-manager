@@ -1,11 +1,12 @@
 const { BrowserWindow } = require('electron');
 const Store = require('electron-store');
-const AnnouncementManager = require('../AnnouncementManager').default;
+const AnnouncementManager = require('../AnnouncementManager');
 
 class MinuteBasedHandler {
   constructor() {
     this.store = new Store();
     this.lastPlayTimes = new Map();
+    this.announcementManager = AnnouncementManager;
   }
 
   async check() {
@@ -24,7 +25,7 @@ class MinuteBasedHandler {
       announcement.scheduleType === 'minutes' &&
       new Date(announcement.startDate) <= now &&
       new Date(announcement.endDate) >= now &&
-      !AnnouncementManager.isAnnouncementPlaying() &&
+      !this.announcementManager.isAnnouncementPlaying() &&
       this.hasMinuteIntervalPassed(announcement)
     );
   }
@@ -47,7 +48,7 @@ class MinuteBasedHandler {
 
     try {
       // Anons başlatma izni al
-      const canStart = await AnnouncementManager.startAnnouncement(
+      const canStart = await this.announcementManager.startAnnouncement(
         announcement._id,
         'minute'
       );
@@ -62,12 +63,12 @@ class MinuteBasedHandler {
         'document.getElementById("audioPlayer").paused'
       );
       
-      AnnouncementManager.savePlaylistState(!isPaused);
+      this.announcementManager.savePlaylistState(!isPaused);
 
       // Anons bitince çalışacak event listener'ı ayarla
       require('electron').ipcMain.once('announcement-ended', () => {
         console.log('Announcement ended, cleanup started');
-        const state = AnnouncementManager.endAnnouncement();
+        const state = this.announcementManager.endAnnouncement();
         
         if (state.wasPlaying && state.handler === 'minute') {
           console.log('Resuming playlist after minute-based announcement');
@@ -83,7 +84,7 @@ class MinuteBasedHandler {
       
     } catch (error) {
       console.error('Error processing announcement:', error);
-      AnnouncementManager.endAnnouncement();
+      this.announcementManager.endAnnouncement();
     }
   }
 }
