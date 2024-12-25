@@ -1,16 +1,20 @@
 const QueueManager = require('./QueueManager');
 const PlaybackState = require('./PlaybackState');
+const AudioFader = require('./AudioFader');
 const path = require('path');
-const { ipcRenderer } = require('electron');
 
 class AudioPlayer {
   constructor() {
     this.queueManager = new QueueManager();
     this.playbackState = new PlaybackState();
     this.audio = new Audio();
+    this.audioFader = new AudioFader();
     this.playlist = null;
     this.isPlaying = false;
     this.volume = 1.0;
+    
+    // Connect audio element to Web Audio API
+    this.audioFader.connectSource(this.audio);
     
     this.setupEventListeners();
   }
@@ -37,21 +41,17 @@ class AudioPlayer {
       this.isPlaying = false;
       this.updatePlaybackState('paused');
     });
+
+    // Add timeupdate listener for fade effect
+    this.audio.addEventListener('timeupdate', () => {
+      if (this.audio.duration > 0 && 
+          this.audio.currentTime >= this.audio.duration - 2) {
+        this.audioFader.fadeOut();
+      }
+    });
   }
 
-  loadPlaylist(playlist) {
-    console.log('Loading playlist:', playlist);
-    this.playlist = playlist;
-    this.queueManager.setQueue(playlist.songs);
-    
-    if (this.queueManager.getCurrentSong()) {
-      this.loadCurrentSong();
-    } else {
-      console.log('No playable songs in playlist');
-    }
-  }
-
-  loadCurrentSong() {
+  async loadCurrentSong() {
     const song = this.queueManager.getCurrentSong();
     if (!song) {
       console.log('No song to load');
@@ -70,21 +70,21 @@ class AudioPlayer {
       const normalizedPath = path.normalize(song.localPath);
       console.log('Playing file from:', normalizedPath);
       
+      await this.audioFader.fadeOut();
+      
       this.audio.pause();
       this.audio.currentTime = 0;
       
       this.audio.src = normalizedPath;
       this.audio.volume = this.volume;
       
+      if (this.isPlaying) {
+        await this.audio.play();
+        await this.audioFader.fadeIn();
+      }
+      
       // Emit song change event
       this.emitSongChange(song);
-      
-      if (this.isPlaying) {
-        this.audio.play().catch(error => {
-          console.error('Error playing audio:', error);
-          this.playNext(); // Hata durumunda sonraki şarkıya geç
-        });
-      }
     } catch (error) {
       console.error('Error loading song:', error);
       this.playNext();
@@ -139,7 +139,7 @@ class AudioPlayer {
 
   setVolume(volume) {
     this.volume = volume / 100;
-    this.audio.volume = this.volume;
+    this.audioFader.setVolume(this.volume);
   }
 
   updatePlaybackState(state) {
