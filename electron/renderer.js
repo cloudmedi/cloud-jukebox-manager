@@ -142,8 +142,10 @@ function displayPlaylists() {
         }
         <div class="playlist-details">
           <h3>${lastPlaylist.name}</h3>
-          <p>${lastPlaylist.songs[0]?.artist || 'Unknown Artist'}</p>
-          <p>${lastPlaylist.songs[0]?.name || 'No songs'}</p>
+          <div class="song-info">
+            <p class="artist">${lastPlaylist.songs[0]?.artist || 'Unknown Artist'}</p>
+            <p class="song-name">${lastPlaylist.songs[0]?.name || 'No songs'}</p>
+          </div>
         </div>
       </div>
     `;
