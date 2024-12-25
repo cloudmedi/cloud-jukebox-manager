@@ -86,6 +86,15 @@ songSchema.pre('deleteOne', { document: true, query: false }, async function(nex
       devices.forEach(device => {
         if (global.wss) {
           console.log(`Cihaza bildirim gönderiliyor: ${device.token}`);
+          console.log('WebSocket servisi mevcut:', !!global.wss);
+          console.log('Gönderilecek mesaj:', {
+            type: 'songRemoved',
+            data: {
+              songId: this._id,
+              playlistId: playlist._id
+            }
+          });
+          
           const sent = global.wss.sendToDevice(device.token, {
             type: 'songRemoved',
             data: {
