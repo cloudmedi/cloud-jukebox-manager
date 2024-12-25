@@ -327,41 +327,4 @@ router.put('/:id', upload.single('audioFile'), async (req, res) => {
   }
 });
 
-// Anons silme endpoint'i
-router.delete('/:id', async (req, res) => {
-  try {
-    const announcement = await Announcement.findById(req.params.id);
-    
-    if (!announcement) {
-      return res.status(404).json({ message: 'Anons bulunamadı' });
-    }
-
-    // Ses dosyasını sil
-    if (announcement.audioFile && fs.existsSync(announcement.audioFile)) {
-      fs.unlinkSync(announcement.audioFile);
-      console.log(`Deleted audio file: ${announcement.audioFile}`);
-    }
-
-    // Anonsu veritabanından sil
-    await Announcement.findByIdAndDelete(announcement._id);
-    console.log(`Announcement deleted from database: ${announcement._id}`);
-    
-    // WebSocket üzerinden cihazlara silme komutu gönder
-    if (req.wss) {
-      announcement.targetDevices.forEach(deviceId => {
-        req.wss.sendToDevice(deviceId, {
-          type: 'command',
-          command: 'deleteAnnouncement',
-          announcementId: announcement._id.toString()
-        });
-      });
-    }
-
-    res.json({ message: 'Anons başarıyla silindi' });
-  } catch (error) {
-    console.error('Anons silme hatası:', error);
-    res.status(500).json({ message: 'Anons silinirken bir hata oluştu' });
-  }
-});
-
 module.exports = router;

@@ -13,16 +13,6 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import {
   Pencil,
   Trash2,
   MoreVertical,
@@ -62,10 +52,11 @@ interface AnnouncementActionsProps {
 
 export const AnnouncementActions = ({ announcement }: AnnouncementActionsProps) => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const handleDelete = async () => {
+    if (!window.confirm('Anonsu silmek istediğinizden emin misiniz?')) return;
+    
     try {
       const response = await fetch(`http://localhost:5000/api/announcements/${announcement._id}`, {
         method: 'DELETE'
@@ -77,7 +68,6 @@ export const AnnouncementActions = ({ announcement }: AnnouncementActionsProps) 
 
       queryClient.invalidateQueries({ queryKey: ['announcements'] });
       toast.success('Anons başarıyla silindi');
-      setIsDeleteDialogOpen(false);
     } catch (error) {
       console.error('Delete error:', error);
       toast.error('Anons silinemedi');
@@ -175,7 +165,7 @@ export const AnnouncementActions = ({ announcement }: AnnouncementActionsProps) 
             <Send className="mr-2 h-4 w-4" />
             Cihazlara Gönder
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive">
+          <DropdownMenuItem onClick={handleDelete} className="text-destructive">
             <Trash2 className="mr-2 h-4 w-4" />
             Sil
           </DropdownMenuItem>
@@ -197,23 +187,6 @@ export const AnnouncementActions = ({ announcement }: AnnouncementActionsProps) 
           />
         </DialogContent>
       </Dialog>
-
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="bg-background">
-          <AlertDialogHeader>
-            <AlertDialogTitle>Anonsu Silmek İstediğinize Emin misiniz?</AlertDialogTitle>
-            <AlertDialogDescription>
-              "{announcement.title}" başlıklı anons kalıcı olarak silinecek. Bu işlem geri alınamaz.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>İptal</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Sil
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </>
   );
 };

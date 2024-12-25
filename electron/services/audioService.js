@@ -170,28 +170,11 @@ class AudioService {
     });
 
     // Anons bittiğinde çağrılacak
-    ipcMain.on('announcement-ended', (event, { lastPlaylistIndex }) => {
-      console.log('Anons bitti, playlist devam ediyor. Son indeks:', lastPlaylistIndex);
+    ipcMain.on('announcement-ended', () => {
       const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
       if (mainWindow && this.isPlaying) {
-        this.currentIndex = lastPlaylistIndex;
-        const nextSong = this.queue[this.currentIndex + 1];
-        if (nextSong) {
-          mainWindow.webContents.send('update-player', {
-            playlist: this.playlist,
-            currentSong: nextSong,
-            isPlaying: true
-          });
-        }
+        mainWindow.webContents.send('resume-playback');
       }
-    });
-
-    // Playlist durumunu sorgulama
-    ipcMain.on('get-current-playlist', (event) => {
-      event.returnValue = {
-        currentIndex: this.currentIndex,
-        isPlaying: this.isPlaying
-      };
     });
   }
 

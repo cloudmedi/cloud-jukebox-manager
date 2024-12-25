@@ -1,9 +1,8 @@
 const WebSocket = require('ws');
 const Store = require('electron-store');
-const { app } = require('electron');
+const { BrowserWindow, app } = require('electron');
 const playlistHandler = require('./playlist/PlaylistHandler');
 const DeleteAnnouncementHandler = require('./announcement/handlers/DeleteAnnouncementHandler');
-const CommandHandler = require('./handlers/CommandHandler');
 const store = new Store();
 
 class WebSocketService {
@@ -16,6 +15,7 @@ class WebSocketService {
   }
 
   setupHandlers() {
+    // Auth handler
     this.addMessageHandler('auth', (message) => {
       console.log('Auth message received:', message);
       if (message.success) {
@@ -23,11 +23,12 @@ class WebSocketService {
       }
     });
 
+    // Playlist handler
     this.addMessageHandler('playlist', async (message) => {
       console.log('Playlist message received:', message);
       try {
         const updatedPlaylist = await playlistHandler.handlePlaylist(message.data);
-        const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
+        const mainWindow = BrowserWindow.getAllWindows()[0];
         if (mainWindow) {
           mainWindow.webContents.send('playlist-received', updatedPlaylist);
           console.log('Playlist update sent to renderer');
@@ -37,9 +38,30 @@ class WebSocketService {
       }
     });
 
+    // Command handler
     this.addMessageHandler('command', (message) => {
       console.log('Command message received:', message);
-      CommandHandler.handleCommand(message);
+      const mainWindow = BrowserWindow.getAllWindows()[0];
+      
+      switch (message.command) {
+        case 'deleteAnnouncement':
+          console.log('Processing deleteAnnouncement command:', message);
+          this.deleteAnnouncementHandler.handleDeleteCommand(message.announcementId);
+          break;
+          
+        case 'restart':
+          console.log('Restarting application...');
+          app.relaunch();
+          app.exit(0);
+          break;
+          
+        default:
+          if (mainWindow) {
+            console.log('Forwarding command to renderer:', message.command);
+            mainWindow.webContents.send(message.command, message.data);
+          }
+          break;
+      }
     });
   }
 
@@ -55,7 +77,7 @@ class WebSocketService {
     this.ws.on('open', () => {
       console.log('WebSocket connected');
       this.sendAuth(deviceInfo.token);
-      const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
+      const mainWindow = BrowserWindow.getAllWindows()[0];
       if (mainWindow) {
         mainWindow.webContents.send('websocket-status', true);
       }
@@ -73,7 +95,7 @@ class WebSocketService {
 
     this.ws.on('close', () => {
       console.log('WebSocket disconnected, reconnecting...');
-      const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
+      const mainWindow = BrowserWindow.getAllWindows()[0];
       if (mainWindow) {
         mainWindow.webContents.send('websocket-status', false);
       }

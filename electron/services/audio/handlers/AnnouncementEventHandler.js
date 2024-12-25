@@ -5,7 +5,6 @@ class AnnouncementEventHandler {
     this.isAnnouncementPlaying = false;
     this.wasPlaylistPlaying = false;
     this.lastAnnouncementTime = 0;
-    this.lastPlaylistIndex = 0; // Yeni: Son çalan şarkının indeksini tutacak
     this.setupEventListeners();
   }
 
@@ -13,17 +12,8 @@ class AnnouncementEventHandler {
     // Kampanya yüklendiğinde
     this.campaignAudio.addEventListener('loadeddata', () => {
       console.log('Kampanya yüklendi, playlist durumu kontrol ediliyor');
-      
-      // Playlist durumunu ve mevcut şarkı indeksini kaydet
+      // Playlist durumunu kaydet ve duraklat
       this.wasPlaylistPlaying = !this.playlistAudio.paused;
-      
-      // Mevcut şarkı indeksini kaydet
-      const currentPlaylist = require('electron').ipcRenderer.sendSync('get-current-playlist');
-      if (currentPlaylist) {
-        this.lastPlaylistIndex = currentPlaylist.currentIndex;
-        console.log('Kaydedilen playlist indeksi:', this.lastPlaylistIndex);
-      }
-
       if (this.wasPlaylistPlaying) {
         console.log('Playlist duraklatılıyor');
         this.playlistAudio.pause();
@@ -58,7 +48,6 @@ class AnnouncementEventHandler {
   resetAnnouncementState() {
     console.log('Kampanya durumu sıfırlanıyor');
     console.log('Önceki playlist durumu:', this.wasPlaylistPlaying);
-    console.log('Son playlist indeksi:', this.lastPlaylistIndex);
     
     // Kampanyayı duraklat ve zamanı sıfırla
     this.campaignAudio.pause();
@@ -72,17 +61,20 @@ class AnnouncementEventHandler {
     
     // Anonsun bittiğini bildir
     const ipcRenderer = require('electron').ipcRenderer;
-    ipcRenderer.send('announcement-ended', {
-      lastPlaylistIndex: this.lastPlaylistIndex
-    });
+    ipcRenderer.send('announcement-ended');
     
     // Playlist'i devam ettir
     if (this.wasPlaylistPlaying) {
-      console.log('Playlist kaldığı yerden devam ediyor, indeks:', this.lastPlaylistIndex);
+      console.log('Playlist kaldığı yerden devam ediyor');
       setTimeout(() => {
-        // Bir sonraki şarkıya geç
-        ipcRenderer.send('play-next-song', {
-          startFromIndex: this.lastPlaylistIndex + 1
+        this.playlistAudio.play().catch(err => {
+          console.error('Playlist devam ettirme hatası:', err);
+          // Hata durumunda tekrar dene
+          setTimeout(() => {
+            this.playlistAudio.play().catch(err => {
+              console.error('İkinci deneme başarısız:', err);
+            });
+          }, 1000);
         });
       }, 500);
     }

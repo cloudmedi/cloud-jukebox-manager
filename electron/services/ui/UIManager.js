@@ -6,6 +6,7 @@ class UIManager {
         this.deviceInfoElement = document.getElementById('deviceInfo');
         this.tokenDisplay = this.deviceInfoElement.querySelector('.token-display');
         this.connectionStatus = this.deviceInfoElement.querySelector('.connection-status');
+        this.systemInfo = this.deviceInfoElement.querySelector('.system-info');
         this.downloadProgress = document.querySelector('.download-progress');
         this.downloadProgressBar = document.querySelector('.download-progress-bar');
         this.downloadProgressText = document.querySelector('.download-progress-text');
@@ -15,66 +16,46 @@ class UIManager {
     }
 
     async initializeUI() {
+        // Token ve cihaz bilgilerini al
         const deviceInfo = await ipcRenderer.invoke('get-device-info');
         
         if (!deviceInfo || !deviceInfo.token) {
             try {
+                // Yeni token oluştur ve kaydet
                 const newToken = await deviceService.registerDeviceToken();
+                const systemInfo = deviceService.getDeviceInfo();
+                
                 await ipcRenderer.invoke('save-device-info', {
-                    token: newToken
+                    token: newToken,
+                    ...systemInfo
                 });
                 
-                this.updateDeviceInfo(newToken);
+                this.updateDeviceInfo(newToken, systemInfo);
             } catch (error) {
                 this.showError('Token oluşturma hatası: ' + error.message);
             }
         } else {
-            this.updateDeviceInfo(deviceInfo.token);
+            this.updateDeviceInfo(deviceInfo.token, deviceInfo);
         }
     }
 
-    updateDeviceInfo(token) {
+    updateDeviceInfo(token, systemInfo) {
+        // Token göster
         this.tokenDisplay.textContent = `Token: ${token}`;
+        
+        // Sistem bilgilerini göster
+        this.systemInfo.innerHTML = `
+            <div>Hostname: ${systemInfo.hostname}</div>
+            <div>Platform: ${systemInfo.platform}</div>
+            <div>CPU: ${systemInfo.cpus}</div>
+            <div>Memory: ${systemInfo.totalMemory}</div>
+            <div>IP: ${systemInfo.networkInterfaces.join(', ')}</div>
+        `;
     }
 
     updateConnectionStatus(isConnected) {
-        if (isConnected) {
-            // Bağlantı başarılı olduğunda token bilgilerini gizle
-            this.deviceInfoElement.style.display = 'none';
-        } else {
-            // Bağlantı koptuğunda token bilgilerini göster
-            this.deviceInfoElement.style.display = 'block';
-        }
-        
         this.connectionStatus.className = `connection-status ${isConnected ? 'connected' : 'disconnected'}`;
         this.connectionStatus.textContent = isConnected ? 'Bağlı' : 'Bağlantı Kesildi';
-    }
-
-    displayPlaylists(playlist) {
-        const playlistContainer = document.getElementById('playlistContainer');
-        if (!playlistContainer) return;
-
-        playlistContainer.innerHTML = '';
-
-        if (playlist) {
-            const playlistElement = document.createElement('div');
-            playlistElement.className = 'playlist-item';
-            playlistElement.innerHTML = `
-                <div class="playlist-info">
-                    ${playlist.artwork ? 
-                        `<img src="${playlist.artwork}" alt="${playlist.name}" class="playlist-artwork"/>` :
-                        '<div class="playlist-artwork-placeholder"></div>'
-                    }
-                    <div class="playlist-details">
-                        <h3>${playlist.name}</h3>
-                        <p>${playlist.songs[0]?.artist || 'Unknown Artist'}</p>
-                        <p>${playlist.songs[0]?.name || 'No songs'}</p>
-                    </div>
-                </div>
-            `;
-            
-            playlistContainer.appendChild(playlistElement);
-        }
     }
 
     showDownloadProgress(progress, fileName) {
