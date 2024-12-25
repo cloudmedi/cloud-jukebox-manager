@@ -7,6 +7,7 @@ const playbackStateManager = require('./services/audio/PlaybackStateManager');
 const UIManager = require('./services/ui/UIManager');
 const AnnouncementAudioService = require('./services/audio/AnnouncementAudioService');
 const PlaylistInitializer = require('./services/playlist/PlaylistInitializer');
+const PlaylistUIService = require('./services/ui/PlaylistUIService');
 
 const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
@@ -132,22 +133,7 @@ function displayPlaylists() {
   // Son playlist'i göster
   const lastPlaylist = playlists[playlists.length - 1];
   if (lastPlaylist) {
-    const playlistElement = document.createElement('div');
-    playlistElement.className = 'playlist-item';
-    playlistElement.innerHTML = `
-      <div class="playlist-info">
-        ${lastPlaylist.artwork ? 
-          `<img src="${lastPlaylist.artwork}" alt="${lastPlaylist.name}" class="playlist-artwork"/>` :
-          '<div class="playlist-artwork-placeholder"></div>'
-        }
-        <div class="playlist-details">
-          <h3>${lastPlaylist.name}</h3>
-          <p>${lastPlaylist.songs[0]?.artist || 'Unknown Artist'}</p>
-          <p>${lastPlaylist.songs[0]?.name || 'No songs'}</p>
-        </div>
-      </div>
-    `;
-    
+    const playlistElement = PlaylistUIService.createPlaylistElement(lastPlaylist);
     playlistContainer.appendChild(playlistElement);
     console.log('Displayed playlist:', lastPlaylist.name);
   }
