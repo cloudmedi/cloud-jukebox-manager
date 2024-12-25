@@ -40,13 +40,19 @@ ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
     const normalizedPath = currentSong.localPath.replace(/\\/g, '/');
     playlistAudio.src = normalizedPath;
     
-    // Önce UI'ı güncelle, sonra çalmaya başla
+    // Önce UI'ı güncelle
     audioEventManager.updateCurrentSong(currentSong);
     
-    playlistAudio.play().catch(err => {
-      console.error('Playback error:', err);
-      UIManager.showError('Şarkı çalınırken bir hata oluştu');
-    });
+    // Playback state'i kontrol et ve ona göre başlat
+    const shouldAutoPlay = playbackStateManager.getPlaybackState();
+    console.log('Should auto play:', shouldAutoPlay);
+    
+    if (shouldAutoPlay) {
+      playlistAudio.play().catch(err => {
+        console.error('Playback error:', err);
+        UIManager.showError('Şarkı çalınırken bir hata oluştu');
+      });
+    }
     
     // Update playlist display
     displayPlaylists();
@@ -58,6 +64,7 @@ ipcRenderer.on('auto-play-playlist', (event, playlist) => {
   console.log('Auto-playing playlist:', playlist);
   if (playlist && playlist.songs && playlist.songs.length > 0) {
     const shouldAutoPlay = playbackStateManager.getPlaybackState();
+    console.log('Auto-play state:', shouldAutoPlay);
     
     // Playlist'i başlat
     const initializedPlaylist = PlaylistInitializer.initializePlaylist(playlist);
@@ -115,4 +122,7 @@ function displayPlaylists() {
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM loaded, displaying playlists');
   displayPlaylists();
+  
+  // Başlangıç playback state'ini ayarla
+  playbackStateManager.savePlaybackState(true);
 });
