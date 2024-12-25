@@ -8,6 +8,78 @@ require('./services/audioService');
 let mainWindow;
 let tray = null;
 
+function createTrayMenu() {
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Ses Kontrolü',
+      submenu: [
+        {
+          label: 'Sesi Artır',
+          click: () => {
+            mainWindow.webContents.send('set-volume', Math.min((store.get('volume', 70) || 70) + 10, 100));
+          }
+        },
+        {
+          label: 'Sesi Azalt',
+          click: () => {
+            mainWindow.webContents.send('set-volume', Math.max((store.get('volume', 70) || 70) - 10, 0));
+          }
+        },
+        { type: 'separator' },
+        {
+          label: 'Sessiz',
+          type: 'checkbox',
+          checked: store.get('muted', false),
+          click: (menuItem) => {
+            mainWindow.webContents.send('toggle-mute', menuItem.checked);
+          }
+        }
+      ]
+    },
+    { type: 'separator' },
+    {
+      label: 'Medya Kontrolleri',
+      submenu: [
+        {
+          label: 'Önceki',
+          click: () => {
+            mainWindow.webContents.send('media-control', 'previous');
+          }
+        },
+        {
+          label: 'Oynat/Duraklat',
+          click: () => {
+            mainWindow.webContents.send('media-control', 'play-pause');
+          }
+        },
+        {
+          label: 'Sonraki',
+          click: () => {
+            mainWindow.webContents.send('media-control', 'next');
+          }
+        }
+      ]
+    },
+    { type: 'separator' },
+    {
+      label: 'Göster',
+      click: () => {
+        mainWindow.show();
+        mainWindow.focus();
+      }
+    },
+    {
+      label: 'Çıkış',
+      click: () => {
+        app.isQuitting = true;
+        app.quit();
+      }
+    }
+  ]);
+
+  tray.setContextMenu(contextMenu);
+}
+
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 400,
@@ -33,13 +105,25 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   }
 
-  // Pencere kapatıldığında sistem tepsisine küçült
+  // X tuşuna basıldığında sistem tepsisine küçült
   mainWindow.on('close', function (event) {
     if (!app.isQuitting) {
       event.preventDefault();
       mainWindow.hide();
-      if (tray === null) {
-        createTray();
+      
+      // Tray yoksa oluştur
+      if (!tray) {
+        const iconPath = path.join(__dirname, 'icon.png');
+        tray = new Tray(iconPath);
+        tray.setToolTip('Cloud Media Player');
+        
+        // Tray ikonuna çift tıklandığında pencereyi göster
+        tray.on('double-click', () => {
+          mainWindow.show();
+          mainWindow.focus();
+        });
+        
+        createTrayMenu();
       }
     }
     return false;
@@ -61,58 +145,7 @@ function createWindow() {
   }
 }
 
-function createTray() {
-  try {
-    // Tray ikonu oluştur
-    const iconPath = path.join(__dirname, 'icon.png');
-    console.log('Tray icon path:', iconPath);
-    
-    tray = new Tray(iconPath);
-    
-    // Tray menüsünü oluştur
-    const contextMenu = Menu.buildFromTemplate([
-      {
-        label: 'Show App',
-        click: function() {
-          mainWindow.show();
-          mainWindow.focus(); // Pencereyi ön plana getir
-        }
-      },
-      {
-        label: 'Close',
-        click: function() {
-          app.isQuitting = true;
-          app.quit();
-        }
-      }
-    ]);
-
-    // Tray ayarlarını yap
-    tray.setToolTip('Cloud Media Player');
-    tray.setContextMenu(contextMenu);
-
-    // Tray ikonuna çift tıklandığında uygulamayı göster
-    tray.on('double-click', () => {
-      mainWindow.show();
-      mainWindow.focus(); // Pencereyi ön plana getir
-    });
-    
-    // Tray ikonuna tek tıklandığında uygulamayı göster
-    tray.on('click', () => {
-      mainWindow.show();
-      mainWindow.focus(); // Pencereyi ön plana getir
-    });
-    
-    console.log('Tray created successfully');
-  } catch (error) {
-    console.error('Error creating tray:', error);
-  }
-}
-
-app.whenReady().then(() => {
-  createWindow();
-  createTray(); // Uygulama başladığında tray'i oluştur
-});
+app.whenReady().then(createWindow);
 
 app.on('window-all-closed', () => {
   websocketService.disconnect();
@@ -127,10 +160,12 @@ app.on('activate', () => {
   }
 });
 
+// Uygulama kapanmadan önce isQuitting'i true yap
 app.on('before-quit', () => {
   app.isQuitting = true;
 });
 
+// IPC handlers
 ipcMain.handle('save-device-info', async (event, deviceInfo) => {
   store.set('deviceInfo', deviceInfo);
   
@@ -143,4 +178,14 @@ ipcMain.handle('save-device-info', async (event, deviceInfo) => {
 
 ipcMain.handle('get-device-info', async () => {
   return store.get('deviceInfo');
+});
+
+// Ses seviyesi değişikliklerini store'a kaydet
+ipcMain.on('volume-changed', (event, volume) => {
+  store.set('volume', volume);
+});
+
+// Sessiz durumunu store'a kaydet
+ipcMain.on('mute-changed', (event, muted) => {
+  store.set('muted', muted);
 });

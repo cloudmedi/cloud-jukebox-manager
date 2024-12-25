@@ -13,10 +13,55 @@ const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
 
 // Initialize volume
-playlistAudio.volume = 0.7; // 70%
+const savedVolume = store.get('volume', 70);
+playlistAudio.volume = savedVolume / 100;
+
+// Initialize muted state
+const savedMuted = store.get('muted', false);
+playlistAudio.muted = savedMuted;
 
 document.getElementById('closeButton').addEventListener('click', () => {
     window.close();
+});
+
+// Ses kontrolü
+ipcRenderer.on('set-volume', (event, volume) => {
+    console.log('Setting volume to:', volume);
+    audioHandler.setVolume(volume);
+    ipcRenderer.send('volume-changed', volume);
+});
+
+ipcRenderer.on('toggle-mute', (event, muted) => {
+    console.log('Setting muted state to:', muted);
+    playlistAudio.muted = muted;
+    ipcRenderer.send('mute-changed', muted);
+});
+
+// Medya kontrolleri
+ipcRenderer.on('media-control', (event, command) => {
+    console.log('Received media control command:', command);
+    switch (command) {
+        case 'previous':
+            // Önceki şarkıya geç
+            if (playlistAudio.currentTime > 3) {
+                playlistAudio.currentTime = 0;
+            } else {
+                ipcRenderer.invoke('play-previous');
+            }
+            break;
+        case 'play-pause':
+            // Oynat/Duraklat
+            if (playlistAudio.paused) {
+                playlistAudio.play().catch(err => console.error('Play error:', err));
+            } else {
+                playlistAudio.pause();
+            }
+            break;
+        case 'next':
+            // Sonraki şarkıya geç
+            ipcRenderer.invoke('play-next');
+            break;
+    }
 });
 
 // Anons kontrolleri
@@ -56,13 +101,6 @@ ipcRenderer.on('download-progress', (event, { songName, progress }) => {
 // Hata mesajları
 ipcRenderer.on('error', (event, message) => {
     UIManager.showError(message);
-});
-
-// Volume control from WebSocket
-ipcRenderer.on('set-volume', (event, volume) => {
-    console.log('Setting volume to:', volume);
-    audioHandler.setVolume(volume);
-    ipcRenderer.send('volume-changed', volume);
 });
 
 // Restart playback from WebSocket
