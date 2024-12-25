@@ -11,11 +11,11 @@ let tray = null;
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 400,
-    height: 300,
+    height: 500,
     minWidth: 400,
-    minHeight: 300,
+    minHeight: 500,
     maxWidth: 400,
-    maxHeight: 300,
+    maxHeight: 500,
     resizable: false,
     backgroundColor: '#1a1b1e',
     titleBarStyle: 'hidden',
