@@ -1,6 +1,7 @@
 const { ipcRenderer } = require('electron');
 const Store = require('electron-store');
 const fs = require('fs');
+const path = require('path');
 const store = new Store();
 const AudioEventHandler = require('./services/audio/AudioEventHandler');
 const playbackStateManager = require('./services/audio/PlaybackStateManager');
@@ -135,10 +136,21 @@ function displayPlaylists() {
     const playlistElement = document.createElement('div');
     playlistElement.className = 'playlist-item';
     
-    // Artwork URL'sini kontrol et ve düzelt
-    let artworkSrc = lastPlaylist.artwork;
-    if (artworkSrc && !artworkSrc.startsWith('file://') && !artworkSrc.startsWith('http')) {
-      artworkSrc = `http://localhost:5000${artworkSrc}`;
+    // Artwork URL'sini düzelt
+    let artworkSrc = '';
+    if (lastPlaylist.artwork) {
+      // Eğer artwork uzak sunucudan geliyorsa
+      if (lastPlaylist.artwork.startsWith('http')) {
+        artworkSrc = lastPlaylist.artwork;
+      } 
+      // Eğer artwork yerel dosya sisteminde ise
+      else if (fs.existsSync(lastPlaylist.artwork)) {
+        artworkSrc = `file://${lastPlaylist.artwork}`;
+      }
+      // Eğer artwork sunucu yoluysa
+      else {
+        artworkSrc = `http://localhost:5000${lastPlaylist.artwork}`;
+      }
     }
 
     playlistElement.innerHTML = `
@@ -148,7 +160,7 @@ function displayPlaylists() {
             src="${artworkSrc}" 
             alt="${lastPlaylist.name}" 
             class="playlist-artwork"
-            onerror="this.onerror=null; this.src='/placeholder.svg';"
+            onerror="this.onerror=null; this.src='placeholder.svg';"
           />` :
           '<div class="playlist-artwork-placeholder"></div>'
         }
@@ -165,24 +177,71 @@ function displayPlaylists() {
   }
 }
 
-// Playlist alındığında
-ipcRenderer.on('playlist-received', async (event, playlist) => {
+// WebSocket mesaj dinleyicileri
+ipcRenderer.on('playlist-received', (event, playlist) => {
   console.log('New playlist received:', playlist);
   
-  try {
-    // PlaylistManager kullanarak eski playlistleri temizle ve yeni playlisti kaydet
-    const playlistManager = require('./services/playlist/PlaylistManager');
-    await playlistManager.savePlaylist(playlist);
+  const playlists = store.get('playlists', []);
+  const existingIndex = playlists.findIndex(p => p._id === playlist._id);
+  
+  if (existingIndex !== -1) {
+    playlists[existingIndex] = playlist;
+  } else {
+    playlists.push(playlist);
+  }
+  
+  store.set('playlists', playlists);
+  
+  const shouldAutoPlay = playbackStateManager.getPlaybackState();
+  if (shouldAutoPlay) {
+    console.log('Auto-playing new playlist:', playlist);
+    ipcRenderer.invoke('play-playlist', playlist);
+  } else {
+    console.log('Loading new playlist without auto-play');
+    ipcRenderer.invoke('load-playlist', playlist);
+  }
+  
+  deleteOldPlaylists();
+  displayPlaylists();
+  
+  new Notification('Yeni Playlist', {
+    body: `${playlist.name} playlist'i başarıyla indirildi.`
+  });
+});
+
+// Şarkı silme mesajını dinle
+ipcRenderer.on('songRemoved', (event, { songId, playlistId }) => {
+  console.log('Şarkı silme mesajı alındı:', { songId, playlistId });
+  
+  const playlists = store.get('playlists', []);
+  const playlistIndex = playlists.findIndex(p => p._id === playlistId);
+  
+  if (playlistIndex !== -1) {
+    console.log('Playlist bulundu:', playlistId);
+    // Playlistten şarkıyı kaldır
+    const removedSong = playlists[playlistIndex].songs.find(s => s._id === songId);
+    playlists[playlistIndex].songs = playlists[playlistIndex].songs.filter(
+      song => song._id !== songId
+    );
+    
+    // Store'u güncelle
+    store.set('playlists', playlists);
+    console.log('Playlist güncellendi');
     
     // UI'ı güncelle
     displayPlaylists();
     
-    // Bildirim göster
-    new Notification('Yeni Playlist', {
-      body: `${playlist.name} playlist'i başarıyla indirildi.`
-    });
-  } catch (error) {
-    console.error('Playlist işleme hatası:', error);
+    // Yerel dosyayı sil
+    if (removedSong && removedSong.localPath) {
+      try {
+        fs.unlinkSync(removedSong.localPath);
+        console.log('Yerel şarkı dosyası silindi:', removedSong.localPath);
+      } catch (error) {
+        console.error('Yerel dosya silme hatası:', error);
+      }
+    }
+  } else {
+    console.log('Playlist bulunamadı:', playlistId);
   }
 });
 
