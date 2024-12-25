@@ -3,6 +3,7 @@ const Store = require('electron-store');
 const fs = require('fs');
 const store = new Store();
 const AudioEventHandler = require('./services/audio/AudioEventHandler');
+const AudioUpdateHandler = require('./services/audio/AudioUpdateHandler');
 const playbackStateManager = require('./services/audio/PlaybackStateManager');
 const UIManager = require('./services/ui/UIManager');
 const AnnouncementAudioService = require('./services/audio/AnnouncementAudioService');
@@ -10,6 +11,7 @@ const PlaylistInitializer = require('./services/playlist/PlaylistInitializer');
 
 const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
+const audioUpdateHandler = new AudioUpdateHandler(playlistAudio);
 
 // Initialize volume
 playlistAudio.volume = 0.7; // 70%
@@ -283,20 +285,7 @@ playlistAudio.addEventListener('ended', () => {
   ipcRenderer.invoke('song-ended');
 });
 
-ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
-  console.log('Updating player with song:', currentSong);
-  if (currentSong && currentSong.localPath) {
-    const normalizedPath = currentSong.localPath.replace(/\\/g, '/');
-    playlistAudio.src = normalizedPath;
-    playlistAudio.play().catch(err => console.error('Playback error:', err));
-    
-    // Şarkı değiştiğinde görsel bilgileri güncelle
-    displayPlaylists();
-  }
-});
-
-// İlk yüklemede playlistleri göster
+// Initialize on load
 document.addEventListener('DOMContentLoaded', () => {
-  console.log('DOM loaded, displaying playlists');
-  displayPlaylists();
+  console.log('DOM loaded, initializing audio handlers');
 });

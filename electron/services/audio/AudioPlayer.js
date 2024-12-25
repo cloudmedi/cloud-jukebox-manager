@@ -1,9 +1,11 @@
-const QueueManager = require('./SmartQueueManager');
+const QueueManager = require('./QueueManager');
 const PlaybackState = require('./PlaybackState');
 const path = require('path');
+const { ipcRenderer } = require('electron');
 
 class AudioPlayer {
   constructor() {
+    this.queueManager = new QueueManager();
     this.playbackState = new PlaybackState();
     this.audio = new Audio();
     this.playlist = null;
@@ -40,17 +42,17 @@ class AudioPlayer {
   loadPlaylist(playlist) {
     console.log('Loading playlist:', playlist);
     this.playlist = playlist;
-    QueueManager.initializeQueue(playlist.songs);
+    this.queueManager.setQueue(playlist.songs);
     
-    const firstSong = QueueManager.getCurrentSong();
-    if (firstSong) {
-      this.loadSong(firstSong);
+    if (this.queueManager.getCurrentSong()) {
+      this.loadCurrentSong();
     } else {
       console.log('No playable songs in playlist');
     }
   }
 
-  loadSong(song) {
+  loadCurrentSong() {
+    const song = this.queueManager.getCurrentSong();
     if (!song) {
       console.log('No song to load');
       return;
@@ -74,10 +76,13 @@ class AudioPlayer {
       this.audio.src = normalizedPath;
       this.audio.volume = this.volume;
       
+      // Emit song change event
+      this.emitSongChange(song);
+      
       if (this.isPlaying) {
         this.audio.play().catch(error => {
           console.error('Error playing audio:', error);
-          this.playNext();
+          this.playNext(); // Hata durumunda sonraki şarkıya geç
         });
       }
     } catch (error) {
@@ -96,10 +101,7 @@ class AudioPlayer {
       this.isPlaying = true;
     } else {
       console.log('No audio source loaded');
-      const currentSong = QueueManager.getCurrentSong();
-      if (currentSong) {
-        this.loadSong(currentSong);
-      }
+      this.loadCurrentSong();
     }
   }
 
@@ -116,13 +118,22 @@ class AudioPlayer {
 
   playNext() {
     console.log('Playing next song');
-    const nextSong = QueueManager.getNextSong();
+    const nextSong = this.queueManager.next();
     if (nextSong) {
       console.log('Next song found:', nextSong.name);
-      this.loadSong(nextSong);
+      this.loadCurrentSong();
     } else {
       console.log('No more songs in queue');
       this.stop();
+    }
+  }
+
+  playPrevious() {
+    console.log('Playing previous song');
+    const prevSong = this.queueManager.previous();
+    if (prevSong) {
+      console.log('Previous song found:', prevSong.name);
+      this.loadCurrentSong();
     }
   }
 
@@ -134,7 +145,7 @@ class AudioPlayer {
   updatePlaybackState(state) {
     this.playbackState.update(
       state,
-      QueueManager.getCurrentSong(),
+      this.queueManager.getCurrentSong(),
       this.playlist,
       this.volume * 100
     );
@@ -143,10 +154,20 @@ class AudioPlayer {
   getCurrentState() {
     return {
       isPlaying: this.isPlaying,
-      currentSong: QueueManager.getCurrentSong(),
+      currentSong: this.queueManager.getCurrentSong(),
       playlist: this.playlist,
       volume: this.volume * 100
     };
+  }
+
+  emitSongChange(song) {
+    if (this.playlist) {
+      ipcRenderer.send('update-player', {
+        playlist: this.playlist,
+        currentSong: song,
+        isPlaying: this.isPlaying
+      });
+    }
   }
 }
 
