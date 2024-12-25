@@ -10,6 +10,7 @@ class UIManager {
         this.downloadProgressBar = document.querySelector('.download-progress-bar');
         this.downloadProgressText = document.querySelector('.download-progress-text');
         this.errorContainer = document.getElementById('errorContainer');
+        this.warningMessage = document.getElementById('warningMessage');
         
         this.initializeUI();
     }
@@ -39,10 +40,8 @@ class UIManager {
 
     updateConnectionStatus(isConnected) {
         if (isConnected) {
-            // Bağlantı başarılı olduğunda token bilgilerini gizle
             this.deviceInfoElement.style.display = 'none';
         } else {
-            // Bağlantı koptuğunda token bilgilerini göster
             this.deviceInfoElement.style.display = 'block';
         }
         
@@ -54,9 +53,15 @@ class UIManager {
         const playlistContainer = document.getElementById('playlistContainer');
         if (!playlistContainer) return;
 
-        playlistContainer.innerHTML = '';
-
-        if (playlist) {
+        // Show warning if no playlist is assigned
+        if (!playlist || !playlist.songs || playlist.songs.length === 0) {
+            this.warningMessage.style.display = 'block';
+            playlistContainer.style.display = 'none';
+        } else {
+            this.warningMessage.style.display = 'none';
+            playlistContainer.style.display = 'block';
+            
+            playlistContainer.innerHTML = '';
             const playlistElement = document.createElement('div');
             playlistElement.className = 'playlist-item';
             playlistElement.innerHTML = `
