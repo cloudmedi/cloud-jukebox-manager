@@ -7,20 +7,36 @@ class SongBasedHandler {
     this.songCounter = 0;
     this.isProcessingAnnouncement = false;
     this.lastAnnouncementTime = 0;
+    this.isPlaylistPaused = false;
     this.setupEventListeners();
   }
 
   setupEventListeners() {
-    // Anons bittiğinde flag'i sıfırla
     require('electron').ipcMain.on('announcement-ended', () => {
       console.log('Anons bitti sinyali alındı, flag sıfırlanıyor');
       this.isProcessingAnnouncement = false;
+    });
+
+    // Playlist durumu için yeni event listener
+    require('electron').ipcMain.on('playback-status-changed', (event, isPlaying) => {
+      this.isPlaylistPaused = !isPlaying;
     });
   }
 
   onSongEnd() {
     console.log('\n=== ŞARKI BAZLI ANONS KONTROLÜ ===');
     console.log('İşlem durumu:', this.isProcessingAnnouncement);
+    console.log('Playlist durumu:', this.isPlaylistPaused ? 'duraklatılmış' : 'çalıyor');
+    
+    // Eğer bu çağrı kampanya için yapılan bir duraklatmadan geliyorsa, sayacı arttırma
+    if (this.isProcessingAnnouncement || this.isPlaylistPaused) {
+      console.log('Kampanya/duraklatma nedeniyle sayaç arttırılmıyor');
+      return;
+    }
+
+    // Normal şarkı bitişi - sayacı arttır
+    this.songCounter++;
+    console.log(`Şarkı sayacı arttırıldı: ${this.songCounter}`);
     
     // Eğer anons işleniyorsa bekle
     if (this.isProcessingAnnouncement) {
@@ -35,9 +51,6 @@ class SongBasedHandler {
       return;
     }
 
-    this.songCounter++;
-    console.log(`Şarkı sayacı: ${this.songCounter}`);
-    
     const announcements = this.store.get('announcements', []);
     const currentTime = new Date();
 
