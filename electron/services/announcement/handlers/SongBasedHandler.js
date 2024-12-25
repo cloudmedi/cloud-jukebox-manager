@@ -7,23 +7,35 @@ class SongBasedHandler {
     this.songCounter = 0;
     this.isProcessingAnnouncement = false;
     this.lastAnnouncementTime = 0;
+    this.setupEventListeners();
+  }
+
+  setupEventListeners() {
+    // Anons bittiğinde flag'i sıfırla
+    require('electron').ipcMain.on('announcement-ended', () => {
+      console.log('Anons bitti sinyali alındı, flag sıfırlanıyor');
+      this.isProcessingAnnouncement = false;
+    });
   }
 
   onSongEnd() {
+    console.log('\n=== ŞARKI BAZLI ANONS KONTROLÜ ===');
+    console.log('İşlem durumu:', this.isProcessingAnnouncement);
+    
+    // Eğer anons işleniyorsa bekle
     if (this.isProcessingAnnouncement) {
-      console.log('Skipping announcement check during announcement playback');
+      console.log('Anons işleniyor, kontrol atlanıyor');
       return;
     }
 
+    // Minimum süre kontrolü
     const now = Date.now();
-    // En az 5 saniye geçmeden yeni anons kontrolü yapma
     if (now - this.lastAnnouncementTime < 5000) {
-      console.log('Skipping announcement check, too soon after last announcement');
+      console.log('Son anonstan bu yana 5 saniye geçmedi');
       return;
     }
 
     this.songCounter++;
-    console.log('\n=== ŞARKI BAZLI ANONS KONTROLÜ ===');
     console.log(`Şarkı sayacı: ${this.songCounter}`);
     
     const announcements = this.store.get('announcements', []);
@@ -43,7 +55,7 @@ class SongBasedHandler {
         console.log(`- Mevcut sayaç: ${this.songCounter}`);
         
         if (this.songCounter % announcement.songInterval === 0) {
-          console.log('✓ Anons çalma koşulu sağlandı, çalınıyor...');
+          console.log('✓ Anons çalma koşulu sağlandı');
           this.isProcessingAnnouncement = true;
           this.lastAnnouncementTime = now;
           this.playAnnouncement(announcement);
@@ -63,14 +75,6 @@ class SongBasedHandler {
 
     console.log('Anons çalma isteği gönderiliyor...');
     mainWindow.webContents.send('play-announcement', announcement);
-    
-    // Anons bittiğinde state'i temizle
-    mainWindow.webContents.once('ipc-message', (event, channel) => {
-      if (channel === 'announcement-ended') {
-        console.log('Anons bitti, işlem durumu sıfırlanıyor');
-        this.isProcessingAnnouncement = false;
-      }
-    });
   }
 }
 
