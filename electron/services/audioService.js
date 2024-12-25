@@ -1,7 +1,7 @@
 const { ipcMain, app } = require('electron');
 const Store = require('electron-store');
 const store = new Store();
-const websocketService = require('./websocketService').getInstance();
+const websocketService = require('./websocketService');
 const AnnouncementManager = require('./announcement/AnnouncementManager');
 const AnnouncementScheduler = require('./announcement/AnnouncementScheduler');
 
