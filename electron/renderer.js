@@ -228,6 +228,40 @@ ipcRenderer.on('playlist-received', (event, playlist) => {
   });
 });
 
+// Şarkı silme mesajını dinle
+ipcRenderer.on('songRemoved', (event, { songId, playlistId }) => {
+  console.log('Song removal request received:', { songId, playlistId });
+  
+  const playlists = store.get('playlists', []);
+  const playlistIndex = playlists.findIndex(p => p._id === playlistId);
+  
+  if (playlistIndex !== -1) {
+    // Playlistten şarkıyı kaldır
+    playlists[playlistIndex].songs = playlists[playlistIndex].songs.filter(
+      song => song._id !== songId
+    );
+    
+    // Yerel dosyayı sil
+    const removedSong = playlists[playlistIndex].songs.find(s => s._id === songId);
+    if (removedSong && removedSong.localPath) {
+      try {
+        fs.unlinkSync(removedSong.localPath);
+        console.log('Deleted local song file:', removedSong.localPath);
+      } catch (error) {
+        console.error('Error deleting local song file:', error);
+      }
+    }
+    
+    // Store'u güncelle
+    store.set('playlists', playlists);
+    
+    // UI'ı güncelle
+    displayPlaylists();
+    
+    console.log('Song removed from playlist:', playlistId);
+  }
+});
+
 // Audio event listeners
 playlistAudio.addEventListener('ended', () => {
   console.log('Song ended, playing next');

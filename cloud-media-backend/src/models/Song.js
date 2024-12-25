@@ -54,7 +54,7 @@ const songSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Şarkı silindiğinde playlistlerden ve cihazlardan kaldır
+// Şarkı silindiğinde playlistlerden kaldır ve cihazlara bildir
 songSchema.pre('remove', async function(next) {
   try {
     const Playlist = mongoose.model('Playlist');
@@ -76,14 +76,14 @@ songSchema.pre('remove', async function(next) {
       // Bu playlist'i kullanan cihazları bul
       const devices = await Device.find({ activePlaylist: playlist._id });
       
-      // Her cihaza güncellenmiş playlist'i gönder
+      // Her cihaza silinen şarkı bilgisini gönder
       devices.forEach(device => {
         if (global.wss) {
           global.wss.sendToDevice(device.token, {
-            type: 'playlist',
+            type: 'songRemoved',
             data: {
-              ...playlist.toObject(),
-              baseUrl: process.env.BASE_URL || 'http://localhost:5000'
+              songId: this._id,
+              playlistId: playlist._id
             }
           });
         }

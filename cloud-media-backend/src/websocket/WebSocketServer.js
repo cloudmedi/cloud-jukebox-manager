@@ -213,11 +213,17 @@ class WebSocketServer {
   }
 
   sendToDevice(token, message) {
+    console.log(`Sending message to device ${token}:`, message);
     let sent = false;
     this.wss.clients.forEach(client => {
       if (client.deviceToken === token && client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify(message));
-        sent = true;
+        try {
+          client.send(JSON.stringify(message));
+          sent = true;
+          console.log(`Message sent successfully to device ${token}`);
+        } catch (error) {
+          console.error(`Error sending message to device ${token}:`, error);
+        }
       }
     });
     return sent;
