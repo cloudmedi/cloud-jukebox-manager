@@ -94,8 +94,8 @@ songSchema.pre('deleteOne', { document: true, query: false }, async function(nex
           console.log(`Cihaza bildirim gönderiliyor: ${device.token}`);
           console.log('WebSocket servisi mevcut:', !!global.wss);
           console.log('Gönderilecek mesaj:', {
-            type: 'command',
-            command: 'songRemoved',
+            type: 'playlist',
+            action: 'songRemoved',
             data: {
               songId: this._id,
               playlistId: playlist._id
@@ -103,8 +103,8 @@ songSchema.pre('deleteOne', { document: true, query: false }, async function(nex
           });
           
           const sent = global.wss.sendToDevice(device.token, {
-            type: 'command',
-            command: 'songRemoved',
+            type: 'playlist',
+            action: 'songRemoved',
             data: {
               songId: this._id,
               playlistId: playlist._id
