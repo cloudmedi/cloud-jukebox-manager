@@ -14,8 +14,19 @@ const audioHandler = new AudioEventHandler(playlistAudio);
 // Initialize volume
 playlistAudio.volume = 0.7; // 70%
 
+// Version display
+document.getElementById('appVersion').textContent = require('electron').remote.app.getVersion();
+
 document.getElementById('closeButton').addEventListener('click', () => {
     window.close();
+});
+
+// Update tray song info when song changes
+ipcRenderer.on('update-player', (event, { currentSong }) => {
+    if (currentSong) {
+        const songInfo = `${currentSong.name} - ${currentSong.artist || 'Unknown Artist'}`;
+        ipcRenderer.send('update-tray-song', songInfo);
+    }
 });
 
 // Anons kontrolleri
