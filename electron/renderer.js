@@ -187,7 +187,7 @@ ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
   }
 });
 
-// İlk yüklemede playlistleri göster
+// İlk yüklemede playlistleri göster ve network durumunu başlat
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM loaded, displaying playlists');
   displayPlaylists();
