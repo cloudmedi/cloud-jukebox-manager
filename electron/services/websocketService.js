@@ -1,22 +1,22 @@
-class WebSocketService {
-  private static instance: WebSocketService;
-  private ws: WebSocket | null = null;
-  private messageHandlers: Map<string, Set<(data: any) => void>> = new Map();
-  private reconnectTimeout: NodeJS.Timeout | null = null;
-  private isConnecting: boolean = false;
+const WebSocket = require('ws');
 
-  private constructor() {
+class WebSocketService {
+  constructor() {
+    this.ws = null;
+    this.messageHandlers = new Map();
+    this.reconnectTimeout = null;
+    this.isConnecting = false;
     this.connect();
   }
 
-  public static getInstance(): WebSocketService {
+  static getInstance() {
     if (!WebSocketService.instance) {
       WebSocketService.instance = new WebSocketService();
     }
     return WebSocketService.instance;
   }
 
-  private connect() {
+  connect() {
     if (this.isConnecting || (this.ws && this.ws.readyState === WebSocket.OPEN)) {
       return;
     }
@@ -62,7 +62,7 @@ class WebSocketService {
     };
   }
 
-  private scheduleReconnect() {
+  scheduleReconnect() {
     if (!this.reconnectTimeout) {
       this.reconnectTimeout = setTimeout(() => {
         this.connect();
@@ -70,12 +70,13 @@ class WebSocketService {
     }
   }
 
-  private handleMessage(message: any) {
+  handleMessage(message) {
+    console.log('Handling message:', message);
     const handlers = this.messageHandlers.get(message.type);
     if (handlers) {
       handlers.forEach(handler => {
         try {
-          // Tüm mesajı gönder, sadece data'yı değil
+          // Tüm mesaj yapısını handler'a gönder
           handler(message);
         } catch (error) {
           console.error(`Handler error for message type ${message.type}:`, error);
@@ -86,14 +87,14 @@ class WebSocketService {
     }
   }
 
-  public addMessageHandler(type: string, handler: (data: any) => void) {
+  addMessageHandler(type, handler) {
     if (!this.messageHandlers.has(type)) {
       this.messageHandlers.set(type, new Set());
     }
-    this.messageHandlers.get(type)?.add(handler);
+    this.messageHandlers.get(type).add(handler);
   }
 
-  public removeMessageHandler(type: string, handler: (data: any) => void) {
+  removeMessageHandler(type, handler) {
     const handlers = this.messageHandlers.get(type);
     if (handlers) {
       handlers.delete(handler);
@@ -103,7 +104,7 @@ class WebSocketService {
     }
   }
 
-  public sendMessage(message: any) {
+  sendMessage(message) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message));
     } else {
@@ -112,7 +113,7 @@ class WebSocketService {
     }
   }
 
-  public cleanup() {
+  cleanup() {
     if (this.ws) {
       this.ws.close();
       this.ws = null;
@@ -126,5 +127,8 @@ class WebSocketService {
   }
 }
 
+// Singleton instance'ı oluştur
+WebSocketService.instance = null;
+
 const websocketService = WebSocketService.getInstance();
-export default websocketService;
+module.exports = websocketService;
