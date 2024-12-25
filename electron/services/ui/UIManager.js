@@ -39,10 +39,8 @@ class UIManager {
 
     updateConnectionStatus(isConnected) {
         if (isConnected) {
-            // Bağlantı başarılı olduğunda token bilgilerini gizle
             this.deviceInfoElement.style.display = 'none';
         } else {
-            // Bağlantı koptuğunda token bilgilerini göster
             this.deviceInfoElement.style.display = 'block';
         }
         
