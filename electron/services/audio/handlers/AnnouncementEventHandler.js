@@ -66,7 +66,6 @@ class AnnouncementEventHandler {
       }, 500);
     }
     
-    // Önemli: wasPlaylistPlaying'i sıfırla ama src'yi silme
     this.wasPlaylistPlaying = false;
   }
 
@@ -91,9 +90,12 @@ class AnnouncementEventHandler {
       
       console.log('Kampanya başlatılıyor:', audioPath);
       
-      // Yeni kampanyayı yükle ve çal
+      // Her seferinde src'yi yeniden ayarla ve yükle
       this.campaignAudio.src = audioPath;
+      this.campaignAudio.currentTime = 0;
       await this.campaignAudio.load();
+      
+      // Ses dosyasını çal
       await this.campaignAudio.play();
       
       return true;
