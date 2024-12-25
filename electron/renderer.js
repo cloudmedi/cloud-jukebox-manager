@@ -230,12 +230,13 @@ ipcRenderer.on('playlist-received', (event, playlist) => {
 
 // Şarkı silme mesajını dinle
 ipcRenderer.on('songRemoved', (event, { songId, playlistId }) => {
-  console.log('Song removal request received:', { songId, playlistId });
+  console.log('Şarkı silme mesajı alındı:', { songId, playlistId });
   
   const playlists = store.get('playlists', []);
   const playlistIndex = playlists.findIndex(p => p._id === playlistId);
   
   if (playlistIndex !== -1) {
+    console.log('Playlist bulundu:', playlistId);
     // Playlistten şarkıyı kaldır
     playlists[playlistIndex].songs = playlists[playlistIndex].songs.filter(
       song => song._id !== songId
@@ -246,19 +247,22 @@ ipcRenderer.on('songRemoved', (event, { songId, playlistId }) => {
     if (removedSong && removedSong.localPath) {
       try {
         fs.unlinkSync(removedSong.localPath);
-        console.log('Deleted local song file:', removedSong.localPath);
+        console.log('Yerel şarkı dosyası silindi:', removedSong.localPath);
       } catch (error) {
-        console.error('Error deleting local song file:', error);
+        console.error('Yerel dosya silme hatası:', error);
       }
     }
     
     // Store'u güncelle
     store.set('playlists', playlists);
+    console.log('Playlist güncellendi');
     
     // UI'ı güncelle
     displayPlaylists();
     
-    console.log('Song removed from playlist:', playlistId);
+    console.log('Şarkı playlistten kaldırıldı:', playlistId);
+  } else {
+    console.log('Playlist bulunamadı:', playlistId);
   }
 });
 

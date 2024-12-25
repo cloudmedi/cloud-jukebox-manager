@@ -139,14 +139,18 @@ router.patch('/:id', async (req, res) => {
 // Şarkı sil
 router.delete('/:id', async (req, res) => {
   try {
+    console.log('Şarkı silme isteği alındı:', req.params.id);
     const song = await Song.findById(req.params.id);
     if (!song) {
+      console.log('Şarkı bulunamadı:', req.params.id);
       return res.status(404).json({ message: 'Şarkı bulunamadı' });
     }
 
+    console.log('Şarkı dosyaları siliniyor...');
     // Şarkı dosyasını sil
     if (song.filePath && fs.existsSync(song.filePath)) {
       fs.unlinkSync(song.filePath);
+      console.log('Şarkı dosyası silindi:', song.filePath);
     }
 
     // Artwork dosyasını sil
@@ -154,16 +158,56 @@ router.delete('/:id', async (req, res) => {
       const artworkPath = path.join('uploads', song.artwork);
       if (fs.existsSync(artworkPath)) {
         fs.unlinkSync(artworkPath);
+        console.log('Artwork dosyası silindi:', artworkPath);
       }
     }
 
+    console.log('Şarkı veritabanından siliniyor...');
     // Pre-remove hook'unu tetiklemek için findOneAndDelete kullan
     await Song.findOneAndDelete({ _id: song._id });
+    console.log('Şarkı başarıyla silindi:', song._id);
 
     res.json({ message: 'Şarkı başarıyla silindi' });
   } catch (error) {
     console.error('Şarkı silme hatası:', error);
     res.status(500).json({ message: error.message });
+  }
+});
+
+// Playliste şarkı ekle
+router.post('/:id/songs', async (req, res) => {
+  try {
+    const playlist = await Playlist.findById(req.params.id);
+    if (!playlist) {
+      return res.status(404).json({ message: 'Playlist bulunamadı' });
+    }
+
+    const songIds = req.body.songs;
+    playlist.songs.push(...songIds);
+    
+    const updatedPlaylist = await playlist.save();
+    res.json(updatedPlaylist);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Playlistten şarkı çıkar
+router.delete('/:id/songs/:songId', async (req, res) => {
+  try {
+    const playlist = await Playlist.findById(req.params.id);
+    if (!playlist) {
+      return res.status(404).json({ message: 'Playlist bulunamadı' });
+    }
+
+    playlist.songs = playlist.songs.filter(
+      song => song.toString() !== req.params.songId
+    );
+    
+    const updatedPlaylist = await playlist.save();
+    res.json(updatedPlaylist);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
   }
 });
 
