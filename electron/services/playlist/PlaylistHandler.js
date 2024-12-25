@@ -25,49 +25,70 @@ class PlaylistHandler {
       const playlistDir = path.join(this.downloadPath, playlist._id);
       this.ensureDirectoryExists(playlistDir);
 
-      // Şarkıları indir ve localPath'leri güncelle
-      const updatedSongs = await Promise.all(
-        playlist.songs.map(async (song) => {
-          try {
-            const songPath = path.join(playlistDir, `${song._id}.mp3`);
-            const songUrl = `${playlist.baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
-
-            // Şarkı zaten indirilmiş mi kontrol et
-            if (!fs.existsSync(songPath)) {
-              console.log(`Downloading song: ${song.name}`);
-              await this.downloadFile(songUrl, songPath);
-            }
-
-            return {
-              ...song,
-              localPath: songPath
-            };
-          } catch (error) {
-            console.error(`Error downloading song ${song.name}:`, error);
-            return song;
+      // İlk şarkıyı öncelikli olarak indir
+      if (playlist.songs.length > 0) {
+        const firstSong = playlist.songs[0];
+        console.log('Downloading first song:', firstSong.name);
+        
+        try {
+          const songPath = path.join(playlistDir, `${firstSong._id}.mp3`);
+          const songUrl = `${playlist.baseUrl}/${firstSong.filePath.replace(/\\/g, '/')}`;
+          
+          await this.downloadFile(songUrl, songPath);
+          
+          // İlk şarkıyı localPath ile güncelle
+          firstSong.localPath = songPath;
+          
+          // İlk şarkıyı çalmak için event gönder
+          const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
+          if (mainWindow) {
+            mainWindow.webContents.send('update-player', {
+              playlist: {
+                ...playlist,
+                songs: [firstSong]
+              },
+              currentSong: firstSong,
+              isPlaying: true
+            });
           }
-        })
-      );
-
-      // Güncellenmiş playlist'i oluştur
-      const updatedPlaylist = {
-        ...playlist,
-        songs: updatedSongs
-      };
-
-      // Local storage'a kaydet
-      const playlists = store.get('playlists', []);
-      const existingIndex = playlists.findIndex(p => p._id === playlist._id);
-      
-      if (existingIndex !== -1) {
-        playlists[existingIndex] = updatedPlaylist;
-      } else {
-        playlists.push(updatedPlaylist);
+        } catch (error) {
+          console.error('Error downloading first song:', error);
+        }
       }
-      
-      store.set('playlists', playlists);
-      
-      return updatedPlaylist;
+
+      // Diğer şarkıları arka planda indir
+      for (let i = 1; i < playlist.songs.length; i++) {
+        const song = playlist.songs[i];
+        try {
+          const songPath = path.join(playlistDir, `${song._id}.mp3`);
+          const songUrl = `${playlist.baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
+          
+          await this.downloadFile(songUrl, songPath);
+          
+          // Her şarkı indirildiğinde playlist'i güncelle
+          playlist.songs[i] = {
+            ...song,
+            localPath: songPath
+          };
+          
+          // Store'u güncelle
+          const playlists = store.get('playlists', []);
+          const existingIndex = playlists.findIndex(p => p._id === playlist._id);
+          
+          if (existingIndex !== -1) {
+            playlists[existingIndex] = playlist;
+          } else {
+            playlists.push(playlist);
+          }
+          
+          store.set('playlists', playlists);
+          
+        } catch (error) {
+          console.error(`Error downloading song ${song.name}:`, error);
+        }
+      }
+
+      return true;
     } catch (error) {
       console.error('Error handling playlist:', error);
       throw error;
