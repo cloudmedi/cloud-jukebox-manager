@@ -11,15 +11,10 @@
         <button class="titlebar-button close" id="closeButton">✕</button>
     </div>
     <div class="container">
-        <!-- Token ve Bağlantı Durumu -->
+        <!-- Token ve Bağlantı Durumu (Başlangıçta gösterilir, bağlantı sonrası gizlenir) -->
         <div id="deviceInfo" class="device-info">
             <div class="token-display"></div>
             <div class="connection-status"></div>
-        </div>
-
-        <!-- Warning Message -->
-        <div id="warningMessage" class="warning-message" style="display: none;">
-            Lütfen bir playlist atayın.
         </div>
 
         <!-- Playlist Container -->
@@ -27,15 +22,19 @@
             <!-- Playlistler buraya eklenecek -->
         </div>
         
-        <!-- Audio elements -->
+        <!-- Ana playlist için audio element -->
         <audio id="audioPlayer"></audio>
+        
+        <!-- Kampanyalar için ikinci audio element -->
         <audio id="campaignPlayer"></audio>
         
-        <!-- Progress and Error containers -->
+        <!-- İndirme Progress Bar -->
         <div class="download-progress" style="display: none;">
             <div class="download-progress-bar"></div>
             <div class="download-progress-text"></div>
         </div>
+
+        <!-- Hata Mesajları -->
         <div id="errorContainer" class="error-container"></div>
     </div>
     <script src="renderer.js"></script>
