@@ -48,6 +48,12 @@ body {
     padding: 16px;
     height: calc(100vh - 32px);
     overflow-y: auto;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
+}
+
+.container::-webkit-scrollbar {
+    display: none; /* Chrome, Safari, Opera */
 }
 
 .playlist-container {
