@@ -58,6 +58,21 @@ body {
     display: none;
 }
 
+.playlist-header {
+    margin-bottom: 16px;
+    padding: 12px;
+    background: rgba(255, 255, 255, 0.05);
+    border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.playlist-name {
+    font-size: 18px;
+    font-weight: 600;
+    color: #ffffff;
+    text-align: center;
+}
+
 .song-item {
     background: rgba(255, 255, 255, 0.05);
     border-radius: 8px;
@@ -76,7 +91,10 @@ body {
 
 .song-item.next {
     opacity: 0.7;
-    animation: pulse 2s infinite;
+}
+
+.song-item.next.pulse {
+    animation: pulse 1s infinite;
 }
 
 @keyframes fadeIn {
@@ -95,7 +113,7 @@ body {
         opacity: 0.7;
     }
     50% {
-        opacity: 0.4;
+        opacity: 0.3;
     }
     100% {
         opacity: 0.7;

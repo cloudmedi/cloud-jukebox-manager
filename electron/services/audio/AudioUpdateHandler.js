@@ -25,13 +25,17 @@ class AudioUpdateHandler {
         this.updateCurrentSong(currentSong);
         this.updatePlaylistDisplay(playlist, currentSong, this.nextSong);
 
-        // 3 saniye sonra yanıp sönme efekti
-        setTimeout(() => {
+        // Şarkı süresini al ve bitimine 10 saniye kala animasyonu başlat
+        this.audio.addEventListener('timeupdate', () => {
+          const timeLeft = this.audio.duration - this.audio.currentTime;
           const nextSongElement = document.querySelector('.song-item.next');
-          if (nextSongElement) {
-            nextSongElement.style.animation = 'pulse 2s infinite';
+          
+          if (timeLeft <= 10 && nextSongElement && !nextSongElement.classList.contains('pulse')) {
+            nextSongElement.classList.add('pulse');
+          } else if (timeLeft > 10 && nextSongElement && nextSongElement.classList.contains('pulse')) {
+            nextSongElement.classList.remove('pulse');
           }
-        }, 3000);
+        });
       }
     });
 
@@ -58,18 +62,32 @@ class AudioUpdateHandler {
       return;
     }
 
-    // Mevcut içeriği temizle
-    playlistContainer.innerHTML = '';
+    // Playlist adını güncelle
+    const playlistNameElement = playlistContainer.querySelector('.playlist-name');
+    if (playlistNameElement) {
+      playlistNameElement.textContent = playlist.name;
+    }
+
+    // Şarkı listesini güncelle
+    const songListContainer = document.createElement('div');
+    songListContainer.className = 'song-list';
     
     // Çalan şarkı
     const currentSongElement = this.createSongElement(currentSong, playlist.artwork, 'current');
-    playlistContainer.appendChild(currentSongElement);
+    songListContainer.appendChild(currentSongElement);
 
     // Sıradaki şarkı
     if (nextSong) {
       const nextSongElement = this.createSongElement(nextSong, playlist.artwork, 'next');
-      playlistContainer.appendChild(nextSongElement);
+      songListContainer.appendChild(nextSongElement);
     }
+
+    // Mevcut şarkı listesini temizle ve yenisini ekle
+    const oldSongList = playlistContainer.querySelector('.song-list');
+    if (oldSongList) {
+      oldSongList.remove();
+    }
+    playlistContainer.appendChild(songListContainer);
   }
 
   createSongElement(song, playlistArtwork, className) {
