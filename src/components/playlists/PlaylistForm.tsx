@@ -38,7 +38,9 @@ const playlistSchema = z.object({
   isShuffled: z.boolean().default(false),
 });
 
-export type PlaylistFormValues = z.infer<typeof playlistSchema>;
+export type PlaylistFormValues = z.infer<typeof playlistSchema> & {
+  _id?: string;
+};
 
 interface PlaylistFormProps {
   onSuccess?: () => void;
