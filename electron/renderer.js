@@ -242,6 +242,13 @@ ipcRenderer.on('songRemoved', (event, { songId, playlistId }) => {
       song => song._id !== songId
     );
     
+    // Store'u güncelle
+    store.set('playlists', playlists);
+    console.log('Playlist güncellendi');
+    
+    // UI'ı güncelle
+    displayPlaylists();
+    
     // Yerel dosyayı sil
     const removedSong = playlists[playlistIndex].songs.find(s => s._id === songId);
     if (removedSong && removedSong.localPath) {
@@ -252,13 +259,6 @@ ipcRenderer.on('songRemoved', (event, { songId, playlistId }) => {
         console.error('Yerel dosya silme hatası:', error);
       }
     }
-    
-    // Store'u güncelle
-    store.set('playlists', playlists);
-    console.log('Playlist güncellendi');
-    
-    // UI'ı güncelle
-    displayPlaylists();
     
     console.log('Şarkı playlistten kaldırıldı:', playlistId);
   } else {
