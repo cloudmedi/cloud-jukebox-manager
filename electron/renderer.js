@@ -16,6 +16,9 @@ const loadingSpinner = playlistStatus.querySelector('.loading-spinner');
 const statusMessage = playlistStatus.querySelector('.status-message');
 const playlistContainer = document.getElementById('playlistContainer');
 const deviceInfo = document.getElementById('deviceInfo');
+const downloadProgress = document.querySelector('.download-progress');
+const downloadProgressBar = downloadProgress.querySelector('.download-progress-bar');
+const downloadProgressText = downloadProgress.querySelector('.download-progress-text');
 
 // Initialize volume
 playlistAudio.volume = 0.7; // 70%
@@ -49,21 +52,19 @@ ipcRenderer.on('playlist-download-start', () => {
     statusMessage.style.display = 'none';
     loadingSpinner.style.display = 'flex';
     playlistContainer.style.display = 'none';
+    downloadProgress.style.display = 'block';
 });
 
 ipcRenderer.on('playlist-download-complete', () => {
     playlistStatus.style.display = 'none';
+    downloadProgress.style.display = 'none';
     playlistContainer.style.display = 'block';
 });
 
 // İndirme progress
 ipcRenderer.on('download-progress', (event, { songName, progress }) => {
-    UIManager.showDownloadProgress(progress, songName);
-    if (progress === 100) {
-        setTimeout(() => {
-            document.querySelector('.download-progress').style.display = 'none';
-        }, 1000);
-    }
+    downloadProgressBar.style.width = `${progress}%`;
+    downloadProgressText.textContent = `${songName} indiriliyor... ${progress}%`;
 });
 
 // Anons kontrolleri
@@ -196,3 +197,4 @@ playlistAudio.addEventListener('ended', () => {
 document.addEventListener('DOMContentLoaded', () => {
     console.log('DOM loaded, initializing audio handlers');
 });
+
