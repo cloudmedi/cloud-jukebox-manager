@@ -53,6 +53,7 @@ app.use('/api/playlist-schedules', require('./routes/playlistScheduleRoutes'));
 app.use('/api/stats', require('./routes/statsRoutes'));
 app.use('/api/tokens', require('./routes/tokenRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
+app.use('/api/categories', require('./routes/categoryRoutes')); // Yeni route eklendi
 
 const PORT = process.env.PORT || 5000;
 
