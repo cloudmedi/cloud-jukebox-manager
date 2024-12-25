@@ -54,16 +54,22 @@ const songSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Şarkı silindiğinde playlistlerden kaldır ve cihazlara bildir
+// TEST LOGLARI EKLENDI
 songSchema.pre('deleteOne', { document: true, query: false }, async function(next) {
+  console.log('=================== HOOK BAŞLANGICI ===================');
+  console.log('pre-deleteOne hook tetiklendi');
+  console.log('Silinecek şarkı ID:', this._id);
+  console.log('Hook içindeki this objesi:', JSON.stringify(this, null, 2));
+
   try {
-    console.log('Song pre-deleteOne hook başladı. Song ID:', this._id);
+    console.log('Hook try bloğuna girdi');
     const Playlist = mongoose.model('Playlist');
     const Device = mongoose.model('Device');
 
     // Şarkıyı içeren playlistleri bul
     const playlists = await Playlist.find({ songs: this._id });
     console.log(`${playlists.length} playlist bulundu`);
+    console.log('Bulunan playlistler:', JSON.stringify(playlists.map(p => p._id), null, 2));
     
     // Her playlist için şarkıyı kaldır ve cihazlara bildir
     for (const playlist of playlists) {
@@ -81,6 +87,7 @@ songSchema.pre('deleteOne', { document: true, query: false }, async function(nex
       // Bu playlist'i kullanan cihazları bul
       const devices = await Device.find({ activePlaylist: playlist._id });
       console.log(`${devices.length} cihaz bulundu playlist ${playlist._id} için`);
+      console.log('Bulunan cihazlar:', JSON.stringify(devices.map(d => d.token), null, 2));
       
       // Her cihaza silinen şarkı bilgisini gönder
       devices.forEach(device => {
@@ -109,11 +116,13 @@ songSchema.pre('deleteOne', { document: true, query: false }, async function(nex
       });
     }
 
+    console.log('Hook başarıyla tamamlandı');
     next();
   } catch (error) {
-    console.error('Şarkı silme hatası:', error);
+    console.error('Hook içinde hata oluştu:', error);
     next(error);
   }
+  console.log('=================== HOOK SONU ===================');
 });
 
 const Song = mongoose.model('Song', songSchema);
