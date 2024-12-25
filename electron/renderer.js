@@ -1,6 +1,5 @@
 const { ipcRenderer } = require('electron');
 const Store = require('electron-store');
-const fs = require('fs');
 const store = new Store();
 const AudioEventHandler = require('./services/audio/AudioEventHandler');
 const AudioUpdateHandler = require('./services/audio/AudioUpdateHandler');
@@ -15,6 +14,8 @@ const audioUpdateHandler = new AudioUpdateHandler(playlistAudio);
 const playlistStatus = document.getElementById('playlistStatus');
 const loadingSpinner = playlistStatus.querySelector('.loading-spinner');
 const statusMessage = playlistStatus.querySelector('.status-message');
+const playlistContainer = document.getElementById('playlistContainer');
+const deviceInfo = document.getElementById('deviceInfo');
 
 // Initialize volume
 playlistAudio.volume = 0.7; // 70%
@@ -25,25 +26,34 @@ document.getElementById('closeButton').addEventListener('click', () => {
 
 // WebSocket bağlantı durumu
 ipcRenderer.on('websocket-status', (event, isConnected) => {
-    UIManager.updateConnectionStatus(isConnected);
     if (isConnected) {
+        deviceInfo.style.display = 'none';
         const hasPlaylist = store.get('currentPlaylist');
         if (!hasPlaylist) {
-            statusMessage.textContent = "Lütfen bir playlist atayın";
+            playlistStatus.style.display = 'block';
             statusMessage.style.display = 'block';
             loadingSpinner.style.display = 'none';
+            playlistContainer.style.display = 'none';
         }
+    } else {
+        deviceInfo.style.display = 'block';
+        playlistStatus.style.display = 'none';
+        playlistContainer.style.display = 'none';
     }
+    UIManager.updateConnectionStatus(isConnected);
 });
 
 // Playlist indirme durumu
 ipcRenderer.on('playlist-download-start', () => {
+    playlistStatus.style.display = 'block';
     statusMessage.style.display = 'none';
     loadingSpinner.style.display = 'flex';
+    playlistContainer.style.display = 'none';
 });
 
 ipcRenderer.on('playlist-download-complete', () => {
     playlistStatus.style.display = 'none';
+    playlistContainer.style.display = 'block';
 });
 
 // İndirme progress
