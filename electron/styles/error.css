@@ -1,0 +1,28 @@
+.error-container {
+    position: fixed;
+    top: 1rem;
+    right: 1rem;
+    max-width: 300px;
+    z-index: 1000;
+}
+
+.error-message {
+    background: rgba(255, 68, 68, 0.1);
+    color: #ff4444;
+    padding: 0.75rem 1rem;
+    border-radius: 4px;
+    margin-bottom: 0.5rem;
+    animation: slideIn 0.3s ease;
+    backdrop-filter: blur(10px);
+}
+
+@keyframes slideIn {
+    from {
+        transform: translateX(100%);
+        opacity: 0;
+    }
+    to {
+        transform: translateX(0);
+        opacity: 1;
+    }
+}

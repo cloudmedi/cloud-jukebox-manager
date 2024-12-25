@@ -1,0 +1,21 @@
+.song-info {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+    align-items: center;
+}
+
+.song-info p {
+    font-size: 16px;
+    margin: 0;
+    opacity: 0.9;
+}
+
+.song-info .artist {
+    color: #fff;
+    font-weight: 500;
+}
+
+.song-info .song-name {
+    color: rgba(255, 255, 255, 0.7);
+}
