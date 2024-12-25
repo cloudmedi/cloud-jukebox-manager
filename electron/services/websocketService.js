@@ -2,12 +2,14 @@ const WebSocket = require('ws');
 const Store = require('electron-store');
 const { BrowserWindow, app } = require('electron');
 const playlistHandler = require('./playlist/PlaylistHandler');
+const DeleteAnnouncementHandler = require('./announcement/handlers/DeleteAnnouncementHandler');
 const store = new Store();
 
 class WebSocketService {
   constructor() {
     this.ws = null;
     this.messageHandlers = new Map();
+    this.deleteAnnouncementHandler = new DeleteAnnouncementHandler(this);
     this.setupHandlers();
     this.connect();
   }
@@ -42,17 +44,23 @@ class WebSocketService {
       const mainWindow = BrowserWindow.getAllWindows()[0];
       
       switch (message.command) {
+        case 'deleteAnnouncement':
+          console.log('Processing deleteAnnouncement command:', message);
+          this.deleteAnnouncementHandler.handleDeleteCommand(message.announcementId);
+          break;
+          
         case 'restart':
           console.log('Restarting application...');
           app.relaunch();
           app.exit(0);
           break;
           
-        // Other command handlers can be added here
-      }
-      
-      if (mainWindow) {
-        mainWindow.webContents.send(message.command, message.data);
+        default:
+          if (mainWindow) {
+            console.log('Forwarding command to renderer:', message.command);
+            mainWindow.webContents.send(message.command, message.data);
+          }
+          break;
       }
     });
   }
