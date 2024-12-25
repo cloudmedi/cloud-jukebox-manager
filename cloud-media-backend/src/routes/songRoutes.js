@@ -6,7 +6,6 @@ const Song = require('../models/Song');
 const NodeID3 = require('node-id3');
 const fs = require('fs');
 
-// Multer yapılandırması
 const storage = multer.diskStorage({
   destination: function (req, file, cb) {
     cb(null, 'uploads/');
@@ -163,8 +162,8 @@ router.delete('/:id', async (req, res) => {
     }
 
     console.log('Şarkı veritabanından siliniyor...');
-    // Pre-remove hook'unu tetiklemek için findOneAndDelete kullan
-    await Song.findOneAndDelete({ _id: song._id });
+    // findOneAndDelete yerine deleteOne kullan
+    await Song.deleteOne({ _id: song._id });
     console.log('Şarkı başarıyla silindi:', song._id);
 
     res.json({ message: 'Şarkı başarıyla silindi' });
