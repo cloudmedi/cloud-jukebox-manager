@@ -54,6 +54,14 @@ class WebSocketService {
           app.relaunch();
           app.exit(0);
           break;
+
+        case 'songRemoved':
+          console.log('Processing songRemoved command:', message);
+          if (mainWindow) {
+            mainWindow.webContents.send('songRemoved', message.data);
+            console.log('Song removal notification sent to renderer');
+          }
+          break;
           
         default:
           if (mainWindow) {
