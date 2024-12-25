@@ -16,11 +16,11 @@ class PlaylistHandler {
   }
 
   async handlePlaylist(message) {
-    console.log('Handling playlist message:', message);
+    console.log('Playlist mesajı işleniyor:', message);
     
-    // Mesaj yapısını kontrol et
-    if (!message || !message.type || !message.action) {
-      console.error('Invalid message format:', message);
+    // Mesajın action ve data alanlarını kontrol et
+    if (!message.action) {
+      console.error('Action alanı eksik:', message);
       return;
     }
 
@@ -32,7 +32,7 @@ class PlaylistHandler {
         await this.handleNewPlaylist(message.data);
         break;
       default:
-        console.log('Unknown playlist action:', message.action);
+        console.log('Bilinmeyen playlist action:', message.action);
     }
   }
 
@@ -48,7 +48,7 @@ class PlaylistHandler {
       if (playlistIndex !== -1) {
         const playlist = playlists[playlistIndex];
         
-        // Önce silinecek şarkıyı bul
+        // Önce silinecek şarkıyı bul (filtrelemeden önce)
         const songToRemove = playlist.songs.find(song => song._id === songId);
         
         // Şarkıyı playlistten kaldır
