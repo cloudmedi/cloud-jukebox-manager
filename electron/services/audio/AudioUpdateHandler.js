@@ -5,18 +5,31 @@ const store = new Store();
 class AudioUpdateHandler {
   constructor(audioElement) {
     this.audio = audioElement;
+    this.currentSong = null;
     this.setupEventListeners();
   }
 
   setupEventListeners() {
-    ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
-      console.log('Updating player with song:', currentSong);
-      this.updateCurrentSong(currentSong);
-      this.updatePlaylistDisplay(playlist);
+    ipcRenderer.on('update-player', (event, { playlist, currentSong, isPlaying }) => {
+      console.log('Received update-player event:', { playlist, currentSong, isPlaying });
+      
+      if (currentSong && currentSong !== this.currentSong) {
+        console.log('Updating current song:', currentSong);
+        this.currentSong = currentSong;
+        this.updateCurrentSong(currentSong);
+        this.updatePlaylistDisplay(playlist, currentSong);
+      }
+    });
+
+    // Şarkı değişim eventi
+    this.audio.addEventListener('ended', () => {
+      console.log('Song ended, requesting next song');
+      ipcRenderer.invoke('song-ended');
     });
   }
 
   updateCurrentSong(currentSong) {
+    console.log('Updating audio source:', currentSong.localPath);
     if (currentSong && currentSong.localPath) {
       const normalizedPath = currentSong.localPath.replace(/\\/g, '/');
       this.audio.src = normalizedPath;
@@ -24,9 +37,13 @@ class AudioUpdateHandler {
     }
   }
 
-  updatePlaylistDisplay(playlist) {
+  updatePlaylistDisplay(playlist, currentSong) {
+    console.log('Updating playlist display with current song:', currentSong);
     const playlistContainer = document.getElementById('playlistContainer');
-    if (!playlistContainer) return;
+    if (!playlistContainer) {
+      console.error('Playlist container not found');
+      return;
+    }
 
     playlistContainer.innerHTML = '';
     
@@ -47,14 +64,15 @@ class AudioUpdateHandler {
           <div class="playlist-details">
             <h3>${playlist.name}</h3>
             <div class="song-info">
-              <p class="artist">${playlist.songs[0]?.artist || 'Unknown Artist'}</p>
-              <p class="song-name">${playlist.songs[0]?.name || 'No songs'}</p>
+              <p class="artist">${currentSong?.artist || 'Unknown Artist'}</p>
+              <p class="song-name">${currentSong?.name || 'No songs'}</p>
             </div>
           </div>
         </div>
       `;
       
       playlistContainer.appendChild(playlistElement);
+      console.log('Playlist display updated successfully');
     }
   }
 }
