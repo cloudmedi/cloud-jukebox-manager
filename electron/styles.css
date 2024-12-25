@@ -70,6 +70,8 @@ body {
     text-align: center;
     font-size: 1.1rem;
     z-index: 10;
+    width: auto;
+    white-space: nowrap;
 }
 
 .playlist-container {
