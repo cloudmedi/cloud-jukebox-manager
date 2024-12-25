@@ -1,18 +1,17 @@
 class AnnouncementManager {
   constructor() {
+    if (AnnouncementManager.instance) {
+      return AnnouncementManager.instance;
+    }
+    
     this.currentAnnouncement = null;
     this.playlistState = {
       wasPlaying: false,
       handler: null
     };
+    
+    AnnouncementManager.instance = this;
     console.log('AnnouncementManager initialized');
-  }
-
-  static getInstance() {
-    if (!AnnouncementManager.instance) {
-      AnnouncementManager.instance = new AnnouncementManager();
-    }
-    return AnnouncementManager.instance;
   }
 
   isAnnouncementPlaying() {
@@ -49,4 +48,6 @@ class AnnouncementManager {
   }
 }
 
-module.exports = AnnouncementManager;
+// Singleton instance'ı oluştur ve export et
+const instance = new AnnouncementManager();
+module.exports = instance;

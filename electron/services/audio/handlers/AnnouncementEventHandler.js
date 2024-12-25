@@ -3,10 +3,20 @@ class AnnouncementEventHandler {
     this.playlistAudio = playlistAudio;
     this.campaignAudio = campaignAudio;
     this.isAnnouncementPlaying = false;
+    this.wasPlaylistPlaying = false;
     this.setupEventListeners();
   }
 
   setupEventListeners() {
+    // Kampanya başladığında playlist'i duraklat
+    this.campaignAudio.addEventListener('play', () => {
+      console.log('Kampanya başladı, playlist duraklatılıyor');
+      this.wasPlaylistPlaying = !this.playlistAudio.paused;
+      if (this.wasPlaylistPlaying) {
+        this.playlistAudio.pause();
+      }
+    });
+
     this.campaignAudio.addEventListener('ended', () => {
       console.log('Kampanya bitti, temizleniyor');
       this.cleanupAnnouncement();
@@ -27,6 +37,17 @@ class AnnouncementEventHandler {
     
     // Kampanya bittiğini bildir
     require('electron').ipcRenderer.send('announcement-ended');
+
+    // Eğer playlist çalıyorduysa devam ettir
+    if (this.wasPlaylistPlaying) {
+      console.log('Playlist kaldığı yerden devam ediyor');
+      this.playlistAudio.play().catch(err => {
+        console.error('Playlist devam ettirme hatası:', err);
+      });
+    }
+    
+    // Durumları sıfırla
+    this.wasPlaylistPlaying = false;
   }
 
   async playAnnouncement(audioPath) {
@@ -37,6 +58,18 @@ class AnnouncementEventHandler {
 
     try {
       console.log('Kampanya başlatılıyor:', audioPath);
+      
+      // Eğer başka bir anons çalıyorsa, onu durdur
+      if (this.isAnnouncementPlaying) {
+        console.log('Önceki kampanya durduruluyor');
+        this.cleanupAnnouncement();
+      }
+
+      // Playlist durumunu kaydet ve duraklat
+      this.wasPlaylistPlaying = !this.playlistAudio.paused;
+      if (this.wasPlaylistPlaying) {
+        this.playlistAudio.pause();
+      }
       
       // Kampanya audio elementini hazırla
       this.campaignAudio.src = audioPath;
