@@ -132,12 +132,23 @@ function displayPlaylists() {
   // Son playlist'i göster
   const lastPlaylist = playlists[playlists.length - 1];
   if (lastPlaylist) {
+    console.log('Displaying playlist:', lastPlaylist); // Debug için
+    console.log('Artwork URL:', lastPlaylist.artwork); // Artwork URL'ini kontrol et
+    
     const playlistElement = document.createElement('div');
     playlistElement.className = 'playlist-item';
+    
+    // Artwork URL'ini düzelt
+    const artworkUrl = lastPlaylist.artwork 
+      ? `http://localhost:5000${lastPlaylist.artwork}` 
+      : null;
+    
+    console.log('Final artwork URL:', artworkUrl); // Son URL'i kontrol et
+    
     playlistElement.innerHTML = `
       <div class="playlist-info">
-        ${lastPlaylist.artwork ? 
-          `<img src="${lastPlaylist.artwork}" alt="${lastPlaylist.name}" class="playlist-artwork"/>` :
+        ${artworkUrl ? 
+          `<img src="${artworkUrl}" alt="${lastPlaylist.name}" class="playlist-artwork" onerror="this.onerror=null; this.src='placeholder.png'"/>` :
           '<div class="playlist-artwork-placeholder"></div>'
         }
         <div class="playlist-details">
