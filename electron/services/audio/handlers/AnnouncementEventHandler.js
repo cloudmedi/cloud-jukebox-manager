@@ -69,6 +69,12 @@ class AnnouncementEventHandler {
       setTimeout(() => {
         this.playlistAudio.play().catch(err => {
           console.error('Playlist devam ettirme hatası:', err);
+          // Hata durumunda tekrar dene
+          setTimeout(() => {
+            this.playlistAudio.play().catch(err => {
+              console.error('İkinci deneme başarısız:', err);
+            });
+          }, 1000);
         });
       }, 500);
     }

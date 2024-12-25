@@ -9,65 +9,83 @@ class MinuteBasedHandler {
     this.wasPlaylistPlaying = false;
   }
 
-  check() {
+  async check() {
     const announcements = this.store.get('announcements', []);
     const now = new Date();
 
-    announcements
-      .filter(announcement => 
-        announcement.scheduleType === 'minutes' &&
-        new Date(announcement.startDate) <= now &&
-        new Date(announcement.endDate) >= now
-      )
-      .forEach(announcement => {
-        const lastPlayTime = this.lastPlayTimes.get(announcement._id) || 0;
-        const minutesPassed = (Date.now() - lastPlayTime) / (1000 * 60);
-
-        console.log(`Minutes passed for ${announcement._id}: ${minutesPassed}`);
-        console.log(`Minute interval: ${announcement.minuteInterval}`);
-
-        if (minutesPassed >= announcement.minuteInterval && !this.isProcessingAnnouncement) {
-          console.log(`Playing minute-based announcement ${announcement._id}`);
-          this.isProcessingAnnouncement = true;
-          this.playAnnouncement(announcement);
-          this.lastPlayTimes.set(announcement._id, Date.now());
-        } else {
-          console.log(`Skipping announcement ${announcement._id}, waiting for ${announcement.minuteInterval - minutesPassed} more minutes or another announcement is playing`);
-        }
-      });
+    for (const announcement of announcements) {
+      if (this.shouldPlayAnnouncement(announcement, now)) {
+        await this.processAnnouncement(announcement);
+      }
+    }
   }
 
-  playAnnouncement(announcement) {
-    console.log('Starting minute-based announcement playback');
+  shouldPlayAnnouncement(announcement, now) {
+    return (
+      announcement.scheduleType === 'minutes' &&
+      new Date(announcement.startDate) <= now &&
+      new Date(announcement.endDate) >= now &&
+      !this.isProcessingAnnouncement &&
+      this.hasMinuteIntervalPassed(announcement)
+    );
+  }
+
+  hasMinuteIntervalPassed(announcement) {
+    const lastPlayTime = this.lastPlayTimes.get(announcement._id) || 0;
+    const minutesPassed = (Date.now() - lastPlayTime) / (1000 * 60);
+    console.log(`Minutes passed for ${announcement._id}: ${minutesPassed}`);
+    return minutesPassed >= announcement.minuteInterval;
+  }
+
+  async processAnnouncement(announcement) {
+    console.log('Processing minute-based announcement:', announcement._id);
+    
     const mainWindow = BrowserWindow.getAllWindows()[0];
     if (!mainWindow) {
       console.error('Main window not found');
-      this.isProcessingAnnouncement = false;
       return;
     }
 
-    // Playlist durumunu kontrol et
-    const playlistAudio = mainWindow.webContents.executeJavaScript('document.getElementById("audioPlayer").paused')
-      .then(isPaused => {
-        this.wasPlaylistPlaying = !isPaused;
-        console.log('Playlist playing state before announcement:', !isPaused);
-      })
-      .catch(err => {
-        console.error('Error checking playlist state:', err);
+    try {
+      this.isProcessingAnnouncement = true;
+
+      // Playlist durumunu senkron olarak kontrol et
+      const isPaused = await mainWindow.webContents.executeJavaScript(
+        'document.getElementById("audioPlayer").paused'
+      );
+      
+      this.wasPlaylistPlaying = !isPaused;
+      console.log('Current playlist state:', this.wasPlaylistPlaying ? 'playing' : 'paused');
+
+      // Anons bitince çalışacak event listener'ı ayarla
+      require('electron').ipcMain.once('announcement-ended', () => {
+        console.log('Announcement ended, cleanup started');
+        this.cleanupAnnouncement(mainWindow);
       });
 
-    // Anons bittiğinde flag'i sıfırla ve playlist'i devam ettir
-    require('electron').ipcMain.once('announcement-ended', () => {
-      console.log('Minute-based announcement ended, resetting flag');
-      this.isProcessingAnnouncement = false;
+      // Anonsu başlat
+      mainWindow.webContents.send('play-announcement', announcement);
       
-      if (this.wasPlaylistPlaying) {
-        console.log('Resuming playlist after minute-based announcement');
-        mainWindow.webContents.send('resume-playback');
-      }
-    });
+      // Son çalma zamanını kaydet
+      this.lastPlayTimes.set(announcement._id, Date.now());
+      
+    } catch (error) {
+      console.error('Error processing announcement:', error);
+      this.cleanupAnnouncement(mainWindow);
+    }
+  }
 
-    mainWindow.webContents.send('play-announcement', announcement);
+  cleanupAnnouncement(mainWindow) {
+    console.log('Cleaning up announcement, playlist was:', this.wasPlaylistPlaying ? 'playing' : 'paused');
+    
+    this.isProcessingAnnouncement = false;
+
+    if (this.wasPlaylistPlaying) {
+      console.log('Resuming playlist playback');
+      mainWindow.webContents.send('resume-playback');
+    }
+
+    this.wasPlaylistPlaying = false;
   }
 }
 
