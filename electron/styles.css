@@ -46,107 +46,29 @@ body {
 }
 
 .container {
-    padding: 16px;
     height: calc(100vh - 32px);
     overflow-y: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
     background: #1a1b1e;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 20px;
 }
 
 .container::-webkit-scrollbar {
     display: none;
 }
 
-.playlist-header {
-    margin-bottom: 16px;
-    padding: 12px;
-    background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
+.device-info {
+    background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.1);
-}
-
-.playlist-name {
-    font-size: 18px;
-    font-weight: 600;
-    color: #ffffff;
-    text-align: center;
-}
-
-.song-item {
-    background: rgba(255, 255, 255, 0.05);
     border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 12px;
-    display: flex;
-    align-items: center;
-    gap: 12px;
-    transition: all 0.3s ease;
-}
-
-.song-item.current {
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    animation: fadeIn 0.5s ease;
-}
-
-.song-item.next {
-    opacity: 0.7;
-}
-
-.song-item.next.pulse {
-    animation: pulse 1s infinite;
-}
-
-@keyframes fadeIn {
-    from {
-        opacity: 0;
-        transform: translateY(-10px);
-    }
-    to {
-        opacity: 1;
-        transform: translateY(0);
-    }
-}
-
-@keyframes pulse {
-    0% {
-        opacity: 0.7;
-    }
-    50% {
-        opacity: 0.3;
-    }
-    100% {
-        opacity: 0.7;
-    }
-}
-
-.song-artwork {
-    width: 48px;
-    height: 48px;
-    border-radius: 4px;
-    object-fit: cover;
-}
-
-.song-info {
-    flex: 1;
-    min-width: 0;
-}
-
-.song-name {
-    font-size: 14px;
-    font-weight: 600;
-    margin-bottom: 4px;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
-}
-
-.song-artist {
-    font-size: 12px;
-    color: rgba(255, 255, 255, 0.7);
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    padding: 24px;
+    margin-bottom: 20px;
+    width: 100%;
+    max-width: 320px;
 }
 
 .token-display {
@@ -164,7 +86,6 @@ body {
     font-weight: 500;
     padding: 8px 16px;
     border-radius: 4px;
-    margin-top: 12px;
     transition: all 0.2s ease;
 }
 
@@ -181,73 +102,76 @@ body {
 }
 
 .playlist-container {
-    margin-top: 16px;
+    width: 100%;
+    max-width: 320px;
+    margin: 0 auto;
 }
 
 .playlist-item {
     background: rgba(255, 255, 255, 0.05);
-    border-radius: 8px;
-    padding: 12px;
-    margin-bottom: 12px;
+    border-radius: 12px;
+    overflow: hidden;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
 }
 
 .playlist-info {
     display: flex;
-    gap: 12px;
+    flex-direction: column;
     align-items: center;
+    width: 100%;
 }
 
 .playlist-artwork {
-    width: 64px;
-    height: 64px;
-    border-radius: 4px;
+    width: 320px;
+    height: 320px;
     object-fit: cover;
-    flex-shrink: 0;
+    border-radius: 0;
 }
 
 .playlist-artwork-placeholder {
-    width: 64px;
-    height: 64px;
-    border-radius: 4px;
+    width: 320px;
+    height: 320px;
     background: rgba(255, 255, 255, 0.1);
-    flex-shrink: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .playlist-details {
-    flex-grow: 1;
-    overflow: hidden;
+    width: 100%;
+    padding: 20px;
+    text-align: center;
+    background: rgba(0, 0, 0, 0.3);
+    backdrop-filter: blur(10px);
 }
 
 .playlist-details h3 {
-    font-size: 16px;
-    margin-bottom: 4px;
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 8px;
     color: #fff;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
 }
 
 .song-info {
     display: flex;
     flex-direction: column;
-    gap: 2px;
+    gap: 4px;
+    align-items: center;
 }
 
 .song-info p {
-    font-size: 14px;
-    color: #9ca3af;
+    font-size: 16px;
     margin: 0;
-    white-space: nowrap;
-    overflow: hidden;
-    text-overflow: ellipsis;
+    opacity: 0.9;
 }
 
 .song-info .artist {
-    opacity: 0.8;
+    color: #fff;
+    font-weight: 500;
 }
 
 .song-info .song-name {
-    opacity: 0.6;
+    color: rgba(255, 255, 255, 0.7);
 }
 
 .download-progress {
@@ -257,7 +181,8 @@ body {
     right: 1rem;
     background: rgba(0, 0, 0, 0.8);
     padding: 1rem;
-    border-radius: 4px;
+    border-radius: 8px;
+    backdrop-filter: blur(10px);
 }
 
 .download-progress-bar {
@@ -279,6 +204,7 @@ body {
     top: 1rem;
     right: 1rem;
     max-width: 300px;
+    z-index: 1000;
 }
 
 .error-message {
@@ -288,6 +214,7 @@ body {
     border-radius: 4px;
     margin-bottom: 0.5rem;
     animation: slideIn 0.3s ease;
+    backdrop-filter: blur(10px);
 }
 
 @keyframes slideIn {

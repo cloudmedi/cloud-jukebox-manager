@@ -6,7 +6,6 @@ class AudioUpdateHandler {
   constructor(audioElement) {
     this.audio = audioElement;
     this.currentSong = null;
-    this.nextSong = null;
     this.setupEventListeners();
   }
 
@@ -17,28 +16,12 @@ class AudioUpdateHandler {
       if (currentSong && currentSong !== this.currentSong) {
         console.log('Updating current song:', currentSong);
         this.currentSong = currentSong;
-        
-        // Sıradaki şarkıyı belirle
-        const currentIndex = playlist.songs.findIndex(song => song._id === currentSong._id);
-        this.nextSong = playlist.songs[(currentIndex + 1) % playlist.songs.length];
-        
         this.updateCurrentSong(currentSong);
-        this.updatePlaylistDisplay(playlist, currentSong, this.nextSong);
-
-        // Şarkı süresini al ve bitimine 10 saniye kala animasyonu başlat
-        this.audio.addEventListener('timeupdate', () => {
-          const timeLeft = this.audio.duration - this.audio.currentTime;
-          const nextSongElement = document.querySelector('.song-item.next');
-          
-          if (timeLeft <= 10 && nextSongElement && !nextSongElement.classList.contains('pulse')) {
-            nextSongElement.classList.add('pulse');
-          } else if (timeLeft > 10 && nextSongElement && nextSongElement.classList.contains('pulse')) {
-            nextSongElement.classList.remove('pulse');
-          }
-        });
+        this.updatePlaylistDisplay(playlist, currentSong);
       }
     });
 
+    // Şarkı değişim eventi
     this.audio.addEventListener('ended', () => {
       console.log('Song ended, requesting next song');
       ipcRenderer.invoke('song-ended');
@@ -54,7 +37,7 @@ class AudioUpdateHandler {
     }
   }
 
-  updatePlaylistDisplay(playlist, currentSong, nextSong) {
+  updatePlaylistDisplay(playlist, currentSong) {
     console.log('Updating playlist display with current song:', currentSong);
     const playlistContainer = document.getElementById('playlistContainer');
     if (!playlistContainer) {
@@ -62,51 +45,35 @@ class AudioUpdateHandler {
       return;
     }
 
-    // Playlist adını güncelle
-    const playlistNameElement = playlistContainer.querySelector('.playlist-name');
-    if (playlistNameElement) {
-      playlistNameElement.textContent = playlist.name;
-    }
-
-    // Şarkı listesini güncelle
-    const songListContainer = document.createElement('div');
-    songListContainer.className = 'song-list';
+    playlistContainer.innerHTML = '';
     
-    // Çalan şarkı
-    const currentSongElement = this.createSongElement(currentSong, playlist.artwork, 'current');
-    songListContainer.appendChild(currentSongElement);
+    if (playlist) {
+      const artworkUrl = playlist.artwork 
+        ? `http://localhost:5000${playlist.artwork}` 
+        : null;
 
-    // Sıradaki şarkı
-    if (nextSong) {
-      const nextSongElement = this.createSongElement(nextSong, playlist.artwork, 'next');
-      songListContainer.appendChild(nextSongElement);
+      const playlistElement = document.createElement('div');
+      playlistElement.className = 'playlist-item';
+      
+      playlistElement.innerHTML = `
+        <div class="playlist-info">
+          ${artworkUrl ? 
+            `<img src="${artworkUrl}" alt="${playlist.name}" class="playlist-artwork" onerror="this.onerror=null; this.src='placeholder.png'"/>` :
+            '<div class="playlist-artwork-placeholder"></div>'
+          }
+          <div class="playlist-details">
+            <h3>${playlist.name}</h3>
+            <div class="song-info">
+              <p class="artist">${currentSong?.artist || 'Unknown Artist'}</p>
+              <p class="song-name">${currentSong?.name || 'No songs'}</p>
+            </div>
+          </div>
+        </div>
+      `;
+      
+      playlistContainer.appendChild(playlistElement);
+      console.log('Playlist display updated successfully');
     }
-
-    // Mevcut şarkı listesini temizle ve yenisini ekle
-    const oldSongList = playlistContainer.querySelector('.song-list');
-    if (oldSongList) {
-      oldSongList.remove();
-    }
-    playlistContainer.appendChild(songListContainer);
-  }
-
-  createSongElement(song, playlistArtwork, className) {
-    const element = document.createElement('div');
-    element.className = `song-item ${className}`;
-    
-    const artworkUrl = playlistArtwork 
-      ? `http://localhost:5000${playlistArtwork}` 
-      : 'placeholder.png';
-
-    element.innerHTML = `
-      <img src="${artworkUrl}" alt="${song.name}" class="song-artwork" onerror="this.src='placeholder.png'"/>
-      <div class="song-info">
-        <div class="song-name">${song.name}</div>
-        <div class="song-artist">${song.artist || 'Unknown Artist'}</div>
-      </div>
-    `;
-    
-    return element;
   }
 }
 
