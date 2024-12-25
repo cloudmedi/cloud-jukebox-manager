@@ -1,12 +1,13 @@
 const { BrowserWindow } = require('electron');
 const Store = require('electron-store');
-const AnnouncementManager = require('../AnnouncementManager').default;
+const AnnouncementManager = require('../AnnouncementManager');
 
 class SongBasedHandler {
   constructor() {
     this.store = new Store();
     this.songCounter = 0;
     this.lastAnnouncementTime = 0;
+    this.announcementManager = AnnouncementManager.getInstance();
   }
 
   async onSongEnd() {
@@ -54,7 +55,7 @@ class SongBasedHandler {
 
     try {
       // Anons başlatma izni al
-      const canStart = await AnnouncementManager.startAnnouncement(
+      const canStart = await this.announcementManager.startAnnouncement(
         announcement._id,
         'song'
       );
@@ -69,12 +70,12 @@ class SongBasedHandler {
         'document.getElementById("audioPlayer").paused'
       );
       
-      AnnouncementManager.savePlaylistState(!isPaused);
+      this.announcementManager.savePlaylistState(!isPaused);
 
       // Anons bitince çalışacak event listener'ı ayarla
       require('electron').ipcMain.once('announcement-ended', () => {
         console.log('Şarkı bazlı anons bitti, temizleme başladı');
-        const state = AnnouncementManager.endAnnouncement();
+        const state = this.announcementManager.endAnnouncement();
         
         if (state.wasPlaying && state.handler === 'song') {
           console.log('Playlist şarkı bazlı anonstan sonra devam ediyor');
@@ -88,7 +89,7 @@ class SongBasedHandler {
 
     } catch (error) {
       console.error('Şarkı bazlı anons işleme hatası:', error);
-      AnnouncementManager.endAnnouncement();
+      this.announcementManager.endAnnouncement();
     }
   }
 }
