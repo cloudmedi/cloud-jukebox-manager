@@ -7,6 +7,7 @@ const playbackStateManager = require('./services/audio/PlaybackStateManager');
 const UIManager = require('./services/ui/UIManager');
 const AnnouncementAudioService = require('./services/audio/AnnouncementAudioService');
 const PlaylistInitializer = require('./services/playlist/PlaylistInitializer');
+const PlayerUIService = require('./services/ui/PlayerUIService');
 
 const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
@@ -148,8 +149,8 @@ ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
     playlistAudio.src = normalizedPath;
     playlistAudio.play().catch(err => console.error('Playback error:', err));
     
-    // Update UI with new song info
-    updatePlayerUI(currentSong);
+    // Yeni UI servisini kullanarak bilgileri güncelle
+    PlayerUIService.updateSongInfo(currentSong);
     
     // Update playlist display
     displayPlaylists();
