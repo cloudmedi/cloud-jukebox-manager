@@ -99,6 +99,49 @@ body {
     border: 1px solid rgba(255, 68, 68, 0.2);
 }
 
+.playlist-status {
+    text-align: center;
+    padding: 32px;
+    margin: 20px auto;
+    max-width: 320px;
+    background: rgba(255, 255, 255, 0.03);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+    border-radius: 8px;
+}
+
+.status-message {
+    font-size: 16px;
+    color: #9ca3af;
+    margin-bottom: 16px;
+}
+
+.loading-spinner {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 12px;
+}
+
+.spinner {
+    width: 24px;
+    height: 24px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    border-top-color: #ffffff;
+    border-radius: 50%;
+    animation: spin 1s linear infinite;
+}
+
+.loading-text {
+    font-size: 14px;
+    color: #ffffff;
+}
+
+@keyframes spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+
 .playlist-container {
     margin-top: 16px;
 }
