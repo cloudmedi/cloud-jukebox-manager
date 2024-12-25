@@ -18,6 +18,12 @@ class PlaylistHandler {
   async handlePlaylist(message) {
     console.log('Handling playlist message:', message);
     
+    // Mesaj yapısını kontrol et
+    if (!message || !message.type || !message.action) {
+      console.error('Invalid message format:', message);
+      return;
+    }
+
     switch (message.action) {
       case 'songRemoved':
         await this.handleSongRemoved(message.data);
@@ -42,7 +48,7 @@ class PlaylistHandler {
       if (playlistIndex !== -1) {
         const playlist = playlists[playlistIndex];
         
-        // Önce silinecek şarkıyı bul (filtrelemeden önce)
+        // Önce silinecek şarkıyı bul
         const songToRemove = playlist.songs.find(song => song._id === songId);
         
         // Şarkıyı playlistten kaldır
