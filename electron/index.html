@@ -11,44 +11,30 @@
         <button class="titlebar-button close" id="closeButton">✕</button>
     </div>
     <div class="container">
+        <!-- Token ve Bağlantı Durumu (Başlangıçta gösterilir, bağlantı sonrası gizlenir) -->
         <div id="deviceInfo" class="device-info">
             <div class="token-display"></div>
             <div class="connection-status"></div>
         </div>
 
+        <!-- Playlist Container -->
         <div id="playlistContainer" class="playlist-container">
-            <!-- Çalan şarkı -->
-            <div class="playlist-item">
-                <div class="playlist-info">
-                    <div id="currentArtwork" class="playlist-artwork-placeholder"></div>
-                    <div class="playlist-details">
-                        <h3 id="currentSongName"></h3>
-                        <p id="currentArtist"></p>
-                    </div>
-                </div>
-            </div>
-            
-            <!-- Sıradaki şarkı -->
-            <div class="playlist-item next-song">
-                <div class="next-song-label">Sıradaki:</div>
-                <div class="playlist-info">
-                    <div id="nextArtwork" class="playlist-artwork-placeholder"></div>
-                    <div class="playlist-details">
-                        <h3 id="nextSongName"></h3>
-                        <p id="nextArtist"></p>
-                    </div>
-                </div>
-            </div>
+            <!-- Playlistler buraya eklenecek -->
         </div>
         
+        <!-- Ana playlist için audio element -->
         <audio id="audioPlayer"></audio>
+        
+        <!-- Kampanyalar için ikinci audio element -->
         <audio id="campaignPlayer"></audio>
         
+        <!-- İndirme Progress Bar -->
         <div class="download-progress" style="display: none;">
             <div class="download-progress-bar"></div>
             <div class="download-progress-text"></div>
         </div>
 
+        <!-- Hata Mesajları -->
         <div id="errorContainer" class="error-container"></div>
     </div>
     <script src="renderer.js"></script>
