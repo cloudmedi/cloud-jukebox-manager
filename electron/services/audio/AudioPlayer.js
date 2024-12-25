@@ -4,14 +4,16 @@ const path = require('path');
 
 class AudioPlayer {
   constructor() {
-    this.queueManager = new QueueManager();
     this.playbackState = new PlaybackState();
     this.audio = new Audio();
     this.playlist = null;
     this.isPlaying = false;
     this.volume = 1.0;
     
-    // Audio element event listeners
+    this.setupEventListeners();
+  }
+
+  setupEventListeners() {
     this.audio.addEventListener('ended', () => {
       console.log('Song ended, playing next');
       this.playNext();
@@ -33,19 +35,16 @@ class AudioPlayer {
       this.isPlaying = false;
       this.updatePlaybackState('paused');
     });
-
-    // Uygulama başladığında durumu geri yükle
-    this.restoreState();
   }
 
   loadPlaylist(playlist) {
     console.log('Loading playlist:', playlist);
     this.playlist = playlist;
-    this.queueManager.setQueue(playlist.songs);
+    QueueManager.initializeQueue(playlist.songs);
     
-    const currentSong = this.queueManager.getNextSong();
-    if (currentSong) {
-      this.loadSong(currentSong);
+    const firstSong = QueueManager.getCurrentSong();
+    if (firstSong) {
+      this.loadSong(firstSong);
     } else {
       console.log('No playable songs in playlist');
     }
@@ -75,20 +74,12 @@ class AudioPlayer {
       this.audio.src = normalizedPath;
       this.audio.volume = this.volume;
       
-      // Şarkı yüklendikten sonra çal
-      this.audio.addEventListener('loadeddata', () => {
-        console.log('Song loaded successfully');
-        if (this.isPlaying) {
-          this.audio.play().catch(error => {
-            console.error('Error playing audio:', error);
-            this.playNext();
-          });
-        }
-      });
-
-      // Şarkıyı çalındı olarak işaretle
-      this.queueManager.markAsPlayed(song._id);
-      
+      if (this.isPlaying) {
+        this.audio.play().catch(error => {
+          console.error('Error playing audio:', error);
+          this.playNext();
+        });
+      }
     } catch (error) {
       console.error('Error loading song:', error);
       this.playNext();
@@ -105,9 +96,9 @@ class AudioPlayer {
       this.isPlaying = true;
     } else {
       console.log('No audio source loaded');
-      const nextSong = this.queueManager.getNextSong();
-      if (nextSong) {
-        this.loadSong(nextSong);
+      const currentSong = QueueManager.getCurrentSong();
+      if (currentSong) {
+        this.loadSong(currentSong);
       }
     }
   }
@@ -125,7 +116,7 @@ class AudioPlayer {
 
   playNext() {
     console.log('Playing next song');
-    const nextSong = this.queueManager.getNextSong();
+    const nextSong = QueueManager.getNextSong();
     if (nextSong) {
       console.log('Next song found:', nextSong.name);
       this.loadSong(nextSong);
@@ -143,7 +134,7 @@ class AudioPlayer {
   updatePlaybackState(state) {
     this.playbackState.update(
       state,
-      this.queueManager.getCurrentSong(),
+      QueueManager.getCurrentSong(),
       this.playlist,
       this.volume * 100
     );
@@ -152,26 +143,10 @@ class AudioPlayer {
   getCurrentState() {
     return {
       isPlaying: this.isPlaying,
-      currentSong: this.queueManager.getCurrentSong(),
+      currentSong: QueueManager.getCurrentSong(),
       playlist: this.playlist,
       volume: this.volume * 100
     };
-  }
-
-  restoreState() {
-    const state = this.playbackState.restore();
-    if (state && state.playlist) {
-      console.log('Restoring previous state:', state);
-      this.loadPlaylist(state.playlist);
-      this.setVolume(state.volume);
-      
-      if (state.state === 'playing') {
-        setTimeout(() => {
-          console.log('Auto-playing restored playlist');
-          this.play();
-        }, 1000);
-      }
-    }
   }
 }
 
