@@ -7,7 +7,7 @@ class SongBasedHandler {
     this.store = new Store();
     this.songCounter = 0;
     this.lastAnnouncementTime = 0;
-    this.announcementManager = AnnouncementManager.getInstance();
+    this.announcementManager = AnnouncementManager; // Artık getInstance() kullanmıyoruz
   }
 
   async onSongEnd() {
