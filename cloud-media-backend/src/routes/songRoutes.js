@@ -157,8 +157,8 @@ router.delete('/:id', async (req, res) => {
       }
     }
 
-    // Şarkıyı veritabanından sil (bu işlem pre-remove hook'unu tetikleyecek)
-    await song.remove();
+    // Pre-remove hook'unu tetiklemek için findOneAndDelete kullan
+    await Song.findOneAndDelete({ _id: song._id });
 
     res.json({ message: 'Şarkı başarıyla silindi' });
   } catch (error) {

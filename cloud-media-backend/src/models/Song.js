@@ -55,7 +55,7 @@ const songSchema = new mongoose.Schema({
 });
 
 // Şarkı silindiğinde playlistlerden kaldır ve cihazlara bildir
-songSchema.pre('remove', async function(next) {
+songSchema.pre('deleteOne', { document: true, query: false }, async function(next) {
   try {
     const Playlist = mongoose.model('Playlist');
     const Device = mongoose.model('Device');
