@@ -41,14 +41,57 @@ class AudioPlayer {
       this.isPlaying = false;
       this.updatePlaybackState('paused');
     });
+  }
 
-    // Add timeupdate listener for fade effect
-    this.audio.addEventListener('timeupdate', () => {
-      if (this.audio.duration > 0 && 
-          this.audio.currentTime >= this.audio.duration - 2) {
-        this.audioFader.fadeOut();
-      }
-    });
+  async crossfade(nextSong, duration = 2) {
+    if (!nextSong || !nextSong.localPath) {
+      console.error('Next song localPath is missing:', nextSong);
+      return;
+    }
+
+    try {
+      const normalizedPath = path.normalize(nextSong.localPath);
+      console.log('Crossfading to next song:', normalizedPath);
+
+      // Yeni bir audio element oluştur ve yeni şarkıyı bağla
+      const newAudio = new Audio(normalizedPath);
+      const newAudioFader = new AudioFader();
+      newAudioFader.connectSource(newAudio);
+
+      // Yeni şarkıyı fade-in için hazırla
+      newAudio.volume = 0;
+      newAudioFader.setVolume(0);
+      await newAudio.play();
+
+      // Mevcut şarkıyı fade-out yaparken, yeni şarkıyı fade-in yap
+      await Promise.all([
+        this.audioFader.fadeOut(duration),
+        newAudioFader.fadeIn(duration)
+      ]);
+
+      // Çapraz geçiş tamamlandıktan sonra eski şarkıyı değiştir
+      this.audio.pause();
+      this.audio.src = '';
+      this.audio = newAudio;
+      this.audioFader = newAudioFader;
+      this.isPlaying = true;
+
+      this.emitSongChange(nextSong);
+    } catch (error) {
+      console.error('Error during crossfade:', error);
+      this.playNext();
+    }
+  }
+
+  async playNext() {
+    console.log('Playing next song');
+    const nextSong = this.queueManager.next();
+    if (nextSong) {
+      await this.crossfade(nextSong, 3);
+    } else {
+      console.log('No more songs in queue');
+      this.stop();
+    }
   }
 
   async loadCurrentSong() {
@@ -83,7 +126,6 @@ class AudioPlayer {
         await this.audioFader.fadeIn();
       }
       
-      // Emit song change event
       this.emitSongChange(song);
     } catch (error) {
       console.error('Error loading song:', error);
@@ -114,18 +156,6 @@ class AudioPlayer {
     this.audio.pause();
     this.audio.currentTime = 0;
     this.isPlaying = false;
-  }
-
-  playNext() {
-    console.log('Playing next song');
-    const nextSong = this.queueManager.next();
-    if (nextSong) {
-      console.log('Next song found:', nextSong.name);
-      this.loadCurrentSong();
-    } else {
-      console.log('No more songs in queue');
-      this.stop();
-    }
   }
 
   playPrevious() {
@@ -162,7 +192,7 @@ class AudioPlayer {
 
   emitSongChange(song) {
     if (this.playlist) {
-      ipcRenderer.send('update-player', {
+      require('electron').ipcRenderer.send('update-player', {
         playlist: this.playlist,
         currentSong: song,
         isPlaying: this.isPlaying
