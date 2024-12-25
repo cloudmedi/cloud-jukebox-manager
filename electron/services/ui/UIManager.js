@@ -1,6 +1,3 @@
-const { ipcRenderer } = require('electron');
-const deviceService = require('../deviceService');
-
 class UIManager {
     constructor() {
         this.deviceInfoElement = document.getElementById('deviceInfo');
@@ -10,11 +7,12 @@ class UIManager {
         this.downloadProgressBar = document.querySelector('.download-progress-bar');
         this.downloadProgressText = document.querySelector('.download-progress-text');
         this.errorContainer = document.getElementById('errorContainer');
+        this.playlistContainer = document.getElementById('playlistContainer');
         
         this.initializeUI();
     }
 
-    async initializeUI() {
+    initializeUI() {
         const deviceInfo = await ipcRenderer.invoke('get-device-info');
         
         if (!deviceInfo || !deviceInfo.token) {
@@ -39,10 +37,13 @@ class UIManager {
 
     updateConnectionStatus(isConnected) {
         if (isConnected) {
-            // Bağlantı başarılı olduğunda token bilgilerini gizle
             this.deviceInfoElement.style.display = 'none';
+            
+            // Playlist kontrolü
+            if (!this.playlistContainer.children.length) {
+                this.showNoPlaylistMessage();
+            }
         } else {
-            // Bağlantı koptuğunda token bilgilerini göster
             this.deviceInfoElement.style.display = 'block';
         }
         
@@ -50,11 +51,22 @@ class UIManager {
         this.connectionStatus.textContent = isConnected ? 'Bağlı' : 'Bağlantı Kesildi';
     }
 
-    displayPlaylists(playlist) {
-        const playlistContainer = document.getElementById('playlistContainer');
-        if (!playlistContainer) return;
+    showNoPlaylistMessage() {
+        const messageElement = document.createElement('div');
+        messageElement.className = 'no-playlist-message';
+        messageElement.innerHTML = `
+            <div class="flex items-center justify-center p-4 bg-yellow-50 text-yellow-800 rounded-md">
+                <p>Lütfen bir playlist atayın.</p>
+            </div>
+        `;
+        
+        this.playlistContainer.appendChild(messageElement);
+    }
 
-        playlistContainer.innerHTML = '';
+    displayPlaylists(playlist) {
+        if (!this.playlistContainer) return;
+
+        this.playlistContainer.innerHTML = '';
 
         if (playlist) {
             const playlistElement = document.createElement('div');
@@ -73,7 +85,9 @@ class UIManager {
                 </div>
             `;
             
-            playlistContainer.appendChild(playlistElement);
+            this.playlistContainer.appendChild(playlistElement);
+        } else {
+            this.showNoPlaylistMessage();
         }
     }
 
