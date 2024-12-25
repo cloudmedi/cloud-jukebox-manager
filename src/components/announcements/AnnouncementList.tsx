@@ -1,17 +1,10 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
-import { Volume2, Clock, Users } from "lucide-react";
+import { Volume2, Clock, Users, Calendar } from "lucide-react";
 import { AnnouncementActions } from "./AnnouncementActions";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 export const AnnouncementList = () => {
   const { data: announcements = [] } = useQuery({
@@ -50,31 +43,23 @@ export const AnnouncementList = () => {
   };
 
   return (
-    <Card className="p-6">
-      <Table>
-        <TableHeader>
-          <TableRow>
-            <TableHead>Başlık</TableHead>
-            <TableHead>Zamanlama</TableHead>
-            <TableHead>Tarih Aralığı</TableHead>
-            <TableHead>Hedefler</TableHead>
-            <TableHead>Durum</TableHead>
-            <TableHead className="text-right">İşlemler</TableHead>
-          </TableRow>
-        </TableHeader>
-        <TableBody>
+    <div className="space-y-6">
+      <ScrollArea className="w-full">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-1">
           {announcements.map((announcement: any) => (
-            <TableRow key={announcement._id}>
-              <TableCell className="font-medium">
-                <div className="flex flex-col">
-                  <span>{announcement.title}</span>
-                  <span className="text-sm text-muted-foreground">
-                    {announcement.content}
-                  </span>
+            <Card key={announcement._id} className="p-6 hover:shadow-lg transition-shadow">
+              <div className="space-y-4">
+                {/* Header */}
+                <div className="flex justify-between items-start">
+                  <div>
+                    <h3 className="font-semibold text-lg">{announcement.title}</h3>
+                    <p className="text-sm text-muted-foreground">{announcement.content}</p>
+                  </div>
+                  <AnnouncementActions announcement={announcement} />
                 </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
+
+                {/* Schedule Type */}
+                <div className="flex items-center gap-2 text-sm">
                   {announcement.scheduleType === "songs" ? (
                     <Volume2 className="w-4 h-4" />
                   ) : announcement.scheduleType === "minutes" ? (
@@ -88,34 +73,39 @@ export const AnnouncementList = () => {
                     {announcement.minuteInterval && ` (${announcement.minuteInterval} dakikada bir)`}
                   </span>
                 </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex flex-col text-sm">
-                  <span>
-                    Başlangıç: {format(new Date(announcement.startDate), "dd.MM.yyyy HH:mm")}
-                  </span>
-                  <span>
-                    Bitiş: {format(new Date(announcement.endDate), "dd.MM.yyyy HH:mm")}
-                  </span>
+
+                {/* Date Range */}
+                <div className="flex items-center gap-2 text-sm">
+                  <Calendar className="w-4 h-4" />
+                  <div className="flex flex-col">
+                    <span>
+                      Başlangıç: {format(new Date(announcement.startDate), "dd.MM.yyyy HH:mm")}
+                    </span>
+                    <span>
+                      Bitiş: {format(new Date(announcement.endDate), "dd.MM.yyyy HH:mm")}
+                    </span>
+                  </div>
                 </div>
-              </TableCell>
-              <TableCell>
-                <div className="flex items-center gap-2">
+
+                {/* Targets */}
+                <div className="flex items-center gap-2 text-sm">
                   <Users className="w-4 h-4" />
                   <span>
                     {announcement.targetDevices?.length || 0} Cihaz,{" "}
                     {announcement.targetGroups?.length || 0} Grup
                   </span>
                 </div>
-              </TableCell>
-              <TableCell>{getStatusBadge(announcement.status)}</TableCell>
-              <TableCell className="text-right">
-                <AnnouncementActions announcement={announcement} />
-              </TableCell>
-            </TableRow>
+
+                {/* Status */}
+                <div className="flex justify-end">
+                  {getStatusBadge(announcement.status)}
+                </div>
+              </div>
+            </Card>
           ))}
-        </TableBody>
-      </Table>
-    </Card>
+        </div>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
+    </div>
   );
 };
