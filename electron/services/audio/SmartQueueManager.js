@@ -30,6 +30,7 @@ class SmartQueueManager {
     }
     
     console.log('Starting with song at index:', this.currentIndex);
+    return this.getCurrentSong();
   }
 
   findPlayableSongs() {
@@ -74,57 +75,8 @@ class SmartQueueManager {
     return this.queue[this.currentIndex];
   }
 
-  getNextSong() {
-    if (this.queue.length === 0) return null;
-
-    // Mevcut şarkının çalınma zamanını kaydet
-    const currentSong = this.getCurrentSong();
-    if (currentSong) {
-      this.history.recordPlay(currentSong._id);
-      this.blacklist.add(currentSong._id);
-    }
-
-    // Her 10 şarkıda bir yeniden karıştır
-    this.songCounter++;
-    if (this.songCounter >= 10) {
-      this.shuffleQueue();
-      this.songCounter = 0;
-    }
-
-    // Çalınabilir şarkıları bul ve ağırlıklarına göre seç
-    const playableSongs = this.findPlayableSongs();
-    
-    if (playableSongs.length > 0) {
-      // Ağırlıklı rastgele seçim
-      const totalWeight = playableSongs.reduce((sum, song) => sum + song.weight, 0);
-      let random = Math.random() * totalWeight;
-      
-      for (const item of playableSongs) {
-        random -= item.weight;
-        if (random <= 0) {
-          this.currentIndex = item.index;
-          break;
-        }
-      }
-    } else {
-      // Eğer hiç uygun şarkı yoksa, en uzun süre önce çalınanı seç
-      this.currentIndex = this.findLeastRecentlyPlayedIndex();
-    }
-
-    console.log('Next song selected:', {
-      index: this.currentIndex,
-      song: this.getCurrentSong()?.name,
-      totalSongs: this.queue.length,
-      blacklistSize: this.blacklist.blacklist.size
-    });
-
-    return this.getCurrentSong();
-  }
-
-  clearHistory() {
-    this.history.cleanOldHistory();
-    this.blacklist.clear();
-    console.log('Play history and blacklist cleared');
+  getQueue() {
+    return this.queue;
   }
 }
 
