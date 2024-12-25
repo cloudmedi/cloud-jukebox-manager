@@ -35,6 +35,7 @@ import {
 } from "lucide-react";
 import { useState } from "react";
 import { deviceService } from "@/services/deviceService";
+import type { Device } from "@/services/deviceService"; // Add this import
 import VolumeControlDialog from "./VolumeControlDialog";
 import GroupManagementDialog from "./GroupManagementDialog";
 import DeviceDetailsDialog from "./DeviceDetailsDialog";
@@ -107,6 +108,17 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
     } catch (error) {
       console.error('Delete error:', error);
       toast.error('Cihaz silinemedi');
+    }
+  };
+
+  const handleGroupChange = async (groupId: string | null) => {
+    try {
+      await deviceService.updateGroup(device._id, groupId);
+      queryClient.invalidateQueries({ queryKey: ['devices'] });
+      toast.success('Grup güncellendi');
+    } catch (error) {
+      console.error('Group update error:', error);
+      toast.error('Grup güncellenemedi');
     }
   };
 
