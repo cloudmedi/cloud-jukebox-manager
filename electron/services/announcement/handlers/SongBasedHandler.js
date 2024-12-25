@@ -12,29 +12,27 @@ class SongBasedHandler {
   async onSongEnd() {
     console.log('\n=== ŞARKI BAZLI ANONS KONTROLÜ ===');
     
-    // Eğer başka bir anons çalıyorsa bekle
-    if (AnnouncementManager.isAnnouncementPlaying()) {
-      console.log('Başka bir anons çalıyor, kontrol atlanıyor');
-      return;
-    }
-
-    // Minimum süre kontrolü
-    const now = Date.now();
-    if (now - this.lastAnnouncementTime < 5000) {
-      console.log('Son anonstan bu yana 5 saniye geçmedi');
-      return;
-    }
-
-    this.songCounter++;
-    console.log(`Şarkı sayacı: ${this.songCounter}`);
-    
-    const announcements = this.store.get('announcements', []);
-    const currentTime = new Date();
-
-    for (const announcement of announcements) {
-      if (this.shouldPlayAnnouncement(announcement, currentTime)) {
-        await this.processAnnouncement(announcement);
+    try {
+      // Minimum süre kontrolü
+      const now = Date.now();
+      if (now - this.lastAnnouncementTime < 5000) {
+        console.log('Son anonstan bu yana 5 saniye geçmedi');
+        return;
       }
+
+      this.songCounter++;
+      console.log(`Şarkı sayacı: ${this.songCounter}`);
+      
+      const announcements = this.store.get('announcements', []);
+      const currentTime = new Date();
+
+      for (const announcement of announcements) {
+        if (this.shouldPlayAnnouncement(announcement, currentTime)) {
+          await this.processAnnouncement(announcement);
+        }
+      }
+    } catch (error) {
+      console.error('Şarkı bazlı anons kontrolü hatası:', error);
     }
   }
 
@@ -62,7 +60,7 @@ class SongBasedHandler {
       );
 
       if (!canStart) {
-        console.log('Cannot start announcement - another one is playing');
+        console.log('Başka bir anons çalıyor, şarkı bazlı anons atlanıyor');
         return;
       }
 
@@ -75,21 +73,21 @@ class SongBasedHandler {
 
       // Anons bitince çalışacak event listener'ı ayarla
       require('electron').ipcMain.once('announcement-ended', () => {
-        console.log('Announcement ended, cleanup started');
+        console.log('Şarkı bazlı anons bitti, temizleme başladı');
         const state = AnnouncementManager.endAnnouncement();
         
         if (state.wasPlaying && state.handler === 'song') {
-          console.log('Resuming playlist after song-based announcement');
+          console.log('Playlist şarkı bazlı anonstan sonra devam ediyor');
           mainWindow.webContents.send('resume-playback');
         }
       });
 
-      console.log('Anons çalma isteği gönderiliyor...');
+      console.log('Şarkı bazlı anons çalma isteği gönderiliyor...');
       mainWindow.webContents.send('play-announcement', announcement);
       this.lastAnnouncementTime = Date.now();
 
     } catch (error) {
-      console.error('Error processing announcement:', error);
+      console.error('Şarkı bazlı anons işleme hatası:', error);
       AnnouncementManager.endAnnouncement();
     }
   }

@@ -9,7 +9,9 @@ class AnnouncementManager {
     handler: null
   };
 
-  private constructor() {}
+  private constructor() {
+    console.log('AnnouncementManager initialized');
+  }
 
   static getInstance(): AnnouncementManager {
     if (!AnnouncementManager.instance) {
@@ -23,6 +25,7 @@ class AnnouncementManager {
   }
 
   async startAnnouncement(id: string, handler: string): Promise<boolean> {
+    console.log('Starting announcement:', { id, handler });
     if (this.isAnnouncementPlaying()) {
       console.log('Another announcement is already playing:', this.currentAnnouncement);
       return false;

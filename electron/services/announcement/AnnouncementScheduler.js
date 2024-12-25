@@ -31,8 +31,12 @@ class AnnouncementScheduler {
     console.log('AnnouncementScheduler initialized');
   }
 
-  onSongEnd() {
-    this.songHandler.onSongEnd();
+  async onSongEnd() {
+    try {
+      await this.songHandler.onSongEnd();
+    } catch (error) {
+      console.error('Error in onSongEnd:', error);
+    }
   }
 
   cleanup() {
