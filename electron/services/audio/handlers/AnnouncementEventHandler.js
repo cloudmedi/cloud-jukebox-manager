@@ -11,19 +11,23 @@ class AnnouncementEventHandler {
   setupEventListeners() {
     // Kampanya yüklendiğinde
     this.campaignAudio.addEventListener('loadeddata', () => {
-      console.log('Kampanya yüklendi, mevcut playlist durumu:', !this.playlistAudio.paused);
-      // Playlist durumunu kontrol et ve kaydet
+      console.log('Kampanya yüklendi, playlist durumu kontrol ediliyor');
+      // Playlist durumunu kaydet ve duraklat
       this.wasPlaylistPlaying = !this.playlistAudio.paused;
+      if (this.wasPlaylistPlaying) {
+        console.log('Playlist duraklatılıyor');
+        this.playlistAudio.pause();
+      }
     });
 
     // Kampanya başladığında
     this.campaignAudio.addEventListener('play', () => {
-      console.log('Kampanya başladı, playlist durumu:', !this.playlistAudio.paused);
+      console.log('Kampanya başladı');
       this.isAnnouncementPlaying = true;
       
-      // Playlist hala çalıyorsa duraklat
+      // Eğer playlist hala çalıyorsa, duraklat
       if (!this.playlistAudio.paused) {
-        console.log('Playlist duraklatılıyor');
+        console.log('Playlist zorla duraklatılıyor');
         this.playlistAudio.pause();
       }
     });
@@ -62,9 +66,11 @@ class AnnouncementEventHandler {
     // Playlist'i devam ettir
     if (this.wasPlaylistPlaying) {
       console.log('Playlist kaldığı yerden devam ediyor');
-      this.playlistAudio.play().catch(err => {
-        console.error('Playlist devam ettirme hatası:', err);
-      });
+      setTimeout(() => {
+        this.playlistAudio.play().catch(err => {
+          console.error('Playlist devam ettirme hatası:', err);
+        });
+      }, 500); // Kısa bir gecikme ekleyerek ses çakışmasını önle
     }
     
     // wasPlaylistPlaying durumunu sıfırla
@@ -89,6 +95,12 @@ class AnnouncementEventHandler {
     try {
       console.log('Kampanya başlatılıyor:', audioPath);
       console.log('Mevcut playlist durumu:', this.playlistAudio.paused ? 'duraklatılmış' : 'çalıyor');
+      
+      // Önce playlist'i duraklat
+      if (!this.playlistAudio.paused) {
+        console.log('Playlist duraklatılıyor');
+        this.playlistAudio.pause();
+      }
       
       // Her seferinde src'yi yeniden ayarla
       this.campaignAudio.src = audioPath;
