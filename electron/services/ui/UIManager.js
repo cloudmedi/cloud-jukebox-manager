@@ -50,30 +50,31 @@ class UIManager {
         this.connectionStatus.textContent = isConnected ? 'Bağlı' : 'Bağlantı Kesildi';
     }
 
-    displayPlaylists(playlist) {
+    displayPlaylists() {
         const playlistContainer = document.getElementById('playlistContainer');
         if (!playlistContainer) return;
 
-        playlistContainer.innerHTML = '';
+        const currentSong = this.queueManager.getCurrentSong();
+        const nextSong = this.queueManager.peekNext();
 
-        if (playlist) {
-            const playlistElement = document.createElement('div');
-            playlistElement.className = 'playlist-item';
-            playlistElement.innerHTML = `
-                <div class="playlist-info">
-                    ${playlist.artwork ? 
-                        `<img src="${playlist.artwork}" alt="${playlist.name}" class="playlist-artwork"/>` :
-                        '<div class="playlist-artwork-placeholder"></div>'
-                    }
-                    <div class="playlist-details">
-                        <h3>${playlist.name}</h3>
-                        <p>${playlist.songs[0]?.artist || 'Unknown Artist'}</p>
-                        <p>${playlist.songs[0]?.name || 'No songs'}</p>
-                    </div>
-                </div>
-            `;
-            
-            playlistContainer.appendChild(playlistElement);
+        if (currentSong) {
+            const currentSongName = document.querySelector('.current-song-name');
+            const currentSongArtist = document.querySelector('.current-song-artist');
+            const nextSongName = document.querySelector('.next-song-name');
+            const nextSongArtist = document.querySelector('.next-song-artist');
+
+            if (currentSongName) currentSongName.textContent = currentSong.name;
+            if (currentSongArtist) currentSongArtist.textContent = currentSong.artist;
+
+            if (nextSong) {
+                if (nextSongName) nextSongName.textContent = nextSong.name;
+                if (nextSongArtist) nextSongArtist.textContent = nextSong.artist;
+            }
+
+            const artwork = document.querySelector('.playlist-artwork-placeholder');
+            if (artwork && currentSong.artwork) {
+                artwork.style.backgroundImage = `url(${currentSong.artwork})`;
+            }
         }
     }
 
