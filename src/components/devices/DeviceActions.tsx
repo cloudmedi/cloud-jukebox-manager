@@ -5,6 +5,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import {
   Dialog,
@@ -23,8 +33,8 @@ import {
   Play,
   Pause,
 } from "lucide-react";
-import { useState, useCallback, useEffect } from "react";
-import { deviceService, Device } from "@/services/deviceService";
+import { useState } from "react";
+import { deviceService } from "@/services/deviceService";
 import VolumeControlDialog from "./VolumeControlDialog";
 import GroupManagementDialog from "./GroupManagementDialog";
 import DeviceDetailsDialog from "./DeviceDetailsDialog";
@@ -39,11 +49,11 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
   const [isVolumeDialogOpen, setIsVolumeDialogOpen] = useState(false);
   const [isGroupDialogOpen, setIsGroupDialogOpen] = useState(false);
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isRestartDialogOpen, setIsRestartDialogOpen] = useState(false);
   const queryClient = useQueryClient();
 
-  const handleRestart = useCallback(async () => {
-    if (!window.confirm('Cihazı yeniden başlatmak istediğinizden emin misiniz?')) return;
-    
+  const handleRestart = async () => {
     try {
       websocketService.sendMessage({
         type: 'command',
@@ -51,13 +61,14 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
         command: 'restart'
       });
       toast.success('Yeniden başlatma komutu gönderildi');
+      setIsRestartDialogOpen(false);
     } catch (error) {
       console.error('Restart error:', error);
       toast.error('Yeniden başlatma komutu gönderilemedi');
     }
-  }, [device.token]);
+  };
 
-  const handlePlayPause = useCallback(async () => {
+  const handlePlayPause = async () => {
     try {
       websocketService.sendMessage({
         type: 'command',
@@ -69,9 +80,9 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
       console.error('Play/Pause error:', error);
       toast.error('Komut gönderilemedi');
     }
-  }, [device.token, device.isPlaying]);
+  };
 
-  const handleVolumeChange = useCallback(async (volume: number) => {
+  const handleVolumeChange = async (volume: number) => {
     try {
       websocketService.sendMessage({
         type: 'command',
@@ -85,52 +96,19 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
       console.error('Volume control error:', error);
       toast.error('Ses seviyesi değiştirme komutu gönderilemedi');
     }
-  }, [device.token]);
+  };
 
-  const handlePowerToggle = useCallback(async () => {
-    try {
-      await deviceService.togglePower(device._id, device.isOnline);
-      queryClient.invalidateQueries({ queryKey: ['devices'] });
-    } catch (error) {
-      console.error('Power toggle error:', error);
-      toast.error('Güç durumu değiştirilemedi');
-    }
-  }, [device._id, device.isOnline, queryClient]);
-
-  const handleGroupChange = useCallback(async (groupId: string | null) => {
-    try {
-      await deviceService.updateGroup(device._id, groupId);
-      queryClient.invalidateQueries({ queryKey: ['devices'] });
-      queryClient.invalidateQueries({ queryKey: ['device-groups'] });
-      setIsGroupDialogOpen(false);
-      toast.success('Grup güncellendi');
-    } catch (error) {
-      console.error('Group management error:', error);
-      toast.error('Grup güncellenemedi');
-    }
-  }, [device._id, queryClient]);
-
-  const handleDelete = useCallback(async () => {
-    if (!window.confirm('Cihazı silmek istediğinizden emin misiniz?')) return;
-    
+  const handleDelete = async () => {
     try {
       await deviceService.deleteDevice(device._id);
       queryClient.invalidateQueries({ queryKey: ['devices'] });
       toast.success('Cihaz silindi');
+      setIsDeleteDialogOpen(false);
     } catch (error) {
       console.error('Delete error:', error);
       toast.error('Cihaz silinemedi');
     }
-  }, [device._id, queryClient]);
-
-  useEffect(() => {
-    return () => {
-      // Cleanup any subscriptions or event listeners here
-      setIsVolumeDialogOpen(false);
-      setIsGroupDialogOpen(false);
-      setIsDetailsDialogOpen(false);
-    };
-  }, []);
+  };
 
   return (
     <>
@@ -149,11 +127,7 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
             )}
             {device.isPlaying ? 'Durdur' : 'Oynat'}
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handlePowerToggle}>
-            <Power className="mr-2 h-4 w-4" />
-            {device.isOnline ? 'Kapat' : 'Aç'}
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleRestart}>
+          <DropdownMenuItem onClick={() => setIsRestartDialogOpen(true)}>
             <RefreshCcw className="mr-2 h-4 w-4" />
             Yeniden Başlat
           </DropdownMenuItem>
@@ -169,12 +143,46 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
             <Info className="mr-2 h-4 w-4" />
             Cihaz Detayları
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleDelete} className="text-destructive">
+          <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive">
             <Trash2 className="mr-2 h-4 w-4" />
             Cihazı Sil
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cihazı silmek istediğinizden emin misiniz?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bu işlem geri alınamaz. Cihaz kalıcı olarak silinecektir.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>İptal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+              Sil
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isRestartDialogOpen} onOpenChange={setIsRestartDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Cihazı yeniden başlatmak istediğinizden emin misiniz?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Cihaz yeniden başlatılacak ve geçici olarak çevrimdışı olacaktır.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>İptal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleRestart}>
+              Yeniden Başlat
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={isVolumeDialogOpen} onOpenChange={setIsVolumeDialogOpen}>
         <DialogContent>

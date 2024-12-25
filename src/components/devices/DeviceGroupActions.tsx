@@ -5,6 +5,16 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { MoreVertical, Pencil, Trash2 } from "lucide-react";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { useState } from "react";
@@ -27,10 +37,9 @@ interface DeviceGroupActionsProps {
 
 export const DeviceGroupActions = ({ group, onSuccess }: DeviceGroupActionsProps) => {
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const handleDelete = async () => {
-    if (!window.confirm('Grubu silmek istediğinizden emin misiniz?')) return;
-    
     try {
       const response = await fetch(`http://localhost:5000/api/device-groups/${group._id}`, {
         method: 'DELETE'
@@ -42,6 +51,7 @@ export const DeviceGroupActions = ({ group, onSuccess }: DeviceGroupActionsProps
 
       toast.success('Grup başarıyla silindi');
       onSuccess();
+      setIsDeleteDialogOpen(false);
     } catch (error) {
       toast.error('Grup silinirken bir hata oluştu');
     }
@@ -60,12 +70,29 @@ export const DeviceGroupActions = ({ group, onSuccess }: DeviceGroupActionsProps
             <Pencil className="mr-2 h-4 w-4" />
             Düzenle
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleDelete} className="text-red-600">
+          <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-red-600">
             <Trash2 className="mr-2 h-4 w-4" />
             Sil
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Grubu silmek istediğinizden emin misiniz?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bu işlem geri alınamaz. Grup kalıcı olarak silinecektir.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>İptal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+              Sil
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
         <DialogContent>
