@@ -1,7 +1,7 @@
 const Store = require('electron-store');
 const fs = require('fs');
 const path = require('path');
-const { createLogger } = require('../../utils/logger');
+const { createLogger } = require('../../../utils/logger');
 
 const store = new Store();
 const logger = createLogger('DeleteAnnouncementHandler');
