@@ -14,7 +14,7 @@ body {
 
 .titlebar {
     height: 32px;
-    background: #222222;
+    background: #2d2d2d;
     -webkit-app-region: drag;
     display: flex;
     justify-content: space-between;
@@ -38,65 +38,22 @@ body {
     font-size: 14px;
     padding: 4px 8px;
     cursor: pointer;
-    transition: background-color 0.2s;
 }
 
 .titlebar-button:hover {
-    background-color: #333333;
+    background-color: #404040;
 }
 
 .container {
     padding: 16px;
     height: calc(100vh - 32px);
     overflow-y: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    background: #1a1b1e;
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
 }
 
 .container::-webkit-scrollbar {
-    display: none;
-}
-
-.device-info {
-    background: rgba(255, 255, 255, 0.03);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 8px;
-    padding: 24px;
-    margin: 20px auto;
-    max-width: 320px;
-    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
-}
-
-.token-display {
-    font-size: 24px;
-    font-weight: 600;
-    color: #ffffff;
-    margin-bottom: 16px;
-    text-align: center;
-    letter-spacing: 1px;
-}
-
-.connection-status {
-    text-align: center;
-    font-size: 14px;
-    font-weight: 500;
-    padding: 8px 16px;
-    border-radius: 4px;
-    margin-top: 12px;
-    transition: all 0.2s ease;
-}
-
-.connection-status.connected {
-    background: rgba(255, 255, 255, 0.1);
-    color: #ffffff;
-    border: 1px solid rgba(255, 255, 255, 0.2);
-}
-
-.connection-status.disconnected {
-    background: rgba(255, 255, 255, 0.05);
-    color: #ff4444;
-    border: 1px solid rgba(255, 68, 68, 0.2);
+    display: none; /* Chrome, Safari, Opera */
 }
 
 .playlist-container {
@@ -176,12 +133,12 @@ body {
     right: 1rem;
     background: rgba(0, 0, 0, 0.8);
     padding: 1rem;
-    border-radius: 4px;
+    border-radius: 8px;
 }
 
 .download-progress-bar {
     height: 4px;
-    background: #ffffff;
+    background: #2563eb;
     border-radius: 2px;
     transition: width 0.3s ease;
 }
@@ -201,8 +158,8 @@ body {
 }
 
 .error-message {
-    background: rgba(255, 68, 68, 0.1);
-    color: #ff4444;
+    background: rgba(239, 68, 68, 0.2);
+    color: #ef4444;
     padding: 0.75rem 1rem;
     border-radius: 4px;
     margin-bottom: 0.5rem;
