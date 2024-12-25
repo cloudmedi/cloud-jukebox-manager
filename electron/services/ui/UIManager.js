@@ -34,20 +34,28 @@ class UIManager {
     }
 
     updateDeviceInfo(token) {
-        this.tokenDisplay.textContent = `Token: ${token}`;
+        if (this.tokenDisplay) {
+            this.tokenDisplay.textContent = `Token: ${token}`;
+        }
     }
 
     updateConnectionStatus(isConnected) {
         if (isConnected) {
-            // Bağlantı başarılı olduğunda token bilgilerini gizle
-            this.deviceInfoElement.style.display = 'none';
+            // Bağlantı başarılı olduğunda deviceInfo elementini gizle
+            if (this.deviceInfoElement) {
+                this.deviceInfoElement.style.display = 'none';
+            }
         } else {
-            // Bağlantı koptuğunda token bilgilerini göster
-            this.deviceInfoElement.style.display = 'block';
+            // Bağlantı koptuğunda deviceInfo elementini göster
+            if (this.deviceInfoElement) {
+                this.deviceInfoElement.style.display = 'block';
+            }
         }
         
-        this.connectionStatus.className = `connection-status ${isConnected ? 'connected' : 'disconnected'}`;
-        this.connectionStatus.textContent = isConnected ? 'Bağlı' : 'Bağlantı Kesildi';
+        if (this.connectionStatus) {
+            this.connectionStatus.className = `connection-status ${isConnected ? 'connected' : 'disconnected'}`;
+            this.connectionStatus.textContent = isConnected ? 'Bağlı' : 'Bağlantı Kesildi';
+        }
     }
 
     displayPlaylists(playlist) {
