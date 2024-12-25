@@ -48,30 +48,12 @@ body {
     padding: 16px;
     height: calc(100vh - 32px);
     overflow-y: auto;
-    scrollbar-width: none;
-    -ms-overflow-style: none;
-    position: relative; /* Added for absolute positioning of warning */
+    scrollbar-width: none; /* Firefox */
+    -ms-overflow-style: none; /* IE and Edge */
 }
 
 .container::-webkit-scrollbar {
     display: none; /* Chrome, Safari, Opera */
-}
-
-.warning-message {
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    transform: translate(-50%, -50%);
-    background: rgba(255, 193, 7, 0.1);
-    color: #ffc107;
-    padding: 1rem 2rem;
-    border-radius: 8px;
-    border: 1px solid rgba(255, 193, 7, 0.2);
-    text-align: center;
-    font-size: 1.1rem;
-    z-index: 10;
-    width: auto;
-    white-space: nowrap;
 }
 
 .playlist-container {
@@ -83,6 +65,18 @@ body {
     border-radius: 8px;
     padding: 12px;
     margin-bottom: 12px;
+    position: relative;
+}
+
+.next-song-label {
+    position: absolute;
+    top: -8px;
+    left: 12px;
+    background: #2d2d2d;
+    padding: 2px 8px;
+    border-radius: 4px;
+    font-size: 12px;
+    color: #9ca3af;
 }
 
 .playlist-info {
