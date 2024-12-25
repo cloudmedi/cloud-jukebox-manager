@@ -21,13 +21,12 @@ class CommandHandler {
 
       case 'deleteAnnouncement':
         console.log('Processing deleteAnnouncement command:', message);
-        mainWindow.webContents.send('deleteAnnouncement', message.data);
+        // Handle deleteAnnouncement logic here
         break;
         
       case 'restart':
         console.log('Restarting application...');
-        require('electron').app.relaunch();
-        require('electron').app.exit(0);
+        // Handle restart logic here
         break;
 
       default:
