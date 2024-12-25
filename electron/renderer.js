@@ -7,7 +7,7 @@ const playbackStateManager = require('./services/audio/PlaybackStateManager');
 const UIManager = require('./services/ui/UIManager');
 const AnnouncementAudioService = require('./services/audio/AnnouncementAudioService');
 const PlaylistInitializer = require('./services/playlist/PlaylistInitializer');
-const PlaybackStore = require('./services/playback/PlaybackStore');
+const PlaybackStore = require('./services/store/PlaybackStore');
 
 const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
@@ -120,7 +120,6 @@ ipcRenderer.on('auto-play-playlist', (event, playlist) => {
 });
 
 function displayPlaylists() {
-  const playlists = store.get('playlists', []);
   const playlistContainer = document.getElementById('playlistContainer');
   
   if (!playlistContainer) {
@@ -130,58 +129,57 @@ function displayPlaylists() {
   
   playlistContainer.innerHTML = '';
   
-  // Son playlist'i göster
-  const lastPlaylist = playlists[playlists.length - 1];
-  if (lastPlaylist) {
-    console.log('Displaying playlist:', lastPlaylist);
-    
-    // Çalan şarkı bilgisini al
-    const currentSong = PlaybackStore.getCurrentSong() || lastPlaylist.songs[0];
-    console.log('Current song:', currentSong);
+  // PlaybackStore'dan güncel bilgileri al
+  const displayInfo = PlaybackStore.updatePlaylistDisplay();
+  
+  if (displayInfo) {
+    console.log('Displaying playlist info:', displayInfo);
     
     const playlistElement = document.createElement('div');
     playlistElement.className = 'playlist-item';
     
-    // Artwork URL'ini düzelt
-    const artworkUrl = lastPlaylist.artwork 
-      ? `http://localhost:5000${lastPlaylist.artwork}` 
+    const artworkUrl = displayInfo.artwork 
+      ? `http://localhost:5000${displayInfo.artwork}` 
       : null;
     
     playlistElement.innerHTML = `
       <div class="playlist-info">
         ${artworkUrl ? 
-          `<img src="${artworkUrl}" alt="${lastPlaylist.name}" class="playlist-artwork" onerror="this.onerror=null; this.src='placeholder.png'"/>` :
+          `<img src="${artworkUrl}" alt="${displayInfo.name}" class="playlist-artwork" onerror="this.onerror=null; this.src='placeholder.png'"/>` :
           '<div class="playlist-artwork-placeholder"></div>'
         }
         <div class="playlist-details">
-          <h3>${lastPlaylist.name}</h3>
+          <h3>${displayInfo.name || 'Unknown Playlist'}</h3>
           <div class="song-info">
-            <p class="artist">${currentSong?.artist || 'Unknown Artist'}</p>
-            <p class="song-name">${currentSong?.name || 'No songs'}</p>
+            <p class="artist">${displayInfo.currentArtist}</p>
+            <p class="song-name">${displayInfo.currentSongName}</p>
           </div>
         </div>
       </div>
     `;
     
     playlistContainer.appendChild(playlistElement);
-    console.log('Displayed playlist:', lastPlaylist.name);
   }
 }
 
-// Update player event handler'ını güncelle
+// WebSocket mesaj işleyicilerini güncelle
+ipcRenderer.on('playlist-received', (event, playlist) => {
+  console.log('New playlist received:', playlist);
+  PlaybackStore.setCurrentPlaylist(playlist);
+  displayPlaylists();
+});
+
 ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
   console.log('Updating player with song:', currentSong);
   if (currentSong && currentSong.localPath) {
     const normalizedPath = currentSong.localPath.replace(/\\/g, '/');
     playlistAudio.src = normalizedPath;
+    playlistAudio.play().catch(err => console.error('Playback error:', err));
     
-    // Store'a güncel şarkıyı kaydet
+    // Güncel şarkı bilgisini store'a kaydet
     PlaybackStore.setCurrentSong(currentSong);
-    
     // UI'ı güncelle
     displayPlaylists();
-    
-    playlistAudio.play().catch(err => console.error('Playback error:', err));
   }
 });
 
