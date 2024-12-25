@@ -8,20 +8,35 @@ class AnnouncementEventHandler {
   }
 
   setupEventListeners() {
-    // Kampanya başladığında playlist'i duraklat
-    this.campaignAudio.addEventListener('play', () => {
-      console.log('Kampanya başladı, playlist duraklatılıyor');
+    // Kampanya başlamadan önce
+    this.campaignAudio.addEventListener('loadstart', () => {
+      console.log('Kampanya yükleniyor, playlist duraklatılıyor');
+      // Playlist durumunu kaydet ve duraklat
       this.wasPlaylistPlaying = !this.playlistAudio.paused;
       if (this.wasPlaylistPlaying) {
         this.playlistAudio.pause();
       }
     });
 
+    // Kampanya başladığında
+    this.campaignAudio.addEventListener('play', () => {
+      console.log('Kampanya başladı');
+      this.isAnnouncementPlaying = true;
+      
+      // Emin olmak için playlist'i tekrar kontrol et ve duraklat
+      if (!this.playlistAudio.paused) {
+        console.log('Playlist hala çalıyor, durduruluyor');
+        this.playlistAudio.pause();
+      }
+    });
+
+    // Kampanya bittiğinde
     this.campaignAudio.addEventListener('ended', () => {
       console.log('Kampanya bitti, temizleniyor');
       this.cleanupAnnouncement();
     });
 
+    // Kampanya hata durumunda
     this.campaignAudio.addEventListener('error', (error) => {
       console.error('Kampanya oynatma hatası:', error);
       this.cleanupAnnouncement();
@@ -38,16 +53,19 @@ class AnnouncementEventHandler {
     // Kampanya bittiğini bildir
     require('electron').ipcRenderer.send('announcement-ended');
 
-    // Eğer playlist çalıyorduysa devam ettir
-    if (this.wasPlaylistPlaying) {
-      console.log('Playlist kaldığı yerden devam ediyor');
-      this.playlistAudio.play().catch(err => {
-        console.error('Playlist devam ettirme hatası:', err);
-      });
-    }
-    
-    // Durumları sıfırla
-    this.wasPlaylistPlaying = false;
+    // Playlist'i devam ettirmeden önce kısa bir gecikme ekle
+    setTimeout(() => {
+      // Eğer playlist çalıyorduysa devam ettir
+      if (this.wasPlaylistPlaying) {
+        console.log('Playlist kaldığı yerden devam ediyor');
+        this.playlistAudio.play().catch(err => {
+          console.error('Playlist devam ettirme hatası:', err);
+        });
+      }
+      
+      // Durumları sıfırla
+      this.wasPlaylistPlaying = false;
+    }, 100); // 100ms gecikme
   }
 
   async playAnnouncement(audioPath) {
@@ -65,17 +83,19 @@ class AnnouncementEventHandler {
         this.cleanupAnnouncement();
       }
 
-      // Playlist durumunu kaydet ve duraklat
+      // Önce playlist durumunu kaydet ve duraklat
       this.wasPlaylistPlaying = !this.playlistAudio.paused;
       if (this.wasPlaylistPlaying) {
-        this.playlistAudio.pause();
+        await this.playlistAudio.pause();
       }
+
+      // Kısa bir gecikme ekle
+      await new Promise(resolve => setTimeout(resolve, 100));
       
-      // Kampanya audio elementini hazırla
+      // Kampanya audio elementini hazırla ve çal
       this.campaignAudio.src = audioPath;
-      
-      // Kampanyayı başlat
       await this.campaignAudio.play();
+      
       this.isAnnouncementPlaying = true;
       return true;
     } catch (err) {
