@@ -343,7 +343,8 @@ router.delete('/:id', async (req, res) => {
     }
 
     // Anonsu veritabanından sil
-    await announcement.remove();
+    await Announcement.findByIdAndDelete(announcement._id);
+    console.log(`Announcement deleted from database: ${announcement._id}`);
     
     // WebSocket üzerinden cihazlara silme komutu gönder
     if (req.wss) {
