@@ -54,7 +54,6 @@ const songSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// TEST LOGLARI EKLENDI
 songSchema.pre('deleteOne', { document: true, query: false }, async function(next) {
   console.log('=================== HOOK BAŞLANGICI ===================');
   console.log('pre-deleteOne hook tetiklendi');
@@ -95,7 +94,8 @@ songSchema.pre('deleteOne', { document: true, query: false }, async function(nex
           console.log(`Cihaza bildirim gönderiliyor: ${device.token}`);
           console.log('WebSocket servisi mevcut:', !!global.wss);
           console.log('Gönderilecek mesaj:', {
-            type: 'songRemoved',
+            type: 'command',
+            command: 'songRemoved',
             data: {
               songId: this._id,
               playlistId: playlist._id
@@ -103,7 +103,8 @@ songSchema.pre('deleteOne', { document: true, query: false }, async function(nex
           });
           
           const sent = global.wss.sendToDevice(device.token, {
-            type: 'songRemoved',
+            type: 'command',
+            command: 'songRemoved',
             data: {
               songId: this._id,
               playlistId: playlist._id
