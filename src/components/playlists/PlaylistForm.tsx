@@ -66,7 +66,6 @@ export const PlaylistForm = ({
     },
   });
 
-  // Seçili şarkıları forma ekle
   useEffect(() => {
     if (selectedSongs.length > 0) {
       form.setValue('songs', selectedSongs.map(song => song._id));
@@ -87,7 +86,11 @@ export const PlaylistForm = ({
       formData.append("isShuffled", String(data.isShuffled));
       formData.append("createdBy", "system");
 
-      const response = await fetch("http://localhost:5000/api/playlists", {
+      const url = isEditing 
+        ? `http://localhost:5000/api/playlists/${initialData?._id}`
+        : "http://localhost:5000/api/playlists";
+
+      const response = await fetch(url, {
         method: isEditing ? "PATCH" : "POST",
         body: formData,
       });
@@ -103,13 +106,13 @@ export const PlaylistForm = ({
         description: "İşlem başarıyla tamamlandı",
       });
 
-      // Seçili şarkıları temizle
       clearSelection();
 
       if (onSuccess) {
         onSuccess();
       }
     } catch (error) {
+      console.error('Form submission error:', error);
       toast({
         variant: "destructive",
         title: "Hata",
