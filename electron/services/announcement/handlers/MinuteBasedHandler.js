@@ -6,7 +6,6 @@ class MinuteBasedHandler {
     this.store = new Store();
     this.lastPlayTimes = new Map();
     this.isProcessingAnnouncement = false;
-    this.wasPlaylistPlaying = false;
   }
 
   async check() {
@@ -25,7 +24,6 @@ class MinuteBasedHandler {
       announcement.scheduleType === 'minutes' &&
       new Date(announcement.startDate) <= now &&
       new Date(announcement.endDate) >= now &&
-      !this.isProcessingAnnouncement &&
       this.hasMinuteIntervalPassed(announcement)
     );
   }
@@ -33,7 +31,6 @@ class MinuteBasedHandler {
   hasMinuteIntervalPassed(announcement) {
     const lastPlayTime = this.lastPlayTimes.get(announcement._id) || 0;
     const minutesPassed = (Date.now() - lastPlayTime) / (1000 * 60);
-    console.log(`Minutes passed for ${announcement._id}: ${minutesPassed}`);
     return minutesPassed >= announcement.minuteInterval;
   }
 
@@ -47,45 +44,12 @@ class MinuteBasedHandler {
     }
 
     try {
-      this.isProcessingAnnouncement = true;
-
-      // Playlist durumunu senkron olarak kontrol et
-      const isPaused = await mainWindow.webContents.executeJavaScript(
-        'document.getElementById("audioPlayer").paused'
-      );
-      
-      this.wasPlaylistPlaying = !isPaused;
-      console.log('Current playlist state:', this.wasPlaylistPlaying ? 'playing' : 'paused');
-
-      // Anons bitince çalışacak event listener'ı ayarla
-      require('electron').ipcMain.once('announcement-ended', () => {
-        console.log('Announcement ended, cleanup started');
-        this.cleanupAnnouncement(mainWindow);
-      });
-
-      // Anonsu başlat
-      mainWindow.webContents.send('play-announcement', announcement);
-      
-      // Son çalma zamanını kaydet
+      // Dakika bazlı anonslar için öncelik 1
+      mainWindow.webContents.send('play-announcement', announcement, 1);
       this.lastPlayTimes.set(announcement._id, Date.now());
-      
     } catch (error) {
       console.error('Error processing announcement:', error);
-      this.cleanupAnnouncement(mainWindow);
     }
-  }
-
-  cleanupAnnouncement(mainWindow) {
-    console.log('Cleaning up announcement, playlist was:', this.wasPlaylistPlaying ? 'playing' : 'paused');
-    
-    this.isProcessingAnnouncement = false;
-
-    if (this.wasPlaylistPlaying) {
-      console.log('Resuming playlist playback');
-      mainWindow.webContents.send('resume-playback');
-    }
-
-    this.wasPlaylistPlaying = false;
   }
 }
 
