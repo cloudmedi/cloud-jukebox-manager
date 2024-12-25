@@ -8,8 +8,6 @@ const UIManager = require('./services/ui/UIManager');
 const AnnouncementAudioService = require('./services/audio/AnnouncementAudioService');
 const PlaylistInitializer = require('./services/playlist/PlaylistInitializer');
 const PlaybackStore = require('./services/playback/PlaybackStore');
-const NetworkStatus = require('./components/NetworkStatus');
-const NetworkStatusService = require('./services/network/NetworkStatusService');
 
 const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
@@ -187,18 +185,8 @@ ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
   }
 });
 
-// İlk yüklemede playlistleri göster ve network durumunu başlat
+// İlk yüklemede playlistleri göster
 document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM loaded, displaying playlists');
   displayPlaylists();
-
-  // Initialize network status monitoring
-  const networkStatus = new NetworkStatus();
-  networkStatus.mount(document.body);
-
-  NetworkStatusService.addListener((status) => {
-    networkStatus.render(status.status, status.strength);
-  });
-
-  NetworkStatusService.startMonitoring();
 });
