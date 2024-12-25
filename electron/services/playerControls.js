@@ -1,10 +1,18 @@
-const { ipcMain, globalShortcut } = require('electron');
+const { ipcMain, globalShortcut, app } = require('electron');
 const audioPlayer = require('./audioPlayer').getInstance();
 
 class PlayerControls {
   constructor() {
-    this.registerKeyboardShortcuts();
     this.setupAudioTransitions();
+    
+    // Only register shortcuts if app is ready, otherwise wait
+    if (app.isReady()) {
+      this.registerKeyboardShortcuts();
+    } else {
+      app.whenReady().then(() => {
+        this.registerKeyboardShortcuts();
+      });
+    }
   }
 
   registerKeyboardShortcuts() {
