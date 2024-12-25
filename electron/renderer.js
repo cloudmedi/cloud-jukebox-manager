@@ -7,8 +7,6 @@ const playbackStateManager = require('./services/audio/PlaybackStateManager');
 const UIManager = require('./services/ui/UIManager');
 const AnnouncementAudioService = require('./services/audio/AnnouncementAudioService');
 const PlaylistInitializer = require('./services/playlist/PlaylistInitializer');
-const PlaylistDisplayManager = require('./services/playlist/PlaylistDisplayManager');
-const artworkManager = require('./services/artwork/ArtworkManager');
 
 const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
@@ -139,7 +137,7 @@ function displayPlaylists() {
     playlistElement.innerHTML = `
       <div class="playlist-info">
         ${lastPlaylist.artwork ? 
-          `<img src="file://${artworkManager.downloadArtwork(lastPlaylist.artwork, lastPlaylist._id)}" alt="${lastPlaylist.name}" class="playlist-artwork" onerror="this.src='/placeholder.svg'"/>` :
+          `<img src="${lastPlaylist.artwork}" alt="${lastPlaylist.name}" class="playlist-artwork"/>` :
           '<div class="playlist-artwork-placeholder"></div>'
         }
         <div class="playlist-details">
@@ -199,7 +197,7 @@ function deleteOldPlaylists() {
 }
 
 // WebSocket mesaj dinleyicileri
-ipcRenderer.on('playlist-received', async (event, playlist) => {
+ipcRenderer.on('playlist-received', (event, playlist) => {
   console.log('New playlist received:', playlist);
   
   const playlists = store.get('playlists', []);
@@ -222,11 +220,8 @@ ipcRenderer.on('playlist-received', async (event, playlist) => {
     ipcRenderer.invoke('load-playlist', playlist);
   }
   
-  // Artwork önbelleğini temizle
-  artworkManager.clearCache();
-  
-  // Playlistleri görüntüle
-  await PlaylistDisplayManager.displayPlaylists();
+  deleteOldPlaylists();
+  displayPlaylists();
   
   new Notification('Yeni Playlist', {
     body: `${playlist.name} playlist'i başarıyla indirildi.`
@@ -288,7 +283,7 @@ ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
 });
 
 // İlk yüklemede playlistleri göster
-document.addEventListener('DOMContentLoaded', async () => {
+document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM loaded, displaying playlists');
-  await PlaylistDisplayManager.displayPlaylists();
+  displayPlaylists();
 });
