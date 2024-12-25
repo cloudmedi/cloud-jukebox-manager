@@ -1,121 +1,137 @@
-const WebSocket = require('ws');
-const Store = require('electron-store');
-const { app } = require('electron');
-const playlistHandler = require('./playlist/PlaylistHandler');
-const DeleteAnnouncementHandler = require('./announcement/handlers/DeleteAnnouncementHandler');
-const CommandHandler = require('./handlers/CommandHandler');
-const store = new Store();
-
 class WebSocketService {
-  constructor() {
-    this.ws = null;
-    this.messageHandlers = new Map();
-    this.deleteAnnouncementHandler = new DeleteAnnouncementHandler(this);
-    this.setupHandlers();
+  private static instance: WebSocketService;
+  private ws: WebSocket | null = null;
+  private messageHandlers: Map<string, Set<(data: any) => void>> = new Map();
+  private reconnectTimeout: NodeJS.Timeout | null = null;
+  private isConnecting: boolean = false;
+
+  private constructor() {
     this.connect();
   }
 
-  setupHandlers() {
-    this.addMessageHandler('auth', (message) => {
-      console.log('Auth message received:', message);
-      if (message.success) {
-        store.set('deviceInfo', { token: message.token });
-      }
-    });
-
-    this.addMessageHandler('playlist', async (message) => {
-      console.log('Playlist message received:', message);
-      try {
-        const updatedPlaylist = await playlistHandler.handlePlaylist(message.data);
-        const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
-        if (mainWindow) {
-          mainWindow.webContents.send('playlist-received', updatedPlaylist);
-          console.log('Playlist update sent to renderer');
-        }
-      } catch (error) {
-        console.error('Error handling playlist message:', error);
-      }
-    });
-
-    this.addMessageHandler('command', (message) => {
-      console.log('Command message received:', message);
-      CommandHandler.handleCommand(message);
-    });
+  public static getInstance(): WebSocketService {
+    if (!WebSocketService.instance) {
+      WebSocketService.instance = new WebSocketService();
+    }
+    return WebSocketService.instance;
   }
 
-  connect() {
-    const deviceInfo = store.get('deviceInfo');
-    if (!deviceInfo || !deviceInfo.token) {
-      console.log('No device info found');
+  private connect() {
+    if (this.isConnecting || (this.ws && this.ws.readyState === WebSocket.OPEN)) {
       return;
     }
 
-    this.ws = new WebSocket('ws://localhost:5000');
+    this.isConnecting = true;
+    
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
 
-    this.ws.on('open', () => {
-      console.log('WebSocket connected');
-      this.sendAuth(deviceInfo.token);
-      const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
-      if (mainWindow) {
-        mainWindow.webContents.send('websocket-status', true);
+    this.ws = new WebSocket('ws://localhost:5000/admin');
+
+    this.ws.onopen = () => {
+      console.log('Admin WebSocket bağlantısı kuruldu');
+      this.isConnecting = false;
+      if (this.reconnectTimeout) {
+        clearTimeout(this.reconnectTimeout);
+        this.reconnectTimeout = null;
       }
-    });
+    };
 
-    this.ws.on('message', (data) => {
+    this.ws.onmessage = (event) => {
       try {
-        const message = JSON.parse(data);
-        console.log('Received message:', message);
+        const message = JSON.parse(event.data);
+        console.log('WebSocket message received:', message);
         this.handleMessage(message);
       } catch (error) {
-        console.error('Error parsing message:', error);
+        console.error('Message parsing error:', error);
       }
-    });
+    };
 
-    this.ws.on('close', () => {
-      console.log('WebSocket disconnected, reconnecting...');
-      const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
-      if (mainWindow) {
-        mainWindow.webContents.send('websocket-status', false);
-      }
-      setTimeout(() => this.connect(), 5000);
-    });
+    this.ws.onclose = () => {
+      console.log('WebSocket bağlantısı kapandı, yeniden bağlanılıyor...');
+      this.isConnecting = false;
+      this.scheduleReconnect();
+    };
 
-    this.ws.on('error', (error) => {
+    this.ws.onerror = (error) => {
       console.error('WebSocket error:', error);
-    });
+      this.isConnecting = false;
+      this.scheduleReconnect();
+    };
   }
 
-  sendAuth(token) {
-    this.sendMessage({
-      type: 'auth',
-      token: token
-    });
+  private scheduleReconnect() {
+    if (!this.reconnectTimeout) {
+      this.reconnectTimeout = setTimeout(() => {
+        this.connect();
+      }, 5000);
+    }
   }
 
-  sendMessage(message) {
+  private handleMessage(message: any) {
+    console.log('Handling WebSocket message:', message);
+    
+    if (message.type === 'command') {
+      const CommandHandler = require('./handlers/CommandHandler');
+      CommandHandler.handleCommand(message);
+      return;
+    }
+    
+    const handlers = this.messageHandlers.get(message.type);
+    if (handlers) {
+      handlers.forEach(handler => {
+        try {
+          handler(message);
+        } catch (error) {
+          console.error(`Handler error for message type ${message.type}:`, error);
+        }
+      });
+    } else {
+      console.log('No handlers for message type:', message.type);
+    }
+  }
+
+  public addMessageHandler(type: string, handler: (data: any) => void) {
+    if (!this.messageHandlers.has(type)) {
+      this.messageHandlers.set(type, new Set());
+    }
+    this.messageHandlers.get(type)?.add(handler);
+  }
+
+  public removeMessageHandler(type: string, handler: (data: any) => void) {
+    const handlers = this.messageHandlers.get(type);
+    if (handlers) {
+      handlers.delete(handler);
+      if (handlers.size === 0) {
+        this.messageHandlers.delete(type);
+      }
+    }
+  }
+
+  public sendMessage(message: any) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       this.ws.send(JSON.stringify(message));
     } else {
-      console.error('WebSocket connection not ready');
+      console.error('WebSocket bağlantısı kurulamadı, yeniden bağlanılıyor...');
+      this.connect();
     }
   }
 
-  handleMessage(message) {
-    const handler = this.messageHandlers.get(message.type);
-    if (handler) {
-      handler(message);
-    } else {
-      console.log('No handler for message type:', message.type);
+  public cleanup() {
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
     }
-  }
-
-  addMessageHandler(type, handler) {
-    this.messageHandlers.set(type, handler);
-  }
-
-  removeMessageHandler(type) {
-    this.messageHandlers.delete(type);
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+    this.messageHandlers.clear();
+    this.isConnecting = false;
   }
 }
 
-module.exports = new WebSocketService();
+const websocketService = WebSocketService.getInstance();
+export default websocketService;
