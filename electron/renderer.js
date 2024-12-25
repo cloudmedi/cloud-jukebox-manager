@@ -237,6 +237,7 @@ ipcRenderer.on('songRemoved', (event, { songId, playlistId }) => {
   
   if (playlistIndex !== -1) {
     console.log('Playlist bulundu:', playlistId);
+    
     // Playlistten şarkıyı kaldır
     const removedSong = playlists[playlistIndex].songs.find(s => s._id === songId);
     playlists[playlistIndex].songs = playlists[playlistIndex].songs.filter(
