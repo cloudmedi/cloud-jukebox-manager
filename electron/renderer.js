@@ -6,6 +6,7 @@ const AudioEventHandler = require('./services/audio/AudioEventHandler');
 const playbackStateManager = require('./services/audio/PlaybackStateManager');
 const UIManager = require('./services/ui/UIManager');
 const AnnouncementAudioService = require('./services/audio/AnnouncementAudioService');
+const PlaylistInitializer = require('./services/playlist/PlaylistInitializer');
 
 const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
@@ -99,15 +100,20 @@ ipcRenderer.on('auto-play-playlist', (event, playlist) => {
   console.log('Auto-playing playlist:', playlist);
   if (playlist && playlist.songs && playlist.songs.length > 0) {
     const shouldAutoPlay = playbackStateManager.getPlaybackState();
-    displayPlaylists();
     
-    if (shouldAutoPlay) {
-      console.log('Auto-playing based on saved state');
-      ipcRenderer.invoke('play-playlist', playlist);
-    } else {
-      console.log('Not auto-playing due to saved state');
-      // Playlist'i yükle ama oynatma
-      ipcRenderer.invoke('load-playlist', playlist);
+    // Playlist'i başlat ve karıştır
+    const initializedPlaylist = PlaylistInitializer.initializePlaylist(playlist);
+    
+    if (initializedPlaylist) {
+      displayPlaylists();
+      
+      if (shouldAutoPlay) {
+        console.log('Auto-playing with initialized playlist');
+        ipcRenderer.invoke('play-playlist', initializedPlaylist.playlist);
+      } else {
+        console.log('Loading initialized playlist without auto-play');
+        ipcRenderer.invoke('load-playlist', initializedPlaylist.playlist);
+      }
     }
   }
 });

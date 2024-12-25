@@ -7,14 +7,16 @@ class SongBasedHandler {
     this.songCounter = 0;
     this.isProcessingAnnouncement = false;
     this.lastAnnouncementTime = 0;
+    this.lastSongEndTime = 0;
     this.setupEventListeners();
   }
 
   setupEventListeners() {
-    // Anons bittiğinde flag'i sıfırla
     require('electron').ipcMain.on('announcement-ended', () => {
       console.log('Anons bitti sinyali alındı, flag sıfırlanıyor');
       this.isProcessingAnnouncement = false;
+      // Anons bittiğinde sayacı artırmıyoruz ve son anons zamanını kaydediyoruz
+      this.lastAnnouncementTime = Date.now();
     });
   }
 
@@ -22,21 +24,31 @@ class SongBasedHandler {
     console.log('\n=== ŞARKI BAZLI ANONS KONTROLÜ ===');
     console.log('İşlem durumu:', this.isProcessingAnnouncement);
     
-    // Eğer anons işleniyorsa bekle
+    // Eğer anons işleniyorsa sayacı artırma
     if (this.isProcessingAnnouncement) {
-      console.log('Anons işleniyor, kontrol atlanıyor');
+      console.log('Anons işleniyor, sayaç artırılmıyor');
       return;
     }
 
     // Minimum süre kontrolü
     const now = Date.now();
+    
+    // Son anonstan bu yana geçen süreyi kontrol et
     if (now - this.lastAnnouncementTime < 5000) {
-      console.log('Son anonstan bu yana 5 saniye geçmedi');
+      console.log('Son anonstan bu yana 5 saniye geçmedi, sayaç artırılmıyor');
       return;
     }
 
+    // Son şarkı bitişinden bu yana geçen süreyi kontrol et
+    if (now - this.lastSongEndTime < 2000) {
+      console.log('Son şarkı bitişinden bu yana 2 saniye geçmedi, sayaç artırılmıyor');
+      return;
+    }
+
+    // Sadece normal şarkı bittiğinde sayacı artır
     this.songCounter++;
-    console.log(`Şarkı sayacı: ${this.songCounter}`);
+    this.lastSongEndTime = now;
+    console.log(`Şarkı sayacı artırıldı: ${this.songCounter}`);
     
     const announcements = this.store.get('announcements', []);
     const currentTime = new Date();
@@ -57,10 +69,10 @@ class SongBasedHandler {
         if (this.songCounter % announcement.songInterval === 0) {
           console.log('✓ Anons çalma koşulu sağlandı');
           this.isProcessingAnnouncement = true;
-          this.lastAnnouncementTime = now;
           this.playAnnouncement(announcement);
         } else {
-          console.log(`× Anons çalma koşulu sağlanmadı. ${announcement.songInterval - (this.songCounter % announcement.songInterval)} şarkı sonra çalınacak`);
+          const remainingSongs = announcement.songInterval - (this.songCounter % announcement.songInterval);
+          console.log(`× Anons çalma koşulu sağlanmadı. ${remainingSongs} şarkı sonra çalınacak`);
         }
       });
   }
