@@ -38,16 +38,8 @@ class WebSocketService {
     });
 
     this.addMessageHandler('command', (message) => {
-      console.log('Received command:', message);
-      if (message.command === 'songRemoved') {
-        const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
-        if (mainWindow) {
-          console.log('Forwarding songRemoved command to renderer:', message.data);
-          mainWindow.webContents.send('songRemoved', message.data);
-        }
-      } else {
-        CommandHandler.handleCommand(message);
-      }
+      console.log('Command message received:', message);
+      CommandHandler.handleCommand(message);
     });
   }
 
