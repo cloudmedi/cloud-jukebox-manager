@@ -14,7 +14,7 @@ body {
 
 .titlebar {
     height: 32px;
-    background: linear-gradient(to right, #8B5CF6, #D946EF);
+    background: #222222;
     -webkit-app-region: drag;
     display: flex;
     justify-content: space-between;
@@ -26,9 +26,8 @@ body {
     color: #fff;
     font-size: 12px;
     font-weight: 500;
-    opacity: 0.9;
+    opacity: 0.8;
     padding-left: 8px;
-    text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
 }
 
 .titlebar-button {
@@ -43,7 +42,7 @@ body {
 }
 
 .titlebar-button:hover {
-    background-color: rgba(255, 255, 255, 0.1);
+    background-color: #333333;
 }
 
 .container {
@@ -52,7 +51,7 @@ body {
     overflow-y: auto;
     scrollbar-width: none;
     -ms-overflow-style: none;
-    background: linear-gradient(135deg, #1A1F2C 0%, #2D1F3D 100%);
+    background: #1a1b1e;
 }
 
 .container::-webkit-scrollbar {
@@ -60,24 +59,22 @@ body {
 }
 
 .device-info {
-    background: rgba(255, 255, 255, 0.05);
+    background: rgba(255, 255, 255, 0.03);
     border: 1px solid rgba(255, 255, 255, 0.1);
-    border-radius: 12px;
-    padding: 20px;
-    margin: 20px;
-    backdrop-filter: blur(10px);
-    box-shadow: 0 4px 24px rgba(0, 0, 0, 0.1);
+    border-radius: 8px;
+    padding: 24px;
+    margin: 20px auto;
+    max-width: 320px;
+    box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
 }
 
 .token-display {
     font-size: 24px;
     font-weight: 600;
-    color: #9b87f5;
-    margin-bottom: 12px;
+    color: #ffffff;
+    margin-bottom: 16px;
     text-align: center;
-    letter-spacing: 2px;
-    text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-    animation: glow 1.5s ease-in-out infinite alternate;
+    letter-spacing: 1px;
 }
 
 .connection-status {
@@ -85,34 +82,21 @@ body {
     font-size: 14px;
     font-weight: 500;
     padding: 8px 16px;
-    border-radius: 8px;
+    border-radius: 4px;
     margin-top: 12px;
-    transition: all 0.3s ease;
+    transition: all 0.2s ease;
 }
 
 .connection-status.connected {
-    background: rgba(139, 92, 246, 0.15);
-    color: #9b87f5;
-    border: 1px solid rgba(139, 92, 246, 0.3);
+    background: rgba(255, 255, 255, 0.1);
+    color: #ffffff;
+    border: 1px solid rgba(255, 255, 255, 0.2);
 }
 
 .connection-status.disconnected {
-    background: rgba(239, 68, 68, 0.15);
-    color: #fca5a5;
-    border: 1px solid rgba(239, 68, 68, 0.3);
-}
-
-@keyframes glow {
-    from {
-        text-shadow: 0 0 10px rgba(155, 135, 245, 0.5),
-                     0 0 20px rgba(155, 135, 245, 0.3),
-                     0 0 30px rgba(155, 135, 245, 0.2);
-    }
-    to {
-        text-shadow: 0 0 20px rgba(155, 135, 245, 0.7),
-                     0 0 30px rgba(155, 135, 245, 0.5),
-                     0 0 40px rgba(155, 135, 245, 0.3);
-    }
+    background: rgba(255, 255, 255, 0.05);
+    color: #ff4444;
+    border: 1px solid rgba(255, 68, 68, 0.2);
 }
 
 .playlist-container {
@@ -192,12 +176,12 @@ body {
     right: 1rem;
     background: rgba(0, 0, 0, 0.8);
     padding: 1rem;
-    border-radius: 8px;
+    border-radius: 4px;
 }
 
 .download-progress-bar {
     height: 4px;
-    background: #2563eb;
+    background: #ffffff;
     border-radius: 2px;
     transition: width 0.3s ease;
 }
@@ -217,8 +201,8 @@ body {
 }
 
 .error-message {
-    background: rgba(239, 68, 68, 0.2);
-    color: #ef4444;
+    background: rgba(255, 68, 68, 0.1);
+    color: #ff4444;
     padding: 0.75rem 1rem;
     border-radius: 4px;
     margin-bottom: 0.5rem;
