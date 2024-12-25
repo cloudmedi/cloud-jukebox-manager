@@ -12,7 +12,7 @@ const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
 
 // Initialize volume
-playlistAudio.volume = 0.7; // 70%
+playlistAudio.volume = 0.7;
 
 document.getElementById('closeButton').addEventListener('click', () => {
     window.close();
@@ -137,7 +137,7 @@ function displayPlaylists() {
     playlistElement.innerHTML = `
       <div class="playlist-info">
         ${lastPlaylist.artwork ? 
-          `<img src="${lastPlaylist.artwork}" alt="${lastPlaylist.name}" class="playlist-artwork"/>` :
+          `<img src="file://${lastPlaylist.artwork}" alt="${lastPlaylist.name}" class="playlist-artwork" onerror="this.src='placeholder.svg'"/>` :
           '<div class="playlist-artwork-placeholder"></div>'
         }
         <div class="playlist-details">
