@@ -176,3 +176,22 @@ body {
         opacity: 1;
     }
 }
+
+/* Network Status Styles */
+.network-status {
+    z-index: 1000;
+    cursor: pointer;
+    padding: 8px;
+    border-radius: 50%;
+    background: rgba(0, 0, 0, 0.1);
+    backdrop-filter: blur(8px);
+}
+
+.network-status:hover {
+    background: rgba(0, 0, 0, 0.2);
+}
+
+.tooltip {
+    white-space: nowrap;
+    z-index: 1001;
+}
