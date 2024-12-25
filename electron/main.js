@@ -11,13 +11,14 @@ let tray = null;
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 400,
-    height: 600,
+    height: 300,
     minWidth: 400,
+    minHeight: 300,
     maxWidth: 400,
-    minHeight: 600,
-    maxHeight: 600,
+    maxHeight: 300,
     resizable: false,
     backgroundColor: '#1a1b1e',
+    titleBarStyle: 'hidden',
     frame: false,
     webPreferences: {
       nodeIntegration: true,

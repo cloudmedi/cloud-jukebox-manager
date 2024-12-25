@@ -118,47 +118,132 @@ ipcRenderer.on('auto-play-playlist', (event, playlist) => {
   }
 });
 
-// Token doğrulandığında player'ı göster
-ipcRenderer.on('token-validated', () => {
-  document.querySelector('.system-info').style.display = 'none';
-  document.getElementById('player').style.display = 'block';
-});
-
-// Player güncelleme fonksiyonu
-function updatePlayer(song) {
-  if (!song) return;
+function displayPlaylists() {
+  const playlists = store.get('playlists', []);
+  const playlistContainer = document.getElementById('playlistContainer');
   
-  const albumArt = document.getElementById('albumArt');
-  const trackName = document.querySelector('.track-name');
-  const trackArtist = document.querySelector('.track-artist');
-  
-  albumArt.src = song.artwork ? `http://localhost:5000${song.artwork}` : '/placeholder.svg';
-  trackName.textContent = song.name;
-  trackArtist.textContent = song.artist;
-}
-
-// Progress bar güncelleme
-function updateProgress(progress) {
-  document.querySelector('.progress-bar').style.width = `${progress * 100}%`;
-}
-
-// Player kontrolleri
-document.getElementById('playButton').addEventListener('click', () => {
-  // Play/Pause toggle
-  const isPlaying = document.querySelector('.play-button').classList.contains('playing');
-  if (isPlaying) {
-    ipcRenderer.send('pause-playback');
-  } else {
-    ipcRenderer.send('resume-playback');
+  if (!playlistContainer) {
+    console.error('Playlist container not found');
+    return;
   }
+  
+  playlistContainer.innerHTML = '';
+  
+  // Son playlist'i göster
+  const lastPlaylist = playlists[playlists.length - 1];
+  if (lastPlaylist) {
+    const playlistElement = document.createElement('div');
+    playlistElement.className = 'playlist-item';
+    playlistElement.innerHTML = `
+      <div class="playlist-info">
+        ${lastPlaylist.artwork ? 
+          `<img src="${lastPlaylist.artwork}" alt="${lastPlaylist.name}" class="playlist-artwork"/>` :
+          '<div class="playlist-artwork-placeholder"></div>'
+        }
+        <div class="playlist-details">
+          <h3>${lastPlaylist.name}</h3>
+          <p>${lastPlaylist.songs[0]?.artist || 'Unknown Artist'}</p>
+          <p>${lastPlaylist.songs[0]?.name || 'No songs'}</p>
+        </div>
+      </div>
+    `;
+    
+    playlistContainer.appendChild(playlistElement);
+    console.log('Displayed playlist:', lastPlaylist.name);
+  }
+}
+
+function deleteOldPlaylists() {
+  const playlists = store.get('playlists', []);
+  
+  // Son playlist hariç tüm playlistleri sil
+  if (playlists.length > 1) {
+    const latestPlaylist = playlists[playlists.length - 1];
+    
+    // Eski playlistlerin şarkı dosyalarını ve klasörlerini sil
+    playlists.slice(0, -1).forEach(playlist => {
+      playlist.songs.forEach(song => {
+        if (song.localPath) {
+          try {
+            // Şarkı dosyasını sil
+            fs.unlinkSync(song.localPath);
+            console.log(`Deleted song file: ${song.localPath}`);
+            
+            // Şarkının bulunduğu klasörü bul
+            const playlistDir = path.dirname(song.localPath);
+            
+            // Klasördeki tüm dosyaları sil
+            const files = fs.readdirSync(playlistDir);
+            files.forEach(file => {
+              const filePath = path.join(playlistDir, file);
+              fs.unlinkSync(filePath);
+              console.log(`Deleted file: ${filePath}`);
+            });
+            
+            // Boş klasörü sil
+            fs.rmdirSync(playlistDir);
+            console.log(`Deleted playlist directory: ${playlistDir}`);
+          } catch (error) {
+            console.error(`Error deleting files/directory: ${error}`);
+          }
+        }
+      });
+    });
+    
+    // Store'u güncelle, sadece son playlisti tut
+    store.set('playlists', [latestPlaylist]);
+    console.log('Kept only the latest playlist:', latestPlaylist.name);
+  }
+}
+
+// WebSocket mesaj dinleyicileri
+ipcRenderer.on('playlist-received', (event, playlist) => {
+  console.log('New playlist received:', playlist);
+  
+  const playlists = store.get('playlists', []);
+  const existingIndex = playlists.findIndex(p => p._id === playlist._id);
+  
+  if (existingIndex !== -1) {
+    playlists[existingIndex] = playlist;
+  } else {
+    playlists.push(playlist);
+  }
+  
+  store.set('playlists', playlists);
+  
+  const shouldAutoPlay = playbackStateManager.getPlaybackState();
+  if (shouldAutoPlay) {
+    console.log('Auto-playing new playlist:', playlist);
+    ipcRenderer.invoke('play-playlist', playlist);
+  } else {
+    console.log('Loading new playlist without auto-play');
+    ipcRenderer.invoke('load-playlist', playlist);
+  }
+  
+  deleteOldPlaylists();
+  displayPlaylists();
+  
+  new Notification('Yeni Playlist', {
+    body: `${playlist.name} playlist'i başarıyla indirildi.`
+  });
 });
 
-document.getElementById('prevButton').addEventListener('click', () => {
-  ipcRenderer.send('previous-track');
+// Audio event listeners
+playlistAudio.addEventListener('ended', () => {
+  console.log('Song ended, playing next');
+  ipcRenderer.invoke('song-ended');
 });
 
-document.getElementById('nextButton').addEventListener('click', () => {
-  ipcRenderer.send('next-track');
+ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
+  console.log('Updating player with song:', currentSong);
+  if (currentSong && currentSong.localPath) {
+    const normalizedPath = currentSong.localPath.replace(/\\/g, '/');
+    playlistAudio.src = normalizedPath;
+    playlistAudio.play().catch(err => console.error('Playback error:', err));
+    
+    // Şarkı değiştiğinde görsel bilgileri güncelle
+    displayPlaylists();
+  }
 });
 
 // İlk yüklemede playlistleri göster
