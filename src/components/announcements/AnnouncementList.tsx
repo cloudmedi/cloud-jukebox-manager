@@ -1,10 +1,17 @@
 import { useQuery } from "@tanstack/react-query";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Card } from "@/components/ui/card";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { format } from "date-fns";
 import { Badge } from "@/components/ui/badge";
 import { Volume2, Clock, Users } from "lucide-react";
 import { AnnouncementActions } from "./AnnouncementActions";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 export const AnnouncementList = () => {
   const { data: announcements = [] } = useQuery({
@@ -43,14 +50,13 @@ export const AnnouncementList = () => {
   };
 
   return (
-    <ScrollArea className="h-[calc(100vh-12rem)] w-full rounded-md border">
+    <Card className="p-6">
       <Table>
         <TableHeader>
           <TableRow>
             <TableHead>Başlık</TableHead>
-            <TableHead>Zamanlama Türü</TableHead>
-            <TableHead>Başlangıç</TableHead>
-            <TableHead>Bitiş</TableHead>
+            <TableHead>Zamanlama</TableHead>
+            <TableHead>Tarih Aralığı</TableHead>
             <TableHead>Hedefler</TableHead>
             <TableHead>Durum</TableHead>
             <TableHead className="text-right">İşlemler</TableHead>
@@ -60,9 +66,11 @@ export const AnnouncementList = () => {
           {announcements.map((announcement: any) => (
             <TableRow key={announcement._id}>
               <TableCell className="font-medium">
-                <div>
-                  <p className="font-semibold">{announcement.title}</p>
-                  <p className="text-sm text-muted-foreground">{announcement.content}</p>
+                <div className="flex flex-col">
+                  <span>{announcement.title}</span>
+                  <span className="text-sm text-muted-foreground">
+                    {announcement.content}
+                  </span>
                 </div>
               </TableCell>
               <TableCell>
@@ -82,10 +90,14 @@ export const AnnouncementList = () => {
                 </div>
               </TableCell>
               <TableCell>
-                {format(new Date(announcement.startDate), "dd.MM.yyyy HH:mm")}
-              </TableCell>
-              <TableCell>
-                {format(new Date(announcement.endDate), "dd.MM.yyyy HH:mm")}
+                <div className="flex flex-col text-sm">
+                  <span>
+                    Başlangıç: {format(new Date(announcement.startDate), "dd.MM.yyyy HH:mm")}
+                  </span>
+                  <span>
+                    Bitiş: {format(new Date(announcement.endDate), "dd.MM.yyyy HH:mm")}
+                  </span>
+                </div>
               </TableCell>
               <TableCell>
                 <div className="flex items-center gap-2">
@@ -104,6 +116,6 @@ export const AnnouncementList = () => {
           ))}
         </TableBody>
       </Table>
-    </ScrollArea>
+    </Card>
   );
 };
