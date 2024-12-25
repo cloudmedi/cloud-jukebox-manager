@@ -7,6 +7,7 @@
 </head>
 <body>
     <div class="titlebar">
+        <div class="version">CloudMedia v2.1</div>
         <button class="titlebar-button close" id="closeButton">✕</button>
     </div>
     <div class="container">
@@ -14,28 +15,41 @@
         <div id="deviceInfo" class="device-info">
             <div class="token-display"></div>
             <div class="connection-status"></div>
-            <div class="system-info"></div>
+            <div class="system-info" style="display: none;"></div>
         </div>
 
-        <!-- Playlist Container -->
-        <div id="playlistContainer" class="playlist-container">
-            <!-- Playlistler buraya eklenecek -->
+        <!-- Modern Player Interface -->
+        <div id="player" class="player" style="display: none;">
+            <div class="artwork">
+                <img src="/placeholder.svg" alt="Album Art" id="albumArt">
+            </div>
+            <div class="track-info">
+                <h3 class="track-name">-</h3>
+                <p class="track-artist">-</p>
+            </div>
+            <div class="progress">
+                <div class="progress-bar"></div>
+            </div>
+            <div class="controls">
+                <button class="control-button" id="prevButton">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="19 20 9 12 19 4 19 20"></polygon>
+                        <line x1="5" y1="19" x2="5" y2="5"></line>
+                    </svg>
+                </button>
+                <button class="control-button play-button" id="playButton">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="5 3 19 12 5 21 5 3"></polygon>
+                    </svg>
+                </button>
+                <button class="control-button" id="nextButton">
+                    <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <polygon points="5 4 15 12 5 20 5 4"></polygon>
+                        <line x1="19" y1="5" x2="19" y2="19"></line>
+                    </svg>
+                </button>
+            </div>
         </div>
-        
-        <!-- Ana playlist için audio element -->
-        <audio id="audioPlayer"></audio>
-        
-        <!-- Kampanyalar için ikinci audio element -->
-        <audio id="campaignPlayer"></audio>
-        
-        <!-- İndirme Progress Bar -->
-        <div class="download-progress" style="display: none;">
-            <div class="download-progress-bar"></div>
-            <div class="download-progress-text"></div>
-        </div>
-
-        <!-- Hata Mesajları -->
-        <div id="errorContainer" class="error-container"></div>
     </div>
     <script src="renderer.js"></script>
 </body>
