@@ -139,12 +139,30 @@ router.patch('/:id', async (req, res) => {
 // Şarkı sil
 router.delete('/:id', async (req, res) => {
   try {
-    const deletedSong = await Song.findByIdAndDelete(req.params.id);
-    if (!deletedSong) {
+    const song = await Song.findById(req.params.id);
+    if (!song) {
       return res.status(404).json({ message: 'Şarkı bulunamadı' });
     }
-    res.json({ message: 'Şarkı silindi' });
+
+    // Şarkı dosyasını sil
+    if (song.filePath && fs.existsSync(song.filePath)) {
+      fs.unlinkSync(song.filePath);
+    }
+
+    // Artwork dosyasını sil
+    if (song.artwork) {
+      const artworkPath = path.join('uploads', song.artwork);
+      if (fs.existsSync(artworkPath)) {
+        fs.unlinkSync(artworkPath);
+      }
+    }
+
+    // Şarkıyı veritabanından sil (bu işlem pre-remove hook'unu tetikleyecek)
+    await song.remove();
+
+    res.json({ message: 'Şarkı başarıyla silindi' });
   } catch (error) {
+    console.error('Şarkı silme hatası:', error);
     res.status(500).json({ message: error.message });
   }
 });

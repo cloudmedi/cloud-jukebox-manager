@@ -54,14 +54,47 @@ const songSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Şarkı silindiğinde playlistlerden referansını temizle
+// Şarkı silindiğinde playlistlerden ve cihazlardan kaldır
 songSchema.pre('remove', async function(next) {
-  const Playlist = mongoose.model('Playlist');
-  await Playlist.updateMany(
-    { songs: this._id },
-    { $pull: { songs: this._id } }
-  );
-  next();
+  try {
+    const Playlist = mongoose.model('Playlist');
+    const Device = mongoose.model('Device');
+
+    // Şarkıyı içeren playlistleri bul
+    const playlists = await Playlist.find({ songs: this._id });
+    
+    // Her playlist için şarkıyı kaldır ve cihazlara bildir
+    for (const playlist of playlists) {
+      // Playlistten şarkıyı kaldır
+      playlist.songs = playlist.songs.filter(songId => 
+        songId.toString() !== this._id.toString()
+      );
+      
+      // Playlist'i kaydet
+      await playlist.save();
+
+      // Bu playlist'i kullanan cihazları bul
+      const devices = await Device.find({ activePlaylist: playlist._id });
+      
+      // Her cihaza güncellenmiş playlist'i gönder
+      devices.forEach(device => {
+        if (global.wss) {
+          global.wss.sendToDevice(device.token, {
+            type: 'playlist',
+            data: {
+              ...playlist.toObject(),
+              baseUrl: process.env.BASE_URL || 'http://localhost:5000'
+            }
+          });
+        }
+      });
+    }
+
+    next();
+  } catch (error) {
+    console.error('Şarkı silme hatası:', error);
+    next(error);
+  }
 });
 
 const Song = mongoose.model('Song', songSchema);

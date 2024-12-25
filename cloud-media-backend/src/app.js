@@ -13,6 +13,7 @@ const server = http.createServer(app);
 
 // WebSocket sunucusunu başlat
 const wss = new WebSocketServer(server);
+global.wss = wss; // Global erişim için WSS'i kaydet
 const cleanupService = new AnnouncementCleanupService(wss);
 
 // Connect to MongoDB
@@ -68,3 +69,5 @@ process.on('SIGTERM', () => {
 server.listen(PORT, () => {
   console.log(`Server running on port ${PORT}`);
 });
+
+module.exports = app;
