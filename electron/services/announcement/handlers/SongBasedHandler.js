@@ -47,9 +47,6 @@ class SongBasedHandler {
           this.isProcessingAnnouncement = true;
           this.lastAnnouncementTime = now;
           this.playAnnouncement(announcement);
-          
-          // Sayacı sıfırla
-          this.songCounter = 0;
         } else {
           console.log(`× Anons çalma koşulu sağlanmadı. ${announcement.songInterval - (this.songCounter % announcement.songInterval)} şarkı sonra çalınacak`);
         }
