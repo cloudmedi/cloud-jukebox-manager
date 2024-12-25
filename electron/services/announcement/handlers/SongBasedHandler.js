@@ -11,10 +11,10 @@ class SongBasedHandler {
   }
 
   setupEventListeners() {
-    // Anons bittiğinde flag'i sıfırla
     require('electron').ipcMain.on('announcement-ended', () => {
       console.log('Anons bitti sinyali alındı, flag sıfırlanıyor');
       this.isProcessingAnnouncement = false;
+      // Anons bittiğinde sayacı artırmıyoruz
     });
   }
 
@@ -22,9 +22,9 @@ class SongBasedHandler {
     console.log('\n=== ŞARKI BAZLI ANONS KONTROLÜ ===');
     console.log('İşlem durumu:', this.isProcessingAnnouncement);
     
-    // Eğer anons işleniyorsa bekle
+    // Eğer anons işleniyorsa sayacı artırma
     if (this.isProcessingAnnouncement) {
-      console.log('Anons işleniyor, kontrol atlanıyor');
+      console.log('Anons işleniyor, sayaç artırılmıyor');
       return;
     }
 
@@ -35,8 +35,9 @@ class SongBasedHandler {
       return;
     }
 
+    // Sadece normal şarkı bittiğinde sayacı artır
     this.songCounter++;
-    console.log(`Şarkı sayacı: ${this.songCounter}`);
+    console.log(`Şarkı sayacı artırıldı: ${this.songCounter}`);
     
     const announcements = this.store.get('announcements', []);
     const currentTime = new Date();
