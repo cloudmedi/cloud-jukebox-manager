@@ -5,6 +5,7 @@ const StatusHandler = require('./handlers/StatusHandler');
 
 class WebSocketServer {
   constructor(server) {
+    console.log('WebSocket sunucusu başlatılıyor...');
     this.wss = new WebSocket.Server({ server });
     this.messageHandler = new MessageHandler(this);
     this.statusHandler = new StatusHandler(this);
@@ -213,13 +214,24 @@ class WebSocketServer {
   }
 
   sendToDevice(token, message) {
+    console.log(`Cihaza mesaj gönderiliyor - Token: ${token}`, message);
     let sent = false;
     this.wss.clients.forEach(client => {
       if (client.deviceToken === token && client.readyState === WebSocket.OPEN) {
-        client.send(JSON.stringify(message));
-        sent = true;
+        try {
+          client.send(JSON.stringify(message));
+          sent = true;
+          console.log(`Mesaj başarıyla gönderildi - Token: ${token}`);
+        } catch (error) {
+          console.error(`Mesaj gönderme hatası - Token: ${token}:`, error);
+        }
       }
     });
+    
+    if (!sent) {
+      console.log(`Mesaj gönderilemedi - Token: ${token} - Cihaz bulunamadı veya bağlı değil`);
+    }
+    
     return sent;
   }
 
