@@ -1,6 +1,7 @@
 const { ipcRenderer } = require('electron');
 const Store = require('electron-store');
 const fs = require('fs');
+const path = require('path');
 const store = new Store();
 const AudioEventHandler = require('./services/audio/AudioEventHandler');
 const playbackStateManager = require('./services/audio/PlaybackStateManager');
@@ -134,10 +135,33 @@ function displayPlaylists() {
   if (lastPlaylist) {
     const playlistElement = document.createElement('div');
     playlistElement.className = 'playlist-item';
+    
+    // Artwork URL'sini düzelt
+    let artworkSrc = '';
+    if (lastPlaylist.artwork) {
+      // Eğer artwork uzak sunucudan geliyorsa
+      if (lastPlaylist.artwork.startsWith('http')) {
+        artworkSrc = lastPlaylist.artwork;
+      } 
+      // Eğer artwork yerel dosya sisteminde ise
+      else if (fs.existsSync(lastPlaylist.artwork)) {
+        artworkSrc = `file://${lastPlaylist.artwork}`;
+      }
+      // Eğer artwork sunucu yoluysa
+      else {
+        artworkSrc = `http://localhost:5000${lastPlaylist.artwork}`;
+      }
+    }
+
     playlistElement.innerHTML = `
       <div class="playlist-info">
-        ${lastPlaylist.artwork ? 
-          `<img src="${lastPlaylist.artwork}" alt="${lastPlaylist.name}" class="playlist-artwork"/>` :
+        ${artworkSrc ? 
+          `<img 
+            src="${artworkSrc}" 
+            alt="${lastPlaylist.name}" 
+            class="playlist-artwork"
+            onerror="this.onerror=null; this.src='placeholder.svg';"
+          />` :
           '<div class="playlist-artwork-placeholder"></div>'
         }
         <div class="playlist-details">
@@ -149,50 +173,7 @@ function displayPlaylists() {
     `;
     
     playlistContainer.appendChild(playlistElement);
-    console.log('Displayed playlist:', lastPlaylist.name);
-  }
-}
-
-function deleteOldPlaylists() {
-  const playlists = store.get('playlists', []);
-  
-  // Son playlist hariç tüm playlistleri sil
-  if (playlists.length > 1) {
-    const latestPlaylist = playlists[playlists.length - 1];
-    
-    // Eski playlistlerin şarkı dosyalarını ve klasörlerini sil
-    playlists.slice(0, -1).forEach(playlist => {
-      playlist.songs.forEach(song => {
-        if (song.localPath) {
-          try {
-            // Şarkı dosyasını sil
-            fs.unlinkSync(song.localPath);
-            console.log(`Deleted song file: ${song.localPath}`);
-            
-            // Şarkının bulunduğu klasörü bul
-            const playlistDir = path.dirname(song.localPath);
-            
-            // Klasördeki tüm dosyaları sil
-            const files = fs.readdirSync(playlistDir);
-            files.forEach(file => {
-              const filePath = path.join(playlistDir, file);
-              fs.unlinkSync(filePath);
-              console.log(`Deleted file: ${filePath}`);
-            });
-            
-            // Boş klasörü sil
-            fs.rmdirSync(playlistDir);
-            console.log(`Deleted playlist directory: ${playlistDir}`);
-          } catch (error) {
-            console.error(`Error deleting files/directory: ${error}`);
-          }
-        }
-      });
-    });
-    
-    // Store'u güncelle, sadece son playlisti tut
-    store.set('playlists', [latestPlaylist]);
-    console.log('Kept only the latest playlist:', latestPlaylist.name);
+    console.log('Displayed playlist:', lastPlaylist.name, 'with artwork:', artworkSrc);
   }
 }
 
