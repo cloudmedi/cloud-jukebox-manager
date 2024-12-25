@@ -11,11 +11,11 @@ let tray = null;
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 400,
-    height: 350,
+    height: 300,
     minWidth: 400,
-    minHeight: 350,
+    minHeight: 300,
     maxWidth: 400,
-    maxHeight: 350,
+    maxHeight: 300,
     resizable: false,
     backgroundColor: '#1a1b1e',
     titleBarStyle: 'hidden',
@@ -72,25 +72,10 @@ function createTray() {
     // Tray menüsünü oluştur
     const contextMenu = Menu.buildFromTemplate([
       {
-        label: `Cloud Media Player v${app.getVersion()}`,
-        enabled: false
-      },
-      {
-        type: 'separator'
-      },
-      {
-        label: 'Now Playing',
-        enabled: false,
-        id: 'nowPlaying'
-      },
-      {
-        type: 'separator'
-      },
-      {
         label: 'Show App',
         click: function() {
           mainWindow.show();
-          mainWindow.focus();
+          mainWindow.focus(); // Pencereyi ön plana getir
         }
       },
       {
@@ -144,17 +129,6 @@ app.on('activate', () => {
 
 app.on('before-quit', () => {
   app.isQuitting = true;
-});
-
-ipcMain.on('update-tray-song', (event, songInfo) => {
-  if (tray) {
-    const contextMenu = tray.getContextMenu();
-    const nowPlayingItem = contextMenu.getMenuItemById('nowPlaying');
-    if (nowPlayingItem) {
-      nowPlayingItem.label = songInfo || 'No song playing';
-      tray.setContextMenu(contextMenu);
-    }
-  }
 });
 
 ipcMain.handle('save-device-info', async (event, deviceInfo) => {
