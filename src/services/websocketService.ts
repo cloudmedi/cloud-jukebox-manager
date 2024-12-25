@@ -70,53 +70,17 @@ class WebSocketService {
   }
 
   private handleMessage(message: any) {
-    console.log('Received message:', message);
-    
-    if (message.type === 'command') {
-      this.handleCommand(message);
+    const handlers = this.messageHandlers.get(message.type);
+    if (handlers) {
+      handlers.forEach(handler => {
+        try {
+          handler(message);
+        } catch (error) {
+          console.error(`Handler error for message type ${message.type}:`, error);
+        }
+      });
     } else {
-      const handlers = this.messageHandlers.get(message.type);
-      if (handlers) {
-        handlers.forEach(handler => {
-          try {
-            handler(message);
-          } catch (error) {
-            console.error(`Handler error for message type ${message.type}:`, error);
-          }
-        });
-      } else {
-        console.log('Unhandled message type:', message.type);
-      }
-    }
-  }
-
-  private handleCommand(message: any) {
-    console.log('Received command:', message);
-    const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
-    
-    switch (message.command) {
-      case 'restart':
-        console.log('Restarting application...');
-        require('electron').app.relaunch();
-        require('electron').app.exit(0);
-        break;
-
-      case 'songRemoved':
-        console.log('Processing songRemoved command:', message);
-        if (mainWindow) {
-          mainWindow.webContents.send('songRemoved', message.data);
-          console.log('Song removal notification sent to renderer');
-        }
-        break;
-        
-      default:
-        if (mainWindow) {
-          console.log('Forwarding command to renderer:', message.command);
-          mainWindow.webContents.send(message.command, message.data);
-        } else {
-          console.log('Unknown command:', message.command);
-        }
-        break;
+      console.log('Unhandled message type:', message.type);
     }
   }
 
