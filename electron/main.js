@@ -4,6 +4,8 @@ const Store = require('electron-store');
 const store = new Store();
 const websocketService = require('./services/websocketService');
 require('./services/audioService');
+const playerControls = require('./services/playerControls');
+const trayService = require('./services/trayService');
 
 let mainWindow;
 let tray = null;
@@ -11,11 +13,11 @@ let tray = null;
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 400,
-    height: 300,
+    height: 350,
     minWidth: 400,
-    minHeight: 300,
+    minHeight: 350,
     maxWidth: 400,
-    maxHeight: 300,
+    maxHeight: 350,
     resizable: false,
     backgroundColor: '#1a1b1e',
     titleBarStyle: 'hidden',
@@ -33,7 +35,6 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   }
 
-  // Pencere kapatıldığında sistem tepsisine küçült
   mainWindow.on('close', function (event) {
     if (!app.isQuitting) {
       event.preventDefault();
@@ -45,7 +46,6 @@ function createWindow() {
     return false;
   });
 
-  // Uygulama başladığında son kaydedilen playlist'i kontrol et
   const deviceInfo = store.get('deviceInfo');
   if (deviceInfo && deviceInfo.token) {
     websocketService.connect(deviceInfo.token);
@@ -59,23 +59,23 @@ function createWindow() {
       });
     }
   }
+
+  trayService.createTray(mainWindow);
 }
 
 function createTray() {
   try {
-    // Tray ikonu oluştur
     const iconPath = path.join(__dirname, 'icon.png');
     console.log('Tray icon path:', iconPath);
     
     tray = new Tray(iconPath);
     
-    // Tray menüsünü oluştur
     const contextMenu = Menu.buildFromTemplate([
       {
         label: 'Show App',
         click: function() {
           mainWindow.show();
-          mainWindow.focus(); // Pencereyi ön plana getir
+          mainWindow.focus();
         }
       },
       {
@@ -87,20 +87,17 @@ function createTray() {
       }
     ]);
 
-    // Tray ayarlarını yap
     tray.setToolTip('Cloud Media Player');
     tray.setContextMenu(contextMenu);
 
-    // Tray ikonuna çift tıklandığında uygulamayı göster
     tray.on('double-click', () => {
       mainWindow.show();
-      mainWindow.focus(); // Pencereyi ön plana getir
+      mainWindow.focus();
     });
     
-    // Tray ikonuna tek tıklandığında uygulamayı göster
     tray.on('click', () => {
       mainWindow.show();
-      mainWindow.focus(); // Pencereyi ön plana getir
+      mainWindow.focus();
     });
     
     console.log('Tray created successfully');
@@ -111,7 +108,7 @@ function createTray() {
 
 app.whenReady().then(() => {
   createWindow();
-  createTray(); // Uygulama başladığında tray'i oluştur
+  createTray();
 });
 
 app.on('window-all-closed', () => {
