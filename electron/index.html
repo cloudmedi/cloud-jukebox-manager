@@ -7,21 +7,35 @@
 </head>
 <body>
     <div class="titlebar">
-        <span class="version-info">CloudMedia v2.1</span>
         <button class="titlebar-button close" id="closeButton">✕</button>
     </div>
     <div class="container">
-        <div id="tokenScreen" class="token-screen">
+        <!-- Token ve Cihaz Bilgileri -->
+        <div id="deviceInfo" class="device-info">
             <div class="token-display"></div>
             <div class="connection-status"></div>
+            <div class="system-info"></div>
+        </div>
+
+        <!-- Playlist Container -->
+        <div id="playlistContainer" class="playlist-container">
+            <!-- Playlistler buraya eklenecek -->
         </div>
         
-        <div id="playerScreen" style="display: none;">
-            <div class="player-container">
-                <audio id="audioPlayer"></audio>
-                <audio id="campaignPlayer"></audio>
-            </div>
+        <!-- Ana playlist için audio element -->
+        <audio id="audioPlayer"></audio>
+        
+        <!-- Kampanyalar için ikinci audio element -->
+        <audio id="campaignPlayer"></audio>
+        
+        <!-- İndirme Progress Bar -->
+        <div class="download-progress" style="display: none;">
+            <div class="download-progress-bar"></div>
+            <div class="download-progress-text"></div>
         </div>
+
+        <!-- Hata Mesajları -->
+        <div id="errorContainer" class="error-container"></div>
     </div>
     <script src="renderer.js"></script>
 </body>
