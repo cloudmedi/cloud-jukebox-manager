@@ -64,12 +64,10 @@ class WebSocketService {
   }
 
   handleMessage(message) {
-    console.log('Mesaj işleniyor:', message);
     const handlers = this.messageHandlers.get(message.type);
     if (handlers) {
       handlers.forEach(handler => {
         try {
-          // Tüm mesaj yapısını handler'a gönder
           handler(message);
         } catch (error) {
           console.error(`Handler error for message type ${message.type}:`, error);
