@@ -1,102 +1,184 @@
-const { BrowserWindow } = require('electron');
+const { BrowserWindow, app } = require('electron');
+const { downloadFile } = require('./downloadUtils');
 const Store = require('electron-store');
-const fs = require('fs');
 const path = require('path');
+const fs = require('fs');
 
 class WebSocketMessageHandler {
   constructor() {
-    this.store = new Store();
     this.handlers = new Map();
+    this.store = new Store();
     this.initializeHandlers();
   }
 
   initializeHandlers() {
-    this.handlers.set('playlist', this.handlePlaylistMessage.bind(this));
+    this.handlers.set('playlist', this.handlePlaylist.bind(this));
+    this.handlers.set('command', this.handleCommand.bind(this));
+    this.handlers.set('songRemoved', this.handleSongRemoved.bind(this));
   }
 
-  async handlePlaylistMessage(message) {
-    console.log('Playlist message received:', message);
+  async handleMessage(message) {
+    console.log('Processing message:', message);
+    const handler = this.handlers.get(message.type);
     
-    if (message.action === 'songRemoved') {
-      await this.handleSongRemoved(message.data);
+    if (handler) {
+      try {
+        await handler(message);
+      } catch (error) {
+        console.error('Message handling error:', error);
+        this.sendToRenderer('error', {
+          type: 'error',
+          message: error.message
+        });
+      }
+    } else {
+      console.warn('No handler found for message type:', message.type);
     }
   }
 
-  async handleSongRemoved({ songId, playlistId }) {
-    console.log('Handling song removal:', { songId, playlistId });
+  handleCommand(message) {
+    console.log('Handling command:', message);
+    const mainWindow = BrowserWindow.getAllWindows()[0];
+
+    switch (message.command) {
+      case 'restart':
+        console.log('Restarting application...');
+        setTimeout(() => {
+          app.relaunch();
+          app.exit(0);
+        }, 1000);
+        break;
+        
+      default:
+        if (mainWindow) {
+          mainWindow.webContents.send(message.command, message.data);
+        }
+        break;
+    }
+  }
+
+  async handleSongRemoved(message) {
+    console.log('Handling song removal:', message);
+    const mainWindow = BrowserWindow.getAllWindows()[0];
+    if (!mainWindow) return;
+
+    const { songId, playlistId } = message.data;
     
-    try {
-      // Store'dan playlistleri al
-      const playlists = this.store.get('playlists', []);
+    // Store'dan playlistleri al
+    const playlists = this.store.get('playlists', []);
+    
+    // İlgili playlisti bul
+    const playlistIndex = playlists.findIndex(p => p._id === playlistId);
+    
+    if (playlistIndex !== -1) {
+      console.log('Found playlist:', playlists[playlistIndex].name);
       
-      // İlgili playlisti bul
-      const playlistIndex = playlists.findIndex(p => p._id === playlistId);
+      // Playlistten şarkıyı kaldır
+      playlists[playlistIndex].songs = playlists[playlistIndex].songs.filter(
+        song => song._id !== songId
+      );
       
-      if (playlistIndex === -1) {
-        console.log('Playlist not found:', playlistId);
-        return;
-      }
-
-      const playlist = playlists[playlistIndex];
+      // Store'u güncelle
+      this.store.set('playlists', playlists);
+      console.log('Updated playlists in store');
       
-      // Silinecek şarkıyı bul
-      const songToRemove = playlist.songs.find(s => s._id === songId);
+      // Renderer'a bildir
+      mainWindow.webContents.send('songRemoved', {
+        songId,
+        playlistId
+      });
       
-      if (!songToRemove) {
-        console.log('Song not found in playlist:', songId);
-        return;
-      }
-
-      console.log('Found song to remove:', songToRemove);
-
-      // Şarkının lokal dosyasını sil
-      if (songToRemove.localPath) {
+      // Silinen şarkının dosyasını bul ve sil
+      const removedSong = playlists[playlistIndex].songs.find(s => s._id === songId);
+      if (removedSong && removedSong.localPath) {
         try {
-          fs.unlinkSync(songToRemove.localPath);
-          console.log('Deleted local file:', songToRemove.localPath);
-          
-          // Klasör boşsa klasörü de sil
-          const directory = path.dirname(songToRemove.localPath);
-          const files = fs.readdirSync(directory);
-          if (files.length === 0) {
-            fs.rmdirSync(directory);
-            console.log('Removed empty directory:', directory);
-          }
+          fs.unlinkSync(removedSong.localPath);
+          console.log('Deleted local song file:', removedSong.localPath);
         } catch (error) {
           console.error('Error deleting local file:', error);
         }
       }
-
-      // Playlistten şarkıyı kaldır
-      playlist.songs = playlist.songs.filter(song => song._id !== songId);
-      
-      // Store'u güncelle
-      playlists[playlistIndex] = playlist;
-      this.store.set('playlists', playlists);
-      
-      console.log('Updated playlist in store');
-
-      // Renderer'a bildir
-      const mainWindow = BrowserWindow.getAllWindows()[0];
-      if (mainWindow) {
-        mainWindow.webContents.send('songRemoved', {
-          songId,
-          playlistId
-        });
-      }
-    } catch (error) {
-      console.error('Error handling song removal:', error);
+    } else {
+      console.log('Playlist not found:', playlistId);
     }
   }
 
-  handleMessage(message) {
-    console.log('Handling message:', message);
-    const handler = this.handlers.get(message.type);
-    
-    if (handler) {
-      handler(message);
-    } else {
-      console.log('No handler for message type:', message.type);
+  async handlePlaylist(message) {
+    console.log('Handling playlist:', message);
+    const mainWindow = BrowserWindow.getAllWindows()[0];
+    if (!mainWindow) return;
+
+    const playlist = message.data;
+    if (!playlist || !playlist.songs) {
+      console.error('Invalid playlist data:', playlist);
+      return;
+    }
+
+    // Playlist için indirme klasörünü oluştur
+    const userDataPath = app.getPath('userData');
+    const playlistDir = path.join(
+      userDataPath,
+      'downloads',
+      playlist._id
+    );
+
+    if (!fs.existsSync(playlistDir)) {
+      fs.mkdirSync(playlistDir, { recursive: true });
+    }
+
+    // Store'a kaydedilecek playlist objesi
+    const storedPlaylist = {
+      _id: playlist._id,
+      name: playlist.name,
+      artwork: playlist.artwork,
+      songs: []
+    };
+
+    // Her şarkıyı indir ve localPath'leri ekle
+    for (const song of playlist.songs) {
+      try {
+        console.log('Processing song:', song);
+        const songUrl = `${playlist.baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
+        const filename = `${song._id}${path.extname(song.filePath)}`;
+        const localPath = path.join(playlistDir, filename);
+
+        mainWindow.webContents.send('download-progress', {
+          songName: song.name,
+          progress: 0
+        });
+
+        await downloadFile(songUrl, localPath, (progress) => {
+          mainWindow.webContents.send('download-progress', {
+            songName: song.name,
+            progress
+          });
+        });
+
+        // Şarkıyı localPath ile birlikte playlist'e ekle
+        storedPlaylist.songs.push({
+          ...song,
+          localPath
+        });
+
+      } catch (error) {
+        console.error(`Error downloading song ${song.name}:`, error);
+        mainWindow.webContents.send('download-error', {
+          songName: song.name,
+          error: error.message
+        });
+      }
+    }
+
+    console.log('Storing playlist with localPaths:', storedPlaylist);
+
+    // Playlist'i store'a kaydet ve UI'ı güncelle
+    mainWindow.webContents.send('playlist-received', storedPlaylist);
+  }
+
+  sendToRenderer(channel, data) {
+    const mainWindow = BrowserWindow.getAllWindows()[0];
+    if (mainWindow) {
+      mainWindow.webContents.send(channel, data);
     }
   }
 }
