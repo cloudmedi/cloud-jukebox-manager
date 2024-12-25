@@ -6,7 +6,6 @@ class UIManager {
         this.deviceInfoElement = document.getElementById('deviceInfo');
         this.tokenDisplay = this.deviceInfoElement.querySelector('.token-display');
         this.connectionStatus = this.deviceInfoElement.querySelector('.connection-status');
-        this.systemInfo = this.deviceInfoElement.querySelector('.system-info');
         this.downloadProgress = document.querySelector('.download-progress');
         this.downloadProgressBar = document.querySelector('.download-progress-bar');
         this.downloadProgressText = document.querySelector('.download-progress-text');
@@ -16,41 +15,27 @@ class UIManager {
     }
 
     async initializeUI() {
-        // Token ve cihaz bilgilerini al
         const deviceInfo = await ipcRenderer.invoke('get-device-info');
         
         if (!deviceInfo || !deviceInfo.token) {
             try {
-                // Yeni token oluştur ve kaydet
                 const newToken = await deviceService.registerDeviceToken();
-                const systemInfo = deviceService.getDeviceInfo();
-                
                 await ipcRenderer.invoke('save-device-info', {
-                    token: newToken,
-                    ...systemInfo
+                    token: newToken
                 });
                 
-                this.updateDeviceInfo(newToken, systemInfo);
+                this.updateDeviceInfo(newToken);
             } catch (error) {
                 this.showError('Token oluşturma hatası: ' + error.message);
             }
         } else {
-            this.updateDeviceInfo(deviceInfo.token, deviceInfo);
+            this.updateDeviceInfo(deviceInfo.token);
         }
     }
 
-    updateDeviceInfo(token, systemInfo) {
-        // Token göster
+    updateDeviceInfo(token) {
+        // Sadece token'ı göster
         this.tokenDisplay.textContent = `Token: ${token}`;
-        
-        // Sistem bilgilerini göster
-        this.systemInfo.innerHTML = `
-            <div>Hostname: ${systemInfo.hostname}</div>
-            <div>Platform: ${systemInfo.platform}</div>
-            <div>CPU: ${systemInfo.cpus}</div>
-            <div>Memory: ${systemInfo.totalMemory}</div>
-            <div>IP: ${systemInfo.networkInterfaces.join(', ')}</div>
-        `;
     }
 
     updateConnectionStatus(isConnected) {
