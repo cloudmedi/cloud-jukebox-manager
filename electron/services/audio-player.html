@@ -9,6 +9,40 @@
         const { ipcRenderer } = require('electron');
         const audio = document.getElementById('audioPlayer');
 
+        let fadeOutDuration = 500;
+        let fadeInDuration = 500;
+
+        ipcRenderer.on('setup-transitions', (event, config) => {
+            fadeOutDuration = config.fadeOutDuration;
+            fadeInDuration = config.fadeInDuration;
+        });
+
+        ipcRenderer.on('fade-out', () => {
+            const fadePoint = audio.volume;
+            const fadeAudio = setInterval(() => {
+                if (audio.volume > 0.1) {
+                    audio.volume -= 0.1;
+                } else {
+                    clearInterval(fadeAudio);
+                    audio.volume = 0;
+                    ipcRenderer.send('fade-out-complete');
+                }
+            }, fadeOutDuration / 10);
+        });
+
+        ipcRenderer.on('fade-in', () => {
+            audio.volume = 0;
+            const fadeAudio = setInterval(() => {
+                if (audio.volume < 0.9) {
+                    audio.volume += 0.1;
+                } else {
+                    clearInterval(fadeAudio);
+                    audio.volume = 1;
+                    ipcRenderer.send('fade-in-complete');
+                }
+            }, fadeInDuration / 10);
+        });
+
         ipcRenderer.on('load-audio', (event, data) => {
             audio.src = data.src;
             audio.volume = data.volume;

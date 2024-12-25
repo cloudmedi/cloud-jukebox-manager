@@ -33,39 +33,39 @@ class PlayerControls {
     const fadeOutDuration = 500; // ms
     const fadeInDuration = 500; // ms
 
-    audioPlayer.audio.addEventListener('ended', () => {
-      this.fadeOut(() => {
-        audioPlayer.playNext();
-        this.fadeIn();
+    // Wait for audio player to be ready
+    if (!audioPlayer.window) {
+      app.whenReady().then(() => {
+        this.setupAudioTransitions();
       });
+      return;
+    }
+
+    // Send message to renderer to set up audio transitions
+    audioPlayer.window.webContents.send('setup-transitions', {
+      fadeOutDuration,
+      fadeInDuration
+    });
+
+    // Listen for transition events from renderer
+    ipcMain.on('transition-complete', () => {
+      console.log('Audio transition completed');
     });
   }
 
   fadeOut(callback) {
-    const audio = audioPlayer.audio;
-    const fadePoint = audio.volume;
-    const fadeAudio = setInterval(() => {
-      if (audio.volume > 0.1) {
-        audio.volume -= 0.1;
-      } else {
-        clearInterval(fadeAudio);
-        audio.volume = 0;
-        if (callback) callback();
+    if (audioPlayer.window) {
+      audioPlayer.window.webContents.send('fade-out');
+      if (callback) {
+        ipcMain.once('fade-out-complete', callback);
       }
-    }, 50);
+    }
   }
 
   fadeIn() {
-    const audio = audioPlayer.audio;
-    audio.volume = 0;
-    const fadeAudio = setInterval(() => {
-      if (audio.volume < 0.9) {
-        audio.volume += 0.1;
-      } else {
-        clearInterval(fadeAudio);
-        audio.volume = 1;
-      }
-    }, 50);
+    if (audioPlayer.window) {
+      audioPlayer.window.webContents.send('fade-in');
+    }
   }
 }
 
