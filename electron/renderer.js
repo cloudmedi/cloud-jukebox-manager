@@ -1,46 +1,21 @@
 const { ipcRenderer } = require('electron');
 const Store = require('electron-store');
-const fs = require('fs');
-const store = new Store();
-const AudioEventHandler = require('./services/audio/AudioEventHandler');
+const AudioEventManager = require('./services/audio/AudioEventManager');
+const SongInfoUpdater = require('./services/ui/SongInfoUpdater');
 const playbackStateManager = require('./services/audio/PlaybackStateManager');
 const UIManager = require('./services/ui/UIManager');
 const AnnouncementAudioService = require('./services/audio/AnnouncementAudioService');
 const PlaylistInitializer = require('./services/playlist/PlaylistInitializer');
-const PlayerUIService = require('./services/ui/PlayerUIService');
 
+const store = new Store();
 const playlistAudio = document.getElementById('audioPlayer');
-const audioHandler = new AudioEventHandler(playlistAudio);
+const audioEventManager = new AudioEventManager(playlistAudio);
 
 // Initialize volume
 playlistAudio.volume = 0.7; // 70%
 
 document.getElementById('closeButton').addEventListener('click', () => {
     window.close();
-});
-
-// Anons kontrolleri
-ipcRenderer.on('play-announcement', async (event, announcement) => {
-  console.log('Received announcement:', announcement);
-  
-  // Anonsu çal
-  const success = await AnnouncementAudioService.playAnnouncement(announcement);
-  
-  if (!success) {
-    console.error('Failed to play announcement');
-  }
-});
-
-ipcRenderer.on('pause-playback', () => {
-  if (playlistAudio && !playlistAudio.paused) {
-    playlistAudio.pause();
-  }
-});
-
-ipcRenderer.on('resume-playback', () => {
-  if (playlistAudio && playlistAudio.paused) {
-    playlistAudio.play().catch(err => console.error('Resume playback error:', err));
-  }
 });
 
 // WebSocket bağlantı durumu
@@ -58,65 +33,25 @@ ipcRenderer.on('error', (event, message) => {
     UIManager.showError(message);
 });
 
-// Volume control from WebSocket
-ipcRenderer.on('set-volume', (event, volume) => {
-    console.log('Setting volume to:', volume);
-    audioHandler.setVolume(volume);
-    ipcRenderer.send('volume-changed', volume);
-});
-
-// Restart playback from WebSocket
-ipcRenderer.on('restart-playback', () => {
-  console.log('Restarting playback');
-  if (playlistAudio) {
-    playlistAudio.currentTime = 0;
-    playlistAudio.play().catch(err => console.error('Playback error:', err));
+// Update player when song changes
+ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
+  console.log('Updating player with song:', currentSong);
+  if (currentSong && currentSong.localPath) {
+    const normalizedPath = currentSong.localPath.replace(/\\/g, '/');
+    playlistAudio.src = normalizedPath;
+    
+    // Önce UI'ı güncelle, sonra çalmaya başla
+    audioEventManager.updateCurrentSong(currentSong);
+    
+    playlistAudio.play().catch(err => {
+      console.error('Playback error:', err);
+      UIManager.showError('Şarkı çalınırken bir hata oluştu');
+    });
+    
+    // Update playlist display
+    displayPlaylists();
   }
 });
-
-// Toggle playback from WebSocket
-ipcRenderer.on('toggle-playback', () => {
-  console.log('Toggle playback, current state:', playlistAudio.paused);
-  if (playlistAudio) {
-    if (playlistAudio.paused) {
-      playlistAudio.play()
-        .then(() => {
-          console.log('Playback started successfully');
-          ipcRenderer.send('playback-status-changed', true);
-        })
-        .catch(err => {
-          console.error('Playback error:', err);
-          ipcRenderer.send('playback-status-changed', false);
-        });
-    } else {
-      playlistAudio.pause();
-      console.log('Playback paused');
-      ipcRenderer.send('playback-status-changed', false);
-    }
-  }
-});
-
-// Update player UI with new song info
-function updatePlayerUI(song) {
-  if (!song) return;
-
-  // Update artwork
-  const artworkContainer = document.querySelector('.playlist-artwork');
-  if (artworkContainer) {
-    if (song.artwork) {
-      artworkContainer.innerHTML = `<img src="${song.artwork}" alt="${song.name}" class="playlist-artwork"/>`;
-    } else {
-      artworkContainer.innerHTML = '<div class="playlist-artwork-placeholder"></div>';
-    }
-  }
-
-  // Update song info
-  const songNameElement = document.querySelector('.song-name');
-  const artistElement = document.querySelector('.song-artist');
-  
-  if (songNameElement) songNameElement.textContent = song.name;
-  if (artistElement) artistElement.textContent = song.artist || 'Unknown Artist';
-}
 
 // Otomatik playlist başlatma
 ipcRenderer.on('auto-play-playlist', (event, playlist) => {
@@ -124,7 +59,7 @@ ipcRenderer.on('auto-play-playlist', (event, playlist) => {
   if (playlist && playlist.songs && playlist.songs.length > 0) {
     const shouldAutoPlay = playbackStateManager.getPlaybackState();
     
-    // Playlist'i başlat ve karıştır
+    // Playlist'i başlat
     const initializedPlaylist = PlaylistInitializer.initializePlaylist(playlist);
     
     if (initializedPlaylist) {
@@ -139,28 +74,6 @@ ipcRenderer.on('auto-play-playlist', (event, playlist) => {
       }
     }
   }
-});
-
-// Update player when song changes
-ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
-  console.log('Updating player with song:', currentSong);
-  if (currentSong && currentSong.localPath) {
-    const normalizedPath = currentSong.localPath.replace(/\\/g, '/');
-    playlistAudio.src = normalizedPath;
-    playlistAudio.play().catch(err => console.error('Playback error:', err));
-    
-    // Yeni UI servisini kullanarak bilgileri güncelle
-    PlayerUIService.updateSongInfo(currentSong);
-    
-    // Update playlist display
-    displayPlaylists();
-  }
-});
-
-// Audio event listeners
-playlistAudio.addEventListener('ended', () => {
-  console.log('Song ended, playing next');
-  ipcRenderer.invoke('song-ended');
 });
 
 function displayPlaylists() {
