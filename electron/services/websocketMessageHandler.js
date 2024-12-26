@@ -15,7 +15,6 @@ class WebSocketMessageHandler {
     this.handlers.set('playlist', this.handlePlaylist.bind(this));
     this.handlers.set('command', this.handleCommand.bind(this));
     this.handlers.set('songRemoved', this.handleSongRemoved.bind(this));
-    this.handlers.set('playlistDeleted', this.handlePlaylistDeleted.bind(this)); // Yeni handler eklendi
   }
 
   async handleMessage(message) {
@@ -180,50 +179,6 @@ class WebSocketMessageHandler {
     const mainWindow = BrowserWindow.getAllWindows()[0];
     if (mainWindow) {
       mainWindow.webContents.send(channel, data);
-    }
-  }
-
-  async handlePlaylistDeleted(message) {
-    console.log('Handling playlist deletion:', message);
-    const mainWindow = BrowserWindow.getAllWindows()[0];
-    if (!mainWindow) return;
-
-    const { playlistId } = message;
-    
-    // Store'dan playlistleri al
-    const playlists = this.store.get('playlists', []);
-    
-    // Silinen playlist'i bul
-    const deletedPlaylist = playlists.find(p => p._id === playlistId);
-    
-    if (deletedPlaylist) {
-      console.log('Found deleted playlist:', deletedPlaylist.name);
-      
-      // Playlist'i store'dan kaldır
-      this.store.set('playlists', playlists.filter(p => p._id !== playlistId));
-      
-      // Eğer playlist çalıyorsa durdur
-      mainWindow.webContents.send('stop-playlist', playlistId);
-      
-      // Playlist dosyalarını temizle
-      if (deletedPlaylist.songs) {
-        deletedPlaylist.songs.forEach(song => {
-          if (song.localPath) {
-            try {
-              fs.unlinkSync(song.localPath);
-              console.log('Deleted local song file:', song.localPath);
-            } catch (error) {
-              console.error('Error deleting local file:', error);
-            }
-          }
-        });
-      }
-      
-      // UI'ı güncelle
-      mainWindow.webContents.send('playlist-deleted', {
-        playlistId,
-        message: `${deletedPlaylist.name} playlist'i silindi`
-      });
     }
   }
 }

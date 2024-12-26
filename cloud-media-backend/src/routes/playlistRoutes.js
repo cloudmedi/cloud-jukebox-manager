@@ -108,14 +108,6 @@ router.delete('/:id', async (req, res) => {
     // deleteOne() kullanarak silme işlemini gerçekleştir
     await Playlist.deleteOne({ _id: req.params.id });
 
-    // WebSocket üzerinden bağlı cihazlara bildirim gönder
-    if (req.wss) {
-      req.wss.broadcastToDevices({
-        type: 'playlistDeleted',
-        playlistId: req.params.id
-      });
-    }
-
     // Başarılı yanıt döndür
     res.json({ message: 'Playlist silindi' });
   } catch (error) {
