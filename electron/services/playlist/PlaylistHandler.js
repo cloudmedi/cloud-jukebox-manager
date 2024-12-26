@@ -1,62 +1,82 @@
-const { app } = require('electron');
+const { ipcRenderer } = require('electron');
+const { downloadFile } = require('../downloadUtils');
 const path = require('path');
 const fs = require('fs');
-const axios = require('axios');
 const Store = require('electron-store');
-const store = new Store();
 
 class PlaylistHandler {
   constructor() {
-    this.downloadPath = path.join(app.getPath('userData'), 'downloads');
-    this.ensureDirectoryExists(this.downloadPath);
+    this.store = new Store();
+    this.setupListeners();
   }
 
-  ensureDirectoryExists(dir) {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
+  setupListeners() {
+    ipcRenderer.on('play-playlist', async (event, playlist) => {
+      console.log('Received playlist for processing:', playlist);
+      await this.handlePlaylist(playlist);
+    });
   }
 
   async handlePlaylist(playlist) {
     try {
-      console.log('Handling playlist:', playlist.name);
+      // Playlist için indirme klasörünü oluştur
+      const playlistDir = path.join(process.env.APPDATA || process.env.HOME, 'cloud-media-player', 'playlists', playlist._id);
       
-      // Playlist için klasör oluştur
-      const playlistDir = path.join(this.downloadPath, playlist._id);
-      this.ensureDirectoryExists(playlistDir);
+      if (!fs.existsSync(playlistDir)) {
+        fs.mkdirSync(playlistDir, { recursive: true });
+      }
 
-      // Şarkıları indir ve localPath'leri güncelle
-      const updatedSongs = await Promise.all(
-        playlist.songs.map(async (song) => {
-          try {
-            const songPath = path.join(playlistDir, `${song._id}.mp3`);
-            const songUrl = `${playlist.baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
+      console.log('Processing songs:', playlist.songs);
 
-            // Şarkı zaten indirilmiş mi kontrol et
-            if (!fs.existsSync(songPath)) {
-              console.log(`Downloading song: ${song.name}`);
-              await this.downloadFile(songUrl, songPath);
-            }
+      const processedSongs = [];
 
-            return {
-              ...song,
-              localPath: songPath
-            };
-          } catch (error) {
-            console.error(`Error downloading song ${song.name}:`, error);
-            return song;
-          }
-        })
-      );
+      for (const song of playlist.songs) {
+        const songPath = path.join(playlistDir, `${song._id}.mp3`);
+        const songUrl = `${playlist.baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
 
-      // Güncellenmiş playlist'i oluştur
+        console.log('Downloading song:', {
+          name: song.name,
+          url: songUrl,
+          path: songPath
+        });
+
+        // İndirme durumunu bildir
+        ipcRenderer.send('download-progress', {
+          songName: song.name,
+          progress: 0
+        });
+
+        try {
+          await downloadFile(songUrl, songPath, (progress) => {
+            ipcRenderer.send('download-progress', {
+              songName: song.name,
+              progress
+            });
+          });
+
+          // Şarkı yolunu güncelle ve işlenmiş şarkılar listesine ekle
+          processedSongs.push({
+            ...song,
+            localPath: songPath
+          });
+
+        } catch (error) {
+          console.error(`Error downloading song ${song.name}:`, error);
+          ipcRenderer.send('download-progress', {
+            songName: song.name,
+            error: error.message
+          });
+        }
+      }
+
+      // Playlist'i güncelle ve store'a kaydet
       const updatedPlaylist = {
         ...playlist,
-        songs: updatedSongs
+        songs: processedSongs
       };
 
-      // Local storage'a kaydet
-      const playlists = store.get('playlists', []);
+      // Store'a kaydet
+      const playlists = this.store.get('playlists', []);
       const existingIndex = playlists.findIndex(p => p._id === playlist._id);
       
       if (existingIndex !== -1) {
@@ -65,29 +85,44 @@ class PlaylistHandler {
         playlists.push(updatedPlaylist);
       }
       
-      store.set('playlists', playlists);
-      
+      this.store.set('playlists', playlists);
+
+      // Playlist hazır, oynatıcıyı güncelle
+      ipcRenderer.send('update-player', {
+        type: 'playlist-ready',
+        playlist: updatedPlaylist
+      });
+
       return updatedPlaylist;
+
     } catch (error) {
       console.error('Error handling playlist:', error);
+      ipcRenderer.send('error', {
+        type: 'playlist-error',
+        message: error.message
+      });
       throw error;
     }
   }
 
-  async downloadFile(url, filePath) {
-    const response = await axios({
-      url,
-      method: 'GET',
-      responseType: 'stream'
-    });
-
-    const writer = fs.createWriteStream(filePath);
-
-    return new Promise((resolve, reject) => {
-      response.data.pipe(writer);
-      writer.on('finish', resolve);
-      writer.on('error', reject);
-    });
+  // Playlist silme işleyicisi
+  handlePlaylistDeleted(playlistId) {
+    const playlists = this.store.get('playlists', []);
+    const playlistToDelete = playlists.find(p => p._id === playlistId);
+    
+    if (playlistToDelete) {
+      // Playlist'i store'dan kaldır
+      this.store.set('playlists', playlists.filter(p => p._id !== playlistId));
+      
+      // Playlist dosyalarını temizle
+      const playlistDir = path.join(process.env.APPDATA || process.env.HOME, 'cloud-media-player', 'playlists', playlistId);
+      if (fs.existsSync(playlistDir)) {
+        fs.rmSync(playlistDir, { recursive: true, force: true });
+      }
+      
+      // Eğer bu playlist çalıyorsa durdur
+      ipcRenderer.send('stop-playlist', playlistId);
+    }
   }
 }
 

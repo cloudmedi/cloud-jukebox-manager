@@ -37,6 +37,11 @@ class WebSocketService {
       }
     });
 
+    this.addMessageHandler('playlistDeleted', (message) => {
+      console.log('Playlist deleted message received:', message);
+      playlistHandler.handlePlaylistDeleted(message.playlistId);
+    });
+
     this.addMessageHandler('command', (message) => {
       console.log('Command message received:', message);
       CommandHandler.handleCommand(message);
