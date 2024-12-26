@@ -228,39 +228,40 @@ ipcRenderer.on('playlist-received', (event, playlist) => {
   });
 });
 
-// Playlist silme işlemi başladığında
-ipcRenderer.on('playlist-delete-started', (event, playlistId) => {
-  console.log('Playlist silme işlemi başladı:', playlistId);
-  // UI'da loading state göster
-  UIManager.showDeleteProgress(playlistId);
-});
-
-// Playlist başarıyla silindiğinde
-ipcRenderer.on('playlist-deleted', (event, playlistId) => {
-  console.log('Playlist silindi:', playlistId);
+// Şarkı silme mesajını dinle
+ipcRenderer.on('songRemoved', (event, { songId, playlistId }) => {
+  console.log('Şarkı silme mesajı alındı:', { songId, playlistId });
   
-  // Store'dan playlist'i kaldır
   const playlists = store.get('playlists', []);
-  const updatedPlaylists = playlists.filter(p => p._id !== playlistId);
-  store.set('playlists', updatedPlaylists);
+  const playlistIndex = playlists.findIndex(p => p._id === playlistId);
   
-  // UI'ı güncelle
-  displayPlaylists();
-  
-  // Bildirim göster
-  new Notification('Playlist Silindi', {
-    body: 'Playlist başarıyla silindi.'
-  });
-});
-
-// Silme işleminde hata olduğunda
-ipcRenderer.on('delete-error', (event, { type, id, error }) => {
-  console.error('Silme hatası:', error);
-  
-  // Hata bildirimini göster
-  new Notification('Hata', {
-    body: `Playlist silinirken bir hata oluştu: ${error}`
-  });
+  if (playlistIndex !== -1) {
+    console.log('Playlist bulundu:', playlistId);
+    // Playlistten şarkıyı kaldır
+    const removedSong = playlists[playlistIndex].songs.find(s => s._id === songId);
+    playlists[playlistIndex].songs = playlists[playlistIndex].songs.filter(
+      song => song._id !== songId
+    );
+    
+    // Store'u güncelle
+    store.set('playlists', playlists);
+    console.log('Playlist güncellendi');
+    
+    // UI'ı güncelle
+    displayPlaylists();
+    
+    // Yerel dosyayı sil
+    if (removedSong && removedSong.localPath) {
+      try {
+        fs.unlinkSync(removedSong.localPath);
+        console.log('Yerel şarkı dosyası silindi:', removedSong.localPath);
+      } catch (error) {
+        console.error('Yerel dosya silme hatası:', error);
+      }
+    }
+  } else {
+    console.log('Playlist bulunamadı:', playlistId);
+  }
 });
 
 // Audio event listeners
