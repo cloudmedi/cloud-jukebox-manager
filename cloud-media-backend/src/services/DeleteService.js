@@ -6,6 +6,7 @@ const logger = createLogger('delete-service');
 class DeleteService {
   constructor(wss) {
     this.wss = wss;
+    logger.info('DeleteService initialized with WebSocket server:', !!wss);
   }
 
   async handleDelete(entityType, entityId, deleteFunction) {
