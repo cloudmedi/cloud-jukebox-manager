@@ -75,15 +75,21 @@ const updateGroup = async (deviceId: string, groupId: string | null) => {
 };
 
 const deleteDevice = async (deviceId: string) => {
+  console.log('Cihaz silme isteği gönderiliyor:', deviceId);
+  
   const response = await fetch(`http://localhost:5000/api/devices/${deviceId}`, {
     method: 'DELETE',
   });
 
   if (!response.ok) {
-    throw new Error('Cihaz silinemedi');
+    console.error('Silme hatası:', response.status, response.statusText);
+    const errorData = await response.json();
+    throw new Error(errorData.message || 'Cihaz silinemedi');
   }
 
-  return response.json();
+  const result = await response.json();
+  console.log('Silme işlemi başarılı:', result);
+  return result;
 };
 
 export const deviceService = {

@@ -71,21 +71,37 @@ const updateDevice = async (req, res) => {
 
 const deleteDevice = async (req, res) => {
   try {
+    console.log('Cihaz silme isteği alındı:', req.params.id);
+    
     const device = await Device.findById(req.params.id);
     if (!device) {
+      console.log('Cihaz bulunamadı:', req.params.id);
       return res.status(404).json({ message: 'Cihaz bulunamadı' });
     }
 
+    console.log('Token durumu güncelleniyor...');
     await Token.findOneAndUpdate(
       { token: device.token },
       { $set: { isUsed: false } }
     );
+    console.log('Token durumu güncellendi');
 
+    console.log('Cihaz siliniyor...');
     await Device.deleteOne({ _id: device._id });
-    
+    console.log('Cihaz başarıyla silindi:', device._id);
+
+    // WebSocket üzerinden admin clientlara bildir
+    if (req.wss) {
+      console.log('WebSocket bildirimi gönderiliyor...');
+      req.wss.broadcastToAdmins({
+        type: 'deviceDeleted',
+        deviceId: device._id
+      });
+    }
+
     res.json({ message: 'Cihaz silindi' });
   } catch (error) {
-    console.error('Device deletion error:', error);
+    console.error('Cihaz silme hatası:', error);
     res.status(500).json({ message: error.message || 'Cihaz silinirken bir hata oluştu' });
   }
 };
