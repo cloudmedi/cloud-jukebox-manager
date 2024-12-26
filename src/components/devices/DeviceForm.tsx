@@ -4,10 +4,10 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Form,
+  FormControl,
   FormField,
   FormItem,
   FormLabel,
-  FormControl,
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
@@ -15,8 +15,6 @@ import { useToast } from "@/hooks/use-toast";
 import { DialogTitle } from "@/components/ui/dialog";
 import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { TokenField } from "./form/TokenField";
-import { LocationField } from "./form/LocationField";
 
 const formSchema = z.object({
   name: z.string().min(1, "Cihaz adı zorunludur"),
@@ -125,9 +123,55 @@ const DeviceForm = ({ onSuccess }: DeviceFormProps) => {
             )}
           />
 
-          <TokenField form={form} onValidateToken={validateToken} />
-          
-          <LocationField form={form} />
+          <FormField
+            control={form.control}
+            name="token"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Token</FormLabel>
+                <FormControl>
+                  <Input 
+                    placeholder="6 haneli token" 
+                    maxLength={6}
+                    {...field} 
+                    onChange={async (e) => {
+                      field.onChange(e);
+                      if (e.target.value.length === 6) {
+                        try {
+                          await validateToken(e.target.value);
+                          toast({
+                            title: "Token Doğrulandı",
+                            description: "Token geçerli ve kullanılabilir.",
+                          });
+                        } catch (error) {
+                          toast({
+                            variant: "destructive",
+                            title: "Geçersiz Token",
+                            description: "Token geçersiz veya daha önce kullanılmış.",
+                          });
+                        }
+                      }
+                    }}
+                  />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
+
+          <FormField
+            control={form.control}
+            name="location"
+            render={({ field }) => (
+              <FormItem>
+                <FormLabel>Konum</FormLabel>
+                <FormControl>
+                  <Input placeholder="Örn: İstanbul" {...field} />
+                </FormControl>
+                <FormMessage />
+              </FormItem>
+            )}
+          />
 
           <FormField
             control={form.control}
