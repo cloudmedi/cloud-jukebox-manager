@@ -1,8 +1,8 @@
-const { BrowserWindow, app } = require('electron');
-const { downloadFile } = require('./downloadUtils');
+const { BrowserWindow } = require('electron');
 const Store = require('electron-store');
 const path = require('path');
 const fs = require('fs');
+const audioPlayer = require('./audioPlayer');
 
 class WebSocketMessageHandler {
   constructor() {
@@ -74,8 +74,16 @@ class WebSocketMessageHandler {
         if (deletedPlaylist) {
           console.log('Found playlist to delete:', deletedPlaylist.name);
           
+          // Stop playback if the deleted playlist is currently playing
+          const currentPlaylist = audioPlayer.getCurrentPlaylist();
+          if (currentPlaylist && currentPlaylist._id === deletedPlaylistId) {
+            console.log('Stopping playback of deleted playlist');
+            audioPlayer.stop();
+          }
+          
           // Remove playlist from store
           this.store.set('playlists', playlists.filter(p => p._id !== deletedPlaylistId));
+          console.log('Removed playlist from store');
           
           // Delete local files
           if (deletedPlaylist.songs) {
@@ -91,10 +99,14 @@ class WebSocketMessageHandler {
             });
           }
           
-          // Notify renderer to update UI and stop playback if needed
+          // Notify renderer to update UI
           mainWindow.webContents.send('playlist-deleted', {
             playlistId: deletedPlaylistId
           });
+          
+          console.log('Playlist deletion process completed');
+        } else {
+          console.log('Playlist not found:', deletedPlaylistId);
         }
         break;
 
