@@ -23,7 +23,7 @@ class PlaylistHandler {
     try {
       logger.info('Handling playlist message:', message);
 
-      // Playlist silme işlemi
+      // Playlist silme işlemi kontrolü
       if (message.action === 'deleted') {
         return this.handlePlaylistDeletion(message.playlistId);
       }
@@ -31,7 +31,7 @@ class PlaylistHandler {
       // Playlist verisi message.data içinde geliyor
       const playlist = message.data;
       
-      // ID kontrolü yap - name yerine
+      // ID kontrolü - message.data içinden alıyoruz
       if (!playlist || !playlist._id) {
         throw new Error('Invalid playlist data: Missing playlist ID');
       }
