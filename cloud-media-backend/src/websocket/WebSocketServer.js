@@ -1,7 +1,8 @@
 const WebSocket = require('ws');
-const Device = require('../models/Device');
 const MessageHandler = require('./handlers/MessageHandler');
 const StatusHandler = require('./handlers/StatusHandler');
+const AdminConnectionHandler = require('./handlers/AdminConnectionHandler');
+const DeviceConnectionHandler = require('./handlers/DeviceConnectionHandler');
 
 class WebSocketServer {
   constructor(server) {
@@ -9,6 +10,8 @@ class WebSocketServer {
     this.wss = new WebSocket.Server({ server });
     this.messageHandler = new MessageHandler(this);
     this.statusHandler = new StatusHandler(this);
+    this.adminHandler = new AdminConnectionHandler(this);
+    this.deviceHandler = new DeviceConnectionHandler(this);
     this.initialize();
   }
 
@@ -22,9 +25,9 @@ class WebSocketServer {
       });
 
       if (req.url === '/admin') {
-        this.handleAdminConnection(ws);
+        await this.adminHandler.handleConnection(ws);
       } else {
-        this.handleDeviceConnection(ws);
+        await this.deviceHandler.handleConnection(ws);
       }
     });
 
@@ -43,120 +46,6 @@ class WebSocketServer {
         ws.ping(() => {});
       });
     }, 30000);
-  }
-
-  async handleAdminConnection(ws) {
-    console.log('Admin client connected');
-    ws.isAdmin = true;
-
-    try {
-      const devices = await Device.find({});
-      const deviceStatuses = devices.map(device => ({
-        type: 'deviceStatus',
-        token: device.token,
-        isOnline: device.isOnline,
-        volume: device.volume
-      }));
-
-      ws.send(JSON.stringify({
-        type: 'initialState',
-        devices: deviceStatuses
-      }));
-    } catch (error) {
-      console.error('Error fetching initial device states:', error);
-    }
-
-    ws.on('message', async (message) => {
-      try {
-        const data = JSON.parse(message);
-        await this.messageHandler.handleAdminMessage(data, ws);
-      } catch (error) {
-        console.error('Admin message handling error:', error);
-        ws.send(JSON.stringify({
-          type: 'error',
-          message: error.message
-        }));
-      }
-    });
-
-    ws.on('close', () => {
-      console.log('Admin client disconnected');
-    });
-  }
-
-  async handleDeviceConnection(ws) {
-    let deviceToken = null;
-
-    ws.once('message', async (message) => {
-      try {
-        const data = JSON.parse(message);
-        console.log('Device auth attempt:', data);
-
-        if (data.type === 'auth' && data.token) {
-          const device = await Device.findOne({ token: data.token });
-
-          if (device) {
-            deviceToken = device.token;
-            ws.deviceToken = deviceToken;
-            console.log(`Device authenticated: ${deviceToken}`);
-
-            await device.updateStatus(true);
-
-            this.broadcastToAdmins({
-              type: 'deviceStatus',
-              token: deviceToken,
-              isOnline: true,
-              volume: device.volume
-            });
-
-            ws.send(JSON.stringify({
-              type: 'auth',
-              status: 'success',
-              deviceInfo: {
-                name: device.name,
-                volume: device.volume
-              }
-            }));
-
-            ws.on('message', async (message) => {
-              try {
-                const data = JSON.parse(message);
-                console.log('Device message received:', data);
-                await this.handleDeviceMessage(deviceToken, data);
-              } catch (error) {
-                console.error('Message handling error:', error);
-                ws.send(JSON.stringify({
-                  type: 'error',
-                  message: error.message
-                }));
-              }
-            });
-
-            ws.on('close', async () => {
-              console.log(`Device disconnected: ${deviceToken}`);
-              await device.updateStatus(false);
-
-              this.broadcastToAdmins({
-                type: 'deviceStatus',
-                token: deviceToken,
-                isOnline: false
-              });
-            });
-          } else {
-            console.log('Invalid token received:', data.token);
-            ws.send(JSON.stringify({
-              type: 'auth',
-              status: 'error',
-              message: 'Invalid token'
-            }));
-            ws.close();
-          }
-        }
-      } catch (error) {
-        console.error('Authentication error:', error);
-        ws.close();
-      }
-    });
   }
 
   async handleDeviceMessage(token, message) {
@@ -206,30 +95,32 @@ class WebSocketServer {
   }
 
   broadcastToAdmins(message) {
+    console.log('Broadcasting to admins:', message);
     this.wss.clients.forEach(client => {
       if (client.readyState === WebSocket.OPEN && client.isAdmin) {
         client.send(JSON.stringify(message));
+        console.log('Message sent to admin client');
       }
     });
   }
 
   sendToDevice(token, message) {
-    console.log(`Cihaza mesaj gönderiliyor - Token: ${token}`, message);
+    console.log(`Sending message to device ${token}:`, message);
     let sent = false;
     this.wss.clients.forEach(client => {
       if (client.deviceToken === token && client.readyState === WebSocket.OPEN) {
         try {
           client.send(JSON.stringify(message));
           sent = true;
-          console.log(`Mesaj başarıyla gönderildi - Token: ${token}`);
+          console.log(`Message successfully sent to device ${token}`);
         } catch (error) {
-          console.error(`Mesaj gönderme hatası - Token: ${token}:`, error);
+          console.error(`Error sending message to device ${token}:`, error);
         }
       }
     });
     
     if (!sent) {
-      console.log(`Mesaj gönderilemedi - Token: ${token} - Cihaz bulunamadı veya bağlı değil`);
+      console.log(`Message could not be sent - Device ${token} not found or not connected`);
     }
     
     return sent;
