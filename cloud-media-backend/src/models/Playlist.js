@@ -46,9 +46,14 @@ playlistSchema.methods.getSongCount = function() {
 
 // Playlist silindiğinde cihazlardan referansını temizle
 playlistSchema.pre('remove', async function(next) {
+  console.log('=================== PLAYLIST SİLME BAŞLANGICI ===================');
+  console.log('Silinecek playlist ID:', this._id);
+  console.log('Playlist adı:', this.name);
+  
   try {
+    console.log('Cihazlardan playlist referansı temizleniyor...');
     const Device = mongoose.model('Device');
-    await Device.updateMany(
+    const updatedDevices = await Device.updateMany(
       { activePlaylist: this._id },
       { 
         $set: { 
@@ -57,10 +62,15 @@ playlistSchema.pre('remove', async function(next) {
         } 
       }
     );
+    
+    console.log('Etkilenen cihaz sayısı:', updatedDevices.modifiedCount);
+    console.log('Playlist silme işlemi başarılı');
     next();
   } catch (error) {
+    console.error('Playlist silme hatası:', error);
     next(error);
   }
+  console.log('=================== PLAYLIST SİLME SONU ===================');
 });
 
 const Playlist = mongoose.model('Playlist', playlistSchema);
