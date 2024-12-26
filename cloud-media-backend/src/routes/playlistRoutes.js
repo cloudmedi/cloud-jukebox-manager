@@ -102,18 +102,14 @@ router.patch('/:id', upload.single('artwork'), async (req, res) => {
 // Playlist sil - Güncellendi
 router.delete('/:id', async (req, res) => {
   try {
-    console.log('Playlist silme isteği alındı:', req.params.id);
-    
     // Önce playlist'i bul
     const playlist = await Playlist.findById(req.params.id);
     if (!playlist) {
-      console.log('Playlist bulunamadı:', req.params.id);
       return res.status(404).json({ message: 'Playlist bulunamadı' });
     }
 
     // Bu playlist'i kullanan cihazları bul
     const affectedDevices = await Device.find({ activePlaylist: playlist._id });
-    console.log('Etkilenen cihazlar:', affectedDevices.map(d => d.token));
 
     // Cihazların playlist referanslarını temizle
     await Device.updateMany(
@@ -125,7 +121,6 @@ router.delete('/:id', async (req, res) => {
         } 
       }
     );
-    console.log('Cihaz referansları temizlendi');
 
     // Artwork dosyasını sil (eğer varsa)
     if (playlist.artwork) {
@@ -138,12 +133,10 @@ router.delete('/:id', async (req, res) => {
 
     // Playlist'i sil
     await Playlist.findByIdAndDelete(req.params.id);
-    console.log('Playlist silindi:', req.params.id);
 
     // WebSocket üzerinden cihazlara bildirim gönder
     if (req.app.get('wss')) {
       affectedDevices.forEach(device => {
-        console.log('Cihaza silme bildirimi gönderiliyor:', device.token);
         req.app.get('wss').sendToDevice(device.token, {
           type: 'playlist',
           action: 'deleted',
