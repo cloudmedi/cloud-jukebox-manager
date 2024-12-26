@@ -134,7 +134,15 @@ class WebSocketService {
 
   sendMessage(message) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message));
+      // Device token'ını mesaja ekle
+      const deviceInfo = store.get('deviceInfo');
+      const messageWithToken = {
+        ...message,
+        deviceToken: deviceInfo?.token
+      };
+      
+      console.log('Sending message with token:', messageWithToken);
+      this.ws.send(JSON.stringify(messageWithToken));
     } else {
       console.error('WebSocket bağlantısı kurulamadı, yeniden bağlanılıyor...');
       this.connect();

@@ -7,6 +7,13 @@ class StatusHandler {
 
   async handlePlaylistStatus(token, message) {
     try {
+      console.log('Handling playlist status update:', message, 'for device:', token);
+      
+      if (!token) {
+        console.error('No device token provided in playlist status update');
+        return;
+      }
+
       const device = await Device.findOne({ token });
       if (!device) {
         console.error('Device not found for token:', token);
