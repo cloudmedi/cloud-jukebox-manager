@@ -26,11 +26,13 @@ class WebSocketService {
     this.addMessageHandler('playlist', async (message) => {
       console.log('Playlist message received:', message);
       try {
-        const updatedPlaylist = await playlistHandler.handlePlaylist(message.data);
-        const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
-        if (mainWindow) {
-          mainWindow.webContents.send('playlist-received', updatedPlaylist);
-          console.log('Playlist update sent to renderer');
+        const result = await playlistHandler.handlePlaylistMessage(message);
+        if (result) {
+          const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
+          if (mainWindow) {
+            mainWindow.webContents.send('playlist-received', result);
+            console.log('Playlist update sent to renderer');
+          }
         }
       } catch (error) {
         console.error('Error handling playlist message:', error);
@@ -118,4 +120,4 @@ class WebSocketService {
   }
 }
 
-module.exports = new WebSocketService();
+module.exports = WebSocketService.getInstance();
