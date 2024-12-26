@@ -28,13 +28,44 @@ class PlaylistHandler {
         return this.handlePlaylistDeletion(message.playlistId);
       }
 
-      // Normal playlist işleme
-      const playlist = message.playlist;
+      // Normal playlist işleme - playlist bilgisi message.data içinde
+      const playlist = message.data;
       if (!playlist || !playlist.name) {
         throw new Error('Invalid playlist data received');
       }
 
-      // Download and process songs logic here...
+      logger.info(`Processing playlist: ${playlist.name}`);
+
+      // Playlist için klasör oluştur
+      const playlistDir = path.join(this.downloadPath, playlist._id);
+      this.ensureDirectoryExists(playlistDir);
+
+      // Şarkıları işle
+      const updatedSongs = playlist.songs.map(song => ({
+        ...song,
+        localPath: path.join(playlistDir, `${song._id}.mp3`)
+      }));
+
+      // Güncellenmiş playlist'i oluştur
+      const updatedPlaylist = {
+        ...playlist,
+        songs: updatedSongs
+      };
+
+      // Local storage'a kaydet
+      const playlists = store.get('playlists', []);
+      const existingIndex = playlists.findIndex(p => p._id === playlist._id);
+      
+      if (existingIndex !== -1) {
+        playlists[existingIndex] = updatedPlaylist;
+      } else {
+        playlists.push(updatedPlaylist);
+      }
+      
+      store.set('playlists', playlists);
+      logger.info(`Playlist ${playlist.name} processed successfully`);
+      
+      return updatedPlaylist;
 
     } catch (error) {
       logger.error('Error handling playlist:', error);
@@ -64,10 +95,6 @@ class PlaylistHandler {
       logger.error('Error handling playlist deletion:', error);
       throw error;
     }
-  }
-
-  async downloadFile(url, filePath) {
-    // File download logic here...
   }
 }
 
