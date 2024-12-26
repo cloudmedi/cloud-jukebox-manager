@@ -1,9 +1,11 @@
 const { app } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const axios = require('axios');
 const Store = require('electron-store');
 const store = new Store();
+const { createLogger } = require('../../utils/logger');
+
+const logger = createLogger('playlist-handler');
 
 class PlaylistHandler {
   constructor() {
@@ -17,37 +19,34 @@ class PlaylistHandler {
     }
   }
 
-  async handlePlaylist(playlist) {
+  async handlePlaylist(message) {
     try {
-      console.log('Handling playlist:', playlist.name);
+      logger.info('Handling playlist message:', message);
+
+      // Playlist silme işlemi
+      if (message.action === 'deleted') {
+        return this.handlePlaylistDeletion(message.playlistId);
+      }
+
+      // Playlist verisi message.data içinde geliyor
+      const playlist = message.data;
       
+      // ID kontrolü yap - name yerine
+      if (!playlist || !playlist._id) {
+        throw new Error('Invalid playlist data: Missing playlist ID');
+      }
+
+      logger.info(`Processing playlist with ID: ${playlist._id}`);
+
       // Playlist için klasör oluştur
       const playlistDir = path.join(this.downloadPath, playlist._id);
       this.ensureDirectoryExists(playlistDir);
 
-      // Şarkıları indir ve localPath'leri güncelle
-      const updatedSongs = await Promise.all(
-        playlist.songs.map(async (song) => {
-          try {
-            const songPath = path.join(playlistDir, `${song._id}.mp3`);
-            const songUrl = `${playlist.baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
-
-            // Şarkı zaten indirilmiş mi kontrol et
-            if (!fs.existsSync(songPath)) {
-              console.log(`Downloading song: ${song.name}`);
-              await this.downloadFile(songUrl, songPath);
-            }
-
-            return {
-              ...song,
-              localPath: songPath
-            };
-          } catch (error) {
-            console.error(`Error downloading song ${song.name}:`, error);
-            return song;
-          }
-        })
-      );
+      // Şarkıları işle
+      const updatedSongs = playlist.songs.map(song => ({
+        ...song,
+        localPath: path.join(playlistDir, `${song._id}.mp3`)
+      }));
 
       // Güncellenmiş playlist'i oluştur
       const updatedPlaylist = {
@@ -66,28 +65,38 @@ class PlaylistHandler {
       }
       
       store.set('playlists', playlists);
+      logger.info(`Playlist ${playlist._id} processed successfully`);
       
       return updatedPlaylist;
+
     } catch (error) {
-      console.error('Error handling playlist:', error);
+      logger.error('Error handling playlist:', error);
       throw error;
     }
   }
 
-  async downloadFile(url, filePath) {
-    const response = await axios({
-      url,
-      method: 'GET',
-      responseType: 'stream'
-    });
+  handlePlaylistDeletion(playlistId) {
+    try {
+      logger.info(`Handling playlist deletion for ID: ${playlistId}`);
 
-    const writer = fs.createWriteStream(filePath);
+      // Local storage'dan playlist'i sil
+      const playlists = store.get('playlists', []);
+      const updatedPlaylists = playlists.filter(p => p._id !== playlistId);
+      store.set('playlists', updatedPlaylists);
 
-    return new Promise((resolve, reject) => {
-      response.data.pipe(writer);
-      writer.on('finish', resolve);
-      writer.on('error', reject);
-    });
+      // Playlist klasörünü sil
+      const playlistDir = path.join(this.downloadPath, playlistId);
+      if (fs.existsSync(playlistDir)) {
+        fs.rmSync(playlistDir, { recursive: true, force: true });
+        logger.info(`Deleted playlist directory: ${playlistDir}`);
+      }
+
+      logger.info('Playlist deletion completed successfully');
+      return { success: true, message: 'Playlist deleted' };
+    } catch (error) {
+      logger.error('Error handling playlist deletion:', error);
+      throw error;
+    }
   }
 }
 

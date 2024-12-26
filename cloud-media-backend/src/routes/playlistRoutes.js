@@ -6,7 +6,6 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { createLogger } = require('../utils/logger');
-const PlaylistDeleteMessage = require('../websocket/messages/PlaylistDeleteMessage');
 
 const logger = createLogger('playlist-service');
 
@@ -110,6 +109,7 @@ router.delete('/:id', async (req, res) => {
   try {
     logger.info(`Starting playlist deletion process for ID: ${req.params.id}`);
     
+    // Önce playlist'i bul
     const playlist = await Playlist.findById(req.params.id);
     if (!playlist) {
       logger.warn(`Playlist not found with ID: ${req.params.id}`);
@@ -118,6 +118,7 @@ router.delete('/:id', async (req, res) => {
 
     logger.info(`Found playlist to delete: ${playlist.name} (${playlist._id})`);
 
+    // Bu playlist'i kullanan cihazları bul
     const affectedDevices = await Device.find({ activePlaylist: playlist._id });
     logger.info(`Found ${affectedDevices.length} devices using this playlist`);
     
@@ -125,6 +126,7 @@ router.delete('/:id', async (req, res) => {
       logger.info('Affected devices:', affectedDevices.map(d => ({ id: d._id, token: d.token })));
     }
 
+    // Cihazların playlist referanslarını temizle
     const updateResult = await Device.updateMany(
       { activePlaylist: playlist._id },
       { 
@@ -136,6 +138,7 @@ router.delete('/:id', async (req, res) => {
     );
     logger.info(`Updated ${updateResult.modifiedCount} devices to remove playlist reference`);
 
+    // Artwork dosyasını sil
     if (playlist.artwork) {
       const artworkPath = path.join('uploads', 'playlists', path.basename(playlist.artwork));
       logger.info(`Checking artwork file: ${artworkPath}`);
@@ -148,20 +151,26 @@ router.delete('/:id', async (req, res) => {
       }
     }
 
+    // Playlist'i sil
     await Playlist.findByIdAndDelete(req.params.id);
     logger.info(`Successfully deleted playlist from database: ${playlist._id}`);
 
+    // WebSocket üzerinden cihazlara bildirim gönder
     if (req.wss) {
       logger.info('Sending WebSocket notifications to affected devices');
       affectedDevices.forEach(device => {
         logger.info(`Sending deletion notification to device: ${device.token}`);
-        const deleteMessage = PlaylistDeleteMessage.create(playlist);
-        req.wss.sendToDevice(device.token, deleteMessage);
+        req.wss.sendToDevice(device.token, {
+          type: 'playlist',
+          action: 'deleted',
+          playlistId: playlist._id
+        });
       });
     } else {
       logger.warn('WebSocket server not available for notifications');
     }
 
+    // Başarılı yanıt döndür
     res.json({ 
       message: 'Playlist başarıyla silindi',
       affectedDevices: affectedDevices.length
