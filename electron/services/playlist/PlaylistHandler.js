@@ -28,46 +28,13 @@ class PlaylistHandler {
         return this.handlePlaylistDeletion(message.playlistId);
       }
 
-      // Playlist verisi message.data içinde geliyor
-      const playlist = message.data;
-      
-      // ID kontrolü yap - name yerine
-      if (!playlist || !playlist._id) {
-        throw new Error('Invalid playlist data: Missing playlist ID');
+      // Normal playlist işleme
+      const playlist = message.playlist;
+      if (!playlist || !playlist.name) {
+        throw new Error('Invalid playlist data received');
       }
 
-      logger.info(`Processing playlist with ID: ${playlist._id}`);
-
-      // Playlist için klasör oluştur
-      const playlistDir = path.join(this.downloadPath, playlist._id);
-      this.ensureDirectoryExists(playlistDir);
-
-      // Şarkıları işle
-      const updatedSongs = playlist.songs.map(song => ({
-        ...song,
-        localPath: path.join(playlistDir, `${song._id}.mp3`)
-      }));
-
-      // Güncellenmiş playlist'i oluştur
-      const updatedPlaylist = {
-        ...playlist,
-        songs: updatedSongs
-      };
-
-      // Local storage'a kaydet
-      const playlists = store.get('playlists', []);
-      const existingIndex = playlists.findIndex(p => p._id === playlist._id);
-      
-      if (existingIndex !== -1) {
-        playlists[existingIndex] = updatedPlaylist;
-      } else {
-        playlists.push(updatedPlaylist);
-      }
-      
-      store.set('playlists', playlists);
-      logger.info(`Playlist ${playlist._id} processed successfully`);
-      
-      return updatedPlaylist;
+      // Download and process songs logic here...
 
     } catch (error) {
       logger.error('Error handling playlist:', error);
@@ -97,6 +64,10 @@ class PlaylistHandler {
       logger.error('Error handling playlist deletion:', error);
       throw error;
     }
+  }
+
+  async downloadFile(url, filePath) {
+    // File download logic here...
   }
 }
 
