@@ -1,11 +1,22 @@
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
-import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem } from "@/components/ui/command";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { turkishCities } from "@/utils/turkishCities";
 import { useState } from "react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import {
+  Command,
+  CommandEmpty,
+  CommandGroup,
+  CommandInput,
+  CommandItem,
+} from "@/components/ui/command";
 
 export const LocationField = ({ form }: { form: any }) => {
   const [open, setOpen] = useState(false);
@@ -38,7 +49,7 @@ export const LocationField = ({ form }: { form: any }) => {
               <Command>
                 <CommandInput placeholder="Şehir ara..." />
                 <CommandEmpty>Şehir bulunamadı.</CommandEmpty>
-                <CommandGroup className="max-h-[200px] overflow-auto">
+                <CommandGroup>
                   {turkishCities.map((city) => (
                     <CommandItem
                       key={city}
