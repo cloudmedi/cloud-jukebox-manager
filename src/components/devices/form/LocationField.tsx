@@ -11,7 +11,7 @@ interface LocationFieldProps {
   form: any;
 }
 
-export const LocationField = ({ form }: LocationFieldProps) => {
+export function LocationField({ form }: LocationFieldProps) {
   const [open, setOpen] = useState(false);
 
   return (
@@ -70,4 +70,4 @@ export const LocationField = ({ form }: LocationFieldProps) => {
       )}
     />
   );
-};
+}

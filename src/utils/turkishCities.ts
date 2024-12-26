@@ -80,4 +80,4 @@ export const turkishCities = [
   "Kilis",
   "Osmaniye",
   "Düzce"
-] as const;
+];
