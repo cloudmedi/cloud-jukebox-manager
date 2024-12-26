@@ -5,6 +5,9 @@ const Device = require('../models/Device');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('playlist-service');
 
 // Multer yapılandırması
 const storage = multer.diskStorage({
@@ -35,15 +38,17 @@ const upload = multer({
 // Tüm playlistleri getir
 router.get('/', async (req, res) => {
   try {
+    logger.info('Fetching all playlists');
     const playlists = await Playlist.find()
       .populate('songs');
+    logger.info(`Successfully fetched ${playlists.length} playlists`);
     res.json(playlists);
   } catch (error) {
+    logger.error('Error fetching playlists:', { error: error.message });
     res.status(500).json({ message: error.message });
   }
 });
 
-// Belirli bir playlisti getir
 router.get('/:id', async (req, res) => {
   try {
     const playlist = await Playlist.findById(req.params.id)
@@ -99,20 +104,30 @@ router.patch('/:id', upload.single('artwork'), async (req, res) => {
   }
 });
 
-// Playlist sil - Güncellendi
+// Playlist sil - Enhanced logging
 router.delete('/:id', async (req, res) => {
   try {
+    logger.info(`Starting playlist deletion process for ID: ${req.params.id}`);
+    
     // Önce playlist'i bul
     const playlist = await Playlist.findById(req.params.id);
     if (!playlist) {
+      logger.warn(`Playlist not found with ID: ${req.params.id}`);
       return res.status(404).json({ message: 'Playlist bulunamadı' });
     }
 
+    logger.info(`Found playlist to delete: ${playlist.name} (${playlist._id})`);
+
     // Bu playlist'i kullanan cihazları bul
     const affectedDevices = await Device.find({ activePlaylist: playlist._id });
+    logger.info(`Found ${affectedDevices.length} devices using this playlist`);
+    
+    if (affectedDevices.length > 0) {
+      logger.info('Affected devices:', affectedDevices.map(d => ({ id: d._id, token: d.token })));
+    }
 
     // Cihazların playlist referanslarını temizle
-    await Device.updateMany(
+    const updateResult = await Device.updateMany(
       { activePlaylist: playlist._id },
       { 
         $set: { 
@@ -121,28 +136,38 @@ router.delete('/:id', async (req, res) => {
         } 
       }
     );
+    logger.info(`Updated ${updateResult.modifiedCount} devices to remove playlist reference`);
 
-    // Artwork dosyasını sil (eğer varsa)
+    // Artwork dosyasını sil
     if (playlist.artwork) {
       const artworkPath = path.join('uploads', 'playlists', path.basename(playlist.artwork));
+      logger.info(`Checking artwork file: ${artworkPath}`);
+      
       if (fs.existsSync(artworkPath)) {
         fs.unlinkSync(artworkPath);
-        console.log('Artwork dosyası silindi:', artworkPath);
+        logger.info(`Deleted artwork file: ${artworkPath}`);
+      } else {
+        logger.warn(`Artwork file not found: ${artworkPath}`);
       }
     }
 
     // Playlist'i sil
     await Playlist.findByIdAndDelete(req.params.id);
+    logger.info(`Successfully deleted playlist from database: ${playlist._id}`);
 
     // WebSocket üzerinden cihazlara bildirim gönder
-    if (req.app.get('wss')) {
+    if (req.wss) {
+      logger.info('Sending WebSocket notifications to affected devices');
       affectedDevices.forEach(device => {
-        req.app.get('wss').sendToDevice(device.token, {
+        logger.info(`Sending deletion notification to device: ${device.token}`);
+        req.wss.sendToDevice(device.token, {
           type: 'playlist',
           action: 'deleted',
           playlistId: playlist._id
         });
       });
+    } else {
+      logger.warn('WebSocket server not available for notifications');
     }
 
     // Başarılı yanıt döndür
@@ -150,9 +175,14 @@ router.delete('/:id', async (req, res) => {
       message: 'Playlist başarıyla silindi',
       affectedDevices: affectedDevices.length
     });
+    logger.info('Playlist deletion process completed successfully');
 
   } catch (error) {
-    console.error('Playlist silme hatası:', error);
+    logger.error('Error deleting playlist:', { 
+      playlistId: req.params.id,
+      error: error.message,
+      stack: error.stack 
+    });
     res.status(500).json({ 
       message: 'Playlist silinirken bir hata oluştu',
       error: error.message 
