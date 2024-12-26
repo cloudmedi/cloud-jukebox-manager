@@ -1,5 +1,4 @@
 import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -49,7 +48,7 @@ export const LocationField = ({ form }: { form: any }) => {
               <Command>
                 <CommandInput placeholder="Şehir ara..." />
                 <CommandEmpty>Şehir bulunamadı.</CommandEmpty>
-                <CommandGroup>
+                <CommandGroup className="max-h-[300px] overflow-y-auto">
                   {turkishCities.map((city) => (
                     <CommandItem
                       key={city}
