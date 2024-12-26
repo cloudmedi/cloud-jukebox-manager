@@ -2,7 +2,7 @@ const WebSocket = require('ws');
 const Store = require('electron-store');
 const { app } = require('electron');
 const playlistHandler = require('./playlist/PlaylistHandler');
-const DeleteAnnouncementHandler = require('./announcement/handlers/DeleteAnnouncementHandler');
+const DeleteMessageHandler = require('./websocket/handlers/DeleteMessageHandler');
 const CommandHandler = require('./handlers/CommandHandler');
 const store = new Store();
 
@@ -10,7 +10,6 @@ class WebSocketService {
   constructor() {
     this.ws = null;
     this.messageHandlers = new Map();
-    this.deleteAnnouncementHandler = new DeleteAnnouncementHandler(this);
     this.setupHandlers();
     this.connect();
   }
@@ -40,6 +39,11 @@ class WebSocketService {
     this.addMessageHandler('command', (message) => {
       console.log('Command message received:', message);
       CommandHandler.handleCommand(message);
+    });
+
+    this.addMessageHandler('delete', (message) => {
+      console.log('Delete message received:', message);
+      DeleteMessageHandler.handleMessage(message);
     });
   }
 
