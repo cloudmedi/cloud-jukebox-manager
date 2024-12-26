@@ -1,6 +1,7 @@
 const express = require('express');
 const http = require('http');
 const mongoose = require('mongoose');
+const cors = require('cors');
 const WebSocketServer = require('./websocket/WebSocketServer');
 const playlistRoutes = require('./routes/playlistRoutes');
 const songRoutes = require('./routes/songRoutes');
@@ -12,6 +13,7 @@ const app = express();
 const logger = createLogger('app');
 
 // Middleware
+app.use(cors());  // CORS middleware'ini ekledik
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
