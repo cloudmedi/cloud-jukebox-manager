@@ -97,17 +97,25 @@ router.patch('/:id', upload.single('artwork'), async (req, res) => {
   }
 });
 
-// Playlist sil
+// Playlist sil - Güncellendi
 router.delete('/:id', async (req, res) => {
   try {
     const playlist = await Playlist.findById(req.params.id);
     if (!playlist) {
       return res.status(404).json({ message: 'Playlist bulunamadı' });
     }
-    await playlist.remove();
+
+    // deleteOne() kullanarak silme işlemini gerçekleştir
+    await Playlist.deleteOne({ _id: req.params.id });
+
+    // Başarılı yanıt döndür
     res.json({ message: 'Playlist silindi' });
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Playlist silme hatası:', error);
+    res.status(500).json({ 
+      message: 'Playlist silinirken bir hata oluştu',
+      error: error.message 
+    });
   }
 });
 
