@@ -46,12 +46,21 @@ playlistSchema.methods.getSongCount = function() {
 
 // Playlist silindiğinde cihazlardan referansını temizle
 playlistSchema.pre('remove', async function(next) {
-  const Device = mongoose.model('Device');
-  await Device.updateMany(
-    { activePlaylist: this._id },
-    { $set: { activePlaylist: null } }
-  );
-  next();
+  try {
+    const Device = mongoose.model('Device');
+    await Device.updateMany(
+      { activePlaylist: this._id },
+      { 
+        $set: { 
+          activePlaylist: null,
+          playlistStatus: null 
+        } 
+      }
+    );
+    next();
+  } catch (error) {
+    next(error);
+  }
 });
 
 const Playlist = mongoose.model('Playlist', playlistSchema);

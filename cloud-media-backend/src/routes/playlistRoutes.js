@@ -1,6 +1,7 @@
 const express = require('express');
 const router = express.Router();
 const Playlist = require('../models/Playlist');
+const Device = require('../models/Device');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
@@ -101,10 +102,25 @@ router.patch('/:id', upload.single('artwork'), async (req, res) => {
 // Playlist sil - Güncellendi
 router.delete('/:id', async (req, res) => {
   try {
+    // Önce playlist'i bul
     const playlist = await Playlist.findById(req.params.id);
     if (!playlist) {
       return res.status(404).json({ message: 'Playlist bulunamadı' });
     }
+
+    // Bu playlist'i kullanan cihazları bul
+    const affectedDevices = await Device.find({ activePlaylist: playlist._id });
+
+    // Cihazların playlist referanslarını temizle
+    await Device.updateMany(
+      { activePlaylist: playlist._id },
+      { 
+        $set: { 
+          activePlaylist: null,
+          playlistStatus: null 
+        } 
+      }
+    );
 
     // Artwork dosyasını sil (eğer varsa)
     if (playlist.artwork) {
@@ -115,11 +131,26 @@ router.delete('/:id', async (req, res) => {
       }
     }
 
-    // findByIdAndDelete kullan - bu pre-remove middleware'i tetikleyecek
+    // Playlist'i sil
     await Playlist.findByIdAndDelete(req.params.id);
 
+    // WebSocket üzerinden cihazlara bildirim gönder
+    if (req.app.get('wss')) {
+      affectedDevices.forEach(device => {
+        req.app.get('wss').sendToDevice(device.token, {
+          type: 'playlist',
+          action: 'deleted',
+          playlistId: playlist._id
+        });
+      });
+    }
+
     // Başarılı yanıt döndür
-    res.json({ message: 'Playlist başarıyla silindi' });
+    res.json({ 
+      message: 'Playlist başarıyla silindi',
+      affectedDevices: affectedDevices.length
+    });
+
   } catch (error) {
     console.error('Playlist silme hatası:', error);
     res.status(500).json({ 
