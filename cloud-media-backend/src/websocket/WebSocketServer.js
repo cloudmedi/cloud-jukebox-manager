@@ -159,6 +159,20 @@ class WebSocketServer {
     });
   }
 
+  async handlePlaylistDeletion(playlistId) {
+    console.log('Broadcasting playlist deletion:', playlistId);
+    this.wss.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN) {
+        console.log('Sending deletion message to client');
+        client.send(JSON.stringify({
+          type: 'playlist',
+          action: 'deleted',
+          playlistId: playlistId
+        }));
+      }
+    });
+  }
+
   async handleDeviceMessage(token, message) {
     console.log(`Handling device message from ${token}:`, message);
     
