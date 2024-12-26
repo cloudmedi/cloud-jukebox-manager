@@ -63,23 +63,54 @@ function createWindow() {
 
 function createTray() {
   try {
-    // Tray ikonu oluştur
     const iconPath = path.join(__dirname, 'icon.png');
     console.log('Tray icon path:', iconPath);
     
     tray = new Tray(iconPath);
     
-    // Tray menüsünü oluştur
+    // Tray menüsünü güncelle
     const contextMenu = Menu.buildFromTemplate([
       {
-        label: 'Show App',
+        label: 'Open Soundtrack',
         click: function() {
           mainWindow.show();
-          mainWindow.focus(); // Pencereyi ön plana getir
+          mainWindow.focus();
+        }
+      },
+      { type: 'separator' },
+      {
+        label: 'Now Playing:',
+        enabled: false
+      },
+      {
+        label: store.get('currentSong', 'No song playing'),
+        enabled: false
+      },
+      { type: 'separator' },
+      {
+        label: 'Pause',
+        click: function() {
+          mainWindow.webContents.send('toggle-playback');
         }
       },
       {
-        label: 'Close',
+        label: 'Skip Track',
+        click: function() {
+          mainWindow.webContents.send('skip-track');
+        }
+      },
+      { type: 'separator' },
+      {
+        label: 'Remote code:',
+        enabled: false
+      },
+      {
+        label: store.get('deviceInfo.token', 'Not connected'),
+        enabled: false
+      },
+      { type: 'separator' },
+      {
+        label: 'Quit Soundtrack',
         click: function() {
           app.isQuitting = true;
           app.quit();
@@ -87,20 +118,19 @@ function createTray() {
       }
     ]);
 
-    // Tray ayarlarını yap
     tray.setToolTip('Cloud Media Player');
     tray.setContextMenu(contextMenu);
-
+    
     // Tray ikonuna çift tıklandığında uygulamayı göster
     tray.on('double-click', () => {
       mainWindow.show();
-      mainWindow.focus(); // Pencereyi ön plana getir
+      mainWindow.focus();
     });
     
     // Tray ikonuna tek tıklandığında uygulamayı göster
     tray.on('click', () => {
       mainWindow.show();
-      mainWindow.focus(); // Pencereyi ön plana getir
+      mainWindow.focus();
     });
     
     console.log('Tray created successfully');
@@ -143,4 +173,10 @@ ipcMain.handle('save-device-info', async (event, deviceInfo) => {
 
 ipcMain.handle('get-device-info', async () => {
   return store.get('deviceInfo');
+});
+
+// Şarkı değiştiğinde tray menüsünü güncelle
+ipcMain.on('update-current-song', (event, songInfo) => {
+  store.set('currentSong', songInfo);
+  createTray(); // Menüyü yeniden oluştur
 });
