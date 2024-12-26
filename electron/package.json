@@ -3,6 +3,10 @@
   "version": "1.0.0",
   "description": "Cloud Media Player Desktop Application",
   "main": "main.js",
+  "author": {
+    "name": "Cloud Media",
+    "email": "info@cloudmedia.com"
+  },
   "scripts": {
     "start": "electron .",
     "dev": "electron .",
