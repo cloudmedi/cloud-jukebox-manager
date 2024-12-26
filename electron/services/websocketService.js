@@ -2,133 +2,17 @@ const WebSocket = require('ws');
 const Store = require('electron-store');
 const { app } = require('electron');
 const playlistHandler = require('./playlist/PlaylistHandler');
-const DeleteMessageHandler = require('./websocket/handlers/DeleteMessageHandler');
+const DeleteAnnouncementHandler = require('./announcement/handlers/DeleteAnnouncementHandler');
 const CommandHandler = require('./handlers/CommandHandler');
 const store = new Store();
 
 class WebSocketService {
-  private static instance: WebSocketService;
-  private ws: WebSocket | null = null;
-  private messageHandlers: Map<string, Set<(data: any) => void>> = new Map();
-  private reconnectTimeout: NodeJS.Timeout | null = null;
-  private isConnecting: boolean = false;
-
-  private constructor() {
+  constructor() {
+    this.ws = null;
+    this.messageHandlers = new Map();
+    this.deleteAnnouncementHandler = new DeleteAnnouncementHandler(this);
+    this.setupHandlers();
     this.connect();
-  }
-
-  public static getInstance(): WebSocketService {
-    if (!WebSocketService.instance) {
-      WebSocketService.instance = new WebSocketService();
-    }
-    return WebSocketService.instance;
-  }
-
-  private connect() {
-    if (this.isConnecting || (this.ws && this.ws.readyState === WebSocket.OPEN)) {
-      return;
-    }
-
-    this.isConnecting = true;
-    
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
-    }
-
-    this.ws = new WebSocket('ws://localhost:5000/admin');
-
-    this.ws.onopen = () => {
-      console.log('Admin WebSocket bağlantısı kuruldu');
-      this.isConnecting = false;
-      if (this.reconnectTimeout) {
-        clearTimeout(this.reconnectTimeout);
-        this.reconnectTimeout = null;
-      }
-    };
-
-    this.ws.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        this.handleMessage(message);
-      } catch (error) {
-        console.error('Message parsing error:', error);
-      }
-    };
-
-    this.ws.onclose = () => {
-      console.log('WebSocket bağlantısı kapandı, yeniden bağlanılıyor...');
-      this.isConnecting = false;
-      this.scheduleReconnect();
-    };
-
-    this.ws.onerror = (error) => {
-      console.error('WebSocket error:', error);
-      this.isConnecting = false;
-      this.scheduleReconnect();
-    };
-  }
-
-  private scheduleReconnect() {
-    if (!this.reconnectTimeout) {
-      this.reconnectTimeout = setTimeout(() => {
-        this.connect();
-      }, 5000);
-    }
-  }
-
-  private handleMessage(message: any) {
-    const handlers = this.messageHandlers.get(message.type);
-    if (handlers) {
-      handlers.forEach(handler => {
-        try {
-          handler(message);
-        } catch (error) {
-          console.error(`Handler error for message type ${message.type}:`, error);
-        }
-      });
-    } else {
-      console.log('Unhandled message type:', message.type);
-    }
-  }
-
-  public addMessageHandler(type: string, handler: (data: any) => void) {
-    if (!this.messageHandlers.has(type)) {
-      this.messageHandlers.set(type, new Set());
-    }
-    this.messageHandlers.get(type)?.add(handler);
-  }
-
-  public removeMessageHandler(type: string, handler: (data: any) => void) {
-    const handlers = this.messageHandlers.get(type);
-    if (handlers) {
-      handlers.delete(handler);
-      if (handlers.size === 0) {
-        this.messageHandlers.delete(type);
-      }
-    }
-  }
-
-  public sendMessage(message: any) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message));
-    } else {
-      console.error('WebSocket bağlantısı kurulamadı, yeniden bağlanılıyor...');
-      this.connect();
-    }
-  }
-
-  public cleanup() {
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
-    }
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-      this.reconnectTimeout = null;
-    }
-    this.messageHandlers.clear();
-    this.isConnecting = false;
   }
 
   setupHandlers() {
@@ -157,13 +41,81 @@ class WebSocketService {
       console.log('Command message received:', message);
       CommandHandler.handleCommand(message);
     });
+  }
 
-    this.addMessageHandler('delete', (message) => {
-      console.log('Delete message received:', message);
-      DeleteMessageHandler.handleMessage(message);
+  connect() {
+    const deviceInfo = store.get('deviceInfo');
+    if (!deviceInfo || !deviceInfo.token) {
+      console.log('No device info found');
+      return;
+    }
+
+    this.ws = new WebSocket('ws://localhost:5000');
+
+    this.ws.on('open', () => {
+      console.log('WebSocket connected');
+      this.sendAuth(deviceInfo.token);
+      const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
+      if (mainWindow) {
+        mainWindow.webContents.send('websocket-status', true);
+      }
     });
+
+    this.ws.on('message', (data) => {
+      try {
+        const message = JSON.parse(data);
+        console.log('Received message:', message);
+        this.handleMessage(message);
+      } catch (error) {
+        console.error('Error parsing message:', error);
+      }
+    });
+
+    this.ws.on('close', () => {
+      console.log('WebSocket disconnected, reconnecting...');
+      const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
+      if (mainWindow) {
+        mainWindow.webContents.send('websocket-status', false);
+      }
+      setTimeout(() => this.connect(), 5000);
+    });
+
+    this.ws.on('error', (error) => {
+      console.error('WebSocket error:', error);
+    });
+  }
+
+  sendAuth(token) {
+    this.sendMessage({
+      type: 'auth',
+      token: token
+    });
+  }
+
+  sendMessage(message) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(message));
+    } else {
+      console.error('WebSocket connection not ready');
+    }
+  }
+
+  handleMessage(message) {
+    const handler = this.messageHandlers.get(message.type);
+    if (handler) {
+      handler(message);
+    } else {
+      console.log('No handler for message type:', message.type);
+    }
+  }
+
+  addMessageHandler(type, handler) {
+    this.messageHandlers.set(type, handler);
+  }
+
+  removeMessageHandler(type) {
+    this.messageHandlers.delete(type);
   }
 }
 
-const websocketService = WebSocketService.getInstance();
-export default websocketService;
+module.exports = new WebSocketService();
