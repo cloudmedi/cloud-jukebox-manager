@@ -1,10 +1,11 @@
 class DeleteMessage {
-  static createDeleteRequest(entityType, entityId) {
+  static createDeleteRequest(entityType, entityId, data = {}) {
     return {
       type: 'delete',
       action: 'request',
       entityType,
-      entityId
+      entityId,
+      data
     };
   }
 
