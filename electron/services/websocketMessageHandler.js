@@ -80,19 +80,9 @@ class WebSocketMessageHandler {
       } else {
         console.log('Silinecek playlist bulunamadı:', message.playlistId);
       }
-    } else if (message.action === 'update') {
-      // Playlist güncelleme mesajını işle
-      const playlists = this.store.get('playlists', []);
-      const playlistIndex = playlists.findIndex(p => p._id === message.playlist._id);
-      
-      if (playlistIndex !== -1) {
-        playlists[playlistIndex] = message.playlist;
-        this.store.set('playlists', playlists);
-        mainWindow.webContents.send('playlist-updated', message.playlist);
-      }
-    } else {
-      // Yeni playlist veya diğer playlist mesajlarını işle
-      const playlist = message.data;
+    } else if (message.action === 'send') {
+      // Playlist gönderme işlemi için mevcut kodu koru
+      const playlist = message.playlist;
       if (!playlist || !playlist.songs) {
         console.error('Geçersiz playlist verisi:', playlist);
         return;
