@@ -18,6 +18,28 @@ document.getElementById('closeButton').addEventListener('click', () => {
     window.close();
 });
 
+// Playlist'leri görüntüleme fonksiyonu
+function displayPlaylists() {
+  const playlists = store.get('playlists', []);
+  const playlistContainer = document.getElementById('playlistContainer');
+  
+  if (playlistContainer) {
+    playlistContainer.innerHTML = '';
+    
+    playlists.forEach(playlist => {
+      const playlistElement = document.createElement('div');
+      playlistElement.className = 'playlist-item';
+      playlistElement.innerHTML = `
+        <div class="playlist-info">
+          <h3>${playlist.name}</h3>
+          <p>${playlist.songs.length} songs</p>
+        </div>
+      `;
+      playlistContainer.appendChild(playlistElement);
+    });
+  }
+}
+
 // Anons kontrolleri
 ipcRenderer.on('play-announcement', async (event, announcement) => {
   console.log('Received announcement:', announcement);
