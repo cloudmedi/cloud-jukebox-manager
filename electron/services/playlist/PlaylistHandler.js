@@ -23,17 +23,23 @@ class PlaylistHandler {
     try {
       logger.info('Handling playlist message:', message);
 
-      // Playlist silme işlemi kontrolü
-      if (message.action === 'deleted') {
-        return this.handlePlaylistDeletion(message.playlistId);
+      // Önce message.data'nın var olduğunu kontrol et
+      if (!message || !message.data) {
+        throw new Error('Invalid message format: Missing data object');
       }
 
-      // Playlist verisi message.data içinde geliyor
+      // Playlist silme işlemi kontrolü
+      if (message.action === 'deleted') {
+        return this.handlePlaylistDeletion(message.data.playlistId);
+      }
+
+      // Playlist verisi message.data içinden al
       const playlist = message.data;
       
-      // ID kontrolü - message.data içinden alıyoruz
-      if (!playlist || !playlist._id) {
-        throw new Error('Invalid playlist data: Missing playlist ID');
+      // ID kontrolü - direkt data içinden
+      if (!playlist._id) {
+        logger.error('Playlist data error:', playlist);
+        throw new Error('Invalid playlist data: Missing playlist ID in data object');
       }
 
       logger.info(`Processing playlist with ID: ${playlist._id}`);
