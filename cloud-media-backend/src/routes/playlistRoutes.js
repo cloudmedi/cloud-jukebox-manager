@@ -125,7 +125,7 @@ router.delete('/:id', async (req, res) => {
 
     // DeleteService ile silme işlemini gerçekleştir
     const deleteService = new DeleteService(req.wss);
-    await deleteService.handleDelete('playlist', playlist._id.toString(), async () => {
+    await deleteService.handleDelete('playlist', playlist._id, async () => {
       // Cihazların playlist referanslarını temizle
       await Device.updateMany(
         { activePlaylist: playlist._id },
@@ -142,13 +142,11 @@ router.delete('/:id', async (req, res) => {
         const artworkPath = path.join('uploads', 'playlists', path.basename(playlist.artwork));
         if (fs.existsSync(artworkPath)) {
           fs.unlinkSync(artworkPath);
-          logger.info(`Deleted artwork file: ${artworkPath}`);
         }
       }
 
       // Playlist'i sil
       await Playlist.findByIdAndDelete(req.params.id);
-      logger.info(`Playlist deleted from database: ${playlist._id}`);
     });
 
     // Başarılı yanıt döndür
