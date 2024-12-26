@@ -18,9 +18,19 @@ class DeleteService {
         DeleteMessage.createDeleteStarted(entityType, entityId)
       );
 
+      // İlgili cihazlara silme başladı bildirimi gönder
+      if (entityType === 'playlist') {
+        await this.notifyDevicesForPlaylist(entityId, 'started');
+      }
+
       // Silme işlemini gerçekleştir
       logger.info(`Executing delete function for ${entityType} ${entityId}`);
       await deleteFunction();
+
+      // İlgili cihazlara silme tamamlandı bildirimi gönder
+      if (entityType === 'playlist') {
+        await this.notifyDevicesForPlaylist(entityId, 'success');
+      }
 
       // Başarılı silme bildirimi
       logger.info(`Broadcasting delete success message for ${entityType} ${entityId}`);
@@ -39,6 +49,31 @@ class DeleteService {
       );
       
       throw error;
+    }
+  }
+
+  async notifyDevicesForPlaylist(playlistId, action) {
+    try {
+      const Device = require('../models/Device');
+      
+      // Playlist'i kullanan cihazları bul
+      const devices = await Device.find({ activePlaylist: playlistId });
+      
+      logger.info(`Found ${devices.length} devices using playlist ${playlistId}`);
+      
+      // Her cihaza bildirim gönder
+      devices.forEach(device => {
+        if (this.wss) {
+          const message = action === 'started' 
+            ? DeleteMessage.createDeleteStarted('playlist', playlistId)
+            : DeleteMessage.createDeleteSuccess('playlist', playlistId);
+            
+          const sent = this.wss.sendToDevice(device.token, message);
+          logger.info(`Delete ${action} message sent to device ${device.token}: ${sent}`);
+        }
+      });
+    } catch (error) {
+      logger.error('Error notifying devices:', error);
     }
   }
 
