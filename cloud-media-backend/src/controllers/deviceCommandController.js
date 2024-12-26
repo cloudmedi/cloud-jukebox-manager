@@ -1,5 +1,6 @@
 const Device = require('../models/Device');
 const Notification = require('../models/Notification');
+const DeleteService = require('../services/DeleteService');
 
 const restartDevice = async (req, res) => {
   try {
@@ -118,7 +119,12 @@ const emergencyStop = async (req, res) => {
       return res.status(404).json({ message: 'Cihaz bulunamadı' });
     }
 
-    res.json({ message: 'Cihaz acil olarak durduruldu' });
+    const deleteService = new DeleteService(req.wss);
+    await deleteService.handleDelete('device', device._id, async () => {
+      await Device.deleteOne({ _id: device._id });
+    });
+
+    res.json({ message: 'Cihaz acil olarak durduruldu ve silindi' });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

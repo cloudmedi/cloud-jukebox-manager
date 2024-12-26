@@ -1,5 +1,6 @@
 const Song = require('../models/Song');
 const songService = require('../services/songService');
+const DeleteService = require('../services/DeleteService');
 const fs = require('fs');
 const path = require('path');
 
@@ -50,39 +51,30 @@ const updateSong = async (req, res) => {
 
 const deleteSong = async (req, res) => {
   try {
-    console.log('Şarkı silme isteği alındı:', req.params.id);
-    
-    // Önce şarkıyı bul
     const song = await Song.findById(req.params.id);
     if (!song) {
-      console.log('Şarkı bulunamadı:', req.params.id);
       return res.status(404).json({ message: 'Şarkı bulunamadı' });
     }
 
-    console.log('Şarkı dosyaları siliniyor...');
-    // Şarkı dosyasını sil
-    if (song.filePath && fs.existsSync(song.filePath)) {
-      fs.unlinkSync(song.filePath);
-      console.log('Şarkı dosyası silindi:', song.filePath);
-    }
-
-    // Artwork dosyasını sil
-    if (song.artwork) {
-      const artworkPath = path.join('uploads', song.artwork);
-      if (fs.existsSync(artworkPath)) {
-        fs.unlinkSync(artworkPath);
-        console.log('Artwork dosyası silindi:', artworkPath);
+    const deleteService = new DeleteService(req.wss);
+    await deleteService.handleDelete('song', song._id, async () => {
+      // Dosyaları sil
+      if (song.filePath && fs.existsSync(song.filePath)) {
+        fs.unlinkSync(song.filePath);
       }
-    }
 
-    console.log('Şarkı veritabanından siliniyor...');
-    // Doğrudan belge üzerinde deleteOne'ı çağır
-    await song.deleteOne();
-    console.log('Şarkı başarıyla silindi:', song._id);
+      if (song.artwork) {
+        const artworkPath = path.join('uploads', song.artwork);
+        if (fs.existsSync(artworkPath)) {
+          fs.unlinkSync(artworkPath);
+        }
+      }
+
+      await song.deleteOne();
+    });
 
     res.json({ message: 'Şarkı başarıyla silindi' });
   } catch (error) {
-    console.error('Şarkı silme hatası:', error);
     res.status(500).json({ message: error.message });
   }
 };
