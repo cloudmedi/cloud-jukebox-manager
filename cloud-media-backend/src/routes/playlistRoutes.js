@@ -3,6 +3,7 @@ const router = express.Router();
 const Playlist = require('../models/Playlist');
 const multer = require('multer');
 const path = require('path');
+const fs = require('fs');
 
 // Multer yapılandırması
 const storage = multer.diskStorage({
@@ -105,54 +106,26 @@ router.delete('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Playlist bulunamadı' });
     }
 
-    // deleteOne() kullanarak silme işlemini gerçekleştir
-    await Playlist.deleteOne({ _id: req.params.id });
+    // Artwork dosyasını sil (eğer varsa)
+    if (playlist.artwork) {
+      const artworkPath = path.join('uploads', 'playlists', path.basename(playlist.artwork));
+      if (fs.existsSync(artworkPath)) {
+        fs.unlinkSync(artworkPath);
+        console.log('Artwork dosyası silindi:', artworkPath);
+      }
+    }
+
+    // findByIdAndDelete kullan - bu pre-remove middleware'i tetikleyecek
+    await Playlist.findByIdAndDelete(req.params.id);
 
     // Başarılı yanıt döndür
-    res.json({ message: 'Playlist silindi' });
+    res.json({ message: 'Playlist başarıyla silindi' });
   } catch (error) {
     console.error('Playlist silme hatası:', error);
     res.status(500).json({ 
       message: 'Playlist silinirken bir hata oluştu',
       error: error.message 
     });
-  }
-});
-
-// Playliste şarkı ekle
-router.post('/:id/songs', async (req, res) => {
-  try {
-    const playlist = await Playlist.findById(req.params.id);
-    if (!playlist) {
-      return res.status(404).json({ message: 'Playlist bulunamadı' });
-    }
-
-    const songIds = req.body.songs;
-    playlist.songs.push(...songIds);
-    
-    const updatedPlaylist = await playlist.save();
-    res.json(updatedPlaylist);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
-
-// Playlistten şarkı çıkar
-router.delete('/:id/songs/:songId', async (req, res) => {
-  try {
-    const playlist = await Playlist.findById(req.params.id);
-    if (!playlist) {
-      return res.status(404).json({ message: 'Playlist bulunamadı' });
-    }
-
-    playlist.songs = playlist.songs.filter(
-      song => song.toString() !== req.params.songId
-    );
-    
-    const updatedPlaylist = await playlist.save();
-    res.json(updatedPlaylist);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
   }
 });
 
