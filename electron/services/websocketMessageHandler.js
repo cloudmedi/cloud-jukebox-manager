@@ -43,21 +43,16 @@ class WebSocketMessageHandler {
     if (message.action === 'deleted') {
       console.log('Playlist silme mesajı alındı:', message.playlistId);
       
-      // Store'dan playlistleri al
       const playlists = this.store.get('playlists', []);
-      
-      // Silinen playlist'i bul
       const playlistIndex = playlists.findIndex(p => p._id === message.playlistId);
       
       if (playlistIndex !== -1) {
         const playlist = playlists[playlistIndex];
         console.log('Silinecek playlist bulundu:', playlist.name);
         
-        // Playlist'i store'dan kaldır
         playlists.splice(playlistIndex, 1);
         this.store.set('playlists', playlists);
         
-        // Yerel dosyaları temizle
         if (playlist.songs) {
           playlist.songs.forEach(song => {
             if (song.localPath) {
@@ -71,7 +66,6 @@ class WebSocketMessageHandler {
           });
         }
         
-        // Renderer'a bildir
         mainWindow.webContents.send('playlist-deleted', {
           playlistId: message.playlistId
         });
@@ -80,15 +74,24 @@ class WebSocketMessageHandler {
       } else {
         console.log('Silinecek playlist bulunamadı:', message.playlistId);
       }
+    } else if (message.action === 'update') {
+      console.log('Playlist güncelleme mesajı alındı');
+      const playlists = this.store.get('playlists', []);
+      const playlistIndex = playlists.findIndex(p => p._id === message.playlist._id);
+      
+      if (playlistIndex !== -1) {
+        playlists[playlistIndex] = message.playlist;
+        this.store.set('playlists', playlists);
+        mainWindow.webContents.send('playlist-updated', message.playlist);
+      }
     } else if (message.action === 'send') {
-      // Playlist gönderme işlemi için mevcut kodu koru
-      const playlist = message.playlist;
+      console.log('Playlist gönderme mesajı alındı');
+      const playlist = message.data;
       if (!playlist || !playlist.songs) {
         console.error('Geçersiz playlist verisi:', playlist);
         return;
       }
 
-      // Playlist için indirme klasörünü oluştur
       const userDataPath = require('electron').app.getPath('userData');
       const playlistDir = path.join(userDataPath, 'downloads', playlist._id);
 
@@ -96,7 +99,6 @@ class WebSocketMessageHandler {
         fs.mkdirSync(playlistDir, { recursive: true });
       }
 
-      // Store'a kaydedilecek playlist objesi
       const storedPlaylist = {
         _id: playlist._id,
         name: playlist.name,
@@ -104,7 +106,6 @@ class WebSocketMessageHandler {
         songs: []
       };
 
-      // Her şarkıyı indir ve localPath'leri ekle
       for (const song of playlist.songs) {
         try {
           const songUrl = `${playlist.baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
@@ -116,7 +117,6 @@ class WebSocketMessageHandler {
             progress: 0
           });
 
-          // Şarkıyı indir
           await this.downloadFile(songUrl, localPath, (progress) => {
             mainWindow.webContents.send('download-progress', {
               songName: song.name,
@@ -138,7 +138,6 @@ class WebSocketMessageHandler {
         }
       }
 
-      // Playlist'i store'a kaydet ve UI'ı güncelle
       mainWindow.webContents.send('playlist-received', storedPlaylist);
     }
   }
