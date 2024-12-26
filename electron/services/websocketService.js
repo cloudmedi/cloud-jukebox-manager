@@ -41,21 +41,10 @@ class WebSocketService {
       CommandHandler.handleCommand(message);
     });
 
+    // Delete message handler'ı ekle
     this.addMessageHandler('delete', async (message) => {
       await DeleteMessageHandler.handleMessage(message);
     });
-  }
-
-  sendAuth(token) {
-    console.log('Sending auth message with token:', token);
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify({
-        type: 'auth',
-        token: token
-      }));
-    } else {
-      console.error('WebSocket not ready for auth message');
-    }
   }
 
   connect() {
@@ -134,15 +123,7 @@ class WebSocketService {
 
   sendMessage(message) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      // Device token'ını mesaja ekle
-      const deviceInfo = store.get('deviceInfo');
-      const messageWithToken = {
-        ...message,
-        deviceToken: deviceInfo?.token
-      };
-      
-      console.log('Sending message with token:', messageWithToken);
-      this.ws.send(JSON.stringify(messageWithToken));
+      this.ws.send(JSON.stringify(message));
     } else {
       console.error('WebSocket bağlantısı kurulamadı, yeniden bağlanılıyor...');
       this.connect();
