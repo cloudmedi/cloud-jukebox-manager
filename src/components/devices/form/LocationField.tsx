@@ -5,17 +5,17 @@ import { cn } from "@/lib/utils";
 import { turkishCities } from "@/utils/turkishCities";
 import { useState } from "react";
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from "@/components/ui/popover";
-import {
   Command,
   CommandEmpty,
   CommandGroup,
   CommandInput,
   CommandItem,
 } from "@/components/ui/command";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 
 export const LocationField = ({ form }: { form: any }) => {
   const [open, setOpen] = useState(false);
@@ -44,9 +44,9 @@ export const LocationField = ({ form }: { form: any }) => {
                 </Button>
               </FormControl>
             </PopoverTrigger>
-            <PopoverContent className="w-full p-0">
+            <PopoverContent className="w-[200px] p-0" align="start">
               <Command>
-                <CommandInput placeholder="Şehir ara..." />
+                <CommandInput placeholder="Şehir ara..." className="h-9" />
                 <CommandEmpty>Şehir bulunamadı.</CommandEmpty>
                 <CommandGroup className="max-h-[300px] overflow-y-auto">
                   {turkishCities.map((city) => (
