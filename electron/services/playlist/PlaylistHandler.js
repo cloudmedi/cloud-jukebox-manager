@@ -28,13 +28,15 @@ class PlaylistHandler {
         return this.handlePlaylistDeletion(message.playlistId);
       }
 
-      // Normal playlist işleme - playlist bilgisi message.data içinde
+      // Playlist verisi message.data içinde geliyor
       const playlist = message.data;
-      if (!playlist || !playlist.name) {
-        throw new Error('Invalid playlist data received');
+      
+      // ID kontrolü yap - name yerine
+      if (!playlist || !playlist._id) {
+        throw new Error('Invalid playlist data: Missing playlist ID');
       }
 
-      logger.info(`Processing playlist: ${playlist.name}`);
+      logger.info(`Processing playlist with ID: ${playlist._id}`);
 
       // Playlist için klasör oluştur
       const playlistDir = path.join(this.downloadPath, playlist._id);
@@ -63,7 +65,7 @@ class PlaylistHandler {
       }
       
       store.set('playlists', playlists);
-      logger.info(`Playlist ${playlist.name} processed successfully`);
+      logger.info(`Playlist ${playlist._id} processed successfully`);
       
       return updatedPlaylist;
 
