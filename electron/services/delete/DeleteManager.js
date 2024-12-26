@@ -1,18 +1,11 @@
-const { BrowserWindow } = require('electron');
 const PlaylistDeleteHandler = require('./handlers/PlaylistDeleteHandler');
 const SongDeleteHandler = require('./handlers/SongDeleteHandler');
-const DeviceDeleteHandler = require('./handlers/DeviceDeleteHandler');
-const AnnouncementDeleteHandler = require('./handlers/AnnouncementDeleteHandler');
-const GroupDeleteHandler = require('./handlers/GroupDeleteHandler');
 
 class DeleteManager {
   constructor() {
     this.handlers = new Map([
       ['playlist', new PlaylistDeleteHandler()],
-      ['song', new SongDeleteHandler()],
-      ['device', new DeviceDeleteHandler()],
-      ['announcement', new AnnouncementDeleteHandler()],
-      ['group', new GroupDeleteHandler()]
+      ['song', new SongDeleteHandler()]
     ]);
   }
 
@@ -44,7 +37,7 @@ class DeleteManager {
   }
 
   notifyUI(event, data) {
-    const mainWindow = BrowserWindow.getAllWindows()[0];
+    const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
     if (mainWindow) {
       mainWindow.webContents.send(event, data);
     }
