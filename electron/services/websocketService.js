@@ -41,10 +41,21 @@ class WebSocketService {
       CommandHandler.handleCommand(message);
     });
 
-    // Delete message handler'ı ekle
     this.addMessageHandler('delete', async (message) => {
       await DeleteMessageHandler.handleMessage(message);
     });
+  }
+
+  sendAuth(token) {
+    console.log('Sending auth message with token:', token);
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({
+        type: 'auth',
+        token: token
+      }));
+    } else {
+      console.error('WebSocket not ready for auth message');
+    }
   }
 
   connect() {
