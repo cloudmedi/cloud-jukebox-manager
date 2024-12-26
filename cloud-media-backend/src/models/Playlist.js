@@ -1,4 +1,5 @@
 const mongoose = require('mongoose');
+const DeleteMessage = require('../websocket/messages/DeleteMessage');
 
 const playlistSchema = new mongoose.Schema({
   name: {
@@ -71,19 +72,26 @@ playlistSchema.pre('remove', async function(next) {
     
     console.log('Etkilenen cihaz sayısı:', updatedDevices.modifiedCount);
 
-    // WebSocket üzerinden cihazlara bildirim gönder
+    // WebSocket üzerinden cihazlara DeleteMessage kullanarak bildirim gönder
     if (global.wss) {
+      // Silme başladı bildirimi
+      global.wss.broadcastToAdmins(
+        DeleteMessage.createDeleteStarted('playlist', this._id)
+      );
+
+      // Cihazlara bildirim gönder
       affectedDevices.forEach(device => {
         console.log('Cihaza bildirim gönderiliyor:', device.token);
-        const sent = global.wss.sendToDevice(device.token, {
-          type: 'playlist',
-          action: 'deleted',
-          data: {
-            playlistId: this._id
-          }
-        });
+        const sent = global.wss.sendToDevice(device.token, 
+          DeleteMessage.createDeleteSuccess('playlist', this._id)
+        );
         console.log('Bildirim gönderildi mi:', sent ? 'Evet' : 'Hayır');
       });
+
+      // Başarılı silme bildirimi
+      global.wss.broadcastToAdmins(
+        DeleteMessage.createDeleteSuccess('playlist', this._id)
+      );
     } else {
       console.warn('WebSocket servisi bulunamadı');
     }
@@ -92,6 +100,14 @@ playlistSchema.pre('remove', async function(next) {
     next();
   } catch (error) {
     console.error('Playlist silme hatası:', error);
+    
+    // Hata durumunda bildirim gönder
+    if (global.wss) {
+      global.wss.broadcastToAdmins(
+        DeleteMessage.createDeleteError('playlist', this._id, error)
+      );
+    }
+    
     next(error);
   }
   console.log('=================== PLAYLIST SİLME SONU ===================');
