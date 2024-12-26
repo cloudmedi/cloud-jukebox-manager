@@ -109,6 +109,7 @@ router.delete('/:id', async (req, res) => {
   try {
     logger.info(`Starting playlist deletion process for ID: ${req.params.id}`);
     
+    // Önce playlist'i bul
     const playlist = await Playlist.findById(req.params.id);
     if (!playlist) {
       logger.warn(`Playlist not found with ID: ${req.params.id}`);
@@ -160,11 +161,9 @@ router.delete('/:id', async (req, res) => {
       affectedDevices.forEach(device => {
         logger.info(`Sending deletion notification to device: ${device.token}`);
         req.wss.sendToDevice(device.token, {
-          type: 'command',
-          command: 'loadPlaylist',
-          playlistId: null,
+          type: 'playlist',
           action: 'deleted',
-          name: playlist.name
+          playlistId: playlist._id
         });
       });
     } else {
