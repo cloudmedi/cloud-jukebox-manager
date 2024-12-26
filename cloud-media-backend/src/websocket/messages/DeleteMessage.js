@@ -1,33 +1,23 @@
-class DeleteMessage {
-  static createDeleteRequest(entityType, entityId, data = {}) {
-    return {
-      type: 'delete',
-      action: 'request',
-      entityType,
-      entityId,
-      data
-    };
-  }
-
-  static createDeleteStarted(entityType, entityId) {
+const DeleteMessage = {
+  createDeleteStarted(entityType, entityId) {
     return {
       type: 'delete',
       action: 'started',
       entityType,
       entityId
     };
-  }
+  },
 
-  static createDeleteSuccess(entityType, entityId) {
+  createDeleteSuccess(entityType, entityId) {
     return {
       type: 'delete',
       action: 'success',
       entityType,
       entityId
     };
-  }
+  },
 
-  static createDeleteError(entityType, entityId, error) {
+  createDeleteError(entityType, entityId, error) {
     return {
       type: 'delete',
       action: 'error',
@@ -36,6 +26,6 @@ class DeleteMessage {
       error: error.message || error
     };
   }
-}
+};
 
 module.exports = DeleteMessage;
