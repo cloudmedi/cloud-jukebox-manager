@@ -6,6 +6,7 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { createLogger } = require('../utils/logger');
+const DeleteService = require('../services/DeleteService');
 
 const logger = createLogger('playlist-service');
 
@@ -121,54 +122,32 @@ router.delete('/:id', async (req, res) => {
     // Bu playlist'i kullanan cihazları bul
     const affectedDevices = await Device.find({ activePlaylist: playlist._id });
     logger.info(`Found ${affectedDevices.length} devices using this playlist`);
-    
-    if (affectedDevices.length > 0) {
-      logger.info('Affected devices:', affectedDevices.map(d => ({ id: d._id, token: d.token })));
-    }
 
-    // Cihazların playlist referanslarını temizle
-    const updateResult = await Device.updateMany(
-      { activePlaylist: playlist._id },
-      { 
-        $set: { 
-          activePlaylist: null,
-          playlistStatus: null 
-        } 
+    // DeleteService ile silme işlemini gerçekleştir
+    const deleteService = new DeleteService(req.wss);
+    await deleteService.handleDelete('playlist', playlist._id, async () => {
+      // Cihazların playlist referanslarını temizle
+      await Device.updateMany(
+        { activePlaylist: playlist._id },
+        { 
+          $set: { 
+            activePlaylist: null,
+            playlistStatus: null 
+          } 
+        }
+      );
+
+      // Artwork dosyasını sil
+      if (playlist.artwork) {
+        const artworkPath = path.join('uploads', 'playlists', path.basename(playlist.artwork));
+        if (fs.existsSync(artworkPath)) {
+          fs.unlinkSync(artworkPath);
+        }
       }
-    );
-    logger.info(`Updated ${updateResult.modifiedCount} devices to remove playlist reference`);
 
-    // Artwork dosyasını sil
-    if (playlist.artwork) {
-      const artworkPath = path.join('uploads', 'playlists', path.basename(playlist.artwork));
-      logger.info(`Checking artwork file: ${artworkPath}`);
-      
-      if (fs.existsSync(artworkPath)) {
-        fs.unlinkSync(artworkPath);
-        logger.info(`Deleted artwork file: ${artworkPath}`);
-      } else {
-        logger.warn(`Artwork file not found: ${artworkPath}`);
-      }
-    }
-
-    // Playlist'i sil
-    await Playlist.findByIdAndDelete(req.params.id);
-    logger.info(`Successfully deleted playlist from database: ${playlist._id}`);
-
-    // WebSocket üzerinden cihazlara bildirim gönder
-    if (req.wss) {
-      logger.info('Sending WebSocket notifications to affected devices');
-      affectedDevices.forEach(device => {
-        logger.info(`Sending deletion notification to device: ${device.token}`);
-        req.wss.sendToDevice(device.token, {
-          type: 'playlist',
-          action: 'deleted',
-          playlistId: playlist._id
-        });
-      });
-    } else {
-      logger.warn('WebSocket server not available for notifications');
-    }
+      // Playlist'i sil
+      await Playlist.findByIdAndDelete(req.params.id);
+    });
 
     // Başarılı yanıt döndür
     res.json({ 
