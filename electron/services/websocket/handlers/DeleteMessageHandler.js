@@ -1,13 +1,10 @@
 const DeleteManager = require('../../delete/DeleteManager');
-const { createLogger } = require('../../../utils/logger');
-
-const logger = createLogger('DeleteMessageHandler');
 
 class DeleteMessageHandler {
   async handleMessage(message) {
     if (message.type !== 'delete') return;
 
-    logger.info('Received delete message:', message);
+    console.log('Received delete message:', message);
 
     try {
       await DeleteManager.handleDelete({
@@ -16,7 +13,7 @@ class DeleteMessageHandler {
         data: message.data
       });
     } catch (error) {
-      logger.error('Error handling delete message:', error);
+      console.error('Error handling delete message:', error);
     }
   }
 }

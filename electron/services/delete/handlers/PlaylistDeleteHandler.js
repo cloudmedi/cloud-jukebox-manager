@@ -1,31 +1,59 @@
 const BaseDeleteHandler = require('./BaseDeleteHandler');
-const FileManager = require('../../playlist/FileManager');
-const PlaylistStore = require('../../playlist/PlaylistStore');
+const Store = require('electron-store');
+const fs = require('fs');
+const path = require('path');
 
 class PlaylistDeleteHandler extends BaseDeleteHandler {
   constructor() {
     super('playlist');
+    this.store = new Store();
   }
 
   async preDelete(id) {
-    // Playlist'in çalınıp çalınmadığını kontrol et
-    const playlist = PlaylistStore.getPlaylist(id);
+    const playlists = this.store.get('playlists', []);
+    const playlist = playlists.find(p => p._id === id);
+    
     if (!playlist) {
       throw new Error('Playlist not found');
     }
   }
 
   async executeDelete(id) {
-    // Önce dosyaları sil
-    await FileManager.deletePlaylistFiles(id);
+    const playlists = this.store.get('playlists', []);
+    const playlist = playlists.find(p => p._id === id);
     
-    // Sonra store'dan kaldır
-    PlaylistStore.deletePlaylist(id);
+    // Şarkı dosyalarını sil
+    if (playlist && playlist.songs) {
+      for (const song of playlist.songs) {
+        if (song.localPath && fs.existsSync(song.localPath)) {
+          try {
+            fs.unlinkSync(song.localPath);
+            console.log('Deleted song file:', song.localPath);
+            
+            // Şarkının bulunduğu klasörü bul ve sil
+            const songDir = path.dirname(song.localPath);
+            if (fs.existsSync(songDir)) {
+              fs.rmdirSync(songDir, { recursive: true });
+              console.log('Deleted song directory:', songDir);
+            }
+          } catch (error) {
+            console.error('Error deleting song files:', error);
+          }
+        }
+      }
+    }
+    
+    // Store'dan playlist'i kaldır
+    const updatedPlaylists = playlists.filter(p => p._id !== id);
+    this.store.set('playlists', updatedPlaylists);
+    console.log('Playlist removed from store:', id);
   }
 
   async postDelete(id) {
     // Player'ı güncelle
-    global.audioService?.handlePlaylistDeleted(id);
+    if (global.audioService) {
+      global.audioService.handlePlaylistDeleted(id);
+    }
   }
 }
 

@@ -1,12 +1,9 @@
 const { BrowserWindow } = require('electron');
-const { createLogger } = require('../../utils/logger');
 const PlaylistDeleteHandler = require('./handlers/PlaylistDeleteHandler');
 const SongDeleteHandler = require('./handlers/SongDeleteHandler');
 const DeviceDeleteHandler = require('./handlers/DeviceDeleteHandler');
 const AnnouncementDeleteHandler = require('./handlers/AnnouncementDeleteHandler');
 const GroupDeleteHandler = require('./handlers/GroupDeleteHandler');
-
-const logger = createLogger('DeleteManager');
 
 class DeleteManager {
   constructor() {
@@ -21,7 +18,7 @@ class DeleteManager {
 
   async handleDelete(message) {
     const { type, id, data } = message;
-    logger.info(`Handling delete request for ${type} with ID: ${id}`);
+    console.log(`Handling delete request for ${type} with ID: ${id}`);
 
     try {
       const handler = this.handlers.get(type);
@@ -37,10 +34,10 @@ class DeleteManager {
 
       // Başarılı silme bildirimi
       this.notifyUI('delete-success', { type, id });
-      logger.info(`Successfully deleted ${type} with ID: ${id}`);
+      console.log(`Successfully deleted ${type} with ID: ${id}`);
 
     } catch (error) {
-      logger.error(`Error deleting ${type}:`, error);
+      console.error(`Error deleting ${type}:`, error);
       this.notifyUI('delete-error', { type, id, error: error.message });
       throw error;
     }
