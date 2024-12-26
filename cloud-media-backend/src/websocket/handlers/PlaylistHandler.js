@@ -1,80 +1,83 @@
+const Device = require('../../models/Device');
+const DeviceGroup = require('../../models/DeviceGroup');
+
 class PlaylistHandler {
   constructor(wss) {
     this.wss = wss;
   }
 
-  async handlePlaylistDeleted(playlistId) {
-    console.log('Broadcasting playlist deletion:', playlistId);
-    
-    this.wss.broadcastToAdmins({
-      type: 'playlist',
-      action: 'deleted',
-      data: {
-        playlistId: playlistId
+  async handleSendPlaylist(message) {
+    try {
+      const { playlist, devices, groups } = message;
+      const targetDevices = new Set(devices);
+
+      if (groups && groups.length > 0) {
+        const deviceGroups = await DeviceGroup.find({
+          _id: { $in: groups }
+        }).populate('devices');
+
+        deviceGroups.forEach(group => {
+          group.devices.forEach(device => {
+            targetDevices.add(device._id.toString());
+          });
+        });
       }
-    });
-    
-    console.log('Playlist deletion broadcast complete');
-  }
 
-  async handleSendPlaylist(data) {
-    console.log('Sending playlist to devices:', data);
-    const { deviceIds, playlist } = data;
-    let success = true;
+      for (const deviceId of targetDevices) {
+        const device = await Device.findById(deviceId);
+        if (device && device.token) {
+          const deviceWs = this.wss.findDeviceWebSocket(device.token);
+          
+          if (deviceWs) {
+            await Device.findByIdAndUpdate(deviceId, {
+              activePlaylist: playlist._id,
+              playlistStatus: 'loading'
+            });
 
-    for (const deviceId of deviceIds) {
-      const sent = this.wss.sendToDevice(deviceId, {
-        type: 'playlist',
-        action: 'load',
-        data: playlist
-      });
+            deviceWs.send(JSON.stringify({
+              type: 'playlist',
+              data: {
+                ...playlist,
+                baseUrl: process.env.BASE_URL || 'http://localhost:5000'
+              }
+            }));
 
-      if (!sent) {
-        console.log(`Failed to send playlist to device: ${deviceId}`);
-        success = false;
+            console.log(`Playlist sent to device: ${device.token}`);
+          } else {
+            await Device.findByIdAndUpdate(deviceId, {
+              playlistStatus: 'error'
+            });
+            console.log(`Device not connected: ${device.token}`);
+          }
+        }
       }
+
+      return true;
+    } catch (error) {
+      console.error('Error sending playlist:', error);
+      return false;
     }
-
-    console.log('Playlist send operation complete');
-    return success;
   }
 
-  async handlePlaylistStatus(data, deviceToken) {
-    console.log('Handling playlist status update:', data);
-    
-    this.wss.broadcastToAdmins({
-      type: 'playlistStatus',
-      deviceToken: deviceToken,
-      status: data.status,
-      playlistId: data.playlistId,
-      error: data.error
-    });
-    
-    console.log('Playlist status broadcast complete');
-  }
-
-  async handlePlaylistUpdate(playlist) {
-    console.log('Broadcasting playlist update:', playlist._id);
-    
-    this.wss.broadcastToAdmins({
-      type: 'playlist',
-      action: 'updated',
-      data: playlist
-    });
-    
-    console.log('Playlist update broadcast complete');
-  }
-
-  async handlePlaylistCreate(playlist) {
-    console.log('Broadcasting new playlist:', playlist._id);
-    
-    this.wss.broadcastToAdmins({
-      type: 'playlist',
-      action: 'created',
-      data: playlist
-    });
-    
-    console.log('New playlist broadcast complete');
+  async handlePlaylistStatus(message, deviceToken) {
+    try {
+      console.log('Handling playlist status update:', message, 'for device:', deviceToken);
+      
+      const { status, playlistId } = message;
+      const device = await Device.findOne({ token: deviceToken });
+      
+      if (device) {
+        await Device.findByIdAndUpdate(device._id, {
+          playlistStatus: status
+        });
+        
+        console.log(`Updated playlist status for device ${deviceToken} to ${status}`);
+      } else {
+        console.error('Device not found for token:', deviceToken);
+      }
+    } catch (error) {
+      console.error('Error updating playlist status:', error);
+    }
   }
 }
 

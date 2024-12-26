@@ -1,12 +1,16 @@
+const QueueManager = require('./audio/QueueManager');
+const PlaybackState = require('./audio/PlaybackState');
+const path = require('path');
+
 class AudioPlayer {
   constructor() {
-    this.currentPlaylist = null;
-    this.audio = new Audio();
-    this.playbackState = new PlaybackState();
     this.queueManager = new QueueManager();
+    this.playbackState = new PlaybackState();
+    this.audio = new Audio();
+    this.playlist = null;
     this.isPlaying = false;
     this.volume = 1.0;
-
+    
     // Audio element event listeners
     this.audio.addEventListener('ended', () => {
       console.log('Song ended, playing next');
@@ -119,11 +123,9 @@ class AudioPlayer {
   }
 
   stop() {
-    console.log('Stopping audio playback');
     this.audio.pause();
     this.audio.currentTime = 0;
     this.isPlaying = false;
-    this.currentPlaylist = null;
   }
 
   playNext() {
