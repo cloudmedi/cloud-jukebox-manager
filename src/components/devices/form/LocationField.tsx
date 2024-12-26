@@ -48,7 +48,7 @@ export const LocationField = ({ form }: LocationFieldProps) => {
                 </Button>
               </FormControl>
             </PopoverTrigger>
-            <PopoverContent className="w-[200px] p-0" align="start">
+            <PopoverContent className="w-[200px] p-0">
               <Command>
                 <CommandInput placeholder="Şehir ara..." />
                 <CommandEmpty>Şehir bulunamadı.</CommandEmpty>
@@ -57,8 +57,8 @@ export const LocationField = ({ form }: LocationFieldProps) => {
                     <CommandItem
                       key={city}
                       value={city}
-                      onSelect={(currentValue) => {
-                        form.setValue("location", currentValue);
+                      onSelect={(value) => {
+                        form.setValue("location", value);
                         setOpen(false);
                       }}
                     >
