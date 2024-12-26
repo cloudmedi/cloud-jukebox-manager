@@ -5,6 +5,9 @@ const Device = require('../models/Device');
 const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('playlist-service');
 
 // Multer yapılandırması
 const storage = multer.diskStorage({
@@ -35,15 +38,17 @@ const upload = multer({
 // Tüm playlistleri getir
 router.get('/', async (req, res) => {
   try {
+    logger.info('Fetching all playlists');
     const playlists = await Playlist.find()
       .populate('songs');
+    logger.info(`Successfully fetched ${playlists.length} playlists`);
     res.json(playlists);
   } catch (error) {
+    logger.error('Error fetching playlists:', { error: error.message });
     res.status(500).json({ message: error.message });
   }
 });
 
-// Belirli bir playlisti getir
 router.get('/:id', async (req, res) => {
   try {
     const playlist = await Playlist.findById(req.params.id)
@@ -102,14 +107,18 @@ router.patch('/:id', upload.single('artwork'), async (req, res) => {
 // Playlist sil - Güncellendi
 router.delete('/:id', async (req, res) => {
   try {
+    logger.info(`Attempting to delete playlist with ID: ${req.params.id}`);
+    
     // Önce playlist'i bul
     const playlist = await Playlist.findById(req.params.id);
     if (!playlist) {
+      logger.warn(`Playlist not found with ID: ${req.params.id}`);
       return res.status(404).json({ message: 'Playlist bulunamadı' });
     }
 
     // Bu playlist'i kullanan cihazları bul
     const affectedDevices = await Device.find({ activePlaylist: playlist._id });
+    logger.info(`Found ${affectedDevices.length} devices using this playlist`);
 
     // Cihazların playlist referanslarını temizle
     await Device.updateMany(
@@ -121,27 +130,31 @@ router.delete('/:id', async (req, res) => {
         } 
       }
     );
+    logger.info('Cleared playlist references from affected devices');
 
     // Artwork dosyasını sil (eğer varsa)
     if (playlist.artwork) {
       const artworkPath = path.join('uploads', 'playlists', path.basename(playlist.artwork));
       if (fs.existsSync(artworkPath)) {
         fs.unlinkSync(artworkPath);
-        console.log('Artwork dosyası silindi:', artworkPath);
+        logger.info(`Deleted artwork file: ${artworkPath}`);
       }
     }
 
     // Playlist'i sil
     await Playlist.findByIdAndDelete(req.params.id);
+    logger.info(`Successfully deleted playlist: ${playlist.name}`);
 
     // WebSocket üzerinden cihazlara bildirim gönder
     if (req.app.get('wss')) {
+      logger.info('Sending WebSocket notifications to affected devices');
       affectedDevices.forEach(device => {
         req.app.get('wss').sendToDevice(device.token, {
           type: 'playlist',
           action: 'deleted',
           playlistId: playlist._id
         });
+        logger.info(`Sent deletion notification to device: ${device.token}`);
       });
     }
 
@@ -152,7 +165,11 @@ router.delete('/:id', async (req, res) => {
     });
 
   } catch (error) {
-    console.error('Playlist silme hatası:', error);
+    logger.error('Error deleting playlist:', { 
+      playlistId: req.params.id,
+      error: error.message,
+      stack: error.stack 
+    });
     res.status(500).json({ 
       message: 'Playlist silinirken bir hata oluştu',
       error: error.message 
