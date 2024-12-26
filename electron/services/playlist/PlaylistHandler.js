@@ -23,46 +23,38 @@ class PlaylistHandler {
     try {
       logger.info('Handling playlist message:', message);
 
-      // Önce message.data'nın var olduğunu kontrol et
-      if (!message || !message.data) {
-        throw new Error('Invalid message format: Missing data object');
-      }
-
       // Playlist silme işlemi kontrolü
       if (message.action === 'deleted') {
-        return this.handlePlaylistDeletion(message.data.playlistId);
+        return this.handlePlaylistDeletion(message.playlistId);
       }
 
-      // Playlist verisi message.data içinden al
-      const playlist = message.data;
-      
-      // ID kontrolü - direkt data içinden
-      if (!playlist._id) {
-        logger.error('Playlist data error:', playlist);
-        throw new Error('Invalid playlist data: Missing playlist ID in data object');
+      // ID kontrolü
+      if (!message._id) {
+        logger.error('Playlist data error:', message);
+        throw new Error('Invalid playlist data: Missing playlist ID');
       }
 
-      logger.info(`Processing playlist with ID: ${playlist._id}`);
+      logger.info(`Processing playlist with ID: ${message._id}`);
 
       // Playlist için klasör oluştur
-      const playlistDir = path.join(this.downloadPath, playlist._id);
+      const playlistDir = path.join(this.downloadPath, message._id);
       this.ensureDirectoryExists(playlistDir);
 
       // Şarkıları işle
-      const updatedSongs = playlist.songs.map(song => ({
+      const updatedSongs = message.songs.map(song => ({
         ...song,
         localPath: path.join(playlistDir, `${song._id}.mp3`)
       }));
 
       // Güncellenmiş playlist'i oluştur
       const updatedPlaylist = {
-        ...playlist,
+        ...message,
         songs: updatedSongs
       };
 
       // Local storage'a kaydet
       const playlists = store.get('playlists', []);
-      const existingIndex = playlists.findIndex(p => p._id === playlist._id);
+      const existingIndex = playlists.findIndex(p => p._id === message._id);
       
       if (existingIndex !== -1) {
         playlists[existingIndex] = updatedPlaylist;
@@ -71,7 +63,7 @@ class PlaylistHandler {
       }
       
       store.set('playlists', playlists);
-      logger.info(`Playlist ${playlist._id} processed successfully`);
+      logger.info(`Playlist ${message._id} processed successfully`);
       
       return updatedPlaylist;
 
