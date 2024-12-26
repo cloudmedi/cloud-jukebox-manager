@@ -1,5 +1,4 @@
-const { BrowserWindow, app } = require('electron');
-const { downloadFile } = require('./downloadUtils');
+const { BrowserWindow } = require('electron');
 const Store = require('electron-store');
 const path = require('path');
 const fs = require('fs');
@@ -42,6 +41,42 @@ class WebSocketMessageHandler {
       }
     } else {
       logger.warn('No handler found for message type:', message.type);
+    }
+  }
+
+  handlePlaylist(message) {
+    logger.info('Handling playlist message:', message);
+    
+    if (message.action === 'deleted') {
+      logger.info(`Processing playlist deletion for ID: ${message.playlistId}`);
+      
+      // Get current playlists from store
+      const playlists = this.store.get('playlists', []);
+      logger.info(`Current playlist count in store: ${playlists.length}`);
+      
+      // Remove the deleted playlist
+      const updatedPlaylists = playlists.filter(p => p._id !== message.playlistId);
+      this.store.set('playlists', updatedPlaylists);
+      logger.info(`Updated playlist count in store: ${updatedPlaylists.length}`);
+      
+      // Notify renderer about deletion
+      const mainWindow = BrowserWindow.getAllWindows()[0];
+      if (mainWindow) {
+        logger.info('Notifying renderer about playlist deletion');
+        mainWindow.webContents.send('playlist-deleted', message.playlistId);
+      } else {
+        logger.warn('No main window found to notify about playlist deletion');
+      }
+      
+      // Check if deleted playlist is currently playing
+      const currentPlaylist = this.store.get('currentPlaylist');
+      if (currentPlaylist && currentPlaylist._id === message.playlistId) {
+        logger.info('Stopping playback of deleted playlist');
+        mainWindow?.webContents.send('stop-playback');
+        this.store.delete('currentPlaylist');
+      }
+      
+      logger.info('Playlist deletion handling completed');
     }
   }
 
@@ -107,74 +142,6 @@ class WebSocketMessageHandler {
     } else {
       logger.warn('Playlist not found:', playlistId);
     }
-  }
-
-  async handlePlaylist(message) {
-    logger.info('Handling playlist:', message);
-    const mainWindow = BrowserWindow.getAllWindows()[0];
-    if (!mainWindow) return;
-
-    const playlist = message.data;
-    if (!playlist || !playlist.songs) {
-      logger.error('Invalid playlist data:', playlist);
-      return;
-    }
-
-    const userDataPath = app.getPath('userData');
-    const playlistDir = path.join(
-      userDataPath,
-      'downloads',
-      playlist._id
-    );
-
-    if (!fs.existsSync(playlistDir)) {
-      fs.mkdirSync(playlistDir, { recursive: true });
-      logger.info('Created playlist directory:', playlistDir);
-    }
-
-    const storedPlaylist = {
-      _id: playlist._id,
-      name: playlist.name,
-      artwork: playlist.artwork,
-      songs: []
-    };
-
-    for (const song of playlist.songs) {
-      try {
-        logger.info('Processing song:', song);
-        const songUrl = `${playlist.baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
-        const filename = `${song._id}${path.extname(song.filePath)}`;
-        const localPath = path.join(playlistDir, filename);
-
-        mainWindow.webContents.send('download-progress', {
-          songName: song.name,
-          progress: 0
-        });
-
-        await downloadFile(songUrl, localPath, (progress) => {
-          mainWindow.webContents.send('download-progress', {
-            songName: song.name,
-            progress
-          });
-        });
-
-        logger.info(`Successfully downloaded song: ${song.name}`);
-        storedPlaylist.songs.push({
-          ...song,
-          localPath
-        });
-
-      } catch (error) {
-        logger.error(`Error downloading song ${song.name}:`, error);
-        mainWindow.webContents.send('download-error', {
-          songName: song.name,
-          error: error.message
-        });
-      }
-    }
-
-    logger.info('Storing playlist with localPaths:', storedPlaylist);
-    mainWindow.webContents.send('playlist-received', storedPlaylist);
   }
 
   sendToRenderer(channel, data) {
