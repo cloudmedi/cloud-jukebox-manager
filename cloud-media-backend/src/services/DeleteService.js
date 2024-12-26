@@ -20,7 +20,8 @@ class DeleteService {
 
       // İlgili cihazlara silme başladı bildirimi gönder
       if (entityType === 'playlist') {
-        await this.notifyDevicesForPlaylist(entityId, 'started');
+        logger.info(`Notifying devices about playlist deletion start: ${entityId}`);
+        await this.notifyDevicesForPlaylist(entityId.toString(), 'started');
       }
 
       // Silme işlemini gerçekleştir
@@ -29,7 +30,8 @@ class DeleteService {
 
       // İlgili cihazlara silme tamamlandı bildirimi gönder
       if (entityType === 'playlist') {
-        await this.notifyDevicesForPlaylist(entityId, 'success');
+        logger.info(`Notifying devices about playlist deletion success: ${entityId}`);
+        await this.notifyDevicesForPlaylist(entityId.toString(), 'success');
       }
 
       // Başarılı silme bildirimi
@@ -56,24 +58,36 @@ class DeleteService {
     try {
       const Device = require('../models/Device');
       
+      logger.info(`Finding devices using playlist: ${playlistId}`);
+      
       // Playlist'i kullanan cihazları bul
       const devices = await Device.find({ activePlaylist: playlistId });
       
       logger.info(`Found ${devices.length} devices using playlist ${playlistId}`);
+      logger.info('Device tokens:', devices.map(d => d.token));
       
       // Her cihaza bildirim gönder
-      devices.forEach(device => {
+      for (const device of devices) {
         if (this.wss) {
           const message = action === 'started' 
             ? DeleteMessage.createDeleteStarted('playlist', playlistId)
             : DeleteMessage.createDeleteSuccess('playlist', playlistId);
             
+          logger.info(`Sending ${action} message to device ${device.token}:`, message);
           const sent = this.wss.sendToDevice(device.token, message);
-          logger.info(`Delete ${action} message sent to device ${device.token}: ${sent}`);
+          logger.info(`Delete ${action} message sent to device ${device.token}: ${sent ? 'Success' : 'Failed'}`);
+        } else {
+          logger.warn('WebSocket server not available for device notification');
         }
-      });
+      }
     } catch (error) {
       logger.error('Error notifying devices:', error);
+      logger.error('Error details:', {
+        playlistId,
+        action,
+        error: error.message,
+        stack: error.stack
+      });
     }
   }
 
