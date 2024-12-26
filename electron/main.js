@@ -1,31 +1,121 @@
-const { app, BrowserWindow, ipcMain } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 const store = new Store();
-const WebSocketService = require('./services/websocketService');
+const websocketService = require('./services/websocketService');
+require('./services/audioService');
 
 let mainWindow;
-let webSocketService;
+let tray = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 800,
-    height: 600,
+    width: 400,
+    height: 300,
+    minWidth: 400,
+    minHeight: 300,
+    maxWidth: 400,
+    maxHeight: 300,
+    resizable: false,
+    backgroundColor: '#1a1b1e',
+    titleBarStyle: 'hidden',
+    frame: false,
     webPreferences: {
       nodeIntegration: true,
-      contextIsolation: false
+      contextIsolation: false,
+      webSecurity: false
     }
   });
 
   mainWindow.loadFile('index.html');
   
-  // WebSocket servisini başlat
-  webSocketService = WebSocketService.getInstance();
+  if (process.env.NODE_ENV === 'development') {
+    mainWindow.webContents.openDevTools();
+  }
+
+  // Pencere kapatıldığında sistem tepsisine küçült
+  mainWindow.on('close', function (event) {
+    if (!app.isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+      if (tray === null) {
+        createTray();
+      }
+    }
+    return false;
+  });
+
+  // Uygulama başladığında son kaydedilen playlist'i kontrol et
+  const deviceInfo = store.get('deviceInfo');
+  if (deviceInfo && deviceInfo.token) {
+    websocketService.connect(deviceInfo.token);
+    
+    const playlists = store.get('playlists', []);
+    if (playlists.length > 0) {
+      const lastPlaylist = playlists[playlists.length - 1];
+      console.log('Starting last saved playlist:', lastPlaylist.name);
+      mainWindow.webContents.on('did-finish-load', () => {
+        mainWindow.webContents.send('auto-play-playlist', lastPlaylist);
+      });
+    }
+  }
 }
 
-app.whenReady().then(createWindow);
+function createTray() {
+  try {
+    // Tray ikonu oluştur
+    const iconPath = path.join(__dirname, 'icon.png');
+    console.log('Tray icon path:', iconPath);
+    
+    tray = new Tray(iconPath);
+    
+    // Tray menüsünü oluştur
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: 'Show App',
+        click: function() {
+          mainWindow.show();
+          mainWindow.focus(); // Pencereyi ön plana getir
+        }
+      },
+      {
+        label: 'Close',
+        click: function() {
+          app.isQuitting = true;
+          app.quit();
+        }
+      }
+    ]);
+
+    // Tray ayarlarını yap
+    tray.setToolTip('Cloud Media Player');
+    tray.setContextMenu(contextMenu);
+
+    // Tray ikonuna çift tıklandığında uygulamayı göster
+    tray.on('double-click', () => {
+      mainWindow.show();
+      mainWindow.focus(); // Pencereyi ön plana getir
+    });
+    
+    // Tray ikonuna tek tıklandığında uygulamayı göster
+    tray.on('click', () => {
+      mainWindow.show();
+      mainWindow.focus(); // Pencereyi ön plana getir
+    });
+    
+    console.log('Tray created successfully');
+  } catch (error) {
+    console.error('Error creating tray:', error);
+  }
+}
+
+app.whenReady().then(() => {
+  createWindow();
+  createTray(); // Uygulama başladığında tray'i oluştur
+});
 
 app.on('window-all-closed', () => {
+  websocketService.disconnect();
   if (process.platform !== 'darwin') {
     app.quit();
   }
@@ -37,36 +127,20 @@ app.on('activate', () => {
   }
 });
 
-// IPC event handlers
-ipcMain.on('send-to-device', (event, message) => {
-  if (webSocketService) {
-    webSocketService.sendMessage(message);
-  }
-});
-
-ipcMain.on('restart-app', () => {
-  app.relaunch();
-  app.exit(0);
-});
-
-// Cleanup on quit
 app.on('before-quit', () => {
-  if (webSocketService) {
-    webSocketService.cleanup();
-  }
+  app.isQuitting = true;
 });
 
-// Error handling
-process.on('uncaughtException', (error) => {
-  console.error('Uncaught Exception:', error);
-  if (mainWindow) {
-    mainWindow.webContents.send('error', error.message);
+ipcMain.handle('save-device-info', async (event, deviceInfo) => {
+  store.set('deviceInfo', deviceInfo);
+  
+  if (deviceInfo.token) {
+    websocketService.connect(deviceInfo.token);
   }
+  
+  return deviceInfo;
 });
 
-process.on('unhandledRejection', (reason, promise) => {
-  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
-  if (mainWindow) {
-    mainWindow.webContents.send('error', reason.message);
-  }
+ipcMain.handle('get-device-info', async () => {
+  return store.get('deviceInfo');
 });

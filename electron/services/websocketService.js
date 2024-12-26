@@ -7,32 +7,15 @@ const CommandHandler = require('./handlers/CommandHandler');
 const store = new Store();
 
 class WebSocketService {
-  static #instance = null;
-
-  static getInstance() {
-    if (!WebSocketService.#instance) {
-      WebSocketService.#instance = new WebSocketService();
-    }
-    return WebSocketService.#instance;
-  }
-
   constructor() {
-    if (WebSocketService.#instance) {
-      throw new Error('WebSocketService singleton instance already exists. Use getInstance()');
-    }
-    
     this.ws = null;
     this.messageHandlers = new Map();
     this.deleteAnnouncementHandler = new DeleteAnnouncementHandler(this);
     this.setupHandlers();
     this.connect();
-
-    console.log('WebSocketService instance created');
   }
 
   setupHandlers() {
-    console.log('Setting up message handlers');
-    
     this.addMessageHandler('auth', (message) => {
       console.log('Auth message received:', message);
       if (message.success) {
@@ -43,13 +26,11 @@ class WebSocketService {
     this.addMessageHandler('playlist', async (message) => {
       console.log('Playlist message received:', message);
       try {
-        const result = await playlistHandler.handlePlaylistMessage(message);
-        if (result) {
-          const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
-          if (mainWindow) {
-            mainWindow.webContents.send('playlist-received', result);
-            console.log('Playlist update sent to renderer');
-          }
+        const updatedPlaylist = await playlistHandler.handlePlaylist(message.data);
+        const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
+        if (mainWindow) {
+          mainWindow.webContents.send('playlist-received', updatedPlaylist);
+          console.log('Playlist update sent to renderer');
         }
       } catch (error) {
         console.error('Error handling playlist message:', error);
@@ -63,8 +44,6 @@ class WebSocketService {
   }
 
   connect() {
-    console.log('Attempting to connect WebSocket');
-    
     const deviceInfo = store.get('deviceInfo');
     if (!deviceInfo || !deviceInfo.token) {
       console.log('No device info found');
@@ -107,7 +86,6 @@ class WebSocketService {
   }
 
   sendAuth(token) {
-    console.log('Sending auth message with token:', token);
     this.sendMessage({
       type: 'auth',
       token: token
@@ -116,7 +94,6 @@ class WebSocketService {
 
   sendMessage(message) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      console.log('Sending message:', message);
       this.ws.send(JSON.stringify(message));
     } else {
       console.error('WebSocket connection not ready');
@@ -124,7 +101,6 @@ class WebSocketService {
   }
 
   handleMessage(message) {
-    console.log('Handling message:', message);
     const handler = this.messageHandlers.get(message.type);
     if (handler) {
       handler(message);
@@ -134,24 +110,12 @@ class WebSocketService {
   }
 
   addMessageHandler(type, handler) {
-    console.log('Adding message handler for type:', type);
     this.messageHandlers.set(type, handler);
   }
 
   removeMessageHandler(type) {
-    console.log('Removing message handler for type:', type);
     this.messageHandlers.delete(type);
-  }
-
-  cleanup() {
-    console.log('Cleaning up WebSocket service');
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
-    }
-    this.messageHandlers.clear();
   }
 }
 
-// Export singleton instance
-module.exports = WebSocketService;
+module.exports = new WebSocketService();

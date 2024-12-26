@@ -17,82 +17,22 @@ class PlaylistHandler {
     }
   }
 
-  async handlePlaylistMessage(message) {
-    console.log('Handling playlist message:', message);
-    
-    try {
-      switch (message.action) {
-        case 'deleted':
-          console.log('Handling playlist deletion:', message.playlistId);
-          await this.handlePlaylistDeletion(message.playlistId);
-          break;
-        case 'updated':
-          console.log('Handling playlist update:', message.data);
-          return await this.handlePlaylist(message.data);
-        default:
-          console.log('Handling new playlist:', message);
-          return await this.handlePlaylist(message);
-      }
-    } catch (error) {
-      console.error('Error in handlePlaylistMessage:', error);
-      throw error;
-    }
-  }
-
-  async handlePlaylistDeletion(playlistId) {
-    console.log('Starting playlist deletion process:', playlistId);
-    
-    try {
-      // Store'dan playlist'i bul
-      const playlists = store.get('playlists', []);
-      const playlistToDelete = playlists.find(p => p._id === playlistId);
-
-      if (!playlistToDelete) {
-        console.log('Playlist not found in store:', playlistId);
-        return;
-      }
-
-      console.log('Found playlist to delete:', playlistToDelete.name);
-
-      // Playlist klasörünü ve şarkıları sil
-      const playlistDir = path.join(this.downloadPath, playlistId);
-      if (fs.existsSync(playlistDir)) {
-        console.log('Deleting playlist directory:', playlistDir);
-        fs.rmSync(playlistDir, { recursive: true, force: true });
-      }
-
-      // Store'dan playlist'i kaldır
-      const updatedPlaylists = playlists.filter(p => p._id !== playlistId);
-      store.set('playlists', updatedPlaylists);
-      console.log('Playlist removed from store');
-
-      // Renderer'a bildir
-      const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
-      if (mainWindow) {
-        console.log('Notifying renderer about playlist deletion');
-        mainWindow.webContents.send('playlist-deleted', playlistId);
-      }
-
-      return { success: true, message: 'Playlist deleted successfully' };
-    } catch (error) {
-      console.error('Error deleting playlist:', error);
-      throw error;
-    }
-  }
-
   async handlePlaylist(playlist) {
     try {
-      console.log('Processing playlist:', playlist.name);
+      console.log('Handling playlist:', playlist.name);
       
+      // Playlist için klasör oluştur
       const playlistDir = path.join(this.downloadPath, playlist._id);
       this.ensureDirectoryExists(playlistDir);
 
+      // Şarkıları indir ve localPath'leri güncelle
       const updatedSongs = await Promise.all(
         playlist.songs.map(async (song) => {
           try {
             const songPath = path.join(playlistDir, `${song._id}.mp3`);
             const songUrl = `${playlist.baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
 
+            // Şarkı zaten indirilmiş mi kontrol et
             if (!fs.existsSync(songPath)) {
               console.log(`Downloading song: ${song.name}`);
               await this.downloadFile(songUrl, songPath);
@@ -109,11 +49,13 @@ class PlaylistHandler {
         })
       );
 
+      // Güncellenmiş playlist'i oluştur
       const updatedPlaylist = {
         ...playlist,
         songs: updatedSongs
       };
 
+      // Local storage'a kaydet
       const playlists = store.get('playlists', []);
       const existingIndex = playlists.findIndex(p => p._id === playlist._id);
       
@@ -124,7 +66,6 @@ class PlaylistHandler {
       }
       
       store.set('playlists', playlists);
-      console.log('Playlist saved to store:', updatedPlaylist.name);
       
       return updatedPlaylist;
     } catch (error) {
@@ -144,14 +85,8 @@ class PlaylistHandler {
 
     return new Promise((resolve, reject) => {
       response.data.pipe(writer);
-      writer.on('finish', () => {
-        console.log('File downloaded successfully:', filePath);
-        resolve();
-      });
-      writer.on('error', (error) => {
-        console.error('Error downloading file:', error);
-        reject(error);
-      });
+      writer.on('finish', resolve);
+      writer.on('error', reject);
     });
   }
 }
