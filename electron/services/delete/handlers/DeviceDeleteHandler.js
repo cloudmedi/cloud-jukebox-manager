@@ -99,14 +99,19 @@ class DeviceDeleteHandler extends BaseDeleteHandler {
         mainWindow.webContents.send('close-websocket');
       }
 
-      // Uygulamayı kapat
+      // 2 saniye bekleyip uygulamayı yeniden başlat
       setTimeout(() => {
-        app.quit();
-      }, 1000);
+        app.relaunch();
+        app.exit(0);
+      }, 2000);
+
     } catch (error) {
       this.logger.error('Error in post-delete cleanup:', error);
-      // Hata olsa bile uygulamayı kapatmaya çalış
-      app.quit();
+      // Hata olsa bile uygulamayı yeniden başlat
+      setTimeout(() => {
+        app.relaunch();
+        app.exit(0);
+      }, 2000);
     }
   }
 }
