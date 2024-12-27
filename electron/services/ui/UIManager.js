@@ -11,7 +11,7 @@ class UIManager {
         this.errorContainer = null;
         
         // DOM yüklendikten sonra elementleri initialize et
-        document.addEventListener('DOMContentLoaded', () => {
+        window.addEventListener('DOMContentLoaded', () => {
             console.log('DOM loaded, initializing UI elements...');
             this.initializeElements();
             this.initializeUI();
@@ -20,20 +20,35 @@ class UIManager {
 
     initializeElements() {
         console.log('Initializing UI elements...');
+        // Elementleri bul
         this.deviceInfoElement = document.getElementById('deviceInfo');
-        this.tokenDisplay = this.deviceInfoElement?.querySelector('.token-display');
-        this.connectionStatus = this.deviceInfoElement?.querySelector('.connection-status');
+        
+        if (this.deviceInfoElement) {
+            this.tokenDisplay = this.deviceInfoElement.querySelector('.token-display');
+            this.connectionStatus = this.deviceInfoElement.querySelector('.connection-status');
+        } else {
+            console.error('Device info element not found!');
+            return;
+        }
+
         this.downloadProgress = document.querySelector('.download-progress');
         this.downloadProgressBar = document.querySelector('.download-progress-bar');
         this.downloadProgressText = document.querySelector('.download-progress-text');
         this.errorContainer = document.getElementById('errorContainer');
         
-        if (!this.deviceInfoElement || !this.tokenDisplay) {
-            console.error('Required UI elements not found!');
-        }
+        console.log('UI elements initialized:', {
+            deviceInfoFound: !!this.deviceInfoElement,
+            tokenDisplayFound: !!this.tokenDisplay,
+            connectionStatusFound: !!this.connectionStatus
+        });
     }
 
     async initializeUI() {
+        if (!this.deviceInfoElement || !this.tokenDisplay) {
+            console.error('Cannot initialize UI: Required elements not found');
+            return;
+        }
+
         console.log('Initializing UI...');
         try {
             let token = await deviceService.getStoredToken();
@@ -64,6 +79,8 @@ class UIManager {
     }
 
     updateConnectionStatus(isConnected) {
+        if (!this.connectionStatus) return;
+
         if (isConnected) {
             this.deviceInfoElement.style.display = 'none';
         } else {

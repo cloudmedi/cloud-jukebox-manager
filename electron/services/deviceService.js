@@ -1,6 +1,7 @@
 const crypto = require('crypto');
-const apiService = require('./apiService');
 const Store = require('electron-store');
+const apiService = require('./apiService');
+
 const store = new Store({
   encryptionKey: crypto.randomBytes(32).toString('hex'),
   clearInvalidConfig: true
