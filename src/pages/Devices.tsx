@@ -13,6 +13,8 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 const Devices = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState<"all" | "online" | "offline">("all");
+  const [searchQuery, setSearchQuery] = useState("");
+  const [locationFilter, setLocationFilter] = useState("_all");
 
   const { data: stats } = useQuery({
     queryKey: ['device-stats'],
@@ -34,56 +36,6 @@ const Devices = () => {
           <p className="text-muted-foreground">
             Cihazları ve lokasyonları yönetin
           </p>
-        </div>
-
-        {/* Filters Bar */}
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex items-center gap-4 flex-1">
-            <div className="relative flex-1 max-w-sm">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input 
-                placeholder="Cihaz ara..." 
-                className="pl-9"
-              />
-            </div>
-            
-            <Select value={filterStatus} onValueChange={(value: "all" | "online" | "offline") => setFilterStatus(value)}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Tümü (14)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tümü ({stats?.total || 0})</SelectItem>
-                <SelectItem value="online">Çevrimiçi ({stats?.online || 0})</SelectItem>
-                <SelectItem value="offline">Çevrimdışı ({stats?.offline || 0})</SelectItem>
-              </SelectContent>
-            </Select>
-
-            <Select>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Bölge" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Tüm Bölgeler</SelectItem>
-                <SelectItem value="istanbul">İstanbul</SelectItem>
-                <SelectItem value="ankara">Ankara</SelectItem>
-                <SelectItem value="izmir">İzmir</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-              <DialogTrigger asChild>
-                <Button>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Cihaz Ekle
-                </Button>
-              </DialogTrigger>
-              <DialogContent>
-                <DeviceForm onSuccess={() => setIsFormOpen(false)} />
-              </DialogContent>
-            </Dialog>
-          </div>
         </div>
 
         {/* Stats Summary */}
@@ -120,10 +72,49 @@ const Devices = () => {
 
         {/* Main Content */}
         <Tabs defaultValue="devices" className="space-y-4">
-          <TabsList>
-            <TabsTrigger value="devices">Cihazlar</TabsTrigger>
-            <TabsTrigger value="groups">Gruplar</TabsTrigger>
-          </TabsList>
+          <div className="flex items-center justify-between">
+            <TabsList>
+              <TabsTrigger value="devices">Cihazlar</TabsTrigger>
+              <TabsTrigger value="groups">Gruplar</TabsTrigger>
+            </TabsList>
+
+            <div className="flex items-center gap-4">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Cihaz ara..." 
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
+                  className="pl-9 w-[300px]"
+                />
+              </div>
+
+              <Select value={locationFilter} onValueChange={setLocationFilter}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Bölge" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="_all">Tüm Bölgeler</SelectItem>
+                  <SelectItem value="istanbul">İstanbul</SelectItem>
+                  <SelectItem value="ankara">Ankara</SelectItem>
+                  <SelectItem value="izmir">İzmir</SelectItem>
+                </SelectContent>
+              </Select>
+
+              <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Cihaz Ekle
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DeviceForm onSuccess={() => setIsFormOpen(false)} />
+                </DialogContent>
+              </Dialog>
+            </div>
+          </div>
+
           <TabsContent value="devices">
             <DeviceList />
           </TabsContent>
