@@ -9,41 +9,33 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { Link, useLocation } from "react-router-dom";
-import { cn } from "@/lib/utils";
+import { Link } from "react-router-dom";
 
 const menuItems = [
   { title: "Ana Sayfa", icon: Home, path: "/" },
-  { title: "Cihazlar", icon: Speaker, path: "/devices" },
-  { title: "Playlistler", icon: List, path: "/playlists" },
+  { title: "Cihaz Yönetimi", icon: Speaker, path: "/devices" },
+  { title: "Playlist Yönetimi", icon: List, path: "/playlists" },
   { title: "Zamanlama", icon: Calendar, path: "/schedule" },
-  { title: "Anonslar", icon: Volume2, path: "/announcements" },
-  { title: "Müzik Yükle", icon: Upload, path: "/upload" },
-  { title: "Raporlar", icon: BarChart2, path: "/reports" },
+  { title: "Anons Yönetimi", icon: Volume2, path: "/announcements" },
+  { title: "Music Upload", icon: Upload, path: "/upload" },
+  { title: "Raporlama", icon: BarChart2, path: "/reports" },
 ];
 
 const Sidebar = () => {
-  const location = useLocation();
-  
   return (
-    <SidebarContainer className="bg-white border-r border-gray-200">
+    <SidebarContainer>
       <SidebarContent>
         <div className="p-4">
-          <h1 className="text-xl font-semibold text-gray-900">Cloud Media</h1>
+          <h1 className="text-2xl font-bold">Cloud Media</h1>
         </div>
         <SidebarGroup>
+          <SidebarGroupLabel>Menu</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {menuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
-                    <Link 
-                      to={item.path} 
-                      className={cn(
-                        "flex items-center gap-3 text-gray-600 hover:text-gray-900 hover:bg-gray-50",
-                        location.pathname === item.path && "text-blue-600 bg-blue-50 hover:bg-blue-50 hover:text-blue-600"
-                      )}
-                    >
+                    <Link to={item.path} className="flex items-center gap-3">
                       <item.icon className="h-5 w-5" />
                       <span>{item.title}</span>
                     </Link>
