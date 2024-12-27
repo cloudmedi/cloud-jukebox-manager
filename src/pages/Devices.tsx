@@ -13,6 +13,7 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import DeviceForm from "@/components/devices/DeviceForm";
 
 const Devices = () => {
+  const [selectedTab, setSelectedTab] = useState("devices");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState<"all" | "online" | "offline">("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -31,7 +32,7 @@ const Devices = () => {
 
       <DeviceStats />
 
-      <Tabs defaultValue="devices" className="space-y-4">
+      <Tabs defaultValue="devices" className="space-y-4" onValueChange={setSelectedTab}>
         <div className="flex flex-col gap-4">
           <div className="flex items-center justify-between">
             <TabsList>
@@ -87,15 +88,22 @@ const Devices = () => {
               {isEmergencyActive ? 'Acil Durumu Kaldır' : 'Acil Durum'}
             </Button>
 
-            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+            {selectedTab === "devices" ? (
+              <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                <Button onClick={() => setIsFormOpen(true)} variant="default">
+                  <Plus className="h-4 w-4 mr-2" />
+                  Cihaz Ekle
+                </Button>
+                <DialogContent>
+                  <DeviceForm onSuccess={() => setIsFormOpen(false)} />
+                </DialogContent>
+              </Dialog>
+            ) : (
               <Button onClick={() => setIsFormOpen(true)} variant="default">
                 <Plus className="h-4 w-4 mr-2" />
-                Cihaz Ekle
+                Yeni Grup
               </Button>
-              <DialogContent>
-                <DeviceForm onSuccess={() => setIsFormOpen(false)} />
-              </DialogContent>
-            </Dialog>
+            )}
           </div>
         </div>
 
