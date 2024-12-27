@@ -53,6 +53,12 @@ const DeviceForm = ({ onSuccess }: DeviceFormProps) => {
       }
       const data = await response.json();
       setDeviceInfo(data.deviceInfo);
+      toast({
+        title: "Token Doğrulandı",
+        description: "Token geçerli ve kullanılabilir.",
+        className: "bg-[#F2FCE2] border-green-500",
+        duration: 10000,
+      });
       return data;
     } catch (error) {
       setDeviceInfo(null);
@@ -139,15 +145,12 @@ const DeviceForm = ({ onSuccess }: DeviceFormProps) => {
                       if (e.target.value.length === 6) {
                         try {
                           await validateToken(e.target.value);
-                          toast({
-                            title: "Token Doğrulandı",
-                            description: "Token geçerli ve kullanılabilir.",
-                          });
                         } catch (error) {
                           toast({
                             variant: "destructive",
                             title: "Geçersiz Token",
                             description: "Token geçersiz veya daha önce kullanılmış.",
+                            duration: 10000,
                           });
                         }
                       }
