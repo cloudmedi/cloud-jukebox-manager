@@ -71,82 +71,85 @@ const updateDevice = async (req, res) => {
 };
 
 const deleteDevice = async (req, res) => {
-  let device = null;
-  let deviceToken = null;
-  
+  const session = await Device.startSession();
+  session.startTransaction();
+
   try {
-    // İlk olarak cihazı bul ve token'ı kaydet
-    device = await Device.findById(req.params.id);
-    if (device) {
-      deviceToken = device.token;
+    // İlk olarak cihazı bul
+    const device = await Device.findById(req.params.id).session(session);
+    
+    if (!device) {
+      await session.abortTransaction();
+      return res.status(404).json({ 
+        message: 'Cihaz bulunamadı',
+        status: 'error' 
+      });
     }
 
-    // Silme başladı bildirimi
-    if (device) {
-      try {
-        req.wss.broadcastToAdmins(
-          DeleteMessage.createDeleteStarted('device', req.params.id, {
-            deviceName: device.name
-          })
-        );
-      } catch (error) {
-        console.error('Broadcast error:', error);
-      }
+    const deviceToken = device.token;
+
+    try {
+      // Silme başladı bildirimi
+      req.wss.broadcastToAdmins(
+        DeleteMessage.createDeleteStarted('device', req.params.id, {
+          deviceName: device.name
+        })
+      );
+    } catch (error) {
+      console.error('Broadcast error:', error);
     }
 
-    // Token'ı güncelle (cihaz bulunmasa bile)
-    if (deviceToken) {
-      try {
-        await Token.findOneAndUpdate(
-          { token: deviceToken },
-          { $set: { isUsed: false } }
-        );
-      } catch (error) {
-        console.error('Token update error:', error);
-      }
+    // Token'ı güncelle
+    try {
+      await Token.findOneAndUpdate(
+        { token: deviceToken },
+        { $set: { isUsed: false } },
+        { session }
+      );
+    } catch (error) {
+      console.error('Token update error:', error);
+      // Token güncellemesi başarısız olsa bile devam et
     }
 
     // Cihaza silme bildirimi gönder
-    if (device) {
-      try {
-        req.wss.sendToDevice(deviceToken, {
-          type: 'delete',
-          entityType: 'device',
-          entityId: device._id
-        });
-      } catch (error) {
-        console.error('Device notification error:', error);
-      }
+    try {
+      req.wss.sendToDevice(deviceToken, {
+        type: 'delete',
+        entityType: 'device',
+        entityId: device._id
+      });
+    } catch (error) {
+      console.error('Device notification error:', error);
     }
 
     // Cihazı sil
-    if (device) {
-      await Device.deleteOne({ _id: device._id });
-      
-      try {
-        // Başarılı silme bildirimi
-        req.wss.broadcastToAdmins(
-          DeleteMessage.createDeleteSuccess('device', device._id, {
-            deviceName: device.name
-          })
-        );
-      } catch (error) {
-        console.error('Success broadcast error:', error);
-      }
-    }
+    await Device.findByIdAndDelete(device._id).session(session);
+
+    // Transaction'ı tamamla
+    await session.commitTransaction();
     
-    // Her durumda başarılı yanıt dön
+    try {
+      // Başarılı silme bildirimi
+      req.wss.broadcastToAdmins(
+        DeleteMessage.createDeleteSuccess('device', device._id, {
+          deviceName: device.name
+        })
+      );
+    } catch (error) {
+      console.error('Success broadcast error:', error);
+    }
+
     res.json({ 
-      message: device ? 'Cihaz silindi' : 'Cihaz zaten silinmiş',
+      message: 'Cihaz başarıyla silindi',
       status: 'success',
       deviceToken: deviceToken
     });
 
   } catch (error) {
+    await session.abortTransaction();
     console.error('Device deletion error:', error);
     
     try {
-      // Hata bildirimi
       req.wss.broadcastToAdmins(
         DeleteMessage.createDeleteError('device', req.params.id, error)
       );
@@ -158,6 +161,8 @@ const deleteDevice = async (req, res) => {
       message: error.message || 'Cihaz silinirken bir hata oluştu',
       status: 'error'
     });
+  } finally {
+    session.endSession();
   }
 };
 
