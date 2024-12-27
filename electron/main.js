@@ -7,7 +7,8 @@ require('./services/audioService');
 
 let mainWindow;
 let tray = null;
-let isPlaying = false; // Add playback state tracking
+let isPlaying = false;
+let currentSong = null;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -60,7 +61,7 @@ function createWindow() {
   }
 }
 
-function updateTrayMenu(currentSong = null) {
+function updateTrayMenu(song = currentSong) {
   if (!tray) return;
 
   const deviceInfo = store.get('deviceInfo');
@@ -79,12 +80,12 @@ function updateTrayMenu(currentSong = null) {
       id: 'now-playing-label'
     },
     {
-      label: currentSong?.name || 'Şarkı çalmıyor',
+      label: song?.name || 'Şarkı çalmıyor',
       enabled: false,
       id: 'song-name'
     },
     {
-      label: currentSong?.artist || '',
+      label: song?.artist || '',
       enabled: false,
       id: 'artist-name'
     },
@@ -140,7 +141,6 @@ function createTray() {
       mainWindow.focus();
     });
 
-    // Menünün sağ tarafta açılmasını sağla
     tray.on('right-click', (event, bounds) => {
       const { x, y } = bounds;
       const contextMenu = tray.getContextMenu();
@@ -192,11 +192,13 @@ ipcMain.handle('get-device-info', async () => {
 // Şarkı değiştiğinde tray menüsünü güncelle
 ipcMain.on('song-changed', (event, song) => {
   console.log('Updating tray menu with song:', song);
+  currentSong = song;
   updateTrayMenu(song);
 });
 
 // Update playback state when it changes
 ipcMain.on('playback-status-changed', (event, playing) => {
+  console.log('Playback status changed:', playing);
   isPlaying = playing;
-  updateTrayMenu();
+  updateTrayMenu(currentSong);
 });
