@@ -73,15 +73,25 @@ class DeviceConnectionHandler {
       }
     });
 
+    // Önemli değişiklik burada: Cihaz zaten silinmişse tekrar silme işlemi yapmıyoruz
     ws.on('close', async () => {
       console.log(`Device disconnected: ${deviceToken}`);
-      await device.updateStatus(false);
-
-      this.wss.broadcastToAdmins({
-        type: 'deviceStatus',
-        token: deviceToken,
-        isOnline: false
-      });
+      try {
+        const existingDevice = await Device.findOne({ token: deviceToken });
+        if (existingDevice) {
+          await existingDevice.updateStatus(false);
+          
+          this.wss.broadcastToAdmins({
+            type: 'deviceStatus',
+            token: deviceToken,
+            isOnline: false
+          });
+        } else {
+          console.log(`Device ${deviceToken} already deleted, skipping status update`);
+        }
+      } catch (error) {
+        console.error(`Error updating device status: ${error.message}`);
+      }
     });
   }
 }
