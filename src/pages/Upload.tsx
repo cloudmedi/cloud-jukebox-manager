@@ -21,6 +21,7 @@ const Upload = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
+  // Fetch songs with pagination
   const { data, isLoading } = useQuery({
     queryKey: ["songs", currentPage, itemsPerPage],
     queryFn: async () => {
@@ -76,11 +77,22 @@ const Upload = () => {
     return matchesSearch && matchesGenre && matchesDateRange;
   });
 
-  const uniqueGenres = Array.from(new Set(songs.map((song: Song) => song.genre)));
+  const uniqueGenres = Array.from(new Set(songs.map((song) => song.genre))) as string[];
   const genres = ["all", ...uniqueGenres];
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
+    // Prefetch next page
+    queryClient.prefetchQuery({
+      queryKey: ["songs", page + 1, itemsPerPage],
+      queryFn: async () => {
+        const response = await fetch(
+          `http://localhost:5000/api/songs?page=${page + 1}&limit=${itemsPerPage}`
+        );
+        if (!response.ok) throw new Error("Failed to fetch songs");
+        return response.json();
+      },
+    });
   };
 
   if (isLoading) {
@@ -101,7 +113,13 @@ const Upload = () => {
       </div>
 
       <SongUploader 
-        onUploadComplete={() => queryClient.invalidateQueries({ queryKey: ["songs"] })} 
+        onUploadComplete={() => {
+          queryClient.invalidateQueries({ queryKey: ["songs"] });
+          toast({
+            title: "Başarılı",
+            description: "Şarkı başarıyla yüklendi",
+          });
+        }} 
       />
       
       <SongFilters
