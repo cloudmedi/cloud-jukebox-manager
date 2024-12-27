@@ -316,6 +316,11 @@ ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
       name: currentSong.name,
       artist: currentSong.artist
     });
+    
+    console.log('Sent song update to main process:', {
+      name: currentSong.name,
+      artist: currentSong.artist
+    });
   }
 });
 

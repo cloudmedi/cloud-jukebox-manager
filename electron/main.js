@@ -65,7 +65,7 @@ function updateTrayMenu(currentSong = null) {
   const deviceInfo = store.get('deviceInfo');
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Soundtrack Aç',
+      label: 'Cloud Media Player',
       click: function() {
         mainWindow.show();
         mainWindow.focus();
@@ -74,15 +74,18 @@ function updateTrayMenu(currentSong = null) {
     { type: 'separator' },
     {
       label: 'Şu an çalıyor:',
-      enabled: false
+      enabled: false,
+      id: 'now-playing-label'
     },
     {
-      label: currentSong ? currentSong.name : 'Şarkı çalmıyor',
-      enabled: false
+      label: currentSong?.name || 'Şarkı çalmıyor',
+      enabled: false,
+      id: 'song-name'
     },
     {
-      label: currentSong ? currentSong.artist : '',
-      enabled: false
+      label: currentSong?.artist || '',
+      enabled: false,
+      id: 'artist-name'
     },
     { type: 'separator' },
     {
@@ -99,7 +102,7 @@ function updateTrayMenu(currentSong = null) {
     },
     { type: 'separator' },
     {
-      label: `Uzaktan kontrol kodu: ${deviceInfo?.token || 'Yok'}`,
+      label: `Token: ${deviceInfo?.token || 'Yok'}`,
       enabled: false
     },
     { type: 'separator' },
@@ -134,6 +137,13 @@ function createTray() {
     tray.on('click', () => {
       mainWindow.show();
       mainWindow.focus();
+    });
+
+    // Menünün sağ tarafta açılmasını sağla
+    tray.on('right-click', (event, bounds) => {
+      const { x, y } = bounds;
+      const contextMenu = tray.getContextMenu();
+      contextMenu.popup({ x: x - 100, y: y });
     });
     
     console.log('Tray created successfully');
@@ -180,5 +190,6 @@ ipcMain.handle('get-device-info', async () => {
 
 // Şarkı değiştiğinde tray menüsünü güncelle
 ipcMain.on('song-changed', (event, song) => {
+  console.log('Updating tray menu with song:', song);
   updateTrayMenu(song);
 });
