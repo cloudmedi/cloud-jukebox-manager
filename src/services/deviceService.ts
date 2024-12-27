@@ -8,6 +8,8 @@ export interface Device {
   ipAddress?: string;
   isOnline: boolean;
   volume: number;
+  isPlaying?: boolean;
+  downloadProgress?: number;
   activePlaylist?: {
     _id: string;
     name: string;
@@ -53,6 +55,11 @@ export const deviceService = {
 
   deleteDevice: async (id: string) => {
     const response = await axios.delete(`${API_URL}/${id}`);
+    return response.data;
+  },
+
+  updateGroup: async (deviceId: string, groupId: string | null) => {
+    const response = await axios.patch(`${API_URL}/${deviceId}`, { groupId });
     return response.data;
   },
 
