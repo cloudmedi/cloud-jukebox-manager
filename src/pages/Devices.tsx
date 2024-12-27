@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -71,6 +72,16 @@ const Devices = () => {
               </SelectContent>
             </Select>
 
+            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+              <Button onClick={() => setIsFormOpen(true)} variant="default">
+                <Plus className="h-4 w-4 mr-2" />
+                Cihaz Ekle
+              </Button>
+              <DialogContent>
+                <DeviceForm onSuccess={() => setIsFormOpen(false)} />
+              </DialogContent>
+            </Dialog>
+
             <Button
               variant="destructive"
               onClick={() => setShowEmergencyDialog(true)}
@@ -83,16 +94,6 @@ const Devices = () => {
               )}
               {isEmergencyActive ? 'Acil Durumu Kaldır' : 'Acil Durum'}
             </Button>
-
-            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-              <Button onClick={() => setIsFormOpen(true)} variant="default">
-                <Plus className="h-4 w-4 mr-2" />
-                Cihaz Ekle
-              </Button>
-              <DialogContent>
-                <DeviceForm onSuccess={() => setIsFormOpen(false)} />
-              </DialogContent>
-            </Dialog>
           </div>
         </div>
 
