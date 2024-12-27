@@ -4,8 +4,10 @@ import { Table, TableBody } from "@/components/ui/table";
 import { DeviceTableHeader } from "./DeviceTableHeader";
 import { DeviceTableRow } from "./DeviceTableRow";
 import { BulkActionsMenu } from "./bulk-actions/BulkActionsMenu";
+import { DeviceCard } from "./DeviceCard";
 import websocketService from "@/services/websocketService";
 import { Device } from "@/services/deviceService";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { 
   showDeviceOfflineNotification, 
   showVolumeWarning, 
@@ -16,6 +18,7 @@ import {
 export const DeviceList = () => {
   const queryClient = useQueryClient();
   const [selectedDevices, setSelectedDevices] = useState<string[]>([]);
+  const isMobile = useIsMobile();
   
   const { data: devices, isLoading } = useQuery({
     queryKey: ['devices'],
@@ -100,25 +103,38 @@ export const DeviceList = () => {
         />
       )}
 
-      <div className="bg-card rounded-lg border">
-        <Table>
-          <DeviceTableHeader 
-            onSelectAll={handleSelectAll}
-            allSelected={selectedDevices.length === devices?.length}
-            someSelected={selectedDevices.length > 0 && selectedDevices.length < devices?.length}
-          />
-          <TableBody>
-            {devices?.map((device: Device) => (
-              <DeviceTableRow 
-                key={device._id} 
-                device={device}
-                isSelected={selectedDevices.includes(device._id)}
-                onSelect={(checked) => handleSelectDevice(device._id, checked)}
-              />
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      {isMobile ? (
+        <div className="grid grid-cols-1 gap-4">
+          {devices?.map((device: Device) => (
+            <DeviceCard
+              key={device._id}
+              device={device}
+              isSelected={selectedDevices.includes(device._id)}
+              onSelect={(checked) => handleSelectDevice(device._id, checked)}
+            />
+          ))}
+        </div>
+      ) : (
+        <div className="bg-card rounded-lg border">
+          <Table>
+            <DeviceTableHeader 
+              onSelectAll={handleSelectAll}
+              allSelected={selectedDevices.length === devices?.length}
+              someSelected={selectedDevices.length > 0 && selectedDevices.length < devices?.length}
+            />
+            <TableBody>
+              {devices?.map((device: Device) => (
+                <DeviceTableRow 
+                  key={device._id} 
+                  device={device}
+                  isSelected={selectedDevices.includes(device._id)}
+                  onSelect={(checked) => handleSelectDevice(device._id, checked)}
+                />
+              ))}
+            </TableBody>
+          </Table>
+        </div>
+      )}
     </div>
   );
 };

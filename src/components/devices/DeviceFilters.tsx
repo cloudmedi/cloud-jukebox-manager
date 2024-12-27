@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Filter, Search, X } from "lucide-react";
+import { Plus, Filter, Search, X, ChevronDown } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -8,6 +8,13 @@ import {
   DropdownMenuTrigger,
   DropdownMenuSeparator,
 } from "@/components/ui/dropdown-menu";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import DeviceForm from "./DeviceForm";
 import {
@@ -19,6 +26,7 @@ import {
 } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
 import { Badge } from "@/components/ui/badge";
+import { useIsMobile } from "@/hooks/use-mobile";
 
 interface DeviceFiltersProps {
   filterStatus: "all" | "online" | "offline";
@@ -45,6 +53,8 @@ export const DeviceFilters = ({
   groupFilter,
   setGroupFilter,
 }: DeviceFiltersProps) => {
+  const isMobile = useIsMobile();
+
   const { data: devices = [] } = useQuery({
     queryKey: ['devices'],
     queryFn: async () => {
@@ -64,7 +74,6 @@ export const DeviceFilters = ({
   });
 
   const uniqueLocations = Array.from(new Set(devices.map((device: any) => device.location))).filter(Boolean);
-
   const hasActiveFilters = filterStatus !== "all" || locationFilter !== "_all" || groupFilter !== "_all";
 
   const clearFilters = () => {
@@ -72,6 +81,84 @@ export const DeviceFilters = ({
     setLocationFilter("_all");
     setGroupFilter("_all");
   };
+
+  const renderFilters = () => (
+    <div className="flex items-center gap-2 flex-wrap">
+      <Select value={locationFilter} onValueChange={setLocationFilter}>
+        <SelectTrigger className="w-[180px] h-9">
+          <SelectValue placeholder="Lokasyon" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="_all">Tüm Lokasyonlar</SelectItem>
+          {uniqueLocations.map((location: string) => (
+            <SelectItem key={location} value={location}>
+              {location}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <Select value={groupFilter} onValueChange={setGroupFilter}>
+        <SelectTrigger className="w-[180px] h-9">
+          <SelectValue placeholder="Grup" />
+        </SelectTrigger>
+        <SelectContent>
+          <SelectItem value="_all">Tüm Gruplar</SelectItem>
+          {groups.map((group: any) => (
+            <SelectItem key={group._id} value={group._id}>
+              {group.name}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+
+      <DropdownMenu>
+        <DropdownMenuTrigger asChild>
+          <Button variant="outline" size="sm" className="h-9">
+            <Filter className="h-4 w-4 mr-2" />
+            Durum
+            {filterStatus !== "all" && (
+              <Badge variant="secondary" className="ml-2 bg-primary/20">
+                {filterStatus === "online" ? "Çevrimiçi" : "Çevrimdışı"}
+              </Badge>
+            )}
+          </Button>
+        </DropdownMenuTrigger>
+        <DropdownMenuContent align="end" className="w-48">
+          <DropdownMenuCheckboxItem
+            checked={filterStatus === "all"}
+            onCheckedChange={() => onFilterChange("all")}
+          >
+            Tümü
+          </DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem
+            checked={filterStatus === "online"}
+            onCheckedChange={() => onFilterChange("online")}
+          >
+            Çevrimiçi
+          </DropdownMenuCheckboxItem>
+          <DropdownMenuCheckboxItem
+            checked={filterStatus === "offline"}
+            onCheckedChange={() => onFilterChange("offline")}
+          >
+            Çevrimdışı
+          </DropdownMenuCheckboxItem>
+        </DropdownMenuContent>
+      </DropdownMenu>
+
+      {hasActiveFilters && (
+        <Button 
+          variant="ghost" 
+          size="sm" 
+          onClick={clearFilters}
+          className="h-9"
+        >
+          <X className="h-4 w-4 mr-2" />
+          Filtreleri Temizle
+        </Button>
+      )}
+    </div>
+  );
 
   return (
     <div className="flex flex-col gap-4 w-full mb-4">
@@ -109,81 +196,32 @@ export const DeviceFilters = ({
         </Dialog>
       </div>
 
-      <div className="flex items-center gap-2 flex-wrap">
-        <Select value={locationFilter} onValueChange={setLocationFilter}>
-          <SelectTrigger className="w-[180px] h-9">
-            <SelectValue placeholder="Lokasyon" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="_all">Tüm Lokasyonlar</SelectItem>
-            {uniqueLocations.map((location: string) => (
-              <SelectItem key={location} value={location}>
-                {location}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <Select value={groupFilter} onValueChange={setGroupFilter}>
-          <SelectTrigger className="w-[180px] h-9">
-            <SelectValue placeholder="Grup" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="_all">Tüm Gruplar</SelectItem>
-            {groups.map((group: any) => (
-              <SelectItem key={group._id} value={group._id}>
-                {group.name}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
-
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="h-9">
+      {isMobile ? (
+        <Sheet>
+          <SheetTrigger asChild>
+            <Button variant="outline" className="w-full">
               <Filter className="h-4 w-4 mr-2" />
-              Durum
-              {filterStatus !== "all" && (
-                <Badge variant="secondary" className="ml-2 bg-primary/20">
-                  {filterStatus === "online" ? "Çevrimiçi" : "Çevrimdışı"}
+              Filtreler
+              {hasActiveFilters && (
+                <Badge variant="secondary" className="ml-2">
+                  {Object.values([filterStatus !== "all", locationFilter !== "_all", groupFilter !== "_all"]).filter(Boolean).length}
                 </Badge>
               )}
+              <ChevronDown className="h-4 w-4 ml-auto" />
             </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuCheckboxItem
-              checked={filterStatus === "all"}
-              onCheckedChange={() => onFilterChange("all")}
-            >
-              Tümü
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem
-              checked={filterStatus === "online"}
-              onCheckedChange={() => onFilterChange("online")}
-            >
-              Çevrimiçi
-            </DropdownMenuCheckboxItem>
-            <DropdownMenuCheckboxItem
-              checked={filterStatus === "offline"}
-              onCheckedChange={() => onFilterChange("offline")}
-            >
-              Çevrimdışı
-            </DropdownMenuCheckboxItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-
-        {hasActiveFilters && (
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            onClick={clearFilters}
-            className="h-9"
-          >
-            <X className="h-4 w-4 mr-2" />
-            Filtreleri Temizle
-          </Button>
-        )}
-      </div>
+          </SheetTrigger>
+          <SheetContent side="bottom" className="h-[80vh]">
+            <SheetHeader>
+              <SheetTitle>Filtreler</SheetTitle>
+            </SheetHeader>
+            <div className="py-6 space-y-4">
+              {renderFilters()}
+            </div>
+          </SheetContent>
+        </Sheet>
+      ) : (
+        renderFilters()
+      )}
     </div>
   );
 };
