@@ -33,7 +33,7 @@ ipcRenderer.on('emergency-stop', () => {
     campaignAudio.volume = 0;
   }
 
-  // Store'u temizle
+  // Store'u güncelle
   const store = new Store();
   store.set('playbackState', {
     isPlaying: false,
@@ -41,11 +41,41 @@ ipcRenderer.on('emergency-stop', () => {
   });
 
   // UI'ı güncelle
-  UIManager.showEmergencyStoppedState();
-
-  // WebSocket'e durum bildirimi gönder
-  ipcRenderer.send('emergency-stopped');
+  showEmergencyMessage();
 });
+
+// Emergency reset handler
+ipcRenderer.on('emergency-reset', () => {
+  console.log('Emergency reset received');
+  hideEmergencyMessage();
+});
+
+// Emergency message handlers
+ipcRenderer.on('show-emergency-message', (event, data) => {
+  showEmergencyMessage(data.title, data.message);
+});
+
+ipcRenderer.on('hide-emergency-message', () => {
+  hideEmergencyMessage();
+});
+
+function showEmergencyMessage(title = 'Acil Durum Aktif', message = 'Müzik yayını geçici olarak durdurulmuştur.') {
+  const container = document.createElement('div');
+  container.id = 'emergency-message';
+  container.className = 'fixed top-0 left-0 right-0 bg-red-600 text-white p-4 text-center z-50';
+  container.innerHTML = `
+    <h3 class="font-bold">${title}</h3>
+    <p>${message}</p>
+  `;
+  document.body.prepend(container);
+}
+
+function hideEmergencyMessage() {
+  const container = document.getElementById('emergency-message');
+  if (container) {
+    container.remove();
+  }
+}
 
 document.getElementById('closeButton').addEventListener('click', () => {
     window.close();
@@ -389,3 +419,4 @@ ipcRenderer.on('show-toast', (event, toast) => {
       break;
   }
 });
+

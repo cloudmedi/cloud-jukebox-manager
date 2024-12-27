@@ -1,6 +1,7 @@
 const Device = require('../models/Device');
 const Notification = require('../models/Notification');
 const DeleteService = require('../services/DeleteService');
+const EmergencyStateManager = require('../emergency/EmergencyStateManager');
 
 const restartDevice = async (req, res) => {
   try {
@@ -159,10 +160,57 @@ const emergencyStop = async (req, res) => {
   }
 };
 
+const emergencyReset = async (req, res) => {
+  try {
+    // Tüm cihazları bul
+    const devices = await Device.find({ emergencyStopped: true });
+    
+    // Her cihaz için emergency reset işlemi
+    for (const device of devices) {
+      // WebSocket üzerinden emergency reset komutu gönder
+      const sent = req.wss.sendToDevice(device.token, {
+        type: 'command',
+        command: 'emergency-reset'
+      });
+
+      // Cihaz durumunu güncelle
+      await Device.findByIdAndUpdate(device._id, {
+        emergencyStopped: false,
+        playlistStatus: null
+      });
+
+      // Bildirim oluştur
+      await Notification.create({
+        type: 'emergency',
+        title: 'Acil Durum Sıfırlama',
+        message: `${device.name} cihazı için acil durum sıfırlandı`,
+        read: false
+      });
+
+      if (!sent) {
+        console.error(`Failed to send emergency reset to device ${device.token}`);
+      }
+    }
+
+    // Admin'lere broadcast
+    req.wss.broadcastToAdmins({
+      type: 'emergency',
+      action: 'reset',
+      message: 'Acil durum durumu sıfırlandı'
+    });
+
+    res.json({ message: 'Acil durum sıfırlama komutu gönderildi' });
+  } catch (error) {
+    console.error('Emergency reset error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   restartDevice,
   setVolume,
   setPower,
   playAnnouncement,
-  emergencyStop
+  emergencyStop,
+  emergencyReset
 };

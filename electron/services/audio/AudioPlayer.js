@@ -1,6 +1,7 @@
 const QueueManager = require('./SmartQueueManager');
 const PlaybackState = require('./PlaybackState');
 const path = require('path');
+const EmergencyStateManager = require('../emergency/EmergencyStateManager');
 
 class AudioPlayer {
   constructor() {
@@ -37,16 +38,25 @@ class AudioPlayer {
     });
   }
 
-  loadPlaylist(playlist) {
-    console.log('Loading playlist:', playlist);
-    this.playlist = playlist;
-    QueueManager.initializeQueue(playlist.songs);
-    
-    const firstSong = QueueManager.getCurrentSong();
-    if (firstSong) {
-      this.loadSong(firstSong);
+  play() {
+    if (this.emergencyManager.isEmergencyActive()) {
+      console.log('Playback blocked: Emergency mode is active');
+      return false;
+    }
+
+    console.log('Play requested');
+    if (this.audio.src) {
+      this.audio.play().catch(error => {
+        console.error('Error playing audio:', error);
+        this.playNext();
+      });
+      this.isPlaying = true;
     } else {
-      console.log('No playable songs in playlist');
+      console.log('No audio source loaded');
+      const currentSong = QueueManager.getCurrentSong();
+      if (currentSong) {
+        this.loadSong(currentSong);
+      }
     }
   }
 
@@ -86,34 +96,6 @@ class AudioPlayer {
     }
   }
 
-  play() {
-    console.log('Play requested');
-    if (this.audio.src) {
-      this.audio.play().catch(error => {
-        console.error('Error playing audio:', error);
-        this.playNext();
-      });
-      this.isPlaying = true;
-    } else {
-      console.log('No audio source loaded');
-      const currentSong = QueueManager.getCurrentSong();
-      if (currentSong) {
-        this.loadSong(currentSong);
-      }
-    }
-  }
-
-  pause() {
-    this.audio.pause();
-    this.isPlaying = false;
-  }
-
-  stop() {
-    this.audio.pause();
-    this.audio.currentTime = 0;
-    this.isPlaying = false;
-  }
-
   playNext() {
     console.log('Playing next song');
     const nextSong = QueueManager.getNextSong();
@@ -124,6 +106,12 @@ class AudioPlayer {
       console.log('No more songs in queue');
       this.stop();
     }
+  }
+
+  stop() {
+    this.audio.pause();
+    this.audio.currentTime = 0;
+    this.isPlaying = false;
   }
 
   setVolume(volume) {
