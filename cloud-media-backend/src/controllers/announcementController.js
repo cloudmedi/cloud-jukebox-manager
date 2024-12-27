@@ -1,77 +1,65 @@
+const express = require('express');
 const Announcement = require('../models/Announcement');
-const DeleteService = require('../services/DeleteService');
+const Device = require('../models/Device');
 const { createLogger } = require('../utils/logger');
+const DeleteService = require('../services/DeleteService');
+const DeleteMessage = require('../websocket/messages/DeleteMessage');
+const fs = require('fs');
+const path = require('path');
 
 const logger = createLogger('announcement-controller');
 
-const getAnnouncements = async (req, res) => {
+const deleteAnnouncement = async (req, res) => {
+  const { id } = req.params;
+  
   try {
-    const announcements = await Announcement.find();
-    res.json(announcements);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-};
-
-const createAnnouncement = async (req, res) => {
-  const announcement = new Announcement({
-    name: req.body.name,
-    audioFile: req.body.audioFile,
-  });
-
-  try {
-    const newAnnouncement = await announcement.save();
-    res.status(201).json(newAnnouncement);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-};
-
-const updateAnnouncement = async (req, res) => {
-  try {
-    const announcement = await Announcement.findById(req.params.id);
+    logger.info(`Starting announcement deletion process for ID: ${id}`);
+    
+    const announcement = await Announcement.findById(id);
     if (!announcement) {
-      return res.status(404).json({ message: 'Anons bulunamadı' });
+      logger.warn(`Announcement not found with ID: ${id}`);
+      return res.status(404).json({ message: 'Announcement not found' });
     }
 
-    Object.keys(req.body).forEach(key => {
-      announcement[key] = req.body[key];
+    // Anons silme işlemini DeleteService ile gerçekleştir
+    const deleteService = new DeleteService(req.wss);
+    await deleteService.handleDelete('announcement', announcement._id, async () => {
+      // Ses dosyasını sil
+      if (announcement.localPath) {
+        const audioPath = path.join('uploads', 'announcements', path.basename(announcement.localPath));
+        if (fs.existsSync(audioPath)) {
+          fs.unlinkSync(audioPath);
+          logger.info(`Deleted audio file: ${audioPath}`);
+        }
+      }
+
+      // Veritabanından sil
+      await Announcement.findByIdAndDelete(id);
+      logger.info(`Announcement deleted from database: ${id}`);
+
+      // Tüm cihazlara silme mesajı gönder
+      const devices = await Device.find();
+      devices.forEach(device => {
+        try {
+          if (device.wsConnection) {
+            const deleteMessage = DeleteMessage.createDeleteSuccess('announcement', id);
+            device.wsConnection.send(JSON.stringify(deleteMessage));
+            logger.info(`Delete message sent to device ${device._id}`);
+          }
+        } catch (error) {
+          logger.error(`Error sending delete message to device ${device._id}:`, error);
+        }
+      });
     });
 
-    const updatedAnnouncement = await announcement.save();
-    res.json(updatedAnnouncement);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-};
-
-const deleteAnnouncement = async (req, res) => {
-  try {
-    logger.info(`Starting announcement deletion process for ID: ${req.params.id}`);
+    res.json({ message: 'Announcement deleted successfully' });
     
-    await DeleteService.deleteEntity('announcement', req.params.id, {
-      wss: req.wss,
-      notifyDevices: true,
-      cleanupFiles: true
-    });
-
-    res.json({ 
-      message: 'Anons başarıyla silindi',
-      status: 'success'
-    });
-
   } catch (error) {
-    logger.error('Announcement deletion error:', error);
-    res.status(500).json({ 
-      message: error.message || 'Anons silinirken bir hata oluştu',
-      status: 'error'
-    });
+    logger.error('Error in deleteAnnouncement:', error);
+    res.status(500).json({ message: 'Error deleting announcement', error: error.message });
   }
 };
 
 module.exports = {
-  getAnnouncements,
-  createAnnouncement,
-  updateAnnouncement,
-  deleteAnnouncement
+  deleteAnnouncement,
 };
