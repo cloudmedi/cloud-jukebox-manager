@@ -5,6 +5,7 @@ import { UseFormReturn } from "react-hook-form";
 import { PlaylistFormValues } from "../PlaylistForm";
 import { Music2, Music4 } from "lucide-react";
 import { Card } from "@/components/ui/card";
+import { useQuery } from "@tanstack/react-query";
 import { useSelectedSongsStore } from "@/store/selectedSongsStore";
 import { useEffect } from "react";
 
@@ -15,6 +16,7 @@ interface SongSelectorProps {
 export const SongSelector = ({ form }: SongSelectorProps) => {
   const { selectedSongs } = useSelectedSongsStore();
 
+  // Form değerlerini seçili şarkılarla güncelle
   useEffect(() => {
     if (selectedSongs.length > 0) {
       const selectedIds = selectedSongs.map(song => song._id);

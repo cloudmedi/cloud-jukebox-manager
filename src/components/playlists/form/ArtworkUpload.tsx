@@ -28,15 +28,14 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
   }, [artwork]);
 
   const handleUploadClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
+    fileInputRef.current?.click();
   };
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
+    // Check file type
     if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
       toast({
         variant: "destructive",
@@ -46,6 +45,7 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
       return;
     }
 
+    // Check file size (5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast({
         variant: "destructive",
@@ -72,6 +72,7 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
         title: "Hata",
         description: "Kapak resmi yüklenirken bir hata oluştu.",
       });
+      console.error('Artwork upload error:', error);
     }
   };
 
@@ -124,12 +125,12 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
                   </div>
                 </div>
                 
-                <input
+                <Input
                   ref={fileInputRef}
                   type="file"
                   accept="image/jpeg,image/jpg,image/png,image/webp"
-                  onChange={handleFileChange}
                   className="hidden"
+                  onChange={handleFileChange}
                   {...field}
                 />
               </div>
