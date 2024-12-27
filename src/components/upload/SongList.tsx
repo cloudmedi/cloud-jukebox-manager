@@ -86,6 +86,7 @@ const SongList = ({
         variant: "destructive",
         title: "Hata",
         description: "Lütfen silmek için en az bir şarkı seçin",
+        duration: 10000, // 10 seconds
       });
       return;
     }
@@ -114,12 +115,14 @@ const SongList = ({
           description: `${successCount} şarkı başarıyla silindi${
             failCount > 0 ? `, ${failCount} şarkı silinemedi` : ''
           }.`,
+          duration: 10000, // 10 seconds
         });
       } else {
         toast({
           variant: "destructive",
           title: "Hata",
           description: "Hiçbir şarkı silinemedi.",
+          duration: 10000, // 10 seconds
         });
       }
     } catch (error) {
@@ -128,6 +131,7 @@ const SongList = ({
         variant: "destructive",
         title: "Hata",
         description: "Şarkılar silinirken bir hata oluştu",
+        duration: 10000, // 10 seconds
       });
     }
   };

@@ -47,11 +47,11 @@ const SongUploader = ({ onUploadComplete }: { onUploadComplete: () => void }) =>
       }
     }
 
-    // Yükleme tamamlandığında tek bir bildirim göster
     if (uploadedFiles > 0) {
       toast({
         title: "Yükleme Tamamlandı",
         description: `${uploadedFiles} şarkı başarıyla yüklendi${failedUploads > 0 ? `, ${failedUploads} şarkı yüklenemedi` : ''}.`,
+        duration: 10000, // 10 seconds
       });
       onUploadComplete();
     } else if (failedUploads > 0) {
@@ -59,6 +59,7 @@ const SongUploader = ({ onUploadComplete }: { onUploadComplete: () => void }) =>
         variant: "destructive",
         title: "Yükleme Başarısız",
         description: "Hiçbir şarkı yüklenemedi.",
+        duration: 10000, // 10 seconds
       });
     }
     
