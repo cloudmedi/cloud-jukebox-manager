@@ -10,8 +10,27 @@ const logger = createLogger('song-controller');
 
 const getAllSongs = async (req, res) => {
   try {
-    const songs = await Song.find();
-    res.json(songs);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const [songs, total] = await Promise.all([
+      Song.find()
+        .sort({ createdAt: -1 })
+        .skip(skip)
+        .limit(limit),
+      Song.countDocuments()
+    ]);
+
+    res.json({
+      songs,
+      pagination: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit)
+      }
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }

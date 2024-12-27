@@ -15,17 +15,25 @@ const Upload = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedGenre, setSelectedGenre] = useState("all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
+  const [currentPage, setCurrentPage] = useState(1);
+  const [itemsPerPage] = useState(10);
+  
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: songs = [], isLoading } = useQuery<Song[]>({
-    queryKey: ["songs"],
+  const { data, isLoading } = useQuery({
+    queryKey: ["songs", currentPage, itemsPerPage],
     queryFn: async () => {
-      const response = await fetch("http://localhost:5000/api/songs");
+      const response = await fetch(
+        `http://localhost:5000/api/songs?page=${currentPage}&limit=${itemsPerPage}`
+      );
       if (!response.ok) throw new Error("Failed to fetch songs");
       return response.json();
     },
   });
+
+  const songs = data?.songs || [];
+  const pagination = data?.pagination || { total: 0, totalPages: 1 };
 
   const handleDelete = async (songId: string) => {
     try {
@@ -57,7 +65,6 @@ const Upload = () => {
                          song.artist.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesGenre = selectedGenre === "all" || song.genre === selectedGenre;
     
-    // Tarih aralığı kontrolü
     let matchesDateRange = true;
     if (dateRange?.from && dateRange?.to && song.createdAt) {
       const songDate = parseISO(song.createdAt);
@@ -70,8 +77,11 @@ const Upload = () => {
     return matchesSearch && matchesGenre && matchesDateRange;
   });
 
-  // Benzersiz türleri al
   const genres = ["all", ...new Set(songs.map(song => song.genre))];
+
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
 
   if (isLoading) {
     return (
@@ -108,6 +118,9 @@ const Upload = () => {
         songs={filteredSongs} 
         onDelete={handleDelete}
         onEdit={(song) => setEditingSong(song)}
+        currentPage={currentPage}
+        totalPages={pagination.totalPages}
+        onPageChange={handlePageChange}
       />
 
       <SongEditDialog

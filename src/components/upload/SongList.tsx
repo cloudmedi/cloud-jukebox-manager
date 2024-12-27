@@ -8,17 +8,24 @@ import { Button } from "@/components/ui/button";
 import { Plus, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
+import { PlaylistPagination } from "@/components/playlists/PlaylistPagination";
 
 interface SongListProps {
   songs: Song[];
   onDelete: (songId: string) => Promise<void>;
   onEdit?: (song: Song) => void;
+  currentPage: number;
+  totalPages: number;
+  onPageChange: (page: number) => void;
 }
 
 const SongList = ({
   songs,
   onDelete,
   onEdit,
+  currentPage,
+  totalPages,
+  onPageChange,
 }: SongListProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
@@ -145,6 +152,12 @@ const SongList = ({
           </TableBody>
         </Table>
       </div>
+
+      <PlaylistPagination
+        currentPage={currentPage}
+        totalPages={totalPages}
+        onPageChange={onPageChange}
+      />
     </div>
   );
 };
