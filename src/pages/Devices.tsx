@@ -65,26 +65,24 @@ const Devices = () => {
               </SelectContent>
             </Select>
 
-            <div className="flex items-center gap-4">
-              <Select value={locationFilter} onValueChange={setLocationFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Bölge" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="_all">Tüm Bölgeler</SelectItem>
-                  <SelectItem value="istanbul">İstanbul</SelectItem>
-                  <SelectItem value="ankara">Ankara</SelectItem>
-                  <SelectItem value="izmir">İzmir</SelectItem>
-                </SelectContent>
-              </Select>
+            <Select value={locationFilter} onValueChange={setLocationFilter}>
+              <SelectTrigger className="w-[180px]">
+                <SelectValue placeholder="Bölge" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="_all">Tüm Bölgeler</SelectItem>
+                <SelectItem value="istanbul">İstanbul</SelectItem>
+                <SelectItem value="ankara">Ankara</SelectItem>
+                <SelectItem value="izmir">İzmir</SelectItem>
+              </SelectContent>
+            </Select>
 
-              {activeTab === "groups" && (
-                <Button onClick={() => {}} variant="default">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Yeni Grup
-                </Button>
-              )}
-            </div>
+            {activeTab === "groups" && (
+              <Button onClick={() => {}} variant="default">
+                <Plus className="h-4 w-4 mr-2" />
+                Yeni Grup
+              </Button>
+            )}
 
             {activeTab === "devices" && (
               <>
