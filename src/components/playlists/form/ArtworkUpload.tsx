@@ -28,15 +28,15 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
   }, [artwork]);
 
   const handleUploadClick = () => {
-    console.log("Upload button clicked"); // Debug log
+    console.log("Upload button clicked");
     if (fileInputRef.current) {
-      console.log("Triggering file input click"); // Debug log
+      console.log("Triggering file input click");
       fileInputRef.current.click();
     }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log("File change event triggered"); // Debug log
+    console.log("File change event triggered");
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -132,8 +132,8 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
                   ref={fileInputRef}
                   type="file"
                   accept="image/jpeg,image/jpg,image/png,image/webp"
-                  style={{ display: 'none' }}
                   onChange={handleFileChange}
+                  style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
                   {...field}
                 />
               </div>
