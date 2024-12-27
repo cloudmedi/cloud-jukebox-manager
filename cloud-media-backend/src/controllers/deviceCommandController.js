@@ -158,10 +158,11 @@ const emergencyReset = async (req, res) => {
     
     // Her cihaz için emergency reset işlemi
     for (const device of devices) {
-      // WebSocket üzerinden emergency reset komutu gönder
+      // WebSocket üzerinden emergency reset ve resume playback komutu gönder
       const sent = req.wss.sendToDevice(device.token, {
         type: 'command',
-        command: 'emergency-reset'
+        command: 'emergency-reset',
+        action: 'resume-playback'  // Yeni: Müzik çalmayı devam ettir
       });
 
       if (!sent) {
@@ -173,7 +174,7 @@ const emergencyReset = async (req, res) => {
     req.wss.broadcastToAdmins({
       type: 'emergency',
       action: 'reset',
-      message: 'Acil durum durumu sıfırlandı'
+      message: 'Acil durum durumu kaldırıldı, cihazlar normal çalışmaya devam ediyor'
     });
 
     res.json({ message: 'Acil durum sıfırlama komutu gönderildi' });

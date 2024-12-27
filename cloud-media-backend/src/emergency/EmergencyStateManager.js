@@ -36,17 +36,18 @@ class EmergencyStateManager {
     this.isEmergencyActive = false;
     
     try {
-      // Cihazların emergency durumunu kaldır
+      // Cihazların emergency durumunu kaldır ve normal duruma döndür
       await Device.updateMany({}, {
         emergencyStopped: false,
-        playlistStatus: null
+        playlistStatus: 'loaded',  // Playlist durumunu yüklenmiş olarak ayarla
+        volume: 50  // Varsayılan ses seviyesine geri döndür
       });
 
       // Sistem bildirimi oluştur
       await Notification.create({
         type: 'emergency',
         title: 'Acil Durum Devre Dışı',
-        message: 'Acil durum durumu kaldırıldı',
+        message: 'Acil durum durumu kaldırıldı, cihazlar normal çalışmaya devam ediyor',
         read: false
       });
 

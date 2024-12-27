@@ -62,12 +62,12 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
         // Emergency Stop
         await deviceService.emergencyStop();
         setIsEmergencyActive(true);
-        toast.success('Acil durum aktifleştirildi');
+        toast.success('Acil durum aktifleştirildi. Tüm cihazlar durduruldu.');
       } else {
-        // Emergency Reset
+        // Emergency Reset - Resume playback
         await deviceService.emergencyReset();
         setIsEmergencyActive(false);
-        toast.success('Acil durum durumu kaldırıldı');
+        toast.success('Acil durum kaldırıldı. Cihazlar normal çalışmaya devam ediyor.');
       }
     } catch (error) {
       console.error('Emergency action error:', error);
@@ -178,7 +178,7 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
           </DropdownMenuItem>
           <DropdownMenuItem onClick={handleEmergencyAction}>
             <AlertOctagon className={`mr-2 h-4 w-4 ${isEmergencyActive ? 'text-red-500' : ''}`} />
-            {isEmergencyActive ? 'Acil Durumu Kaldır' : 'Acil Durum'}
+            {isEmergencyActive ? 'Acil Durumu Kaldır' : 'Acil Durum Durdurma'}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive">
             <Trash2 className="mr-2 h-4 w-4" />
