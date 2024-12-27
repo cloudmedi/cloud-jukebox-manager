@@ -26,8 +26,8 @@ const SongList = ({ songs, onDelete, onEdit }: SongListProps) => {
   });
 
   const { selectedSongs, addSong, removeSong, clearSelection } = useSelectedSongsStore();
+  const parentRef = useRef<HTMLDivElement>(null);
 
-  // Performans optimizasyonu için useMemo ile sıralama
   const sortedSongs = useMemo(() => {
     return [...songs].sort((a, b) => {
       if (!a[sortConfig.key] || !b[sortConfig.key]) return 0;
@@ -40,20 +40,15 @@ const SongList = ({ songs, onDelete, onEdit }: SongListProps) => {
           ? aValue.localeCompare(bValue)
           : bValue.localeCompare(aValue);
       }
-      
       return 0;
     });
   }, [songs, sortConfig]);
 
-  // Virtual scroll için container ref
-  const parentRef = useRef<HTMLDivElement>(null);
-
-  // Virtualization implementasyonu
   const rowVirtualizer = useVirtualizer({
     count: sortedSongs.length,
     getScrollElement: () => parentRef.current,
-    estimateSize: () => 60, // Her satırın yaklaşık yüksekliği
-    overscan: 5, // Ekstra render edilecek öğe sayısı
+    estimateSize: () => 72, // Increased row height for better spacing
+    overscan: 5,
   });
 
   const handleSort = useCallback((key: string) => {
@@ -165,8 +160,9 @@ const SongList = ({ songs, onDelete, onEdit }: SongListProps) => {
           <TableBody>
             <div
               ref={parentRef}
+              className="relative"
               style={{
-                height: '400px',
+                height: '600px',
                 overflow: 'auto',
               }}
             >
@@ -182,12 +178,10 @@ const SongList = ({ songs, onDelete, onEdit }: SongListProps) => {
                   return (
                     <div
                       key={song._id}
+                      data-index={virtualRow.index}
+                      ref={rowVirtualizer.measureElement}
+                      className="absolute top-0 left-0 w-full"
                       style={{
-                        position: 'absolute',
-                        top: 0,
-                        left: 0,
-                        width: '100%',
-                        height: `${virtualRow.size}px`,
                         transform: `translateY(${virtualRow.start}px)`,
                       }}
                     >
