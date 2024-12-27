@@ -59,7 +59,7 @@ const Upload = () => {
     }
   };
 
-  const filteredSongs = songs.filter((song) => {
+  const filteredSongs = songs.filter((song: Song) => {
     const matchesSearch = song.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          song.artist.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesGenre = selectedGenre === "all" || song.genre === selectedGenre;
@@ -76,8 +76,9 @@ const Upload = () => {
     return matchesSearch && matchesGenre && matchesDateRange;
   });
 
-  // Extract unique genres and ensure they're typed as strings
-  const genres = ["all", ...Array.from(new Set(songs.map((song: Song) => song.genre)))];
+  // Extract unique genres and properly type them as strings
+  const uniqueGenres = songs.map((song: Song) => song.genre);
+  const genres: string[] = ["all", ...Array.from(new Set(uniqueGenres))];
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
