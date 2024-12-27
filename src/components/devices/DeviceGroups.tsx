@@ -53,20 +53,6 @@ const DeviceGroups = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold tracking-tight">Cihaz Grupları</h2>
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Yeni Grup
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DeviceGroupForm onSuccess={() => {
-              setIsFormOpen(false);
-              refetch();
-            }} />
-          </DialogContent>
-        </Dialog>
       </div>
 
       <div className="rounded-md border">
@@ -107,6 +93,15 @@ const DeviceGroups = () => {
           </TableBody>
         </Table>
       </div>
+
+      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <DialogContent>
+          <DeviceGroupForm onSuccess={() => {
+            setIsFormOpen(false);
+            refetch();
+          }} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };

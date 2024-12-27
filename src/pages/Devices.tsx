@@ -6,8 +6,9 @@ import { Search, Plus, AlertOctagon } from "lucide-react";
 import { DeviceList } from "@/components/devices/DeviceList";
 import DeviceGroups from "@/components/devices/DeviceGroups";
 import { DeviceStats } from "@/components/devices/DeviceStats";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import DeviceForm from "@/components/devices/DeviceForm";
+import { DeviceGroupForm } from "@/components/devices/DeviceGroupForm";
 import {
   Select,
   SelectContent,
@@ -19,6 +20,7 @@ import {
 const Devices = () => {
   const [activeTab, setActiveTab] = useState("devices");
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [isGroupFormOpen, setIsGroupFormOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState<"all" | "online" | "offline">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [locationFilter, setLocationFilter] = useState("_all");
@@ -77,13 +79,31 @@ const Devices = () => {
               </SelectContent>
             </Select>
 
+            {activeTab === "groups" && (
+              <Dialog open={isGroupFormOpen} onOpenChange={setIsGroupFormOpen}>
+                <DialogTrigger asChild>
+                  <Button>
+                    <Plus className="mr-2 h-4 w-4" />
+                    Yeni Grup
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DeviceGroupForm onSuccess={() => {
+                    setIsGroupFormOpen(false);
+                  }} />
+                </DialogContent>
+              </Dialog>
+            )}
+
             {activeTab === "devices" && (
               <>
                 <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-                  <Button onClick={() => setIsFormOpen(true)} variant="default">
-                    <Plus className="h-4 w-4 mr-2" />
-                    Cihaz Ekle
-                  </Button>
+                  <DialogTrigger asChild>
+                    <Button>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Cihaz Ekle
+                    </Button>
+                  </DialogTrigger>
                   <DialogContent>
                     <DeviceForm onSuccess={() => setIsFormOpen(false)} />
                   </DialogContent>
