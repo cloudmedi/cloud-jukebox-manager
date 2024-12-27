@@ -5,7 +5,7 @@ import { tr } from "date-fns/locale";
 import { Device } from "@/services/deviceService";
 import DeviceActions from "./DeviceActions";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Play, Pause, Volume2 } from "lucide-react";
+import { Volume2 } from "lucide-react";
 
 interface DeviceTableRowProps {
   device: Device;
@@ -21,13 +21,6 @@ export const DeviceTableRow = ({ device, isSelected, onSelect }: DeviceTableRowP
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-            {device.isPlaying ? (
-              <Pause className="h-4 w-4 text-primary" />
-            ) : (
-              <Play className="h-4 w-4 text-primary" />
-            )}
-          </div>
           <div>
             <p className="font-medium">{device.name}</p>
             <p className="text-sm text-muted-foreground">{device.location}</p>
@@ -35,6 +28,7 @@ export const DeviceTableRow = ({ device, isSelected, onSelect }: DeviceTableRowP
         </div>
       </TableCell>
       <TableCell className="font-mono text-sm">{device.token}</TableCell>
+      <TableCell>{device.location || "-"}</TableCell>
       <TableCell>{device.ipAddress || "-"}</TableCell>
       <TableCell>
         <Badge

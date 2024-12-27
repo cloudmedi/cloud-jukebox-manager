@@ -27,14 +27,6 @@ const Devices = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      {/* Trial Banner */}
-      <div className="bg-purple-900 text-white p-4 flex items-center justify-between">
-        <span>Deneme sürenizin bitmesine 13 gün kaldı</span>
-        <Button variant="secondary" size="sm">
-          Planı Seç
-        </Button>
-      </div>
-
       <div className="p-8 space-y-8">
         {/* Header */}
         <div>

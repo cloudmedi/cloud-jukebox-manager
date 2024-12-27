@@ -32,13 +32,13 @@ export const DeviceTableHeader = ({
             onCheckedChange={onSelectAll}
           />
         </TableHead>
-        <TableHead>Ad</TableHead>
+        <TableHead>Cihaz Bilgisi</TableHead>
         <TableHead>Token</TableHead>
         <TableHead>Lokasyon</TableHead>
         <TableHead>IP Adresi</TableHead>
         <TableHead>Durum</TableHead>
         <TableHead>Playlist</TableHead>
-        <TableHead>Ses</TableHead>
+        <TableHead>Ses Seviyesi</TableHead>
         <TableHead>Son Görülme</TableHead>
         <TableHead className="text-right">İşlemler</TableHead>
       </TableRow>
