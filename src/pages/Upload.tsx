@@ -15,26 +15,17 @@ const Upload = () => {
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedGenre, setSelectedGenre] = useState("all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>();
-  const [currentPage, setCurrentPage] = useState(1);
-  const [itemsPerPage] = useState(10);
-  
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  // Fetch songs with pagination
-  const { data, isLoading } = useQuery({
-    queryKey: ["songs", currentPage, itemsPerPage],
+  const { data: songs = [], isLoading } = useQuery<Song[]>({
+    queryKey: ["songs"],
     queryFn: async () => {
-      const response = await fetch(
-        `http://localhost:5000/api/songs?page=${currentPage}&limit=${itemsPerPage}`
-      );
+      const response = await fetch("http://localhost:5000/api/songs");
       if (!response.ok) throw new Error("Failed to fetch songs");
       return response.json();
     },
   });
-
-  const songs: Song[] = data?.songs || [];
-  const pagination = data?.pagination || { total: 0, totalPages: 1 };
 
   const handleDelete = async (songId: string) => {
     try {
@@ -60,11 +51,13 @@ const Upload = () => {
     }
   };
 
-  const filteredSongs = songs.filter((song: Song) => {
+  // Filtreleme işlemi
+  const filteredSongs = songs.filter((song) => {
     const matchesSearch = song.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          song.artist.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesGenre = selectedGenre === "all" || song.genre === selectedGenre;
     
+    // Tarih aralığı kontrolü
     let matchesDateRange = true;
     if (dateRange?.from && dateRange?.to && song.createdAt) {
       const songDate = parseISO(song.createdAt);
@@ -77,24 +70,8 @@ const Upload = () => {
     return matchesSearch && matchesGenre && matchesDateRange;
   });
 
-  // Extract unique genres and ensure they're typed as strings
-  const uniqueGenres = Array.from(new Set(songs.map((song: Song) => song.genre))) as string[];
-  const genres = ["all", ...uniqueGenres];
-
-  const handlePageChange = (page: number) => {
-    setCurrentPage(page);
-    // Prefetch next page
-    queryClient.prefetchQuery({
-      queryKey: ["songs", page + 1, itemsPerPage],
-      queryFn: async () => {
-        const response = await fetch(
-          `http://localhost:5000/api/songs?page=${page + 1}&limit=${itemsPerPage}`
-        );
-        if (!response.ok) throw new Error("Failed to fetch songs");
-        return response.json();
-      },
-    });
-  };
+  // Benzersiz türleri al
+  const genres = ["all", ...new Set(songs.map(song => song.genre))];
 
   if (isLoading) {
     return (
@@ -105,7 +82,7 @@ const Upload = () => {
   }
 
   return (
-    <div className="space-y-6 p-6">
+    <div className="space-y-6">
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Şarkı Yönetimi</h2>
         <p className="text-muted-foreground">
@@ -114,13 +91,7 @@ const Upload = () => {
       </div>
 
       <SongUploader 
-        onUploadComplete={() => {
-          queryClient.invalidateQueries({ queryKey: ["songs"] });
-          toast({
-            title: "Başarılı",
-            description: "Şarkı başarıyla yüklendi",
-          });
-        }} 
+        onUploadComplete={() => queryClient.invalidateQueries({ queryKey: ["songs"] })} 
       />
       
       <SongFilters
@@ -137,9 +108,6 @@ const Upload = () => {
         songs={filteredSongs} 
         onDelete={handleDelete}
         onEdit={(song) => setEditingSong(song)}
-        currentPage={currentPage}
-        totalPages={pagination.totalPages}
-        onPageChange={handlePageChange}
       />
 
       <SongEditDialog

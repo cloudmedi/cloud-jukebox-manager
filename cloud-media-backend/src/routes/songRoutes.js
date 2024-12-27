@@ -24,7 +24,7 @@ const upload = multer({
   }
 });
 
-// Tüm şarkıları getir (paginated)
+// Tüm şarkıları getir
 router.get('/', songController.getAllSongs);
 
 // Belirli bir şarkıyı getir
