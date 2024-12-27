@@ -60,6 +60,11 @@ ipcRenderer.on('hide-emergency-message', () => {
 });
 
 function showEmergencyMessage(title = 'Acil Durum Aktif', message = 'Müzik yayını geçici olarak durdurulmuştur.') {
+  const existingMessage = document.getElementById('emergency-message');
+  if (existingMessage) {
+    return; // Zaten mesaj gösteriliyor
+  }
+
   const container = document.createElement('div');
   container.id = 'emergency-message';
   container.className = 'fixed top-0 left-0 right-0 bg-red-600 text-white p-4 text-center z-50';
