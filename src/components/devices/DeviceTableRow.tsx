@@ -5,7 +5,7 @@ import { tr } from "date-fns/locale";
 import { Device } from "@/services/deviceService";
 import DeviceActions from "./DeviceActions";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Volume2, Play, Loader2, AlertCircle } from "lucide-react";
+import { Volume2, Play, Loader2, AlertCircle, MapPin, CheckCircle2, XCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
 
@@ -77,7 +77,7 @@ export const DeviceTableRow = ({ device, isSelected, onSelect }: DeviceTableRowP
   };
 
   return (
-    <TableRow className="hover:bg-muted/50 transition-colors">
+    <TableRow className="transition-colors hover:bg-muted/50 group">
       <TableCell>
         <Checkbox checked={isSelected} onCheckedChange={onSelect} />
       </TableCell>
@@ -90,15 +90,25 @@ export const DeviceTableRow = ({ device, isSelected, onSelect }: DeviceTableRowP
         </div>
       </TableCell>
       <TableCell className="font-mono text-sm">{device.token}</TableCell>
-      <TableCell>{device.location || "-"}</TableCell>
+      <TableCell>
+        <div className="flex items-center gap-2">
+          <MapPin className="h-4 w-4 text-muted-foreground" />
+          <span>{device.location || "-"}</span>
+        </div>
+      </TableCell>
       <TableCell>{device.ipAddress || "-"}</TableCell>
       <TableCell>
-        <Badge
-          variant={device.isOnline ? "success" : "destructive"}
-          className="capitalize"
-        >
-          {device.isOnline ? "Çevrimiçi" : "Çevrimdışı"}
-        </Badge>
+        {device.isOnline ? (
+          <Badge className="bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 group-hover:bg-emerald-500/20">
+            <CheckCircle2 className="h-3 w-3 mr-1" />
+            Çevrimiçi
+          </Badge>
+        ) : (
+          <Badge variant="destructive" className="bg-red-500/15 text-red-500 hover:bg-red-500/25 group-hover:bg-red-500/20">
+            <XCircle className="h-3 w-3 mr-1" />
+            Çevrimdışı
+          </Badge>
+        )}
       </TableCell>
       <TableCell>
         {renderPlaylistStatus()}
