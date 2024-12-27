@@ -71,15 +71,11 @@ const updateDevice = async (req, res) => {
 };
 
 const deleteDevice = async (req, res) => {
-  const session = await Device.startSession();
-  session.startTransaction();
-
   try {
     // İlk olarak cihazı bul
-    const device = await Device.findById(req.params.id).session(session);
+    const device = await Device.findById(req.params.id);
     
     if (!device) {
-      await session.abortTransaction();
       return res.status(404).json({ 
         message: 'Cihaz bulunamadı',
         status: 'error' 
@@ -103,8 +99,7 @@ const deleteDevice = async (req, res) => {
     try {
       await Token.findOneAndUpdate(
         { token: deviceToken },
-        { $set: { isUsed: false } },
-        { session }
+        { $set: { isUsed: false } }
       );
     } catch (error) {
       console.error('Token update error:', error);
@@ -123,10 +118,7 @@ const deleteDevice = async (req, res) => {
     }
 
     // Cihazı sil
-    await Device.findByIdAndDelete(device._id).session(session);
-
-    // Transaction'ı tamamla
-    await session.commitTransaction();
+    await Device.findByIdAndDelete(device._id);
     
     try {
       // Başarılı silme bildirimi
@@ -146,7 +138,6 @@ const deleteDevice = async (req, res) => {
     });
 
   } catch (error) {
-    await session.abortTransaction();
     console.error('Device deletion error:', error);
     
     try {
@@ -161,8 +152,6 @@ const deleteDevice = async (req, res) => {
       message: error.message || 'Cihaz silinirken bir hata oluştu',
       status: 'error'
     });
-  } finally {
-    session.endSession();
   }
 };
 
