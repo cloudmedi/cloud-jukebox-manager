@@ -26,7 +26,7 @@ const SongList = ({ songs, onDelete, onEdit }: SongListProps) => {
   });
 
   const { selectedSongs, addSong, removeSong, clearSelection } = useSelectedSongsStore();
-  const parentRef = useRef<HTMLDivElement>(null);
+  const scrollContainerRef = useRef<HTMLDivElement>(null);
 
   // Performans optimizasyonu için useMemo ile sıralama
   const sortedSongs = useMemo(() => {
@@ -45,7 +45,7 @@ const SongList = ({ songs, onDelete, onEdit }: SongListProps) => {
 
   const rowVirtualizer = useVirtualizer({
     count: sortedSongs.length,
-    getScrollElement: () => parentRef.current,
+    getScrollElement: () => scrollContainerRef.current,
     estimateSize: () => 64, // Satır yüksekliği
     overscan: 5,
   });
@@ -162,29 +162,33 @@ const SongList = ({ songs, onDelete, onEdit }: SongListProps) => {
             onSelectAll={handleSelectAll}
             selectedCount={selectedSongs.length}
           />
-          <TableBody ref={parentRef} className="relative" style={{ height: "600px", overflowY: "auto" }}>
-            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-              const song = sortedSongs[virtualRow.index];
-              return (
-                <SongTableRow
-                  key={song._id}
-                  song={song}
-                  onDelete={onDelete}
-                  onEdit={onEdit}
-                  isSelected={selectedSongs.some((s) => s._id === song._id)}
-                  onSelect={handleSelect}
-                  style={{
-                    height: `${virtualRow.size}px`,
-                    transform: `translateY(${virtualRow.start}px)`,
-                    position: "absolute",
-                    top: 0,
-                    left: 0,
-                    width: "100%",
-                  }}
-                />
-              );
-            })}
-          </TableBody>
+          <div ref={scrollContainerRef} style={{ height: "600px", overflowY: "auto" }}>
+            <TableBody>
+              <div style={{ height: `${rowVirtualizer.getTotalSize()}px`, position: "relative" }}>
+                {rowVirtualizer.getVirtualItems().map((virtualRow) => {
+                  const song = sortedSongs[virtualRow.index];
+                  return (
+                    <SongTableRow
+                      key={song._id}
+                      song={song}
+                      onDelete={onDelete}
+                      onEdit={onEdit}
+                      isSelected={selectedSongs.some((s) => s._id === song._id)}
+                      onSelect={handleSelect}
+                      style={{
+                        position: "absolute",
+                        top: 0,
+                        left: 0,
+                        width: "100%",
+                        height: `${virtualRow.size}px`,
+                        transform: `translateY(${virtualRow.start}px)`,
+                      }}
+                    />
+                  );
+                })}
+              </div>
+            </TableBody>
+          </div>
         </Table>
       </div>
     </div>
