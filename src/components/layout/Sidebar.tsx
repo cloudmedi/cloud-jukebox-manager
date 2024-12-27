@@ -9,7 +9,13 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 const menuItems = [
   { title: "Ana Sayfa", icon: Home, path: "/" },
@@ -22,29 +28,50 @@ const menuItems = [
 ];
 
 const Sidebar = () => {
+  const location = useLocation();
+
   return (
     <SidebarContainer>
       <SidebarContent>
         <div className="p-4">
           <h1 className="text-2xl font-bold">Cloud Media</h1>
         </div>
-        <SidebarGroup>
-          <SidebarGroupLabel>Menu</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <Link to={item.path} className="flex items-center gap-3">
-                      <item.icon className="h-5 w-5" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        <TooltipProvider delayDuration={300}>
+          <SidebarGroup>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <SidebarGroupLabel>Menu</SidebarGroupLabel>
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p>Ana Navigasyon Menüsü</p>
+              </TooltipContent>
+            </Tooltip>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {menuItems.map((item) => {
+                  const isActive = location.pathname === item.path;
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton
+                        asChild
+                        className={`relative ${
+                          isActive
+                            ? "bg-sidebar-accent text-sidebar-accent-foreground before:absolute before:left-0 before:top-0 before:h-full before:w-1 before:bg-primary before:content-[''] shadow-md"
+                            : ""
+                        }`}
+                      >
+                        <Link to={item.path} className="flex items-center gap-3">
+                          <item.icon className={`h-5 w-5 ${isActive ? "text-primary" : ""}`} />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </TooltipProvider>
       </SidebarContent>
     </SidebarContainer>
   );
