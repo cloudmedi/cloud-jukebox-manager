@@ -49,7 +49,6 @@ class UIManager {
 
         console.log('Initializing UI...');
         try {
-            // Her zaman yeni token al veya oluştur
             const token = await deviceService.getStoredToken();
             console.log('Retrieved or generated token:', token);
             
@@ -57,7 +56,8 @@ class UIManager {
                 this.updateDeviceInfo(token);
                 console.log('UI initialized with token:', token);
             } else {
-                throw new Error('Token could not be generated');
+                console.error('No token available after initialization');
+                this.showError('Token oluşturulamadı');
             }
         } catch (error) {
             console.error('UI initialization error:', error);

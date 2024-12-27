@@ -37,13 +37,15 @@ async function registerDeviceToken() {
     console.log('Registering token with API...', token);
     await apiService.registerToken(token, deviceInfo);
     
-    store.set('deviceInfo', { 
+    const deviceData = { 
       token,
+      deviceInfo,
       registeredAt: new Date().toISOString(),
       deviceId: crypto.randomBytes(16).toString('hex')
-    });
-    
-    console.log('Token registered and stored successfully');
+    };
+
+    store.set('deviceInfo', deviceData);
+    console.log('Token registered and stored successfully:', deviceData);
     return token;
   } catch (error) {
     console.error('Token registration failed:', error);
@@ -55,12 +57,12 @@ function getStoredToken() {
   console.log('Getting stored token...');
   const deviceInfo = store.get('deviceInfo');
   console.log('Stored device info:', deviceInfo);
-  
+
   if (!deviceInfo?.token) {
-    console.log('No token found, initiating registration...');
+    console.log('No token found, initiating automatic registration...');
     return registerDeviceToken();
   }
-  
+
   return deviceInfo.token;
 }
 
