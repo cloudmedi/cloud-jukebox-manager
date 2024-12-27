@@ -7,6 +7,7 @@ require('./services/audioService');
 
 let mainWindow;
 let tray = null;
+let isPlaying = false; // Add playback state tracking
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -89,7 +90,7 @@ function updateTrayMenu(currentSong = null) {
     },
     { type: 'separator' },
     {
-      label: 'Duraklat',
+      label: isPlaying ? 'Duraklat' : 'Çal',
       click: function() {
         mainWindow.webContents.send('toggle-playback');
       }
@@ -192,4 +193,10 @@ ipcMain.handle('get-device-info', async () => {
 ipcMain.on('song-changed', (event, song) => {
   console.log('Updating tray menu with song:', song);
   updateTrayMenu(song);
+});
+
+// Update playback state when it changes
+ipcMain.on('playback-status-changed', (event, playing) => {
+  isPlaying = playing;
+  updateTrayMenu();
 });
