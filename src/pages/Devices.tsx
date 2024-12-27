@@ -1,18 +1,23 @@
 import { useState } from "react";
-import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, StopCircle, Play, Plus } from "lucide-react";
+import { Search, Plus, AlertOctagon } from "lucide-react";
 import { DeviceList } from "@/components/devices/DeviceList";
 import DeviceGroups from "@/components/devices/DeviceGroups";
-import { DeviceHeader } from "@/components/devices/DeviceHeader";
 import { DeviceStats } from "@/components/devices/DeviceStats";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import DeviceForm from "@/components/devices/DeviceForm";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 const Devices = () => {
+  const [activeTab, setActiveTab] = useState("devices");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState<"all" | "online" | "offline">("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -31,7 +36,7 @@ const Devices = () => {
 
       <DeviceStats />
 
-      <Tabs defaultValue="devices" className="space-y-4">
+      <Tabs defaultValue="devices" className="space-y-4" onValueChange={setActiveTab}>
         <div className="flex items-center justify-between">
           <TabsList>
             <TabsTrigger value="devices">Cihazlar</TabsTrigger>
@@ -72,28 +77,35 @@ const Devices = () => {
               </SelectContent>
             </Select>
 
-            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-              <Button onClick={() => setIsFormOpen(true)} variant="default">
-                <Plus className="h-4 w-4 mr-2" />
-                Cihaz Ekle
-              </Button>
-              <DialogContent>
-                <DeviceForm onSuccess={() => setIsFormOpen(false)} />
-              </DialogContent>
-            </Dialog>
+            {activeTab === "devices" && (
+              <>
+                <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+                  <Button onClick={() => setIsFormOpen(true)} variant="default">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Cihaz Ekle
+                  </Button>
+                  <DialogContent>
+                    <DeviceForm onSuccess={() => setIsFormOpen(false)} />
+                  </DialogContent>
+                </Dialog>
 
-            <Button
-              variant="destructive"
-              onClick={() => setShowEmergencyDialog(true)}
-              className={`${isEmergencyActive ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-red-600 hover:bg-red-700'}`}
-            >
-              {isEmergencyActive ? (
-                <Play className="h-4 w-4 mr-2" />
-              ) : (
-                <StopCircle className="h-4 w-4 mr-2" />
-              )}
-              {isEmergencyActive ? 'Acil Durumu Kaldır' : 'Acil Durum'}
-            </Button>
+                <Button
+                  variant="destructive"
+                  onClick={() => setShowEmergencyDialog(true)}
+                  className={`${isEmergencyActive ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-red-600 hover:bg-red-700'}`}
+                >
+                  <AlertOctagon className="h-4 w-4 mr-2" />
+                  {isEmergencyActive ? 'Acil Durumu Kaldır' : 'Acil Durum'}
+                </Button>
+              </>
+            )}
+
+            {activeTab === "groups" && (
+              <Button onClick={() => {}} variant="default">
+                <Plus className="h-4 w-4 mr-2" />
+                Yeni Grup
+              </Button>
+            )}
           </div>
         </div>
 
@@ -104,15 +116,6 @@ const Devices = () => {
           <DeviceGroups />
         </TabsContent>
       </Tabs>
-
-      <DeviceHeader 
-        isEmergencyActive={isEmergencyActive}
-        setIsEmergencyActive={setIsEmergencyActive}
-        isFormOpen={isFormOpen}
-        setIsFormOpen={setIsFormOpen}
-        showEmergencyDialog={showEmergencyDialog}
-        setShowEmergencyDialog={setShowEmergencyDialog}
-      />
     </div>
   );
 };
