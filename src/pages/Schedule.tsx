@@ -14,7 +14,7 @@ const Schedule = () => {
   const [view, setView] = useState<"timeGridWeek" | "dayGridMonth">("timeGridWeek");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const { data: schedules, isLoading } = useQuery({
+  const { data: schedules, isLoading, error } = useQuery({
     queryKey: ["playlist-schedules"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/playlist-schedules");
@@ -29,20 +29,28 @@ const Schedule = () => {
     setIsDialogOpen(true);
   };
 
-  // Only create events if we have valid schedule data
-  const events = schedules?.map((schedule: any) => {
-    if (!schedule?.playlist) return null; // Skip if playlist is null
-    
-    return {
+  // Create events array with proper type checking and null handling
+  const events = schedules?.reduce((acc: any[], schedule: any) => {
+    // Skip invalid schedules or those without playlist
+    if (!schedule || !schedule.playlist) {
+      return acc;
+    }
+
+    // Create event object with safe property access
+    const event = {
       id: schedule._id,
-      title: `${schedule.playlist?.name || 'Unnamed Playlist'} - ${
-        schedule.targets?.devices?.length > 0 ? 'Cihaz' : 'Grup'
+      title: `${schedule.playlist.name || 'Unnamed Playlist'} - ${
+        Array.isArray(schedule.targets?.devices) && schedule.targets.devices.length > 0 
+          ? 'Cihaz' 
+          : 'Grup'
       }`,
       start: schedule.startDate,
       end: schedule.endDate,
       backgroundColor: schedule.status === 'active' ? '#10b981' : '#6b7280',
     };
-  }).filter(Boolean) || []; // Filter out null events
+
+    return [...acc, event];
+  }, []) || [];
 
   if (isLoading) {
     return (
@@ -55,6 +63,14 @@ const Schedule = () => {
           </div>
         </div>
         <Skeleton className="h-[600px] w-full" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-[600px]">
+        <p className="text-destructive">Failed to load schedules. Please try again later.</p>
       </div>
     );
   }
