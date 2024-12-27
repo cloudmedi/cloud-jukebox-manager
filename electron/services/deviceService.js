@@ -23,12 +23,12 @@ function getDeviceInfo() {
 }
 
 function generateSecureToken() {
-  // 6 haneli güvenli token oluştur
+  console.log('Generating new secure token...');
   return crypto.randomInt(100000, 999999).toString();
 }
 
 async function registerDeviceToken() {
-  console.log('Generating new device token...');
+  console.log('Starting device token registration...');
   const token = generateSecureToken();
   const deviceInfo = getDeviceInfo();
   
@@ -52,7 +52,10 @@ async function registerDeviceToken() {
 }
 
 function getStoredToken() {
-  return store.get('deviceInfo')?.token;
+  console.log('Getting stored token...');
+  const deviceInfo = store.get('deviceInfo');
+  console.log('Stored device info:', deviceInfo);
+  return deviceInfo?.token;
 }
 
 module.exports = {

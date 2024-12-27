@@ -2,25 +2,46 @@ const deviceService = require('../deviceService');
 
 class UIManager {
     constructor() {
+        this.deviceInfoElement = null;
+        this.tokenDisplay = null;
+        this.connectionStatus = null;
+        this.downloadProgress = null;
+        this.downloadProgressBar = null;
+        this.downloadProgressText = null;
+        this.errorContainer = null;
+        
+        // DOM yüklendikten sonra elementleri initialize et
+        document.addEventListener('DOMContentLoaded', () => {
+            console.log('DOM loaded, initializing UI elements...');
+            this.initializeElements();
+            this.initializeUI();
+        });
+    }
+
+    initializeElements() {
+        console.log('Initializing UI elements...');
         this.deviceInfoElement = document.getElementById('deviceInfo');
-        this.tokenDisplay = this.deviceInfoElement.querySelector('.token-display');
-        this.connectionStatus = this.deviceInfoElement.querySelector('.connection-status');
+        this.tokenDisplay = this.deviceInfoElement?.querySelector('.token-display');
+        this.connectionStatus = this.deviceInfoElement?.querySelector('.connection-status');
         this.downloadProgress = document.querySelector('.download-progress');
         this.downloadProgressBar = document.querySelector('.download-progress-bar');
         this.downloadProgressText = document.querySelector('.download-progress-text');
         this.errorContainer = document.getElementById('errorContainer');
         
-        this.initializeUI();
+        if (!this.deviceInfoElement || !this.tokenDisplay) {
+            console.error('Required UI elements not found!');
+        }
     }
 
     async initializeUI() {
         console.log('Initializing UI...');
         try {
-            let token = deviceService.getStoredToken();
+            let token = await deviceService.getStoredToken();
             
             if (!token) {
                 console.log('No stored token found, generating new token...');
                 token = await deviceService.registerDeviceToken();
+                console.log('New token generated:', token);
             }
             
             this.updateDeviceInfo(token);
@@ -32,9 +53,13 @@ class UIManager {
     }
 
     updateDeviceInfo(token) {
-        if (this.tokenDisplay) {
+        console.log('Updating device info with token:', token);
+        if (this.tokenDisplay && token) {
             this.tokenDisplay.textContent = `Token: ${token}`;
             this.deviceInfoElement.style.display = 'block';
+            console.log('Token display updated');
+        } else {
+            console.error('Token display element not found or token is null');
         }
     }
 
