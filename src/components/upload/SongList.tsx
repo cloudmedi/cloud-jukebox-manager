@@ -1,4 +1,4 @@
-import { useState, useCallback, useMemo } from "react";
+import { useState, useCallback, useMemo, useRef } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Song } from "@/types/song";
@@ -51,12 +51,13 @@ const SongList = ({
   }, [songs, sortConfig]);
 
   // Virtual scroll için container ref
-  const parentRef = React.useRef<HTMLDivElement>(null);
+  const parentRef = useRef<HTMLDivElement>(null);
+  const tableBodyRef = useRef<HTMLTableSectionElement>(null);
 
   // Virtualization implementasyonu
   const rowVirtualizer = useVirtualizer({
     count: sortedSongs.length,
-    getScrollElement: () => parentRef.current,
+    getScrollElement: () => tableBodyRef.current,
     estimateSize: () => 60, // her satır için tahmini yükseklik
     overscan: 5, // ekstra render edilecek satır sayısı
   });
@@ -169,7 +170,7 @@ const SongList = ({
             selectedCount={selectedSongs.length}
           />
           <TableBody
-            ref={parentRef}
+            ref={tableBodyRef}
             style={{
               height: `400px`,
               overflow: 'auto',
