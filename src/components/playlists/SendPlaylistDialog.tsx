@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { Form } from "@/components/ui/form";
@@ -127,6 +127,9 @@ export const SendPlaylistDialog = ({ isOpen, onClose, playlist }: SendPlaylistDi
       <DialogContent className="max-w-2xl">
         <DialogHeader>
           <DialogTitle>Playlist Gönder: {playlist.name}</DialogTitle>
+          <DialogDescription>
+            Seçtiğiniz cihazlara playlist'i göndermek için aşağıdaki formu doldurun.
+          </DialogDescription>
         </DialogHeader>
 
         <Form {...form}>
