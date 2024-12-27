@@ -66,7 +66,6 @@ export const PlaylistForm = ({
     },
   });
 
-  // Seçili şarkıları forma ekle
   useEffect(() => {
     if (selectedSongs.length > 0) {
       form.setValue('songs', selectedSongs.map(song => song._id));
@@ -103,7 +102,6 @@ export const PlaylistForm = ({
         description: "İşlem başarıyla tamamlandı",
       });
 
-      // Seçili şarkıları temizle
       clearSelection();
 
       if (onSuccess) {

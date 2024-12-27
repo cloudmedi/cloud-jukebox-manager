@@ -28,15 +28,12 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
   }, [artwork]);
 
   const handleUploadClick = () => {
-    console.log("Upload button clicked");
     if (fileInputRef.current) {
-      console.log("Triggering file input click");
       fileInputRef.current.click();
     }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    console.log("File change event triggered");
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
 
@@ -75,7 +72,6 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
         title: "Hata",
         description: "Kapak resmi yüklenirken bir hata oluştu.",
       });
-      console.error('Artwork upload error:', error);
     }
   };
 
@@ -117,7 +113,7 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
                       type="button"
                       variant="outline" 
                       onClick={handleUploadClick}
-                      className="w-full cursor-pointer"
+                      className="w-full"
                     >
                       <ImagePlus className="mr-2 h-5 w-5" />
                       {previewUrl ? "Resmi Değiştir" : "Kapak Resmi Seç"}
@@ -133,7 +129,7 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
                   type="file"
                   accept="image/jpeg,image/jpg,image/png,image/webp"
                   onChange={handleFileChange}
-                  style={{ position: 'absolute', opacity: 0, pointerEvents: 'none' }}
+                  className="hidden"
                   {...field}
                 />
               </div>
