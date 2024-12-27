@@ -37,7 +37,6 @@ async function registerDeviceToken() {
     console.log('Registering token with API...', token);
     await apiService.registerToken(token, deviceInfo);
     
-    // Token'ı güvenli şekilde sakla
     store.set('deviceInfo', { 
       token,
       registeredAt: new Date().toISOString(),
@@ -56,7 +55,13 @@ function getStoredToken() {
   console.log('Getting stored token...');
   const deviceInfo = store.get('deviceInfo');
   console.log('Stored device info:', deviceInfo);
-  return deviceInfo?.token;
+  
+  if (!deviceInfo?.token) {
+    console.log('No token found, initiating registration...');
+    return registerDeviceToken();
+  }
+  
+  return deviceInfo.token;
 }
 
 module.exports = {
