@@ -18,7 +18,7 @@ const Upload = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: songs = [], isLoading } = useQuery({
+  const { data: songs = [], isLoading } = useQuery<Song[]>({
     queryKey: ["songs"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/songs");
@@ -68,7 +68,7 @@ const Upload = () => {
     return matchesSearch && matchesGenre && matchesDateRange;
   });
 
-  const genres: string[] = ["all", ...new Set(songs.map((song: Song) => song.genre))];
+  const genres: string[] = ["all", ...Array.from(new Set(songs.map((song: Song) => song.genre)))];
 
   if (isLoading) {
     return (
