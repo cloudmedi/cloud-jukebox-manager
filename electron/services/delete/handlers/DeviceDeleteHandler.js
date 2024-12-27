@@ -1,6 +1,9 @@
 const BaseDeleteHandler = require('./BaseDeleteHandler');
 const Store = require('electron-store');
 const store = new Store();
+const path = require('path');
+const fs = require('fs');
+const { app } = require('electron');
 
 class DeviceDeleteHandler extends BaseDeleteHandler {
   constructor() {
@@ -9,10 +12,11 @@ class DeviceDeleteHandler extends BaseDeleteHandler {
 
   async preDelete(id, data) {
     this.logger.info(`Starting pre-delete phase for device ${id}`);
-    // Aktif çalma listesini durdur
+    
+    // Stop current playback
     const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
     if (mainWindow) {
-      mainWindow.webContents.send('stop-playback');
+      mainWindow.webContents.send('pause-playback');
     }
   }
 
@@ -20,41 +24,48 @@ class DeviceDeleteHandler extends BaseDeleteHandler {
     this.logger.info(`Executing delete for device ${id}`);
     
     try {
-      // Store'dan tüm cihaz verilerini temizle
+      // Get device info before cleanup
       const deviceData = store.get('deviceInfo');
-      if (deviceData) {
-        // Sadece token bilgisini tut, diğer her şeyi temizle
+      const token = deviceData?.token;
+      const deviceInfo = deviceData?.deviceInfo;
+
+      // Clear all store data
+      store.clear();
+
+      // Restore only token and device info
+      if (token && deviceInfo) {
         store.set('deviceInfo', {
-          token: deviceData.token
+          token,
+          deviceInfo
         });
       }
 
-      // Çalma listesi verilerini temizle
-      store.delete('playlists');
-      store.delete('currentPlaylist');
-      store.delete('playbackState');
-      store.delete('queue');
-      store.delete('playbackHistory');
-      store.delete('announcements');
-      
-      // Yerel ses dosyalarını temizle
-      const fs = require('fs');
-      const path = require('path');
-      const audioDir = path.join(process.env.APPDATA || process.env.HOME, '.cloud-media', 'audio');
-      
-      if (fs.existsSync(audioDir)) {
-        fs.readdirSync(audioDir).forEach(file => {
-          const filePath = path.join(audioDir, file);
-          try {
-            fs.unlinkSync(filePath);
-            this.logger.info(`Deleted audio file: ${filePath}`);
-          } catch (err) {
-            this.logger.error(`Error deleting file ${filePath}:`, err);
-          }
-        });
-      }
+      // Clean up all audio files
+      const userDataPath = app.getPath('userData');
+      const foldersToClean = [
+        'downloads',
+        'playlists',
+        'announcements',
+        'audio',
+        'cache'
+      ];
 
-      // UI'ya bildir
+      foldersToClean.forEach(folder => {
+        const folderPath = path.join(userDataPath, folder);
+        if (fs.existsSync(folderPath)) {
+          fs.rmSync(folderPath, { recursive: true, force: true });
+          this.logger.info(`Cleaned up folder: ${folder}`);
+        }
+      });
+
+      // Reset all settings to default
+      store.set('settings', {
+        volume: 50,
+        autoplay: false,
+        notifications: true
+      });
+
+      // Notify UI
       const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
       if (mainWindow) {
         mainWindow.webContents.send('device-deleted', id);
@@ -72,12 +83,19 @@ class DeviceDeleteHandler extends BaseDeleteHandler {
 
   async postDelete(id, data) {
     this.logger.info(`Completing post-delete phase for device ${id}`);
-    // Uygulama ayarlarını varsayılana döndür
-    store.set('settings', {
-      volume: 50,
-      autoplay: false,
-      notifications: true
-    });
+    
+    // Stop all audio playback
+    const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
+    if (mainWindow) {
+      mainWindow.webContents.send('stop-playback');
+      // Close WebSocket connection
+      mainWindow.webContents.send('close-websocket');
+    }
+
+    // Exit application after short delay
+    setTimeout(() => {
+      app.quit();
+    }, 1000);
   }
 }
 

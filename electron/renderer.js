@@ -229,6 +229,37 @@ ipcRenderer.on('playlist-received', (event, playlist) => {
 });
 
 // Şarkı silme mesajını dinle
+
+// Update the delete message handler
+ipcRenderer.on('device-deleted', (event, id) => {
+  console.log('Device deleted, cleaning up...');
+  
+  // Stop any playing audio
+  if (playlistAudio) {
+    playlistAudio.pause();
+    playlistAudio.src = '';
+  }
+
+  // Clear all stored data
+  store.clear();
+  
+  // Only keep device token if it exists
+  const deviceToken = store.get('deviceInfo.token');
+  const deviceInfo = store.get('deviceInfo.deviceInfo');
+  if (deviceToken && deviceInfo) {
+    store.set('deviceInfo', {
+      token: deviceToken,
+      deviceInfo: deviceInfo
+    });
+  }
+
+  // Clear UI
+  const playlistContainer = document.getElementById('playlistContainer');
+  if (playlistContainer) {
+    playlistContainer.innerHTML = '';
+  }
+});
+
 ipcRenderer.on('songRemoved', (event, { songId, playlistId }) => {
   console.log('Şarkı silme mesajı alındı:', { songId, playlistId });
   
@@ -308,3 +339,4 @@ ipcRenderer.on('show-toast', (event, toast) => {
       break;
   }
 });
+
