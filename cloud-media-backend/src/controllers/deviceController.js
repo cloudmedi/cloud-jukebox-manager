@@ -93,6 +93,7 @@ const deleteDevice = async (req, res) => {
       );
     } catch (error) {
       console.error('Broadcast error:', error);
+      // Hata olsa bile devam et
     }
 
     // Token'ı güncelle
@@ -115,10 +116,16 @@ const deleteDevice = async (req, res) => {
       });
     } catch (error) {
       console.error('Device notification error:', error);
+      // Bildirim gönderilemese bile devam et
     }
 
     // Cihazı sil
-    await Device.findByIdAndDelete(device._id);
+    try {
+      await Device.findByIdAndDelete(device._id);
+    } catch (error) {
+      console.error('Device deletion error:', error);
+      throw error; // Bu hatayı fırlat çünkü kritik bir işlem
+    }
     
     try {
       // Başarılı silme bildirimi
@@ -129,6 +136,7 @@ const deleteDevice = async (req, res) => {
       );
     } catch (error) {
       console.error('Success broadcast error:', error);
+      // Bildirim hatası olsa bile devam et
     }
 
     res.json({ 
@@ -148,6 +156,7 @@ const deleteDevice = async (req, res) => {
       console.error('Error broadcast failed:', broadcastError);
     }
     
+    // Hata durumunda 500 dön ama uygulamayı kapatma
     res.status(500).json({ 
       message: error.message || 'Cihaz silinirken bir hata oluştu',
       status: 'error'
