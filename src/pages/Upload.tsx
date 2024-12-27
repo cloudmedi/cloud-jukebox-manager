@@ -32,7 +32,7 @@ const Upload = () => {
     },
   });
 
-  const songs = data?.songs || [];
+  const songs: Song[] = data?.songs || [];
   const pagination = data?.pagination || { total: 0, totalPages: 1 };
 
   const handleDelete = async (songId: string) => {
@@ -76,9 +76,8 @@ const Upload = () => {
     return matchesSearch && matchesGenre && matchesDateRange;
   });
 
-  // Extract unique genres and properly type them as strings
-  const uniqueGenres = songs.map((song: Song) => song.genre as string);
-  const genres: string[] = ["all", ...Array.from(new Set(uniqueGenres))];
+  const uniqueGenres = Array.from(new Set(songs.map((song: Song) => song.genre)));
+  const genres = ["all", ...uniqueGenres];
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
