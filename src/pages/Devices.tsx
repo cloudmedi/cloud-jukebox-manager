@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Plus, StopCircle, Search } from "lucide-react";
+import { MapPin, Plus, StopCircle, Play } from "lucide-react";
 import { DeviceList } from "@/components/devices/DeviceList";
 import DeviceGroups from "@/components/devices/DeviceGroups";
 import DeviceForm from "@/components/devices/DeviceForm";
@@ -20,6 +20,7 @@ const Devices = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [locationFilter, setLocationFilter] = useState("_all");
   const [showEmergencyDialog, setShowEmergencyDialog] = useState(false);
+  const [isEmergencyActive, setIsEmergencyActive] = useState(false);
 
   const { data: stats } = useQuery({
     queryKey: ['device-stats'],
@@ -34,11 +35,18 @@ const Devices = () => {
 
   const handleEmergencyStop = async () => {
     try {
-      await axios.post('http://localhost:5000/api/devices/emergency-stop');
-      toast.success('Acil durum komutu gönderildi. Tüm cihazlar durduruluyor.');
+      if (!isEmergencyActive) {
+        await axios.post('http://localhost:5000/api/devices/emergency-stop');
+        toast.success('Acil durum komutu gönderildi. Tüm cihazlar durduruluyor.');
+        setIsEmergencyActive(true);
+      } else {
+        await axios.post('http://localhost:5000/api/devices/emergency-reset');
+        toast.success('Acil durum kaldırıldı. Cihazlar normal çalışmaya devam ediyor.');
+        setIsEmergencyActive(false);
+      }
       setShowEmergencyDialog(false);
     } catch (error) {
-      console.error('Emergency stop error:', error);
+      console.error('Emergency action error:', error);
       toast.error('Acil durum komutu gönderilemedi!');
     }
   };
@@ -46,7 +54,6 @@ const Devices = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="p-8 space-y-8">
-        {/* Header */}
         <div>
           <h1 className="text-3xl font-bold tracking-tight mb-2">Cihaz Yönetimi</h1>
           <p className="text-muted-foreground">
@@ -86,7 +93,6 @@ const Devices = () => {
           </div>
         </div>
 
-        {/* Main Content */}
         <Tabs defaultValue="devices" className="space-y-4">
           <div className="flex items-center justify-between">
             <TabsList>
@@ -131,10 +137,14 @@ const Devices = () => {
               <Button 
                 variant="destructive" 
                 onClick={() => setShowEmergencyDialog(true)}
-                className="bg-red-600 hover:bg-red-700"
+                className={`${isEmergencyActive ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-red-600 hover:bg-red-700'}`}
               >
-                <StopCircle className="h-4 w-4 mr-2" />
-                Acil Durum Durdurma
+                {isEmergencyActive ? (
+                  <Play className="h-4 w-4 mr-2" />
+                ) : (
+                  <StopCircle className="h-4 w-4 mr-2" />
+                )}
+                {isEmergencyActive ? 'Acil Durumu Kaldır' : 'Acil Durum Durdurma'}
               </Button>
 
               <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
@@ -163,20 +173,22 @@ const Devices = () => {
       <AlertDialog open={showEmergencyDialog} onOpenChange={setShowEmergencyDialog}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Acil Durum Durdurma</AlertDialogTitle>
+            <AlertDialogTitle>
+              {isEmergencyActive ? 'Acil Durumu Kaldır' : 'Acil Durum Durdurma'}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Bu işlem tüm cihazları durduracak ve ses çalmayı sonlandıracaktır. 
-              Bu işlem geri alınamaz ve sadece yönetici tarafından tekrar aktif edilebilir.
-              Devam etmek istediğinizden emin misiniz?
+              {isEmergencyActive 
+                ? 'Bu işlem tüm cihazları normal çalışma durumuna döndürecek ve müzik yayınını devam ettirecektir. Devam etmek istediğinizden emin misiniz?' 
+                : 'Bu işlem tüm cihazları durduracak ve ses çalmayı sonlandıracaktır. Bu işlem geri alınamaz ve sadece yönetici tarafından tekrar aktif edilebilir. Devam etmek istediğinizden emin misiniz?'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>İptal</AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleEmergencyStop}
-              className="bg-red-600 hover:bg-red-700"
+              className={`${isEmergencyActive ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-red-600 hover:bg-red-700'}`}
             >
-              Acil Durum Durdurma
+              {isEmergencyActive ? 'Acil Durumu Kaldır' : 'Acil Durum Durdurma'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
