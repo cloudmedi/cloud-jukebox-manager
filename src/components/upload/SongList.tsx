@@ -90,13 +90,33 @@ const SongList = ({
       return;
     }
 
+    let successCount = 0;
+    let failCount = 0;
+
     try {
-      await Promise.all(selectedSongs.map(song => onDelete(song._id)));
+      await Promise.all(selectedSongs.map(async (song) => {
+        try {
+          await onDelete(song._id);
+          successCount++;
+        } catch (error) {
+          failCount++;
+        }
+      }));
+
       clearSelection();
-      toast({
-        title: "Başarılı",
-        description: "Seçili şarkılar başarıyla silindi",
-      });
+      
+      if (successCount > 0) {
+        toast({
+          title: "Silme İşlemi Tamamlandı",
+          description: `${successCount} şarkı başarıyla silindi${failCount > 0 ? `, ${failCount} şarkı silinemedi` : ''}.`,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Silme İşlemi Başarısız",
+          description: "Hiçbir şarkı silinemedi.",
+        });
+      }
     } catch (error) {
       toast({
         variant: "destructive",
@@ -136,7 +156,13 @@ const SongList = ({
               <SongTableRow
                 key={song._id}
                 song={song}
-                onDelete={onDelete}
+                onDelete={async (id) => {
+                  await onDelete(id);
+                  toast({
+                    title: "Başarılı",
+                    description: "Şarkı başarıyla silindi",
+                  });
+                }}
                 onEdit={onEdit}
                 isSelected={selectedSongs.some(s => s._id === song._id)}
                 onSelect={handleSelect}
