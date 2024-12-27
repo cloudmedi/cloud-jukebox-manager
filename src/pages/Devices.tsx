@@ -26,16 +26,9 @@ const Devices = () => {
   });
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="p-8 space-y-8">
-        {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight mb-2">Cihaz Yönetimi</h1>
-          <p className="text-muted-foreground">
-            Cihazları ve lokasyonları yönetin
-          </p>
-        </div>
-
+    <>
+      <h1>Cihaz Yönetimi</h1>
+      <div className="space-y-8">
         {/* Filters Bar */}
         <div className="flex items-center justify-between gap-4">
           <div className="flex items-center gap-4 flex-1">
@@ -132,7 +125,7 @@ const Devices = () => {
           </TabsContent>
         </Tabs>
       </div>
-    </div>
+    </>
   );
 };
 
