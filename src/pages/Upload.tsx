@@ -77,7 +77,8 @@ const Upload = () => {
     return matchesSearch && matchesGenre && matchesDateRange;
   });
 
-  const uniqueGenres = Array.from(new Set(songs.map((song) => song.genre))) as string[];
+  // Extract unique genres and ensure they're typed as strings
+  const uniqueGenres = Array.from(new Set(songs.map((song: Song) => song.genre))) as string[];
   const genres = ["all", ...uniqueGenres];
 
   const handlePageChange = (page: number) => {
@@ -104,7 +105,7 @@ const Upload = () => {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div>
         <h2 className="text-3xl font-bold tracking-tight">Şarkı Yönetimi</h2>
         <p className="text-muted-foreground">
