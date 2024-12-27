@@ -44,9 +44,9 @@ export const DeviceTableRow = ({ device, isSelected, onSelect }: DeviceTableRowP
                 <div className="space-y-2">
                   <div className="flex items-center gap-2 text-orange-500">
                     <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>İndiriliyor %45</span>
+                    <span>İndiriliyor %{device.downloadProgress || 0}</span>
                   </div>
-                  <Progress value={45} className="h-1.5 w-32" />
+                  <Progress value={device.downloadProgress || 0} className="h-1.5 w-32" />
                 </div>
               </TooltipTrigger>
               <TooltipContent>
