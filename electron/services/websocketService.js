@@ -10,6 +10,7 @@ class WebSocketService {
   constructor() {
     this.ws = null;
     this.messageHandlers = new Map();
+    this.deleteMessageHandler = new DeleteMessageHandler();
     this.setupHandlers();
     this.connect();
   }
@@ -41,9 +42,9 @@ class WebSocketService {
       CommandHandler.handleCommand(message);
     });
 
-    this.addMessageHandler('delete', (message) => {
+    this.addMessageHandler('delete', async (message) => {
       console.log('Delete message received:', message);
-      DeleteMessageHandler.handleMessage(message);
+      await this.deleteMessageHandler.handleMessage(message);
     });
   }
 
@@ -105,20 +106,48 @@ class WebSocketService {
   }
 
   handleMessage(message) {
-    const handler = this.messageHandlers.get(message.type);
-    if (handler) {
-      handler(message);
+    const handlers = this.messageHandlers.get(message.type);
+    if (handlers) {
+      handlers.forEach(handler => {
+        try {
+          handler(message);
+        } catch (error) {
+          console.error(`Handler error for message type ${message.type}:`, error);
+        }
+      });
     } else {
-      console.log('No handler for message type:', message.type);
+      console.log('Unhandled message type:', message.type);
     }
   }
 
   addMessageHandler(type, handler) {
-    this.messageHandlers.set(type, handler);
+    if (!this.messageHandlers.has(type)) {
+      this.messageHandlers.set(type, new Set());
+    }
+    this.messageHandlers.get(type)?.add(handler);
   }
 
-  removeMessageHandler(type) {
-    this.messageHandlers.delete(type);
+  removeMessageHandler(type, handler) {
+    const handlers = this.messageHandlers.get(type);
+    if (handlers) {
+      handlers.delete(handler);
+      if (handlers.size === 0) {
+        this.messageHandlers.delete(type);
+      }
+    }
+  }
+
+  cleanup() {
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+    this.messageHandlers.clear();
+    this.isConnecting = false;
   }
 }
 

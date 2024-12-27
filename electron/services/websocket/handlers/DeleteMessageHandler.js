@@ -1,6 +1,6 @@
 const DeleteManager = require('../../delete/DeleteManager');
-const { toast } = require('sonner');
 const { createLogger } = require('../../../utils/logger');
+const { BrowserWindow } = require('electron');
 
 const logger = createLogger('delete-message-handler');
 
@@ -11,40 +11,57 @@ class DeleteMessageHandler {
     logger.info('Received delete message:', message);
 
     try {
-      // Silme başladığında toast göster
+      // Ana pencereyi bul
+      const mainWindow = BrowserWindow.getAllWindows()[0];
+      if (!mainWindow) {
+        logger.error('Main window not found');
+        return;
+      }
+
+      // İşlem başladığında bildirim gönder
       if (message.action === 'started') {
-        toast.loading('Silme işlemi başlatıldı...', {
+        mainWindow.webContents.send('show-toast', {
+          type: 'loading',
+          message: 'Silme işlemi başlatıldı...',
           duration: 3000
         });
       }
 
-      // Silme başarılı olduğunda toast göster
-      if (message.action === 'success') {
-        toast.success('Silme işlemi başarılı', {
-          description: 'İçerik başarıyla silindi'
-        });
-      }
-
-      // Silme hatası olduğunda toast göster
-      if (message.action === 'error') {
-        toast.error('Silme işlemi başarısız', {
-          description: message.error || 'Bir hata oluştu'
-        });
-      }
-
+      // Silme işlemini gerçekleştir
       await DeleteManager.handleDelete({
         type: message.entityType,
         id: message.entityId,
         data: message.data
       });
+
+      // İşlem başarılı olduğunda bildirim gönder
+      if (message.action === 'success') {
+        mainWindow.webContents.send('show-toast', {
+          type: 'success',
+          message: 'İçerik başarıyla silindi'
+        });
+      }
+
+      // Hata durumunda bildirim gönder
+      if (message.action === 'error') {
+        mainWindow.webContents.send('show-toast', {
+          type: 'error',
+          message: message.error || 'Bir hata oluştu'
+        });
+      }
+
     } catch (error) {
       logger.error('Error handling delete message:', error);
       
-      toast.error('Silme işlemi başarısız', {
-        description: error.message
-      });
+      const mainWindow = BrowserWindow.getAllWindows()[0];
+      if (mainWindow) {
+        mainWindow.webContents.send('show-toast', {
+          type: 'error',
+          message: error.message || 'Silme işlemi başarısız'
+        });
+      }
     }
   }
 }
 
-module.exports = new DeleteMessageHandler();
+module.exports = DeleteMessageHandler;

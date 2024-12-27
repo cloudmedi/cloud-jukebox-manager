@@ -287,3 +287,24 @@ document.addEventListener('DOMContentLoaded', () => {
   console.log('DOM loaded, displaying playlists');
   displayPlaylists();
 });
+
+// Toast bildirimleri için event listener
+ipcRenderer.on('show-toast', (event, toast) => {
+  switch(toast.type) {
+    case 'success':
+      new Notification('Başarılı', {
+        body: toast.message
+      });
+      break;
+    case 'error':
+      new Notification('Hata', {
+        body: toast.message
+      });
+      break;
+    case 'loading':
+      new Notification('İşlem Devam Ediyor', {
+        body: toast.message
+      });
+      break;
+  }
+});
