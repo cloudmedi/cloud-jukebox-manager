@@ -115,6 +115,13 @@ const playAnnouncement = async (req, res) => {
 
 const emergencyStop = async (req, res) => {
   try {
+    if (EmergencyStateManager.getEmergencyState()) {
+      return res.status(400).json({ 
+        message: 'Acil durum zaten aktif',
+        isActive: true 
+      });
+    }
+
     // EmergencyStateManager'ı aktifleştir
     await EmergencyStateManager.activateEmergency();
     
@@ -141,7 +148,10 @@ const emergencyStop = async (req, res) => {
       message: 'Tüm cihazlar acil durum nedeniyle durduruldu'
     });
 
-    res.json({ message: 'Acil durum durdurma komutu gönderildi' });
+    res.json({ 
+      message: 'Acil durum durdurma komutu gönderildi',
+      isActive: true 
+    });
   } catch (error) {
     console.error('Emergency stop error:', error);
     res.status(500).json({ message: error.message });
@@ -150,6 +160,13 @@ const emergencyStop = async (req, res) => {
 
 const emergencyReset = async (req, res) => {
   try {
+    if (!EmergencyStateManager.getEmergencyState()) {
+      return res.status(400).json({ 
+        message: 'Acil durum aktif değil',
+        isActive: false 
+      });
+    }
+
     // EmergencyStateManager'ı deaktive et
     await EmergencyStateManager.deactivateEmergency();
     
@@ -176,7 +193,10 @@ const emergencyReset = async (req, res) => {
       message: 'Acil durum durumu sıfırlandı'
     });
 
-    res.json({ message: 'Acil durum sıfırlama komutu gönderildi' });
+    res.json({ 
+      message: 'Acil durum sıfırlama komutu gönderildi',
+      isActive: false 
+    });
   } catch (error) {
     console.error('Emergency reset error:', error);
     res.status(500).json({ message: error.message });
