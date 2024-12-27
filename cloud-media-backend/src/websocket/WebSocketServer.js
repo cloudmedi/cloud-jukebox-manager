@@ -3,6 +3,7 @@ const MessageHandler = require('./handlers/MessageHandler');
 const StatusHandler = require('./handlers/StatusHandler');
 const AdminConnectionHandler = require('./handlers/AdminConnectionHandler');
 const DeviceConnectionHandler = require('./handlers/DeviceConnectionHandler');
+const Device = require('../models/Device');
 
 class WebSocketServer {
   constructor(server) {
@@ -58,10 +59,33 @@ class WebSocketServer {
 
       case 'playlistStatus':
         await this.statusHandler.handlePlaylistStatus(token, message);
+        
+        // Playlist durumu güncellemesini admin paneline bildir
+        this.broadcastToAdmins({
+          type: 'deviceStatus',
+          token: token,
+          playlistStatus: message.status,
+          downloadProgress: message.progress || 0
+        });
         break;
 
       case 'downloadProgress':
-        await this.statusHandler.handleDownloadProgress(token, message.progress);
+        // İndirme durumunu güncelle
+        const device = await Device.findOne({ token });
+        if (device) {
+          await Device.findByIdAndUpdate(device._id, {
+            downloadProgress: message.progress,
+            playlistStatus: message.progress < 100 ? 'loading' : 'loaded'
+          });
+
+          // Admin paneline indirme durumunu bildir
+          this.broadcastToAdmins({
+            type: 'deviceStatus',
+            token: token,
+            downloadProgress: message.progress,
+            playlistStatus: message.progress < 100 ? 'loading' : 'loaded'
+          });
+        }
         break;
 
       case 'playbackStatus':
@@ -73,10 +97,10 @@ class WebSocketServer {
         break;
 
       case 'volume':
-        const device = await Device.findOne({ token });
-        if (!device) return;
+        const volumeDevice = await Device.findOne({ token });
+        if (!volumeDevice) return;
 
-        await device.setVolume(message.volume);
+        await volumeDevice.setVolume(message.volume);
         this.broadcastToAdmins({
           type: 'deviceStatus',
           token: token,
@@ -85,6 +109,15 @@ class WebSocketServer {
         break;
 
       case 'error':
+        // Hata durumunu güncelle
+        const errorDevice = await Device.findOne({ token });
+        if (errorDevice) {
+          await Device.findByIdAndUpdate(errorDevice._id, {
+            playlistStatus: 'error',
+            downloadProgress: 0
+          });
+        }
+
         this.broadcastToAdmins({
           type: 'deviceError',
           token: token,

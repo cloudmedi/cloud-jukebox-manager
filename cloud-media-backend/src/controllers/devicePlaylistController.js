@@ -21,6 +21,12 @@ const bulkAssignPlaylist = async (req, res) => {
     const devices = await Device.find({ _id: { $in: deviceIds } });
     
     for (const device of devices) {
+      // İndirme başlangıcını bildir
+      await Device.findByIdAndUpdate(device._id, {
+        downloadProgress: 0,
+        playlistStatus: 'loading'
+      });
+
       const sent = req.wss.sendToDevice(device.token, {
         type: 'command',
         command: 'loadPlaylist',
@@ -34,6 +40,12 @@ const bulkAssignPlaylist = async (req, res) => {
           title: 'Playlist Yükleme Hatası',
           message: `${device.name} cihazı çevrimdışı olduğu için playlist yüklenemedi`,
           read: false
+        });
+
+        // Hata durumunu güncelle
+        await Device.findByIdAndUpdate(device._id, {
+          playlistStatus: 'error',
+          downloadProgress: 0
         });
       }
     }

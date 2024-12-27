@@ -44,14 +44,16 @@ class StatusHandler {
 
       // İndirme durumunu güncelle
       await Device.findByIdAndUpdate(device._id, {
-        downloadProgress: progress
+        downloadProgress: progress,
+        playlistStatus: progress < 100 ? 'loading' : 'loaded'
       });
 
       // Admin paneline bildir
       this.wss.broadcastToAdmins({
         type: 'deviceStatus',
         token: token,
-        downloadProgress: progress
+        downloadProgress: progress,
+        playlistStatus: progress < 100 ? 'loading' : 'loaded'
       });
 
       console.log(`Updated download progress for device ${token}: ${progress}%`);
