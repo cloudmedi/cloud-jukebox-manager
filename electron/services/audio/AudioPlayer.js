@@ -1,10 +1,13 @@
-const QueueManager = require('./SmartQueueManager');
-const PlaybackState = require('./PlaybackState');
+const QueueManager = require('./audio/QueueManager');
+const PlaybackState = require('./audio/PlaybackState');
 const path = require('path');
 const EmergencyStateManager = require('../emergency/EmergencyStateManager');
+const Store = require('electron-store');
+const store = new Store();
 
 class AudioPlayer {
   constructor() {
+    this.queueManager = new QueueManager();
     this.playbackState = new PlaybackState();
     this.audio = new Audio();
     this.playlist = null;
@@ -39,7 +42,7 @@ class AudioPlayer {
   }
 
   play() {
-    if (this.emergencyManager.isEmergencyActive()) {
+    if (EmergencyStateManager.isEmergencyActive()) {
       console.log('Playback blocked: Emergency mode is active');
       return false;
     }
@@ -53,7 +56,7 @@ class AudioPlayer {
       this.isPlaying = true;
     } else {
       console.log('No audio source loaded');
-      const currentSong = QueueManager.getCurrentSong();
+      const currentSong = this.queueManager.getCurrentSong();
       if (currentSong) {
         this.loadSong(currentSong);
       }
@@ -98,7 +101,7 @@ class AudioPlayer {
 
   playNext() {
     console.log('Playing next song');
-    const nextSong = QueueManager.getNextSong();
+    const nextSong = this.queueManager.next();
     if (nextSong) {
       console.log('Next song found:', nextSong.name);
       this.loadSong(nextSong);
@@ -122,7 +125,7 @@ class AudioPlayer {
   updatePlaybackState(state) {
     this.playbackState.update(
       state,
-      QueueManager.getCurrentSong(),
+      this.queueManager.getCurrentSong(),
       this.playlist,
       this.volume * 100
     );
@@ -131,10 +134,38 @@ class AudioPlayer {
   getCurrentState() {
     return {
       isPlaying: this.isPlaying,
-      currentSong: QueueManager.getCurrentSong(),
+      currentSong: this.queueManager.getCurrentSong(),
       playlist: this.playlist,
       volume: this.volume * 100
     };
+  }
+
+  handleEmergencyStop() {
+    // Save current state before stopping
+    const currentState = {
+      wasPlaying: this.isPlaying,
+      volume: this.volume,
+      currentTime: this.audio.currentTime
+    };
+    store.set('playbackState', currentState);
+    
+    // Stop playback
+    this.stop();
+    this.audio.volume = 0;
+  }
+
+  handleEmergencyReset() {
+    const savedState = store.get('playbackState');
+    if (savedState) {
+      this.volume = savedState.volume;
+      this.audio.volume = this.volume;
+      
+      if (savedState.wasPlaying) {
+        console.log('Restoring playback state after emergency');
+        this.audio.currentTime = savedState.currentTime;
+        this.play();
+      }
+    }
   }
 }
 

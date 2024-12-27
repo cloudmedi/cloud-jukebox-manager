@@ -162,7 +162,8 @@ const emergencyReset = async (req, res) => {
       const sent = req.wss.sendToDevice(device.token, {
         type: 'command',
         command: 'emergency-reset',
-        action: 'resume-playback'  // Yeni: Müzik çalmayı devam ettir
+        action: 'resume-playback',
+        resumePlayback: true  // Explicitly tell device to resume playback
       });
 
       if (!sent) {

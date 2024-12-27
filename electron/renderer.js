@@ -48,6 +48,17 @@ ipcRenderer.on('emergency-stop', () => {
 ipcRenderer.on('emergency-reset', () => {
   console.log('Emergency reset received');
   hideEmergencyMessage();
+  
+  // Resume playback if it was playing before emergency
+  const playbackState = store.get('playbackState');
+  if (playbackState && playbackState.wasPlaying) {
+    console.log('Resuming playback after emergency reset');
+    const playlistAudio = document.getElementById('audioPlayer');
+    if (playlistAudio) {
+      playlistAudio.volume = playbackState.volume || 0.7; // Restore previous volume or default
+      playlistAudio.play().catch(err => console.error('Resume playback error:', err));
+    }
+  }
 });
 
 // Emergency message handlers
@@ -347,9 +358,6 @@ ipcRenderer.on('songRemoved', (event, { songId, playlistId }) => {
     // Store'u güncelle
     store.set('playlists', playlists);
     console.log('Playlist güncellendi');
-    
-    // UI'ı güncelle
-    displayPlaylists();
     
     // Yerel dosyayı sil
     if (removedSong && removedSong.localPath) {
