@@ -5,6 +5,9 @@ const store = new Store();
 const websocketService = require('./services/websocketService');
 require('./services/audioService');
 
+// Uygulama ismini ayarla
+app.setName('Cloud Media');
+
 let mainWindow;
 let tray = null;
 let isPlaying = false;
