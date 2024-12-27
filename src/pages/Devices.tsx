@@ -32,26 +32,28 @@ const Devices = () => {
       <DeviceStats />
 
       <Tabs defaultValue="devices" className="space-y-4">
-        <div className="flex items-center justify-between">
-          <TabsList>
-            <TabsTrigger value="devices">Cihazlar</TabsTrigger>
-            <TabsTrigger value="groups">Gruplar</TabsTrigger>
-          </TabsList>
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center justify-between">
+            <TabsList>
+              <TabsTrigger value="devices">Cihazlar</TabsTrigger>
+              <TabsTrigger value="groups">Gruplar</TabsTrigger>
+            </TabsList>
+          </div>
 
           <div className="flex items-center gap-4">
-            <div className="relative">
+            <div className="relative flex-1">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input 
                 placeholder="Cihaz ara..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9 w-[300px]"
+                className="pl-9"
               />
             </div>
 
             <Select value={filterStatus} onValueChange={(value: "all" | "online" | "offline") => setFilterStatus(value)}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Durum" />
+                <SelectValue placeholder="Tümü" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tümü</SelectItem>
@@ -62,7 +64,7 @@ const Devices = () => {
 
             <Select value={locationFilter} onValueChange={setLocationFilter}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Bölge" />
+                <SelectValue placeholder="Tüm Bölgeler" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="_all">Tüm Bölgeler</SelectItem>
@@ -71,16 +73,6 @@ const Devices = () => {
                 <SelectItem value="izmir">İzmir</SelectItem>
               </SelectContent>
             </Select>
-
-            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-              <Button onClick={() => setIsFormOpen(true)} variant="default">
-                <Plus className="h-4 w-4 mr-2" />
-                Cihaz Ekle
-              </Button>
-              <DialogContent>
-                <DeviceForm onSuccess={() => setIsFormOpen(false)} />
-              </DialogContent>
-            </Dialog>
 
             <Button
               variant="destructive"
@@ -94,6 +86,16 @@ const Devices = () => {
               )}
               {isEmergencyActive ? 'Acil Durumu Kaldır' : 'Acil Durum'}
             </Button>
+
+            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+              <Button onClick={() => setIsFormOpen(true)} variant="default">
+                <Plus className="h-4 w-4 mr-2" />
+                Cihaz Ekle
+              </Button>
+              <DialogContent>
+                <DeviceForm onSuccess={() => setIsFormOpen(false)} />
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 
