@@ -1,14 +1,14 @@
 import { useState } from "react";
-import SongList from "@/components/upload/SongList";
-import SongUploader from "@/components/upload/SongUploader";
-import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { Song } from "@/types/song";
-import SongEditDialog from "@/components/upload/SongEditDialog";
-import { Loader2 } from "lucide-react";
-import { SongFilters } from "@/components/upload/SongFilters";
 import { DateRange } from "react-day-picker";
 import { isWithinInterval, parseISO, startOfDay, endOfDay } from "date-fns";
+import { Loader2 } from "lucide-react";
+import SongList from "@/components/upload/SongList";
+import SongUploader from "@/components/upload/SongUploader";
+import SongEditDialog from "@/components/upload/SongEditDialog";
+import { SongFilters } from "@/components/upload/SongFilters";
 
 const Upload = () => {
   const [editingSong, setEditingSong] = useState<Song | null>(null);
@@ -18,7 +18,7 @@ const Upload = () => {
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
-  const { data: songs = [], isLoading } = useQuery<Song[]>({
+  const { data: songs = [], isLoading } = useQuery({
     queryKey: ["songs"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/songs");
@@ -51,13 +51,11 @@ const Upload = () => {
     }
   };
 
-  // Filtreleme işlemi
   const filteredSongs = songs.filter((song) => {
     const matchesSearch = song.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          song.artist.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesGenre = selectedGenre === "all" || song.genre === selectedGenre;
     
-    // Tarih aralığı kontrolü
     let matchesDateRange = true;
     if (dateRange?.from && dateRange?.to && song.createdAt) {
       const songDate = parseISO(song.createdAt);
@@ -70,7 +68,6 @@ const Upload = () => {
     return matchesSearch && matchesGenre && matchesDateRange;
   });
 
-  // Benzersiz türleri al
   const genres = ["all", ...new Set(songs.map(song => song.genre))];
 
   if (isLoading) {
