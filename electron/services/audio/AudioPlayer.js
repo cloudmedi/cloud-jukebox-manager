@@ -84,7 +84,7 @@ class AudioPlayer {
       this.audio.src = normalizedPath;
       this.audio.volume = this.volume;
       
-      if (this.isPlaying && !this.emergencyManager.isEmergencyActive()) {
+      if (this.isPlaying) {
         this.audio.play().catch(error => {
           console.error('Error playing audio:', error);
           this.playNext();
@@ -97,11 +97,6 @@ class AudioPlayer {
   }
 
   playNext() {
-    if (this.emergencyManager.isEmergencyActive()) {
-      console.log('Next song blocked: Emergency mode is active');
-      return;
-    }
-
     console.log('Playing next song');
     const nextSong = QueueManager.getNextSong();
     if (nextSong) {
