@@ -1,4 +1,3 @@
-const { ipcRenderer } = require('electron');
 const deviceService = require('../deviceService');
 
 class UIManager {
@@ -15,34 +14,34 @@ class UIManager {
     }
 
     async initializeUI() {
-        const deviceInfo = await ipcRenderer.invoke('get-device-info');
-        
-        if (!deviceInfo || !deviceInfo.token) {
-            try {
-                const newToken = await deviceService.registerDeviceToken();
-                await ipcRenderer.invoke('save-device-info', {
-                    token: newToken
-                });
-                
-                this.updateDeviceInfo(newToken);
-            } catch (error) {
-                this.showError('Token oluşturma hatası: ' + error.message);
+        console.log('Initializing UI...');
+        try {
+            let token = deviceService.getStoredToken();
+            
+            if (!token) {
+                console.log('No stored token found, generating new token...');
+                token = await deviceService.registerDeviceToken();
             }
-        } else {
-            this.updateDeviceInfo(deviceInfo.token);
+            
+            this.updateDeviceInfo(token);
+            console.log('UI initialized with token:', token);
+        } catch (error) {
+            console.error('UI initialization error:', error);
+            this.showError('Token oluşturma hatası: ' + error.message);
         }
     }
 
     updateDeviceInfo(token) {
-        this.tokenDisplay.textContent = `Token: ${token}`;
+        if (this.tokenDisplay) {
+            this.tokenDisplay.textContent = `Token: ${token}`;
+            this.deviceInfoElement.style.display = 'block';
+        }
     }
 
     updateConnectionStatus(isConnected) {
         if (isConnected) {
-            // Bağlantı başarılı olduğunda token bilgilerini gizle
             this.deviceInfoElement.style.display = 'none';
         } else {
-            // Bağlantı koptuğunda token bilgilerini göster
             this.deviceInfoElement.style.display = 'block';
         }
         
@@ -94,11 +93,13 @@ class UIManager {
         errorElement.className = 'error-message';
         errorElement.textContent = message;
         
-        this.errorContainer.appendChild(errorElement);
-        
-        setTimeout(() => {
-            errorElement.remove();
-        }, duration);
+        if (this.errorContainer) {
+            this.errorContainer.appendChild(errorElement);
+            
+            setTimeout(() => {
+                errorElement.remove();
+            }, duration);
+        }
     }
 }
 

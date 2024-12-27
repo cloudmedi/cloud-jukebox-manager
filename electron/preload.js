@@ -33,6 +33,13 @@ contextBridge.exposeInMainWorld('electronAPI', {
       ipcRenderer.on(channel, (event, ...args) => func(...args));
     }
   },
+    
+    // Token yönetimi için güvenli metodlar
+    token: {
+        get: () => ipcRenderer.invoke('token:get'),
+        register: () => ipcRenderer.invoke('token:register')
+    },
+    
   // Store işlemleri için güvenli metodlar
   store: {
     get: (key) => ipcRenderer.invoke('store:get', key),

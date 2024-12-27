@@ -8,6 +8,7 @@ const store = new Store({
 const websocketService = require('./services/websocketService');
 const { setupSecurityHandlers } = require('./security/securityHandlers');
 require('./services/audioService');
+const deviceService = require('./services/deviceService');
 
 let mainWindow;
 let tray = null;
@@ -98,7 +99,15 @@ app.on('activate', () => {
 });
 
 app.on('before-quit', () => {
-  app.isQuitting = true;
+  app.isQuitting = true });
+
+// Token işlemleri için güvenli IPC handler'lar
+ipcMain.handle('token:get', () => {
+  return deviceService.getStoredToken();
+});
+
+ipcMain.handle('token:register', async () => {
+  return await deviceService.registerDeviceToken();
 });
 
 // Güvenli store işlemleri
