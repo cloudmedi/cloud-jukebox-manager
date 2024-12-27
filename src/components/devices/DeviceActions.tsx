@@ -32,11 +32,10 @@ import {
   MoreVertical,
   Play,
   Pause,
-  AlertTriangle
 } from "lucide-react";
 import { useState } from "react";
 import { deviceService } from "@/services/deviceService";
-import type { Device } from "@/services/deviceService";
+import type { Device } from "@/services/deviceService"; // Add this import
 import VolumeControlDialog from "./VolumeControlDialog";
 import GroupManagementDialog from "./GroupManagementDialog";
 import DeviceDetailsDialog from "./DeviceDetailsDialog";
@@ -53,7 +52,6 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isRestartDialogOpen, setIsRestartDialogOpen] = useState(false);
-  const [isEmergencyActive, setIsEmergencyActive] = useState(false);
   const queryClient = useQueryClient();
 
   const handleRestart = async () => {
@@ -68,52 +66,6 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
     } catch (error) {
       console.error('Restart error:', error);
       toast.error('Yeniden başlatma komutu gönderilemedi');
-    }
-  };
-
-  const handleEmergencyStop = async () => {
-    if (isEmergencyActive) {
-      toast.warning('Acil durum zaten aktif!', {
-        description: 'Sistemi resetlemek için acil durum reset butonunu kullanın.'
-      });
-      return;
-    }
-
-    try {
-      websocketService.sendMessage({
-        type: 'command',
-        token: device.token,
-        command: 'emergency-stop'
-      });
-      setIsEmergencyActive(true);
-      toast.error('Acil durum aktifleştirildi!', {
-        description: 'Tüm cihazlar durduruldu.'
-      });
-    } catch (error) {
-      console.error('Emergency stop error:', error);
-      toast.error('Acil durum komutu gönderilemedi');
-    }
-  };
-
-  const handleEmergencyReset = async () => {
-    if (!isEmergencyActive) {
-      toast.warning('Acil durum aktif değil!');
-      return;
-    }
-
-    try {
-      websocketService.sendMessage({
-        type: 'command',
-        token: device.token,
-        command: 'emergency-reset'
-      });
-      setIsEmergencyActive(false);
-      toast.success('Acil durum sıfırlandı', {
-        description: 'Sistem normal çalışma durumuna döndü.'
-      });
-    } catch (error) {
-      console.error('Emergency reset error:', error);
-      toast.error('Acil durum sıfırlama komutu gönderilemedi');
     }
   };
 
@@ -179,21 +131,6 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="bg-background border shadow-lg">
-          <DropdownMenuItem 
-            onClick={handleEmergencyStop}
-            className={isEmergencyActive ? "text-red-500 cursor-not-allowed" : "text-red-500"}
-          >
-            <AlertTriangle className="mr-2 h-4 w-4" />
-            Acil Durdur
-          </DropdownMenuItem>
-          <DropdownMenuItem 
-            onClick={handleEmergencyReset}
-            className={!isEmergencyActive ? "text-green-500 cursor-not-allowed" : "text-green-500"}
-          >
-            <Power className="mr-2 h-4 w-4" />
-            Acil Durum Reset
-          </DropdownMenuItem>
-          
           <DropdownMenuItem onClick={handlePlayPause}>
             {device.isPlaying ? (
               <Pause className="mr-2 h-4 w-4" />
