@@ -13,7 +13,6 @@ class AudioPlayer {
     this.playlist = null;
     this.isPlaying = false;
     this.volume = 1.0;
-    
     this.setupEventListeners();
   }
 
@@ -145,7 +144,9 @@ class AudioPlayer {
     const currentState = {
       wasPlaying: this.isPlaying,
       volume: this.volume,
-      currentTime: this.audio.currentTime
+      currentTime: this.audio.currentTime,
+      currentSong: this.queueManager.getCurrentSong(),
+      playlist: this.playlist
     };
     store.set('playbackState', currentState);
     
@@ -157,14 +158,30 @@ class AudioPlayer {
   handleEmergencyReset() {
     const savedState = store.get('playbackState');
     if (savedState) {
+      // Restore volume
       this.volume = savedState.volume;
       this.audio.volume = this.volume;
       
+      // Restore playlist and song if they exist
+      if (savedState.playlist) {
+        this.playlist = savedState.playlist;
+        this.queueManager.setQueue(savedState.playlist.songs);
+      }
+
+      // If it was playing before emergency, resume
       if (savedState.wasPlaying) {
         console.log('Restoring playback state after emergency');
-        this.audio.currentTime = savedState.currentTime;
-        this.play();
+        
+        // Load and play the song that was playing
+        if (savedState.currentSong) {
+          this.loadSong(savedState.currentSong);
+          this.audio.currentTime = savedState.currentTime;
+          this.play();
+        }
       }
+
+      // Clear saved emergency state
+      store.delete('playbackState');
     }
   }
 }

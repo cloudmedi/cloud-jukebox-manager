@@ -7,9 +7,14 @@ const playbackStateManager = require('./services/audio/PlaybackStateManager');
 const UIManager = require('./services/ui/UIManager');
 const AnnouncementAudioService = require('./services/audio/AnnouncementAudioService');
 const PlaylistInitializer = require('./services/playlist/PlaylistInitializer');
+const audioPlayer = require('./services/audio/AudioPlayer');
+const EmergencyHandler = require('./services/emergency/EmergencyHandler');
 
 const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
+
+// Initialize emergency handler
+const emergencyHandler = new EmergencyHandler(audioPlayer);
 
 // Initialize volume
 playlistAudio.volume = 0.7; // 70%
@@ -17,6 +22,7 @@ playlistAudio.volume = 0.7; // 70%
 // Emergency stop handler
 ipcRenderer.on('emergency-stop', () => {
   console.log('Emergency stop received');
+  ipcRenderer.send('emergency-stop');
   
   // Tüm ses çalmayı durdur
   if (playlistAudio) {
@@ -34,10 +40,11 @@ ipcRenderer.on('emergency-stop', () => {
   }
 
   // Store'u güncelle
-  const store = new Store();
   store.set('playbackState', {
     isPlaying: false,
-    emergencyStopped: true
+    emergencyStopped: true,
+    previousVolume: playlistAudio.volume,
+    currentTime: playlistAudio.currentTime
   });
 
   // UI'ı güncelle
@@ -47,18 +54,26 @@ ipcRenderer.on('emergency-stop', () => {
 // Emergency reset handler
 ipcRenderer.on('emergency-reset', () => {
   console.log('Emergency reset received');
-  hideEmergencyMessage();
+  ipcRenderer.send('emergency-reset');
   
-  // Resume playback if it was playing before emergency
   const playbackState = store.get('playbackState');
-  if (playbackState && playbackState.wasPlaying) {
-    console.log('Resuming playback after emergency reset');
-    const playlistAudio = document.getElementById('audioPlayer');
+  if (playbackState) {
+    // Restore volume
     if (playlistAudio) {
-      playlistAudio.volume = playbackState.volume || 0.7; // Restore previous volume or default
-      playlistAudio.play().catch(err => console.error('Resume playback error:', err));
+      playlistAudio.volume = playbackState.previousVolume || 0.7;
+    }
+    
+    // Resume playback if it was playing before emergency
+    if (playbackState.isPlaying) {
+      console.log('Resuming playback after emergency reset');
+      if (playlistAudio) {
+        playlistAudio.currentTime = playbackState.currentTime || 0;
+        playlistAudio.play().catch(err => console.error('Resume playback error:', err));
+      }
     }
   }
+
+  hideEmergencyMessage();
 });
 
 // Emergency message handlers
@@ -308,8 +323,6 @@ ipcRenderer.on('playlist-received', (event, playlist) => {
     body: `${playlist.name} playlist'i başarıyla indirildi.`
   });
 });
-
-// Şarkı silme mesajını dinle
 
 // Update the delete message handler
 ipcRenderer.on('device-deleted', (event, id) => {
