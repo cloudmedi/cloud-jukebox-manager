@@ -1,7 +1,6 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { Button } from "@/components/ui/button";
-import { Plus, MoreVertical } from "lucide-react";
+import { MoreVertical } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -12,7 +11,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { DeviceGroupForm } from "./DeviceGroupForm";
 import { DeviceGroupActions } from "./DeviceGroupActions";
 
@@ -53,20 +52,6 @@ const DeviceGroups = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold tracking-tight">Cihaz Grupları</h2>
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              Yeni Grup
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DeviceGroupForm onSuccess={() => {
-              setIsFormOpen(false);
-              refetch();
-            }} />
-          </DialogContent>
-        </Dialog>
       </div>
 
       <div className="rounded-md border">
@@ -107,6 +92,15 @@ const DeviceGroups = () => {
           </TableBody>
         </Table>
       </div>
+
+      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+        <DialogContent>
+          <DeviceGroupForm onSuccess={() => {
+            setIsFormOpen(false);
+            refetch();
+          }} />
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
