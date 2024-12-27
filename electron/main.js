@@ -3,6 +3,7 @@ const path = require('path');
 const Store = require('electron-store');
 const store = new Store();
 const websocketService = require('./services/websocketService');
+const NotificationService = require('./services/notification/NotificationService');
 require('./services/audioService');
 
 // Uygulama ismini ayarla
