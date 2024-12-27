@@ -2,6 +2,10 @@ const BaseDeleteHandler = require('./BaseDeleteHandler');
 const Store = require('electron-store');
 const fs = require('fs');
 const path = require('path');
+const PlaylistStoreManager = require('../../store/PlaylistStoreManager');
+const { createLogger } = require('../../../utils/logger');
+
+const logger = createLogger('song-delete-handler');
 
 class SongDeleteHandler extends BaseDeleteHandler {
   constructor() {
@@ -10,11 +14,10 @@ class SongDeleteHandler extends BaseDeleteHandler {
   }
 
   async preDelete(id) {
-    // Tüm playlistleri kontrol et
-    const playlists = this.store.get('playlists', []);
+    logger.info(`Starting pre-delete check for song: ${id}`);
+    const playlists = PlaylistStoreManager.getPlaylists();
     let songFound = false;
 
-    // Şarkıyı içeren playlistleri bul
     for (const playlist of playlists) {
       if (playlist.songs.some(song => song._id === id)) {
         songFound = true;
@@ -23,44 +26,59 @@ class SongDeleteHandler extends BaseDeleteHandler {
     }
 
     if (!songFound) {
+      logger.warn(`Song ${id} not found in any playlist`);
       throw new Error('Song not found in any playlist');
     }
+
+    logger.info(`Pre-delete check completed for song: ${id}`);
   }
 
   async executeDelete(id) {
-    const playlists = this.store.get('playlists', []);
+    logger.info(`Executing delete for song: ${id}`);
+    
+    // Önce dosyayı bul ve sil
+    const playlists = PlaylistStoreManager.getPlaylists();
     let songToDelete = null;
     
-    // Her playlist'te şarkıyı ara ve sil
-    const updatedPlaylists = playlists.map(playlist => {
-      const songIndex = playlist.songs.findIndex(s => s._id === id);
-      if (songIndex !== -1) {
-        songToDelete = playlist.songs[songIndex];
-        playlist.songs = playlist.songs.filter(s => s._id !== id);
-      }
-      return playlist;
-    });
+    // Şarkıyı bul
+    for (const playlist of playlists) {
+      songToDelete = playlist.songs.find(s => s._id === id);
+      if (songToDelete) break;
+    }
 
-    // Şarkı dosyasını sil
+    // Dosyayı sil
     if (songToDelete && songToDelete.localPath && fs.existsSync(songToDelete.localPath)) {
       try {
         fs.unlinkSync(songToDelete.localPath);
-        console.log('Deleted song file:', songToDelete.localPath);
+        logger.info(`Deleted song file: ${songToDelete.localPath}`);
       } catch (error) {
-        console.error('Error deleting song file:', error);
+        logger.error(`Error deleting song file: ${error.message}`);
+        throw error;
       }
     }
 
-    // Store'u güncelle
-    this.store.set('playlists', updatedPlaylists);
-    console.log('Song removed from playlists:', id);
+    // Store'dan sil
+    const updated = PlaylistStoreManager.removeSongFromPlaylists(id);
+    if (updated) {
+      logger.info(`Song ${id} removed from store successfully`);
+    } else {
+      logger.warn(`No playlists were updated while removing song ${id}`);
+    }
   }
 
   async postDelete(id) {
-    // Player'ı güncelle
+    logger.info(`Post-delete operations for song: ${id}`);
+    
+    // Store'u validate et
+    PlaylistStoreManager.validatePlaylistData();
+    
+    // AudioService'i güncelle
     if (global.audioService) {
       global.audioService.handleSongDeleted(id);
+      logger.info('AudioService updated');
     }
+
+    logger.info(`Post-delete completed for song: ${id}`);
   }
 }
 
