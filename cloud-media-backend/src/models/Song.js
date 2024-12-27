@@ -92,20 +92,13 @@ songSchema.pre('deleteOne', { document: true, query: false }, async function(nex
       logger.info(`Found ${devices.length} devices using playlist ${playlist._id}`);
       logger.info('Device tokens:', JSON.stringify(devices.map(d => d.token), null, 2));
       
-      // Notify devices
+      // Notify devices using the new DeleteMessage format
       devices.forEach(device => {
         if (global.wss) {
           logger.info(`Sending notification to device: ${device.token}`);
           logger.info('WebSocket service status:', !!global.wss);
           
-          const message = {
-            type: 'playlist',
-            action: 'songRemoved',
-            data: {
-              songId: this._id,
-              playlistId: playlist._id
-            }
-          };
+          const message = DeleteMessage.createDeleteSuccess('song', this._id);
           
           logger.info('Sending message:', JSON.stringify(message, null, 2));
           
