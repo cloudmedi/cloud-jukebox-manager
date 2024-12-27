@@ -43,7 +43,6 @@ const DeviceForm = ({ onSuccess }: DeviceFormProps) => {
 
       if (!response.ok) {
         const errorData = await response.json();
-        // Check for duplicate token error
         if (errorData.message && errorData.message.includes('duplicate key error')) {
           throw new Error("Bu token zaten kullanımda. Lütfen başka bir token deneyin.");
         }
@@ -69,7 +68,7 @@ const DeviceForm = ({ onSuccess }: DeviceFormProps) => {
     },
   });
 
-  const handleTokenChange = async (token: string) => {
+  const handleTokenChange = async (token: string): Promise<boolean> => {
     try {
       const validationResult = await validateToken(token);
       if (validationResult.isUsed) {
@@ -96,7 +95,6 @@ const DeviceForm = ({ onSuccess }: DeviceFormProps) => {
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     try {
-      // Token validation before submission
       const isTokenValid = await handleTokenChange(data.token);
       if (!isTokenValid) {
         setIsSubmitting(false);
