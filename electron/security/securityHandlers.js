@@ -2,6 +2,7 @@ const { ipcMain } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const crypto = require('crypto');
+const winston = require('winston');
 
 // Güvenli dosya yolu doğrulama
 function isPathSafe(filePath) {
@@ -18,10 +19,25 @@ function sanitizeInput(input) {
   return input;
 }
 
+// Güvenlik logger'ı
+const securityLogger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.timestamp(),
+    winston.format.json()
+  ),
+  defaultMeta: { service: 'security-service' },
+  transports: [
+    new winston.transports.File({ filename: 'security-error.log', level: 'error' }),
+    new winston.transports.File({ filename: 'security.log' })
+  ]
+});
+
 function setupSecurityHandlers() {
   // Dosya işlemleri için güvenli handler'lar
   ipcMain.handle('file:read', async (event, filePath) => {
     if (!isPathSafe(filePath)) {
+      securityLogger.error('Invalid file path access attempt', { path: filePath });
       throw new Error('Invalid file path');
     }
     return fs.promises.readFile(filePath, 'utf8');
@@ -29,6 +45,7 @@ function setupSecurityHandlers() {
 
   ipcMain.handle('file:write', async (event, filePath, data) => {
     if (!isPathSafe(filePath)) {
+      securityLogger.error('Invalid file write attempt', { path: filePath });
       throw new Error('Invalid file path');
     }
     const sanitizedData = sanitizeInput(data);
@@ -37,6 +54,7 @@ function setupSecurityHandlers() {
 
   ipcMain.handle('file:delete', async (event, filePath) => {
     if (!isPathSafe(filePath)) {
+      securityLogger.error('Invalid file delete attempt', { path: filePath });
       throw new Error('Invalid file path');
     }
     return fs.promises.unlink(filePath);
@@ -52,17 +70,12 @@ function setupSecurityHandlers() {
       hash: crypto.createHash('sha256').update(`${timestamp}${event}${JSON.stringify(details)}`).digest('hex')
     };
     
-    // Log dosyasına güvenli şekilde yaz
-    fs.appendFileSync(
-      path.join(__dirname, '../logs/security.log'),
-      JSON.stringify(logEntry) + '\n',
-      { flag: 'a' }
-    );
+    securityLogger.info('Security event', logEntry);
   }
 
   // Global error handler
   process.on('uncaughtException', (error) => {
-    logSecurityEvent('uncaughtException', {
+    securityLogger.error('Uncaught exception', {
       error: error.message,
       stack: error.stack
     });
@@ -80,5 +93,6 @@ function setupSecurityHandlers() {
 module.exports = {
   setupSecurityHandlers,
   isPathSafe,
-  sanitizeInput
+  sanitizeInput,
+  securityLogger
 };

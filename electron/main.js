@@ -1,7 +1,10 @@
-const { app, BrowserWindow, ipcMain, Tray, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, session } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
-const store = new Store({ encryptionKey: 'your-secure-key' }); // Veri şifreleme
+const store = new Store({ 
+  encryptionKey: 'your-secure-key',
+  clearInvalidConfig: true
+});
 const websocketService = require('./services/websocketService');
 const { setupSecurityHandlers } = require('./security/securityHandlers');
 require('./services/audioService');
@@ -16,7 +19,13 @@ const CSP = {
   'style-src': ["'self'", "'unsafe-inline'"],
   'img-src': ["'self'", 'data:', 'https:'],
   'connect-src': ["'self'", 'wss:', 'https:'],
-  'media-src': ["'self'", 'https:']
+  'media-src': ["'self'", 'https:'],
+  'frame-src': ["'none'"],
+  'object-src': ["'none'"],
+  'base-uri': ["'self'"],
+  'form-action': ["'self'"],
+  'frame-ancestors': ["'none'"],
+  'upgrade-insecure-requests': []
 };
 
 function createWindow() {
@@ -36,13 +45,15 @@ function createWindow() {
       contextIsolation: true,
       webSecurity: true,
       sandbox: true,
-      preload: path.join(__dirname, 'preload.js'),
-      additionalArguments: ['--disable-site-isolation-trials']
+      allowRunningInsecureContent: false,
+      experimentalFeatures: false,
+      enableRemoteModule: false,
+      preload: path.join(__dirname, 'preload.js')
     }
   });
 
   // CSP uygula
-  mainWindow.webContents.session.webRequest.onHeadersReceived((details, callback) => {
+  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
     callback({
       responseHeaders: {
         ...details.responseHeaders,
@@ -64,59 +75,13 @@ function createWindow() {
     });
   }
 
-  // Tray implementation
-  tray = new Tray(path.join(__dirname, 'icon.png'));
-  const contextMenu = Menu.buildFromTemplate([
-    {
-      label: 'Show App',
-      click: function() {
-        mainWindow.show();
-        mainWindow.focus(); // Pencereyi ön plana getir
-      }
-    },
-    {
-      label: 'Close',
-      click: function() {
-        app.isQuitting = true;
-        app.quit();
-      }
-    }
-  ]);
-
-  tray.setToolTip('Cloud Media Player');
-  tray.setContextMenu(contextMenu);
-
-  tray.on('double-click', () => {
-    mainWindow.show();
-    mainWindow.focus(); // Pencereyi ön plana getir
-  });
-
-  tray.on('click', () => {
-    mainWindow.show();
-    mainWindow.focus(); // Pencereyi ön plana getir
-  });
+  // Güvenli IPC handlers
+  setupSecurityHandlers();
 }
-
-// Güvenli IPC handlers
-setupSecurityHandlers();
-
-// Store encryption için güvenli metodlar
-ipcMain.handle('store:get', (event, key) => {
-  return store.get(key);
-});
-
-ipcMain.handle('store:set', (event, key, value) => {
-  store.set(key, value);
-});
-
-ipcMain.handle('store:delete', (event, key) => {
-  store.delete(key);
-});
 
 // App lifecycle events
 app.whenReady().then(() => {
   createWindow();
-  // Uygulama başladığında tray'i oluştur
 });
 
 app.on('window-all-closed', () => {
@@ -134,4 +99,17 @@ app.on('activate', () => {
 
 app.on('before-quit', () => {
   app.isQuitting = true;
+});
+
+// Güvenli store işlemleri
+ipcMain.handle('store:get', (event, key) => {
+  return store.get(key);
+});
+
+ipcMain.handle('store:set', (event, key, value) => {
+  store.set(key, value);
+});
+
+ipcMain.handle('store:delete', (event, key) => {
+  store.delete(key);
 });
