@@ -32,10 +32,11 @@ import {
   MoreVertical,
   Play,
   Pause,
+  AlertOctagon
 } from "lucide-react";
 import { useState } from "react";
 import { deviceService } from "@/services/deviceService";
-import type { Device } from "@/services/deviceService"; // Add this import
+import type { Device } from "@/services/deviceService";
 import VolumeControlDialog from "./VolumeControlDialog";
 import GroupManagementDialog from "./GroupManagementDialog";
 import DeviceDetailsDialog from "./DeviceDetailsDialog";
@@ -52,7 +53,27 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isRestartDialogOpen, setIsRestartDialogOpen] = useState(false);
+  const [isEmergencyActive, setIsEmergencyActive] = useState(false);
   const queryClient = useQueryClient();
+
+  const handleEmergencyAction = async () => {
+    try {
+      if (!isEmergencyActive) {
+        // Emergency Stop
+        await deviceService.emergencyStop();
+        setIsEmergencyActive(true);
+        toast.success('Acil durum aktifleştirildi');
+      } else {
+        // Emergency Reset
+        await deviceService.emergencyReset();
+        setIsEmergencyActive(false);
+        toast.success('Acil durum durumu kaldırıldı');
+      }
+    } catch (error) {
+      console.error('Emergency action error:', error);
+      toast.error('İşlem başarısız oldu');
+    }
+  };
 
   const handleRestart = async () => {
     try {
@@ -154,6 +175,10 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
           <DropdownMenuItem onClick={() => setIsDetailsDialogOpen(true)}>
             <Info className="mr-2 h-4 w-4" />
             Cihaz Detayları
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleEmergencyAction}>
+            <AlertOctagon className={`mr-2 h-4 w-4 ${isEmergencyActive ? 'text-red-500' : ''}`} />
+            {isEmergencyActive ? 'Acil Durumu Kaldır' : 'Acil Durum'}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive">
             <Trash2 className="mr-2 h-4 w-4" />
