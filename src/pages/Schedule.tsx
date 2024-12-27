@@ -10,11 +10,26 @@ import { PlaylistScheduleForm } from "@/components/schedule/PlaylistScheduleForm
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 
+interface Schedule {
+  _id: string;
+  playlist: {
+    _id: string;
+    name: string;
+  } | null;
+  startDate: string;
+  endDate: string;
+  status: 'active' | 'inactive';
+  targets: {
+    devices: string[];
+    groups: string[];
+  };
+}
+
 const Schedule = () => {
   const [view, setView] = useState<"timeGridWeek" | "dayGridMonth">("timeGridWeek");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const { data: schedules, isLoading, error } = useQuery({
+  const { data: schedules, isLoading, error } = useQuery<Schedule[]>({
     queryKey: ["playlist-schedules"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/playlist-schedules");
@@ -29,17 +44,21 @@ const Schedule = () => {
     setIsDialogOpen(true);
   };
 
-  // Create events array with proper type checking and null handling
-  const events = schedules?.reduce((acc: any[], schedule: any) => {
-    // Skip invalid schedules or those without playlist
-    if (!schedule || !schedule.playlist) {
+  const events = schedules?.reduce<Array<{
+    id: string;
+    title: string;
+    start: string;
+    end: string;
+    backgroundColor: string;
+  }>>((acc, schedule) => {
+    // Skip if schedule or playlist is null/undefined
+    if (!schedule?.playlist?.name) {
       return acc;
     }
 
-    // Create event object with safe property access
-    const event = {
+    return [...acc, {
       id: schedule._id,
-      title: `${schedule.playlist.name || 'Unnamed Playlist'} - ${
+      title: `${schedule.playlist.name} - ${
         Array.isArray(schedule.targets?.devices) && schedule.targets.devices.length > 0 
           ? 'Cihaz' 
           : 'Grup'
@@ -47,9 +66,7 @@ const Schedule = () => {
       start: schedule.startDate,
       end: schedule.endDate,
       backgroundColor: schedule.status === 'active' ? '#10b981' : '#6b7280',
-    };
-
-    return [...acc, event];
+    }];
   }, []) || [];
 
   if (isLoading) {
