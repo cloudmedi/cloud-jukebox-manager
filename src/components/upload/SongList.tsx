@@ -100,6 +100,7 @@ const SongList = ({
           successCount++;
         } catch (error) {
           failCount++;
+          console.error(`Error deleting song ${song._id}:`, error);
         }
       }));
 
@@ -118,6 +119,7 @@ const SongList = ({
         });
       }
     } catch (error) {
+      console.error('Bulk delete error:', error);
       toast({
         variant: "destructive",
         title: "Hata",
@@ -156,13 +158,7 @@ const SongList = ({
               <SongTableRow
                 key={song._id}
                 song={song}
-                onDelete={async (id) => {
-                  await onDelete(id);
-                  toast({
-                    title: "Başarılı",
-                    description: "Şarkı başarıyla silindi",
-                  });
-                }}
+                onDelete={onDelete}
                 onEdit={onEdit}
                 isSelected={selectedSongs.some(s => s._id === song._id)}
                 onSelect={handleSelect}
