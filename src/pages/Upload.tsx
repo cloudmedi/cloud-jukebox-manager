@@ -59,7 +59,6 @@ const Upload = () => {
     }
   };
 
-  // Filtreleme işlemi
   const filteredSongs = songs.filter((song) => {
     const matchesSearch = song.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          song.artist.toLowerCase().includes(searchTerm.toLowerCase());
@@ -77,7 +76,8 @@ const Upload = () => {
     return matchesSearch && matchesGenre && matchesDateRange;
   });
 
-  const genres = ["all", ...new Set(songs.map(song => song.genre))];
+  // Extract unique genres and ensure they're typed as strings
+  const genres = ["all", ...Array.from(new Set(songs.map((song: Song) => song.genre)))];
 
   const handlePageChange = (page: number) => {
     setCurrentPage(page);
