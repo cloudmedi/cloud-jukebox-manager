@@ -1,37 +1,48 @@
+import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
+import { PlaylistList } from "@/components/playlists/PlaylistList";
 import { useQuery } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { PlaybackTable } from "@/components/playlists/PlaybackTable";
+import { useToast } from "@/hooks/use-toast";
 
 const Playlists = () => {
-  const { data: playlists, isLoading } = useQuery({
+  const navigate = useNavigate();
+  const { toast } = useToast();
+
+  const { data: playlists, isLoading, error, refetch } = useQuery({
     queryKey: ["playlists"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/playlists");
-      if (!response.ok) throw new Error("Playlists yüklenemedi");
+      if (!response.ok) {
+        throw new Error("Playlist verileri alınamadı");
+      }
       return response.json();
     },
   });
 
+  const handlePlaylistUpdate = () => {
+    refetch();
+    toast({
+      title: "Başarılı",
+      description: "Playlist başarıyla güncellendi",
+    });
+  };
+
   return (
-    <>
-      <h1>Playlist Yönetimi</h1>
-      <div className="space-y-8">
-        {isLoading ? (
-          <div className="flex items-center justify-center h-[200px]">
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
-          </div>
-        ) : (
-          <Card>
-            <CardHeader>
-              <CardTitle>Playlists</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <PlaybackTable data={playlists} />
-            </CardContent>
-          </Card>
-        )}
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-bold tracking-tight">Playlist Yönetimi</h2>
+        <Button onClick={() => navigate("/playlists/new")}>
+          <Plus className="mr-2 h-4 w-4" />
+          Yeni Playlist
+        </Button>
       </div>
-    </>
+
+      <PlaylistList 
+        playlists={playlists || []} 
+        onPlaylistUpdate={handlePlaylistUpdate}
+      />
+    </div>
   );
 };
 

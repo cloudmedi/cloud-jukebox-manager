@@ -27,14 +27,8 @@ export const MainLayout = () => {
           <Sidebar />
           <div className="flex-1 flex flex-col">
             <Header />
-            <main className="flex-1 p-8">
-              <div className="max-w-[1400px] mx-auto">
-                <div className="mb-8">
-                  <h1 className="text-3xl font-bold tracking-tight">
-                    <Outlet />
-                  </h1>
-                </div>
-              </div>
+            <main className="flex-1 p-6 overflow-auto">
+              <Outlet />
             </main>
             {showPlayer && <Player />}
           </div>
