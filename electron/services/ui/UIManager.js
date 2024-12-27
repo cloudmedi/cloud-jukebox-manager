@@ -1,87 +1,48 @@
+const { ipcRenderer } = require('electron');
 const deviceService = require('../deviceService');
 
 class UIManager {
     constructor() {
-        this.deviceInfoElement = null;
-        this.tokenDisplay = null;
-        this.connectionStatus = null;
-        this.downloadProgress = null;
-        this.downloadProgressBar = null;
-        this.downloadProgressText = null;
-        this.errorContainer = null;
-        
-        window.addEventListener('DOMContentLoaded', () => {
-            console.log('DOM loaded, initializing UI elements...');
-            this.initializeElements();
-            this.initializeUI();
-        });
-    }
-
-    initializeElements() {
-        console.log('Initializing UI elements...');
         this.deviceInfoElement = document.getElementById('deviceInfo');
-        
-        if (this.deviceInfoElement) {
-            this.tokenDisplay = this.deviceInfoElement.querySelector('.token-display');
-            this.connectionStatus = this.deviceInfoElement.querySelector('.connection-status');
-        } else {
-            console.error('Device info element not found!');
-            return;
-        }
-
+        this.tokenDisplay = this.deviceInfoElement.querySelector('.token-display');
+        this.connectionStatus = this.deviceInfoElement.querySelector('.connection-status');
         this.downloadProgress = document.querySelector('.download-progress');
         this.downloadProgressBar = document.querySelector('.download-progress-bar');
         this.downloadProgressText = document.querySelector('.download-progress-text');
         this.errorContainer = document.getElementById('errorContainer');
         
-        console.log('UI elements initialized:', {
-            deviceInfoFound: !!this.deviceInfoElement,
-            tokenDisplayFound: !!this.tokenDisplay,
-            connectionStatusFound: !!this.connectionStatus
-        });
+        this.initializeUI();
     }
 
     async initializeUI() {
-        if (!this.deviceInfoElement || !this.tokenDisplay) {
-            console.error('Cannot initialize UI: Required elements not found');
-            return;
-        }
-
-        console.log('Initializing UI...');
-        try {
-            const token = await deviceService.getStoredToken();
-            console.log('Retrieved or generated token:', token);
-            
-            if (token) {
-                this.updateDeviceInfo(token);
-                console.log('UI initialized with token:', token);
-            } else {
-                console.error('No token available after initialization');
-                this.showError('Token oluşturulamadı');
+        const deviceInfo = await ipcRenderer.invoke('get-device-info');
+        
+        if (!deviceInfo || !deviceInfo.token) {
+            try {
+                const newToken = await deviceService.registerDeviceToken();
+                await ipcRenderer.invoke('save-device-info', {
+                    token: newToken
+                });
+                
+                this.updateDeviceInfo(newToken);
+            } catch (error) {
+                this.showError('Token oluşturma hatası: ' + error.message);
             }
-        } catch (error) {
-            console.error('UI initialization error:', error);
-            this.showError('Token oluşturma hatası: ' + error.message);
+        } else {
+            this.updateDeviceInfo(deviceInfo.token);
         }
     }
 
     updateDeviceInfo(token) {
-        console.log('Updating device info with token:', token);
-        if (this.tokenDisplay && token) {
-            this.tokenDisplay.textContent = `Token: ${token}`;
-            this.deviceInfoElement.style.display = 'block';
-            console.log('Token display updated');
-        } else {
-            console.error('Token display element not found or token is null');
-        }
+        this.tokenDisplay.textContent = `Token: ${token}`;
     }
 
     updateConnectionStatus(isConnected) {
-        if (!this.connectionStatus) return;
-
         if (isConnected) {
+            // Bağlantı başarılı olduğunda token bilgilerini gizle
             this.deviceInfoElement.style.display = 'none';
         } else {
+            // Bağlantı koptuğunda token bilgilerini göster
             this.deviceInfoElement.style.display = 'block';
         }
         
@@ -133,13 +94,11 @@ class UIManager {
         errorElement.className = 'error-message';
         errorElement.textContent = message;
         
-        if (this.errorContainer) {
-            this.errorContainer.appendChild(errorElement);
-            
-            setTimeout(() => {
-                errorElement.remove();
-            }, duration);
-        }
+        this.errorContainer.appendChild(errorElement);
+        
+        setTimeout(() => {
+            errorElement.remove();
+        }, duration);
     }
 }
 

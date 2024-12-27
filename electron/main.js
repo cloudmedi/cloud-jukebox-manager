@@ -1,33 +1,12 @@
-const { app, BrowserWindow, ipcMain, session } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
-const store = new Store({ 
-  encryptionKey: 'your-secure-key',
-  clearInvalidConfig: true
-});
+const store = new Store();
 const websocketService = require('./services/websocketService');
-const { setupSecurityHandlers } = require('./security/securityHandlers');
 require('./services/audioService');
-const deviceService = require('./services/deviceService');
 
 let mainWindow;
 let tray = null;
-
-// CSP ayarları
-const CSP = {
-  'default-src': ["'self'"],
-  'script-src': ["'self'"],
-  'style-src': ["'self'", "'unsafe-inline'"],
-  'img-src': ["'self'", 'data:', 'https:'],
-  'connect-src': ["'self'", 'wss:', 'https:'],
-  'media-src': ["'self'", 'https:'],
-  'frame-src': ["'none'"],
-  'object-src': ["'none'"],
-  'base-uri': ["'self'"],
-  'form-action': ["'self'"],
-  'frame-ancestors': ["'none'"],
-  'upgrade-insecure-requests': []
-};
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -42,47 +21,97 @@ function createWindow() {
     titleBarStyle: 'hidden',
     frame: false,
     webPreferences: {
-      nodeIntegration: false,
-      contextIsolation: true,
-      webSecurity: true,
-      sandbox: true,
-      allowRunningInsecureContent: false,
-      experimentalFeatures: false,
-      enableRemoteModule: false,
-      preload: path.join(__dirname, 'preload.js')
+      nodeIntegration: true,
+      contextIsolation: false,
+      webSecurity: false
     }
   });
 
-  // CSP uygula
-  session.defaultSession.webRequest.onHeadersReceived((details, callback) => {
-    callback({
-      responseHeaders: {
-        ...details.responseHeaders,
-        'Content-Security-Policy': [
-          Object.entries(CSP)
-            .map(([key, value]) => `${key} ${value.join(' ')}`)
-            .join('; ')
-        ]
-      }
-    });
-  });
-
   mainWindow.loadFile('index.html');
-
-  // DevTools'u production'da kapat
-  if (process.env.NODE_ENV !== 'development') {
-    mainWindow.webContents.on('devtools-opened', () => {
-      mainWindow.webContents.closeDevTools();
-    });
+  
+  if (process.env.NODE_ENV === 'development') {
+    mainWindow.webContents.openDevTools();
   }
 
-  // Güvenli IPC handlers
-  setupSecurityHandlers();
+  // Pencere kapatıldığında sistem tepsisine küçült
+  mainWindow.on('close', function (event) {
+    if (!app.isQuitting) {
+      event.preventDefault();
+      mainWindow.hide();
+      if (tray === null) {
+        createTray();
+      }
+    }
+    return false;
+  });
+
+  // Uygulama başladığında son kaydedilen playlist'i kontrol et
+  const deviceInfo = store.get('deviceInfo');
+  if (deviceInfo && deviceInfo.token) {
+    websocketService.connect(deviceInfo.token);
+    
+    const playlists = store.get('playlists', []);
+    if (playlists.length > 0) {
+      const lastPlaylist = playlists[playlists.length - 1];
+      console.log('Starting last saved playlist:', lastPlaylist.name);
+      mainWindow.webContents.on('did-finish-load', () => {
+        mainWindow.webContents.send('auto-play-playlist', lastPlaylist);
+      });
+    }
+  }
 }
 
-// App lifecycle events
+function createTray() {
+  try {
+    // Tray ikonu oluştur
+    const iconPath = path.join(__dirname, 'icon.png');
+    console.log('Tray icon path:', iconPath);
+    
+    tray = new Tray(iconPath);
+    
+    // Tray menüsünü oluştur
+    const contextMenu = Menu.buildFromTemplate([
+      {
+        label: 'Show App',
+        click: function() {
+          mainWindow.show();
+          mainWindow.focus(); // Pencereyi ön plana getir
+        }
+      },
+      {
+        label: 'Close',
+        click: function() {
+          app.isQuitting = true;
+          app.quit();
+        }
+      }
+    ]);
+
+    // Tray ayarlarını yap
+    tray.setToolTip('Cloud Media Player');
+    tray.setContextMenu(contextMenu);
+
+    // Tray ikonuna çift tıklandığında uygulamayı göster
+    tray.on('double-click', () => {
+      mainWindow.show();
+      mainWindow.focus(); // Pencereyi ön plana getir
+    });
+    
+    // Tray ikonuna tek tıklandığında uygulamayı göster
+    tray.on('click', () => {
+      mainWindow.show();
+      mainWindow.focus(); // Pencereyi ön plana getir
+    });
+    
+    console.log('Tray created successfully');
+  } catch (error) {
+    console.error('Error creating tray:', error);
+  }
+}
+
 app.whenReady().then(() => {
   createWindow();
+  createTray(); // Uygulama başladığında tray'i oluştur
 });
 
 app.on('window-all-closed', () => {
@@ -99,26 +128,19 @@ app.on('activate', () => {
 });
 
 app.on('before-quit', () => {
-  app.isQuitting = true });
-
-// Token işlemleri için güvenli IPC handler'lar
-ipcMain.handle('token:get', () => {
-  return deviceService.getStoredToken();
+  app.isQuitting = true;
 });
 
-ipcMain.handle('token:register', async () => {
-  return await deviceService.registerDeviceToken();
+ipcMain.handle('save-device-info', async (event, deviceInfo) => {
+  store.set('deviceInfo', deviceInfo);
+  
+  if (deviceInfo.token) {
+    websocketService.connect(deviceInfo.token);
+  }
+  
+  return deviceInfo;
 });
 
-// Güvenli store işlemleri
-ipcMain.handle('store:get', (event, key) => {
-  return store.get(key);
-});
-
-ipcMain.handle('store:set', (event, key, value) => {
-  store.set(key, value);
-});
-
-ipcMain.handle('store:delete', (event, key) => {
-  store.delete(key);
+ipcMain.handle('get-device-info', async () => {
+  return store.get('deviceInfo');
 });
