@@ -14,6 +14,39 @@ const audioHandler = new AudioEventHandler(playlistAudio);
 // Initialize volume
 playlistAudio.volume = 0.7; // 70%
 
+// Emergency stop handler
+ipcRenderer.on('emergency-stop', () => {
+  console.log('Emergency stop received');
+  
+  // Tüm ses çalmayı durdur
+  if (playlistAudio) {
+    playlistAudio.pause();
+    playlistAudio.currentTime = 0;
+    playlistAudio.volume = 0;
+  }
+
+  // Anons sesini durdur
+  const campaignAudio = document.getElementById('campaignPlayer');
+  if (campaignAudio) {
+    campaignAudio.pause();
+    campaignAudio.currentTime = 0;
+    campaignAudio.volume = 0;
+  }
+
+  // Store'u temizle
+  const store = new Store();
+  store.set('playbackState', {
+    isPlaying: false,
+    emergencyStopped: true
+  });
+
+  // UI'ı güncelle
+  UIManager.showEmergencyStoppedState();
+
+  // WebSocket'e durum bildirimi gönder
+  ipcRenderer.send('emergency-stopped');
+});
+
 document.getElementById('closeButton').addEventListener('click', () => {
     window.close();
 });
@@ -356,4 +389,3 @@ ipcRenderer.on('show-toast', (event, toast) => {
       break;
   }
 });
-

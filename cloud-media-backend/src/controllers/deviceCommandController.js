@@ -114,18 +114,47 @@ const playAnnouncement = async (req, res) => {
 
 const emergencyStop = async (req, res) => {
   try {
-    const device = await Device.findById(req.params.id);
-    if (!device) {
-      return res.status(404).json({ message: 'Cihaz bulunamadı' });
+    // Tüm aktif cihazları bul
+    const devices = await Device.find({ isOnline: true });
+    
+    // Her cihaz için emergency stop işlemi
+    for (const device of devices) {
+      // WebSocket üzerinden emergency stop komutu gönder
+      const sent = req.wss.sendToDevice(device.token, {
+        type: 'command',
+        command: 'emergency-stop'
+      });
+
+      // Cihaz durumunu güncelle
+      await Device.findByIdAndUpdate(device._id, {
+        emergencyStopped: true,
+        playlistStatus: 'emergency-stopped',
+        volume: 0
+      });
+
+      // Bildirim oluştur
+      await Notification.create({
+        type: 'emergency',
+        title: 'Acil Durum Durdurma',
+        message: `${device.name} cihazı acil durum nedeniyle durduruldu`,
+        read: false
+      });
+
+      if (!sent) {
+        console.error(`Failed to send emergency stop to device ${device.token}`);
+      }
     }
 
-    const deleteService = new DeleteService(req.wss);
-    await deleteService.handleDelete('device', device._id, async () => {
-      await Device.deleteOne({ _id: device._id });
+    // Admin'lere broadcast
+    req.wss.broadcastToAdmins({
+      type: 'emergency',
+      action: 'stopped',
+      message: 'Tüm cihazlar acil durum nedeniyle durduruldu'
     });
 
-    res.json({ message: 'Cihaz acil olarak durduruldu ve silindi' });
+    res.json({ message: 'Acil durum durdurma komutu gönderildi' });
   } catch (error) {
+    console.error('Emergency stop error:', error);
     res.status(500).json({ message: error.message });
   }
 };

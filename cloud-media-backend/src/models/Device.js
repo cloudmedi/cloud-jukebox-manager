@@ -44,7 +44,7 @@ const deviceSchema = new mongoose.Schema({
   },
   playlistStatus: {
     type: String,
-    enum: ['loaded', 'loading', 'error', null],
+    enum: ['loaded', 'loading', 'error', 'emergency-stopped', null],
     default: null
   },
   groupId: {
@@ -55,6 +55,10 @@ const deviceSchema = new mongoose.Schema({
   lastSeen: {
     type: Date,
     default: Date.now
+  },
+  emergencyStopped: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true

@@ -14,7 +14,7 @@ router.delete('/:id', deviceController.deleteDevice);
 router.post('/:id/restart', deviceCommandController.restartDevice);
 router.post('/:id/volume', deviceCommandController.setVolume);
 router.post('/:id/power', deviceCommandController.setPower);
-router.post('/:id/emergency-stop', deviceCommandController.emergencyStop);
+router.post('/emergency-stop', deviceCommandController.emergencyStop);
 
 // Playlist operations
 router.post('/bulk/playlist', devicePlaylistController.bulkAssignPlaylist);

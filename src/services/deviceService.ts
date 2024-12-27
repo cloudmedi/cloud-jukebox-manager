@@ -17,11 +17,12 @@ export interface Device {
     name: string;
     artist: string;
   } | null;
-  playlistStatus: 'loaded' | 'loading' | 'error' | null;
+  playlistStatus: 'loaded' | 'loading' | 'error' | 'emergency-stopped' | null;
   groupId: string | null;
   lastSeen: string;
   createdAt: string;
   updatedAt: string;
+  emergencyStopped: boolean;
   deviceInfo?: {
     hostname: string;
     platform: string;
