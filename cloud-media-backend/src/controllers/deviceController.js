@@ -1,5 +1,6 @@
 const Device = require('../models/Device');
 const Token = require('../models/Token');
+const DeleteMessage = require('../websocket/messages/DeleteMessage');
 
 const getDevices = async (req, res) => {
   try {
@@ -76,16 +77,45 @@ const deleteDevice = async (req, res) => {
       return res.status(404).json({ message: 'Cihaz bulunamadı' });
     }
 
+    // Silme başladı bildirimi
+    req.wss.broadcastToAdmins(
+      DeleteMessage.createDeleteStarted('device', device._id, {
+        deviceName: device.name
+      })
+    );
+
+    // Token'ı serbest bırak
     await Token.findOneAndUpdate(
       { token: device.token },
       { $set: { isUsed: false } }
     );
 
+    // Cihazı sil
     await Device.deleteOne({ _id: device._id });
+    
+    // Başarılı silme bildirimi
+    req.wss.broadcastToAdmins(
+      DeleteMessage.createDeleteSuccess('device', device._id, {
+        deviceName: device.name
+      })
+    );
+
+    // Cihaza silme bildirimi gönder
+    req.wss.sendToDevice(device.token, {
+      type: 'delete',
+      entityType: 'device',
+      entityId: device._id
+    });
     
     res.json({ message: 'Cihaz silindi' });
   } catch (error) {
     console.error('Device deletion error:', error);
+    
+    // Hata bildirimi
+    req.wss.broadcastToAdmins(
+      DeleteMessage.createDeleteError('device', req.params.id, error)
+    );
+    
     res.status(500).json({ message: error.message || 'Cihaz silinirken bir hata oluştu' });
   }
 };
