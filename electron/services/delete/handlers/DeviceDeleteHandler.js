@@ -4,6 +4,7 @@ const store = new Store();
 const path = require('path');
 const fs = require('fs');
 const { app } = require('electron');
+const { cleanupCache } = require('../utils/cacheCleanup');
 
 class DeviceDeleteHandler extends BaseDeleteHandler {
   constructor() {
@@ -46,17 +47,20 @@ class DeviceDeleteHandler extends BaseDeleteHandler {
         'downloads',
         'playlists',
         'announcements',
-        'audio',
-        'cache'
+        'audio'
       ];
 
-      foldersToClean.forEach(folder => {
+      for (const folder of foldersToClean) {
         const folderPath = path.join(userDataPath, folder);
         if (fs.existsSync(folderPath)) {
-          fs.rmSync(folderPath, { recursive: true, force: true });
-          this.logger.info(`Cleaned up folder: ${folder}`);
+          try {
+            fs.rmSync(folderPath, { recursive: true, force: true });
+            this.logger.info(`Cleaned up folder: ${folder}`);
+          } catch (error) {
+            this.logger.warn(`Failed to clean folder ${folder}: ${error.message}`);
+          }
         }
-      });
+      }
 
       // Reset all settings to default
       store.set('settings', {
@@ -71,7 +75,7 @@ class DeviceDeleteHandler extends BaseDeleteHandler {
         mainWindow.webContents.send('device-deleted', id);
         mainWindow.webContents.send('show-toast', {
           type: 'success',
-          message: 'Cihaz başarıyla silindi ve tüm veriler temizlendi'
+          message: 'Cihaz başarıyla silindi ve veriler temizlendi'
         });
       }
 
@@ -84,18 +88,26 @@ class DeviceDeleteHandler extends BaseDeleteHandler {
   async postDelete(id, data) {
     this.logger.info(`Completing post-delete phase for device ${id}`);
     
-    // Stop all audio playback
-    const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
-    if (mainWindow) {
-      mainWindow.webContents.send('stop-playback');
-      // Close WebSocket connection
-      mainWindow.webContents.send('close-websocket');
-    }
+    try {
+      // Cache temizliğini yap
+      await cleanupCache();
 
-    // Exit application after short delay
-    setTimeout(() => {
+      // Stop all audio playback
+      const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
+      if (mainWindow) {
+        mainWindow.webContents.send('stop-playback');
+        mainWindow.webContents.send('close-websocket');
+      }
+
+      // Uygulamayı kapat
+      setTimeout(() => {
+        app.quit();
+      }, 1000);
+    } catch (error) {
+      this.logger.error('Error in post-delete cleanup:', error);
+      // Hata olsa bile uygulamayı kapatmaya çalış
       app.quit();
-    }, 1000);
+    }
   }
 }
 
