@@ -115,6 +115,9 @@ const playAnnouncement = async (req, res) => {
 
 const emergencyStop = async (req, res) => {
   try {
+    // EmergencyStateManager'ı aktifleştir
+    await EmergencyStateManager.activateEmergency();
+    
     // Tüm aktif cihazları bul
     const devices = await Device.find({ isOnline: true });
     
@@ -124,21 +127,6 @@ const emergencyStop = async (req, res) => {
       const sent = req.wss.sendToDevice(device.token, {
         type: 'command',
         command: 'emergency-stop'
-      });
-
-      // Cihaz durumunu güncelle
-      await Device.findByIdAndUpdate(device._id, {
-        emergencyStopped: true,
-        playlistStatus: 'emergency-stopped',
-        volume: 0
-      });
-
-      // Bildirim oluştur
-      await Notification.create({
-        type: 'emergency',
-        title: 'Acil Durum Durdurma',
-        message: `${device.name} cihazı acil durum nedeniyle durduruldu`,
-        read: false
       });
 
       if (!sent) {
@@ -162,6 +150,9 @@ const emergencyStop = async (req, res) => {
 
 const emergencyReset = async (req, res) => {
   try {
+    // EmergencyStateManager'ı deaktive et
+    await EmergencyStateManager.deactivateEmergency();
+    
     // Tüm cihazları bul
     const devices = await Device.find({ emergencyStopped: true });
     
@@ -171,20 +162,6 @@ const emergencyReset = async (req, res) => {
       const sent = req.wss.sendToDevice(device.token, {
         type: 'command',
         command: 'emergency-reset'
-      });
-
-      // Cihaz durumunu güncelle
-      await Device.findByIdAndUpdate(device._id, {
-        emergencyStopped: false,
-        playlistStatus: null
-      });
-
-      // Bildirim oluştur
-      await Notification.create({
-        type: 'emergency',
-        title: 'Acil Durum Sıfırlama',
-        message: `${device.name} cihazı için acil durum sıfırlandı`,
-        read: false
       });
 
       if (!sent) {
