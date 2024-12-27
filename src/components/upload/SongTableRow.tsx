@@ -17,6 +17,7 @@ export interface SongTableRowProps {
   onDelete: (id: string) => Promise<void>;
   isSelected?: boolean;
   onSelect?: (song: Song, checked: boolean) => void;
+  style?: React.CSSProperties;
 }
 
 export const SongTableRow = ({ 
@@ -24,10 +25,11 @@ export const SongTableRow = ({
   onEdit, 
   onDelete,
   isSelected,
-  onSelect
+  onSelect,
+  style
 }: SongTableRowProps) => {
   return (
-    <TableRow key={song._id}>
+    <TableRow key={song._id} style={style}>
       <TableCell>
         <Checkbox
           checked={isSelected}
