@@ -13,7 +13,6 @@ import { Dialog, DialogContent } from "@/components/ui/dialog";
 import DeviceForm from "@/components/devices/DeviceForm";
 
 const Devices = () => {
-  const [selectedTab, setSelectedTab] = useState("devices");
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState<"all" | "online" | "offline">("all");
   const [searchQuery, setSearchQuery] = useState("");
@@ -32,29 +31,27 @@ const Devices = () => {
 
       <DeviceStats />
 
-      <Tabs defaultValue="devices" className="space-y-4" onValueChange={setSelectedTab}>
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center justify-between">
-            <TabsList>
-              <TabsTrigger value="devices">Cihazlar</TabsTrigger>
-              <TabsTrigger value="groups">Gruplar</TabsTrigger>
-            </TabsList>
-          </div>
+      <Tabs defaultValue="devices" className="space-y-4">
+        <div className="flex items-center justify-between">
+          <TabsList>
+            <TabsTrigger value="devices">Cihazlar</TabsTrigger>
+            <TabsTrigger value="groups">Gruplar</TabsTrigger>
+          </TabsList>
 
           <div className="flex items-center gap-4">
-            <div className="relative flex-1">
+            <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input 
                 placeholder="Cihaz ara..." 
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="pl-9"
+                className="pl-9 w-[300px]"
               />
             </div>
 
             <Select value={filterStatus} onValueChange={(value: "all" | "online" | "offline") => setFilterStatus(value)}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Tümü" />
+                <SelectValue placeholder="Durum" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tümü</SelectItem>
@@ -65,7 +62,7 @@ const Devices = () => {
 
             <Select value={locationFilter} onValueChange={setLocationFilter}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Tüm Bölgeler" />
+                <SelectValue placeholder="Bölge" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="_all">Tüm Bölgeler</SelectItem>
@@ -74,6 +71,16 @@ const Devices = () => {
                 <SelectItem value="izmir">İzmir</SelectItem>
               </SelectContent>
             </Select>
+
+            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+              <Button onClick={() => setIsFormOpen(true)} variant="default">
+                <Plus className="h-4 w-4 mr-2" />
+                Cihaz Ekle
+              </Button>
+              <DialogContent>
+                <DeviceForm onSuccess={() => setIsFormOpen(false)} />
+              </DialogContent>
+            </Dialog>
 
             <Button
               variant="destructive"
@@ -87,23 +94,6 @@ const Devices = () => {
               )}
               {isEmergencyActive ? 'Acil Durumu Kaldır' : 'Acil Durum'}
             </Button>
-
-            {selectedTab === "devices" ? (
-              <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-                <Button onClick={() => setIsFormOpen(true)} variant="default">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Cihaz Ekle
-                </Button>
-                <DialogContent>
-                  <DeviceForm onSuccess={() => setIsFormOpen(false)} />
-                </DialogContent>
-              </Dialog>
-            ) : (
-              <Button onClick={() => setIsFormOpen(true)} variant="default">
-                <Plus className="h-4 w-4 mr-2" />
-                Yeni Grup
-              </Button>
-            )}
           </div>
         </div>
 
