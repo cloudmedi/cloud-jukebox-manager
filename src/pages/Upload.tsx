@@ -77,7 +77,7 @@ const Upload = () => {
   });
 
   // Extract unique genres and properly type them as strings
-  const uniqueGenres = songs.map((song: Song) => song.genre);
+  const uniqueGenres = songs.map((song: Song) => song.genre as string);
   const genres: string[] = ["all", ...Array.from(new Set(uniqueGenres))];
 
   const handlePageChange = (page: number) => {
