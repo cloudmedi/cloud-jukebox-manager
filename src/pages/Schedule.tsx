@@ -44,21 +44,15 @@ const Schedule = () => {
     setIsDialogOpen(true);
   };
 
-  const events = schedules?.reduce<Array<{
-    id: string;
-    title: string;
-    start: string;
-    end: string;
-    backgroundColor: string;
-  }>>((acc, schedule) => {
+  const events = schedules?.map(schedule => {
     // Skip if schedule or playlist is null/undefined
-    if (!schedule?.playlist?.name) {
-      return acc;
+    if (!schedule?.playlist) {
+      return null;
     }
 
-    return [...acc, {
+    return {
       id: schedule._id,
-      title: `${schedule.playlist.name} - ${
+      title: `${schedule.playlist.name || 'Unnamed Playlist'} - ${
         Array.isArray(schedule.targets?.devices) && schedule.targets.devices.length > 0 
           ? 'Cihaz' 
           : 'Grup'
@@ -66,8 +60,8 @@ const Schedule = () => {
       start: schedule.startDate,
       end: schedule.endDate,
       backgroundColor: schedule.status === 'active' ? '#10b981' : '#6b7280',
-    }];
-  }, []) || [];
+    };
+  }).filter(Boolean) || [];
 
   if (isLoading) {
     return (
