@@ -1,9 +1,19 @@
-import { toast } from "sonner";
-import { queryClient } from "@/lib/react-query";
+import { toast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 
-export const handleNotificationMessage = (message: any) => {
+interface NotificationMessage {
+  type: 'newNotification' | 'notificationRead';
+  notification?: {
+    title: string;
+    message: string;
+  };
+}
+
+export const handleNotificationMessage = (message: NotificationMessage) => {
+  const queryClient = useQueryClient();
+
   // Yeni bildirim geldiğinde
-  if (message.type === 'newNotification') {
+  if (message.type === 'newNotification' && message.notification) {
     // Cache'i güncelle
     queryClient.invalidateQueries({ queryKey: ['notifications'] });
     

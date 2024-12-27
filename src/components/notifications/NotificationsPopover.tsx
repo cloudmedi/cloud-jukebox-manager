@@ -1,5 +1,5 @@
 import { Bell } from "lucide-react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
   Popover,
@@ -23,6 +23,7 @@ interface Notification {
 
 export function NotificationsPopover() {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
 
   const { data: notifications = [], isLoading } = useQuery({
     queryKey: ['notifications'],
@@ -37,22 +38,22 @@ export function NotificationsPopover() {
 
   // WebSocket bağlantısını dinle
   useEffect(() => {
-    // WebSocket servisine bağlan
-    websocketService.addMessageHandler('notification', (message) => {
+    const handleNotification = (message: any) => {
       if (message.type === 'newNotification') {
-        // Yeni bildirim geldiğinde toast göster
+        queryClient.invalidateQueries({ queryKey: ['notifications'] });
         toast({
           title: message.notification.title,
           description: message.notification.message,
         });
       }
-    });
+    };
+
+    websocketService.addMessageHandler('notification', handleNotification);
 
     return () => {
-      // Component unmount olduğunda cleanup yap
-      websocketService.removeMessageHandler('notification', () => {});
+      websocketService.removeMessageHandler('notification', handleNotification);
     };
-  }, [toast]);
+  }, [queryClient, toast]);
 
   const unreadCount = notifications.filter((n: Notification) => !n.read).length;
 
@@ -71,6 +72,8 @@ export function NotificationsPopover() {
         type: 'notification',
         action: 'markAllRead'
       });
+
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
 
       toast({
         title: "Başarılı",
