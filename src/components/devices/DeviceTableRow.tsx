@@ -5,7 +5,14 @@ import { tr } from "date-fns/locale";
 import { Device } from "@/services/deviceService";
 import DeviceActions from "./DeviceActions";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Volume2 } from "lucide-react";
+import { Volume2, Play, AlertCircle, Loader2 } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 interface DeviceTableRowProps {
   device: Device;
@@ -14,6 +21,41 @@ interface DeviceTableRowProps {
 }
 
 export const DeviceTableRow = ({ device, isSelected, onSelect }: DeviceTableRowProps) => {
+  const getPlaylistStatusInfo = (status: string | null) => {
+    switch (status) {
+      case "loaded":
+        return {
+          label: "Oynatmaya Hazır",
+          icon: <Play className="h-4 w-4" />,
+          variant: "success" as const,
+          tooltip: "Playlist yüklenmiş ve oynatmaya hazır"
+        };
+      case "loading":
+        return {
+          label: "İndiriliyor",
+          icon: <Loader2 className="h-4 w-4 animate-spin" />,
+          variant: "warning" as const,
+          tooltip: "Playlist şu anda cihaza indiriliyor"
+        };
+      case "error":
+        return {
+          label: "Yükleme Hatası",
+          icon: <AlertCircle className="h-4 w-4" />,
+          variant: "destructive" as const,
+          tooltip: "Playlist yüklenirken bir hata oluştu"
+        };
+      default:
+        return {
+          label: "Playlist Yok",
+          icon: null,
+          variant: "secondary" as const,
+          tooltip: "Henüz bir playlist atanmamış"
+        };
+    }
+  };
+
+  const statusInfo = getPlaylistStatusInfo(device.playlistStatus);
+
   return (
     <TableRow className="hover:bg-muted/50 transition-colors">
       <TableCell>
@@ -39,25 +81,24 @@ export const DeviceTableRow = ({ device, isSelected, onSelect }: DeviceTableRowP
         </Badge>
       </TableCell>
       <TableCell>
-        {device.playlistStatus ? (
-          <Badge
-            variant={
-              device.playlistStatus === "loaded"
-                ? "success"
-                : device.playlistStatus === "loading"
-                ? "warning"
-                : "destructive"
-            }
-          >
-            {device.playlistStatus === "loaded"
-              ? "Hazır"
-              : device.playlistStatus === "loading"
-              ? "Yükleniyor"
-              : "Hata"}
-          </Badge>
-        ) : (
-          "-"
-        )}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <div className="space-y-2">
+                <Badge variant={statusInfo.variant} className="flex items-center gap-1">
+                  {statusInfo.icon}
+                  <span>{statusInfo.label}</span>
+                </Badge>
+                {device.playlistStatus === "loading" && (
+                  <Progress value={45} className="h-1 w-full" />
+                )}
+              </div>
+            </TooltipTrigger>
+            <TooltipContent>
+              <p>{statusInfo.tooltip}</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-2">
