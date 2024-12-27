@@ -1,6 +1,7 @@
 const Song = require('../models/Song');
 const songService = require('../services/songService');
 const DeleteService = require('../services/DeleteService');
+const NotificationService = require('../services/NotificationService');
 const fs = require('fs');
 const path = require('path');
 const { createLogger } = require('../utils/logger');
@@ -81,6 +82,13 @@ const deleteSong = async (req, res) => {
         }
       }
 
+      // Bildirim oluştur
+      await NotificationService.create({
+        type: 'system',
+        title: 'Şarkı Silindi',
+        message: `"${song.name}" şarkısı başarıyla silindi.`
+      });
+
       await song.deleteOne();
       logger.info('Song document deleted from database');
     });
@@ -98,6 +106,14 @@ const deleteSong = async (req, res) => {
       error: error.message,
       stack: error.stack 
     });
+
+    // Hata durumunda bildirim oluştur
+    await NotificationService.create({
+      type: 'system',
+      title: 'Şarkı Silme Hatası',
+      message: `Şarkı silinirken bir hata oluştu: ${error.message}`
+    });
+
     res.status(500).json({ 
       message: 'Şarkı silinirken bir hata oluştu',
       error: error.message 
