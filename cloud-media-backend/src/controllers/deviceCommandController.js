@@ -163,9 +163,7 @@ const emergencyReset = async (req, res) => {
         type: 'command',
         command: 'emergency-reset',
         action: 'resume-playback',
-        resumePlayback: true,
-        volume: device.volume || 50,
-        playlistStatus: device.playlistStatus || 'loaded'
+        resumePlayback: true  // Explicitly tell device to resume playback
       });
 
       if (!sent) {

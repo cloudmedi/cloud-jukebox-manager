@@ -42,11 +42,7 @@ const DeviceForm = ({ onSuccess }: DeviceFormProps) => {
       });
 
       if (!response.ok) {
-        const errorData = await response.json();
-        if (errorData.message && errorData.message.includes('duplicate key error')) {
-          throw new Error("Bu token zaten kullanımda. Lütfen başka bir token deneyin.");
-        }
-        throw new Error(errorData.message || "Cihaz eklenirken bir hata oluştu");
+        throw new Error("Cihaz eklenirken bir hata oluştu");
       }
 
       return response.json();
@@ -68,39 +64,22 @@ const DeviceForm = ({ onSuccess }: DeviceFormProps) => {
     },
   });
 
-  const handleTokenChange = async (token: string): Promise<boolean> => {
+  const handleTokenChange = async (token: string) => {
     try {
-      const validationResult = await validateToken(token);
-      if (validationResult.isUsed) {
-        toast({
-          variant: "destructive",
-          title: "Token Hatası",
-          description: "Bu token zaten başka bir cihaz tarafından kullanılıyor.",
-          duration: 5000,
-        });
-        return false;
-      }
-      return true;
+      await validateToken(token);
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Geçersiz Token",
         description: "Token geçersiz veya daha önce kullanılmış.",
-        duration: 5000,
+        duration: 10000,
       });
-      return false;
     }
   };
 
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     try {
-      const isTokenValid = await handleTokenChange(data.token);
-      if (!isTokenValid) {
-        setIsSubmitting(false);
-        return;
-      }
-      
       await createDevice.mutateAsync(data);
     } finally {
       setIsSubmitting(false);

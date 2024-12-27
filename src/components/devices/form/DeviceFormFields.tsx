@@ -5,7 +5,7 @@ import { FormData } from "./deviceFormSchema";
 
 interface DeviceFormFieldsProps {
   form: UseFormReturn<FormData>;
-  onTokenChange: (token: string) => Promise<boolean>;
+  onTokenChange: (token: string) => Promise<void>;
   isSubmitting: boolean;
 }
 

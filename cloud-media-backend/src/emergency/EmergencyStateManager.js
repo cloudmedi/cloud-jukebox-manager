@@ -4,31 +4,20 @@ const Notification = require('../models/Notification');
 class EmergencyStateManager {
   constructor() {
     this.isEmergencyActive = false;
-    this.deviceStates = new Map(); // Store device states before emergency
   }
 
   async activateEmergency() {
     this.isEmergencyActive = true;
     
     try {
-      // Store current device states before emergency
-      const devices = await Device.find({});
-      devices.forEach(device => {
-        this.deviceStates.set(device.token, {
-          volume: device.volume,
-          playlistStatus: device.playlistStatus,
-          isPlaying: device.isPlaying
-        });
-      });
-
-      // Update all devices to emergency state
+      // Tüm cihazları emergency-stopped durumuna getir
       await Device.updateMany({}, {
         emergencyStopped: true,
         playlistStatus: 'emergency-stopped',
-        volume: 0,
-        isPlaying: false
+        volume: 0
       });
 
+      // Sistem bildirimi oluştur
       await Notification.create({
         type: 'emergency',
         title: 'Acil Durum Aktifleştirildi',
@@ -47,26 +36,14 @@ class EmergencyStateManager {
     this.isEmergencyActive = false;
     
     try {
-      // Restore previous device states
-      const devices = await Device.find({});
-      for (const device of devices) {
-        const previousState = this.deviceStates.get(device.token) || {
-          volume: 50,
-          playlistStatus: 'loaded',
-          isPlaying: false
-        };
+      // Cihazların emergency durumunu kaldır ve normal duruma döndür
+      await Device.updateMany({}, {
+        emergencyStopped: false,
+        playlistStatus: 'loaded',  // Playlist durumunu yüklenmiş olarak ayarla
+        volume: 50  // Varsayılan ses seviyesine geri döndür
+      });
 
-        await Device.findByIdAndUpdate(device._id, {
-          emergencyStopped: false,
-          playlistStatus: previousState.playlistStatus,
-          volume: previousState.volume,
-          isPlaying: previousState.isPlaying
-        });
-      }
-
-      // Clear stored states
-      this.deviceStates.clear();
-
+      // Sistem bildirimi oluştur
       await Notification.create({
         type: 'emergency',
         title: 'Acil Durum Devre Dışı',
