@@ -60,6 +60,10 @@ class WebSocketServer {
         await this.statusHandler.handlePlaylistStatus(token, message);
         break;
 
+      case 'downloadProgress':
+        await this.statusHandler.handleDownloadProgress(token, message.progress);
+        break;
+
       case 'playbackStatus':
         this.broadcastToAdmins({
           type: 'deviceStatus',

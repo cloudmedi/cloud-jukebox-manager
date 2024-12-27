@@ -31,7 +31,8 @@ class PlaylistHandler {
           if (deviceWs) {
             await Device.findByIdAndUpdate(deviceId, {
               activePlaylist: playlist._id,
-              playlistStatus: 'loading'
+              playlistStatus: 'loading',
+              downloadProgress: 0
             });
 
             deviceWs.send(JSON.stringify({
@@ -45,7 +46,8 @@ class PlaylistHandler {
             console.log(`Playlist sent to device: ${device.token}`);
           } else {
             await Device.findByIdAndUpdate(deviceId, {
-              playlistStatus: 'error'
+              playlistStatus: 'error',
+              downloadProgress: 0
             });
             console.log(`Device not connected: ${device.token}`);
           }
@@ -63,15 +65,16 @@ class PlaylistHandler {
     try {
       console.log('Handling playlist status update:', message, 'for device:', deviceToken);
       
-      const { status, playlistId } = message;
+      const { status, progress } = message;
       const device = await Device.findOne({ token: deviceToken });
       
       if (device) {
         await Device.findByIdAndUpdate(device._id, {
-          playlistStatus: status
+          playlistStatus: status,
+          downloadProgress: progress || 0
         });
         
-        console.log(`Updated playlist status for device ${deviceToken} to ${status}`);
+        console.log(`Updated playlist status for device ${deviceToken} to ${status} with progress ${progress || 0}%`);
       } else {
         console.error('Device not found for token:', deviceToken);
       }
