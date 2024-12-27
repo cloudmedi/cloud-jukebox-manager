@@ -1,19 +1,21 @@
 class DeleteMessage {
-  static createDeleteStarted(entityType, entityId) {
+  static createDeleteStarted(entityType, entityId, data = {}) {
     return {
       type: 'delete',
       action: 'started',
       entityType,
-      entityId
+      entityId,
+      data
     };
   }
 
-  static createDeleteSuccess(entityType, entityId) {
+  static createDeleteSuccess(entityType, entityId, data = {}) {
     return {
       type: 'delete',
       action: 'success',
       entityType,
-      entityId
+      entityId,
+      data
     };
   }
 
@@ -24,15 +26,6 @@ class DeleteMessage {
       entityType,
       entityId,
       error: error.message || error
-    };
-  }
-
-  static createDeleteConfirmation(entityType, entityId) {
-    return {
-      type: 'delete',
-      action: 'confirmation',
-      entityType,
-      entityId
     };
   }
 }
