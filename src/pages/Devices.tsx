@@ -4,11 +4,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Search, StopCircle, Play } from "lucide-react";
+import { Search, StopCircle, Play, Plus } from "lucide-react";
 import { DeviceList } from "@/components/devices/DeviceList";
 import DeviceGroups from "@/components/devices/DeviceGroups";
 import { DeviceHeader } from "@/components/devices/DeviceHeader";
 import { DeviceStats } from "@/components/devices/DeviceStats";
+import { Dialog, DialogContent } from "@/components/ui/dialog";
+import DeviceForm from "@/components/devices/DeviceForm";
 
 const Devices = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -21,25 +23,10 @@ const Devices = () => {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold tracking-tight">Cihaz Yönetimi</h1>
+        <h1 className="text-3xl font-bold tracking-tight mb-2">Cihaz Yönetimi</h1>
         <p className="text-muted-foreground">
           Cihazları ve lokasyonları yönetin
         </p>
-
-        <div className="flex items-center gap-4 mt-4">
-          <Button
-            variant="destructive"
-            onClick={() => setShowEmergencyDialog(true)}
-            className={`${isEmergencyActive ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-red-600 hover:bg-red-700'}`}
-          >
-            {isEmergencyActive ? (
-              <Play className="h-4 w-4 mr-2" />
-            ) : (
-              <StopCircle className="h-4 w-4 mr-2" />
-            )}
-            {isEmergencyActive ? 'Acil Durumu Kaldır' : 'Acil Durum Durdurma'}
-          </Button>
-        </div>
       </div>
 
       <DeviceStats />
@@ -84,6 +71,29 @@ const Devices = () => {
                 <SelectItem value="izmir">İzmir</SelectItem>
               </SelectContent>
             </Select>
+
+            <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+              <Button onClick={() => setIsFormOpen(true)} variant="default">
+                <Plus className="h-4 w-4 mr-2" />
+                Cihaz Ekle
+              </Button>
+              <DialogContent>
+                <DeviceForm onSuccess={() => setIsFormOpen(false)} />
+              </DialogContent>
+            </Dialog>
+
+            <Button
+              variant="destructive"
+              onClick={() => setShowEmergencyDialog(true)}
+              className={`${isEmergencyActive ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-red-600 hover:bg-red-700'}`}
+            >
+              {isEmergencyActive ? (
+                <Play className="h-4 w-4 mr-2" />
+              ) : (
+                <StopCircle className="h-4 w-4 mr-2" />
+              )}
+              {isEmergencyActive ? 'Acil Durumu Kaldır' : 'Acil Durum'}
+            </Button>
           </div>
         </div>
 
