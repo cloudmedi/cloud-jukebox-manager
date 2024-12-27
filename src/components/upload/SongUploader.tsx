@@ -1,52 +1,16 @@
-import { useState, useCallback } from "react";
-import { Upload, Music, Loader2 } from "lucide-react";
+import { useState } from "react";
+import { Upload, Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/hooks/use-toast";
+import { useToast } from "@/components/ui/use-toast";
 import { Progress } from "@/components/ui/progress";
-import { cn } from "@/lib/utils";
 
 const SongUploader = ({ onUploadComplete }: { onUploadComplete: () => void }) => {
   const [uploading, setUploading] = useState(false);
   const [progress, setProgress] = useState(0);
-  const [dragActive, setDragActive] = useState(false);
   const { toast } = useToast();
 
-  const handleDrag = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    if (e.type === "dragenter" || e.type === "dragover") {
-      setDragActive(true);
-    } else if (e.type === "dragleave") {
-      setDragActive(false);
-    }
-  }, []);
-
-  const validateFile = (file: File): boolean => {
-    // Dosya tipi kontrolü
-    if (!file.type.startsWith('audio/')) {
-      toast({
-        variant: "destructive",
-        title: "Geçersiz dosya formatı",
-        description: `${file.name} geçerli bir ses dosyası değil`,
-      });
-      return false;
-    }
-
-    // Boyut kontrolü (50MB)
-    const maxSize = 50 * 1024 * 1024;
-    if (file.size > maxSize) {
-      toast({
-        variant: "destructive",
-        title: "Dosya boyutu çok büyük",
-        description: `${file.name} 50MB'dan küçük olmalıdır`,
-      });
-      return false;
-    }
-
-    return true;
-  };
-
-  const handleUpload = async (files: FileList | null) => {
+  const handleFileChange = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const files = event.target.files;
     if (!files || files.length === 0) return;
 
     setUploading(true);
@@ -58,7 +22,12 @@ const SongUploader = ({ onUploadComplete }: { onUploadComplete: () => void }) =>
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       
-      if (!validateFile(file)) {
+      if (!file.type.startsWith('audio/')) {
+        toast({
+          variant: "destructive",
+          title: "Hata",
+          description: `${file.name} geçerli bir ses dosyası değil`,
+        });
         continue;
       }
 
@@ -71,9 +40,7 @@ const SongUploader = ({ onUploadComplete }: { onUploadComplete: () => void }) =>
           body: formData,
         });
 
-        if (!response.ok) {
-          throw new Error(`${file.name} yüklenirken bir hata oluştu`);
-        }
+        if (!response.ok) throw new Error('Upload failed');
 
         uploadedFiles++;
         setProgress(Math.round((uploadedFiles / totalFiles) * 100));
@@ -86,7 +53,7 @@ const SongUploader = ({ onUploadComplete }: { onUploadComplete: () => void }) =>
         toast({
           variant: "destructive",
           title: "Hata",
-          description: error instanceof Error ? error.message : `${file.name} yüklenirken bir hata oluştu`,
+          description: `${file.name} yüklenirken bir hata oluştu`,
         });
       }
     }
@@ -99,42 +66,16 @@ const SongUploader = ({ onUploadComplete }: { onUploadComplete: () => void }) =>
     setProgress(0);
   };
 
-  const handleDrop = useCallback((e: React.DragEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setDragActive(false);
-
-    const { files } = e.dataTransfer;
-    handleUpload(files);
-  }, []);
-
   return (
-    <div
-      className={cn(
-        "border-2 border-dashed rounded-lg p-8 text-center space-y-4 transition-colors",
-        dragActive && "border-primary bg-primary/5",
-        uploading && "opacity-50 cursor-not-allowed"
-      )}
-      onDragEnter={handleDrag}
-      onDragLeave={handleDrag}
-      onDragOver={handleDrag}
-      onDrop={handleDrop}
-    >
+    <div className="border-2 border-dashed rounded-lg p-8 text-center space-y-4">
       <div className="flex flex-col items-center justify-center gap-2">
-        <div className={cn(
-          "bg-primary/10 p-4 rounded-full transition-transform",
-          dragActive && "scale-110"
-        )}>
-          {uploading ? (
-            <Loader2 className="h-8 w-8 text-primary animate-spin" />
-          ) : (
-            <Music className="h-8 w-8 text-primary" />
-          )}
+        <div className="bg-primary/10 p-4 rounded-full">
+          <Music className="h-8 w-8 text-primary" />
         </div>
         <div>
           <h3 className="text-lg font-semibold">Şarkı Yükle</h3>
           <p className="text-sm text-muted-foreground">
-            Dosyaları sürükleyip bırakın veya seçin
+            Birden fazla MP3 dosyası seçebilirsiniz
           </p>
         </div>
       </div>
@@ -154,7 +95,7 @@ const SongUploader = ({ onUploadComplete }: { onUploadComplete: () => void }) =>
             accept="audio/*"
             multiple
             className="hidden"
-            onChange={(e) => handleUpload(e.target.files)}
+            onChange={handleFileChange}
             disabled={uploading}
           />
         </Button>
