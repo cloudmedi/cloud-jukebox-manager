@@ -74,7 +74,18 @@ const deleteDevice = async (req, res) => {
   try {
     const device = await Device.findById(req.params.id);
     if (!device) {
-      return res.status(404).json({ message: 'Cihaz bulunamadı' });
+      // Cihaz bulunamadıysa, token'ı yine de temizleyelim
+      await Token.findOneAndUpdate(
+        { token: req.body.token },
+        { $set: { isUsed: false } }
+      );
+
+      // Silme başarılı bildirimi gönder
+      req.wss.broadcastToAdmins(
+        DeleteMessage.createDeleteSuccess('device', req.params.id)
+      );
+
+      return res.json({ message: 'Cihaz zaten silinmiş' });
     }
 
     // Silme başladı bildirimi
@@ -90,8 +101,20 @@ const deleteDevice = async (req, res) => {
       { $set: { isUsed: false } }
     );
 
+    try {
+      // Cihaza silme bildirimi gönder
+      req.wss.sendToDevice(device.token, {
+        type: 'delete',
+        entityType: 'device',
+        entityId: device._id
+      });
+    } catch (error) {
+      console.log('Cihaza bildirim gönderilirken hata:', error);
+      // Bildirimi gönderemedik ama silme işlemine devam edebiliriz
+    }
+
     // Cihazı sil
-    await Device.deleteOne({ _id: device._id });
+    await Device.findByIdAndDelete(device._id);
     
     // Başarılı silme bildirimi
     req.wss.broadcastToAdmins(
@@ -99,13 +122,6 @@ const deleteDevice = async (req, res) => {
         deviceName: device.name
       })
     );
-
-    // Cihaza silme bildirimi gönder
-    req.wss.sendToDevice(device.token, {
-      type: 'delete',
-      entityType: 'device',
-      entityId: device._id
-    });
     
     res.json({ message: 'Cihaz silindi' });
   } catch (error) {
