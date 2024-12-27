@@ -1,5 +1,6 @@
 const Announcement = require('../models/Announcement');
 const Notification = require('../models/Notification');
+const DeleteService = require('./DeleteService');
 const { createLogger } = require('../utils/logger');
 
 const logger = createLogger('AnnouncementCleanup');
@@ -14,7 +15,7 @@ class AnnouncementCleanupService {
   start() {
     this.cleanupInterval = setInterval(() => {
       this.checkExpiredAnnouncements();
-    }, 5 * 60 * 1000);
+    }, 5 * 60 * 1000); // Her 5 dakikada bir kontrol et
     
     logger.info('Announcement cleanup service started');
     console.log('Cleanup service started');
@@ -36,7 +37,7 @@ class AnnouncementCleanupService {
       
       const expiredAnnouncements = await Announcement.find({
         endDate: { $lt: now },
-        status: 'active'
+        status: { $ne: 'completed' } // Sadece tamamlanmamış olanları al
       }).populate('targetDevices');
 
       console.log('Found expired announcements:', expiredAnnouncements.length);
@@ -53,29 +54,19 @@ class AnnouncementCleanupService {
   async handleExpiredAnnouncement(announcement) {
     try {
       console.log(`Processing expired announcement: ${announcement._id}`);
-      
-      // Status'ü güncelle
-      announcement.status = 'completed';
-      await announcement.save();
-      console.log(`Updated status to completed for announcement: ${announcement._id}`);
 
-      // Her cihaza silme komutu gönder
-      for (const device of announcement.targetDevices) {
-        console.log(`Sending delete command to device: ${device.token}`);
-        this.sendDeleteCommand(device.token, announcement._id);
-        
-        // Silme işlemini takip listesine ekle
-        if (!this.pendingDeletions.has(device.token)) {
-          this.pendingDeletions.set(device.token, new Set());
-        }
-        this.pendingDeletions.get(device.token).add(announcement._id.toString());
-      }
+      // DeleteService'i kullanarak anonsu sil
+      await DeleteService.deleteEntity('announcement', announcement._id.toString(), {
+        wss: this.wss,
+        notifyDevices: true,
+        cleanupFiles: true
+      });
 
       // Admin'e bildirim gönder
       await Notification.create({
         type: 'announcement',
         title: 'Kampanya Sona Erdi',
-        message: `"${announcement.title}" kampanyası sona erdi ve cihazlardan siliniyor`,
+        message: `"${announcement.title}" kampanyası süresi dolduğu için otomatik olarak silindi`,
         read: false
       });
 
@@ -89,23 +80,25 @@ class AnnouncementCleanupService {
         }
       });
 
-      logger.info(`Announcement ${announcement._id} marked as expired`);
+      // Cihazlara silme komutu gönder
+      if (announcement.targetDevices && announcement.targetDevices.length > 0) {
+        announcement.targetDevices.forEach(device => {
+          if (device.token) {
+            this.wss.sendToDevice(device.token, {
+              type: 'command',
+              command: 'deleteAnnouncement',
+              announcementId: announcement._id.toString()
+            });
+          }
+        });
+      }
+
+      logger.info(`Announcement ${announcement._id} deleted due to expiration`);
       console.log(`Completed processing for announcement: ${announcement._id}`);
     } catch (error) {
       logger.error(`Error handling expired announcement ${announcement._id}:`, error);
       console.error('Error in handleExpiredAnnouncement:', error);
     }
-  }
-
-  sendDeleteCommand(deviceToken, announcementId) {
-    console.log(`Attempting to send delete command - Device: ${deviceToken}, Announcement: ${announcementId}`);
-    const sent = this.wss.sendToDevice(deviceToken, {
-      type: 'command',
-      command: 'deleteAnnouncement',
-      announcementId: announcementId.toString()
-    });
-    console.log(`Delete command sent successfully: ${sent}`);
-    return sent;
   }
 
   handleDeletionConfirmation(deviceToken, announcementId, success) {
