@@ -38,16 +38,9 @@ const Upload = () => {
       }
 
       queryClient.invalidateQueries({ queryKey: ["songs"] });
-      toast({
-        title: "Başarılı",
-        description: "Şarkı başarıyla silindi",
-      });
     } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Hata",
-        description: "Şarkı silinirken bir hata oluştu",
-      });
+      console.error('Error deleting song:', error);
+      throw error; // Re-throw the error to be handled by the bulk delete handler
     }
   };
 

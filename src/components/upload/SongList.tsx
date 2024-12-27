@@ -90,14 +90,40 @@ const SongList = ({
       return;
     }
 
+    let successCount = 0;
+    let failCount = 0;
+
     try {
-      await Promise.all(selectedSongs.map(song => onDelete(song._id)));
+      await Promise.all(
+        selectedSongs.map(async (song) => {
+          try {
+            await onDelete(song._id);
+            successCount++;
+          } catch (error) {
+            console.error(`Error deleting song ${song._id}:`, error);
+            failCount++;
+          }
+        })
+      );
+
       clearSelection();
-      toast({
-        title: "Başarılı",
-        description: "Seçili şarkılar başarıyla silindi",
-      });
+
+      if (successCount > 0) {
+        toast({
+          title: "Silme İşlemi Tamamlandı",
+          description: `${successCount} şarkı başarıyla silindi${
+            failCount > 0 ? `, ${failCount} şarkı silinemedi` : ''
+          }.`,
+        });
+      } else {
+        toast({
+          variant: "destructive",
+          title: "Hata",
+          description: "Hiçbir şarkı silinemedi.",
+        });
+      }
     } catch (error) {
+      console.error('Bulk delete error:', error);
       toast({
         variant: "destructive",
         title: "Hata",
