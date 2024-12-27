@@ -75,13 +75,23 @@ class DeviceConnectionHandler {
 
     ws.on('close', async () => {
       console.log(`Device disconnected: ${deviceToken}`);
-      await device.updateStatus(false);
+      try {
+        const device = await Device.findOne({ token: deviceToken });
+        if (!device) {
+          console.log(`Device ${deviceToken} not found - probably deleted`);
+          return;
+        }
+        await device.updateStatus(false);
 
-      this.wss.broadcastToAdmins({
-        type: 'deviceStatus',
-        token: deviceToken,
-        isOnline: false
-      });
+        this.wss.broadcastToAdmins({
+          type: 'deviceStatus',
+          token: deviceToken,
+          isOnline: false
+        });
+      } catch (error) {
+        // Hata durumunda sadece loglama yap, uygulamayı kapatma
+        console.error(`Error updating device status on disconnect: ${error.message}`);
+      }
     });
   }
 }

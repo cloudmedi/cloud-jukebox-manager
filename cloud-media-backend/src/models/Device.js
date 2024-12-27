@@ -66,10 +66,16 @@ deviceSchema.statics.generateToken = function() {
 };
 
 // Cihaz durumunu güncelleme methodu
-deviceSchema.methods.updateStatus = function(isOnline) {
-  this.isOnline = isOnline;
-  this.lastSeen = Date.now();
-  return this.save();
+deviceSchema.methods.updateStatus = async function(isOnline) {
+  try {
+    this.isOnline = isOnline;
+    this.lastSeen = Date.now();
+    await this.save();
+    return true;
+  } catch (error) {
+    console.error('Error updating device status:', error);
+    return false;
+  }
 };
 
 // Ses seviyesini güncelleme methodu
