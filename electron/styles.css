@@ -189,11 +189,12 @@ body {
 
 .emergency-banner {
   background-color: rgba(239, 68, 68, 0.9);
-  padding: 8px 12px;
-  margin: 8px 0;
+  padding: 12px;
+  margin-top: 16px;
   border-radius: 6px;
   text-align: center;
   animation: slideIn 0.3s ease;
+  width: 100%;
 }
 
 .emergency-title {

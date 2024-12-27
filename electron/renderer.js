@@ -68,12 +68,12 @@ function showEmergencyMessage(title = 'Acil Durum Aktif', message = 'MÃ¼zik yayÄ
     <p class="emergency-text">${message}</p>
   `;
   
-  // Find the playlist info container and insert the emergency message after it
-  const playlistContainer = document.querySelector('.playlist-details');
+  // Find the playlist container and append the emergency message at the bottom
+  const playlistContainer = document.querySelector('.playlist-container');
   if (playlistContainer) {
-    playlistContainer.insertAdjacentElement('afterend', container);
+    playlistContainer.appendChild(container);
   } else {
-    document.body.prepend(container);
+    document.body.appendChild(container);
   }
 }
 
