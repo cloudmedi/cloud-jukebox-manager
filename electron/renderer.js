@@ -7,7 +7,6 @@ const playbackStateManager = require('./services/audio/PlaybackStateManager');
 const UIManager = require('./services/ui/UIManager');
 const AnnouncementAudioService = require('./services/audio/AnnouncementAudioService');
 const PlaylistInitializer = require('./services/playlist/PlaylistInitializer');
-const NotificationService = require('./services/notification/NotificationService');
 
 const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
@@ -224,7 +223,9 @@ ipcRenderer.on('playlist-received', (event, playlist) => {
   deleteOldPlaylists();
   displayPlaylists();
   
-  NotificationService.showPlaylistNotification(playlist);
+  new Notification('Yeni Playlist', {
+    body: `${playlist.name} playlist'i başarıyla indirildi.`
+  });
 });
 
 // Şarkı silme mesajını dinle
@@ -339,13 +340,20 @@ document.addEventListener('DOMContentLoaded', () => {
 ipcRenderer.on('show-toast', (event, toast) => {
   switch(toast.type) {
     case 'success':
-      NotificationService.showSuccessNotification(toast.message);
+      new Notification('Başarılı', {
+        body: toast.message
+      });
       break;
     case 'error':
-      NotificationService.showErrorNotification(toast.message);
+      new Notification('Hata', {
+        body: toast.message
+      });
       break;
     case 'loading':
-      NotificationService.showLoadingNotification(toast.message);
+      new Notification('İşlem Devam Ediyor', {
+        body: toast.message
+      });
       break;
   }
 });
+

@@ -3,11 +3,7 @@ const path = require('path');
 const Store = require('electron-store');
 const store = new Store();
 const websocketService = require('./services/websocketService');
-const NotificationService = require('./services/notification/NotificationService');
 require('./services/audioService');
-
-// Uygulama ismini ayarla
-app.setName('Cloud Media');
 
 let mainWindow;
 let tray = null;
@@ -28,8 +24,7 @@ function createWindow() {
     frame: false,
     webPreferences: {
       nodeIntegration: true,
-      contextIsolation: true,
-      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: false,
       webSecurity: false
     }
   });
