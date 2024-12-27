@@ -1,4 +1,8 @@
 const mongoose = require('mongoose');
+const DeleteMessage = require('../websocket/messages/DeleteMessage');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('song-model');
 
 const songSchema = new mongoose.Schema({
   name: {
@@ -55,75 +59,71 @@ const songSchema = new mongoose.Schema({
 });
 
 songSchema.pre('deleteOne', { document: true, query: false }, async function(next) {
-  console.log('=================== HOOK BAŞLANGICI ===================');
-  console.log('pre-deleteOne hook tetiklendi');
-  console.log('Silinecek şarkı ID:', this._id);
-  console.log('Hook içindeki this objesi:', JSON.stringify(this, null, 2));
+  logger.info('=================== SONG DELETE HOOK START ===================');
+  logger.info('Pre-deleteOne hook triggered');
+  logger.info('Song to delete ID:', this._id);
+  logger.info('Song details:', JSON.stringify(this, null, 2));
 
   try {
-    console.log('Hook try bloğuna girdi');
+    logger.info('Starting hook execution');
     const Playlist = mongoose.model('Playlist');
     const Device = mongoose.model('Device');
 
-    // Şarkıyı içeren playlistleri bul
+    // Find playlists containing this song
     const playlists = await Playlist.find({ songs: this._id });
-    console.log(`${playlists.length} playlist bulundu`);
-    console.log('Bulunan playlistler:', JSON.stringify(playlists.map(p => p._id), null, 2));
+    logger.info(`Found ${playlists.length} playlists containing this song`);
+    logger.info('Playlist IDs:', JSON.stringify(playlists.map(p => p._id), null, 2));
     
-    // Her playlist için şarkıyı kaldır ve cihazlara bildir
+    // Process each playlist
     for (const playlist of playlists) {
-      console.log(`Playlist işleniyor: ${playlist._id}`);
+      logger.info(`Processing playlist: ${playlist._id}`);
       
-      // Playlistten şarkıyı kaldır
+      // Remove song from playlist
       playlist.songs = playlist.songs.filter(songId => 
         songId.toString() !== this._id.toString()
       );
       
-      // Playlist'i kaydet
+      // Save updated playlist
       await playlist.save();
-      console.log(`Şarkı playlistten kaldırıldı: ${playlist._id}`);
+      logger.info(`Song removed from playlist: ${playlist._id}`);
 
-      // Bu playlist'i kullanan cihazları bul
+      // Find devices using this playlist
       const devices = await Device.find({ activePlaylist: playlist._id });
-      console.log(`${devices.length} cihaz bulundu playlist ${playlist._id} için`);
-      console.log('Bulunan cihazlar:', JSON.stringify(devices.map(d => d.token), null, 2));
+      logger.info(`Found ${devices.length} devices using playlist ${playlist._id}`);
+      logger.info('Device tokens:', JSON.stringify(devices.map(d => d.token), null, 2));
       
-      // Her cihaza silinen şarkı bilgisini gönder
+      // Notify devices
       devices.forEach(device => {
         if (global.wss) {
-          console.log(`Cihaza bildirim gönderiliyor: ${device.token}`);
-          console.log('WebSocket servisi mevcut:', !!global.wss);
-          console.log('Gönderilecek mesaj:', {
-            type: 'playlist',
-            action: 'songRemoved',
-            data: {
-              songId: this._id,
-              playlistId: playlist._id
-            }
-          });
+          logger.info(`Sending notification to device: ${device.token}`);
+          logger.info('WebSocket service status:', !!global.wss);
           
-          const sent = global.wss.sendToDevice(device.token, {
+          const message = {
             type: 'playlist',
             action: 'songRemoved',
             data: {
               songId: this._id,
               playlistId: playlist._id
             }
-          });
-          console.log(`Bildirim gönderildi mi: ${sent ? 'Evet' : 'Hayır'}`);
+          };
+          
+          logger.info('Sending message:', JSON.stringify(message, null, 2));
+          
+          const sent = global.wss.sendToDevice(device.token, message);
+          logger.info(`Notification sent successfully: ${sent ? 'Yes' : 'No'}`);
         } else {
-          console.error('WebSocket servisi bulunamadı (global.wss)');
+          logger.error('WebSocket service not found (global.wss)');
         }
       });
     }
 
-    console.log('Hook başarıyla tamamlandı');
+    logger.info('Hook execution completed successfully');
     next();
   } catch (error) {
-    console.error('Hook içinde hata oluştu:', error);
+    logger.error('Hook execution error:', error);
     next(error);
   }
-  console.log('=================== HOOK SONU ===================');
+  logger.info('=================== SONG DELETE HOOK END ===================');
 });
 
 const Song = mongoose.model('Song', songSchema);
