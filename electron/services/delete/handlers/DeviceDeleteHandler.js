@@ -62,13 +62,6 @@ class DeviceDeleteHandler extends BaseDeleteHandler {
         }
       }
 
-      // Reset all settings to default
-      store.set('settings', {
-        volume: 50,
-        autoplay: false,
-        notifications: true
-      });
-
       // Notify UI
       const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
       if (mainWindow) {
@@ -92,21 +85,32 @@ class DeviceDeleteHandler extends BaseDeleteHandler {
       // Cache temizliğini yap
       await cleanupCache();
 
-      // Stop all audio playback
+      // Stop all audio playback and close websocket
       const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
       if (mainWindow) {
         mainWindow.webContents.send('stop-playback');
         mainWindow.webContents.send('close-websocket');
       }
 
-      // Uygulamayı kapat
+      // Bildirim göster ve 2 saniye sonra yeniden başlat
       setTimeout(() => {
-        app.quit();
-      }, 1000);
+        try {
+          this.logger.info('Restarting application after device deletion');
+          app.relaunch();
+          app.exit(0);
+        } catch (error) {
+          this.logger.error('Error restarting application:', error);
+          app.exit(1);
+        }
+      }, 2000);
+
     } catch (error) {
       this.logger.error('Error in post-delete cleanup:', error);
-      // Hata olsa bile uygulamayı kapatmaya çalış
-      app.quit();
+      // Hata olsa bile uygulamayı yeniden başlat
+      setTimeout(() => {
+        app.relaunch();
+        app.exit(0);
+      }, 2000);
     }
   }
 }
