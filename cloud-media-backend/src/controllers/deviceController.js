@@ -72,58 +72,50 @@ const updateDevice = async (req, res) => {
 
 const deleteDevice = async (req, res) => {
   try {
+    // İlk olarak cihazı bul
     const device = await Device.findById(req.params.id);
-    if (!device) {
-      // Cihaz bulunamadıysa, token'ı yine de temizleyelim
+    
+    // Token'ı her durumda temizle
+    if (device?.token) {
       await Token.findOneAndUpdate(
-        { token: req.body.token },
+        { token: device.token },
         { $set: { isUsed: false } }
       );
-
-      // Silme başarılı bildirimi gönder
-      req.wss.broadcastToAdmins(
-        DeleteMessage.createDeleteSuccess('device', req.params.id)
-      );
-
-      return res.json({ message: 'Cihaz zaten silinmiş' });
     }
 
     // Silme başladı bildirimi
-    req.wss.broadcastToAdmins(
-      DeleteMessage.createDeleteStarted('device', device._id, {
-        deviceName: device.name
-      })
-    );
+    if (device) {
+      req.wss.broadcastToAdmins(
+        DeleteMessage.createDeleteStarted('device', req.params.id, {
+          deviceName: device.name
+        })
+      );
 
-    // Token'ı serbest bırak
-    await Token.findOneAndUpdate(
-      { token: device.token },
-      { $set: { isUsed: false } }
-    );
+      try {
+        // Cihaza silme bildirimi gönder
+        req.wss.sendToDevice(device.token, {
+          type: 'delete',
+          entityType: 'device',
+          entityId: device._id
+        });
+      } catch (error) {
+        console.log('Cihaza bildirim gönderilirken hata:', error);
+      }
 
-    try {
-      // Cihaza silme bildirimi gönder
-      req.wss.sendToDevice(device.token, {
-        type: 'delete',
-        entityType: 'device',
-        entityId: device._id
-      });
-    } catch (error) {
-      console.log('Cihaza bildirim gönderilirken hata:', error);
-      // Bildirimi gönderemedik ama silme işlemine devam edebiliriz
+      // Cihazı sil - findByIdAndDelete yerine deleteOne kullan
+      await Device.deleteOne({ _id: device._id });
+      
+      // Başarılı silme bildirimi
+      req.wss.broadcastToAdmins(
+        DeleteMessage.createDeleteSuccess('device', device._id, {
+          deviceName: device.name
+        })
+      );
     }
+    
+    // Her durumda başarılı yanıt dön
+    res.json({ message: device ? 'Cihaz silindi' : 'Cihaz zaten silinmiş' });
 
-    // Cihazı sil
-    await Device.findByIdAndDelete(device._id);
-    
-    // Başarılı silme bildirimi
-    req.wss.broadcastToAdmins(
-      DeleteMessage.createDeleteSuccess('device', device._id, {
-        deviceName: device.name
-      })
-    );
-    
-    res.json({ message: 'Cihaz silindi' });
   } catch (error) {
     console.error('Device deletion error:', error);
     
