@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { DevicePlaybackReport } from "@/components/reports/DevicePlaybackReport";
+import DevicePlaybackReport from "@/components/reports/DevicePlaybackReport";
 
 const Reports = () => {
   const { data: stats } = useQuery({
