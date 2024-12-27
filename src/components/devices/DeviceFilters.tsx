@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Plus, Filter, Search } from "lucide-react";
+import { Plus, Filter, Search, X } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -18,6 +18,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
+import { Badge } from "@/components/ui/badge";
 
 interface DeviceFiltersProps {
   filterStatus: "all" | "online" | "offline";
@@ -62,24 +63,55 @@ export const DeviceFilters = ({
     }
   });
 
-  // Benzersiz lokasyonları çıkar
   const uniqueLocations = Array.from(new Set(devices.map((device: any) => device.location))).filter(Boolean);
 
+  const hasActiveFilters = filterStatus !== "all" || locationFilter !== "_all" || groupFilter !== "_all";
+
+  const clearFilters = () => {
+    onFilterChange("all");
+    setLocationFilter("_all");
+    setGroupFilter("_all");
+  };
+
   return (
-    <div className="flex items-center justify-between gap-4 w-full mb-4">
-      <div className="flex-1 flex items-center gap-2">
+    <div className="flex flex-col gap-4 w-full mb-4">
+      <div className="flex items-center gap-4">
         <div className="relative flex-1">
-          <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             placeholder="Cihaz adı, token veya IP adresi ara..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-8"
+            className="pl-10 pr-4 h-11"
           />
+          {searchQuery && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="absolute right-2 top-1/2 -translate-y-1/2 h-7 w-7"
+              onClick={() => setSearchQuery("")}
+            >
+              <X className="h-4 w-4" />
+            </Button>
+          )}
         </div>
-        
+
+        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+          <DialogTrigger asChild>
+            <Button size="default">
+              <Plus className="h-4 w-4 mr-2" />
+              Cihaz Ekle
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DeviceForm onSuccess={() => setIsFormOpen(false)} />
+          </DialogContent>
+        </Dialog>
+      </div>
+
+      <div className="flex items-center gap-2 flex-wrap">
         <Select value={locationFilter} onValueChange={setLocationFilter}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[180px] h-9">
             <SelectValue placeholder="Lokasyon" />
           </SelectTrigger>
           <SelectContent>
@@ -93,7 +125,7 @@ export const DeviceFilters = ({
         </Select>
 
         <Select value={groupFilter} onValueChange={setGroupFilter}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[180px] h-9">
             <SelectValue placeholder="Grup" />
           </SelectTrigger>
           <SelectContent>
@@ -108,12 +140,17 @@ export const DeviceFilters = ({
 
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="default">
+            <Button variant="outline" size="sm" className="h-9">
               <Filter className="h-4 w-4 mr-2" />
               Durum
+              {filterStatus !== "all" && (
+                <Badge variant="secondary" className="ml-2 bg-primary/20">
+                  {filterStatus === "online" ? "Çevrimiçi" : "Çevrimdışı"}
+                </Badge>
+              )}
             </Button>
           </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
+          <DropdownMenuContent align="end" className="w-48">
             <DropdownMenuCheckboxItem
               checked={filterStatus === "all"}
               onCheckedChange={() => onFilterChange("all")}
@@ -134,19 +171,19 @@ export const DeviceFilters = ({
             </DropdownMenuCheckboxItem>
           </DropdownMenuContent>
         </DropdownMenu>
-      </div>
 
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogTrigger asChild>
-          <Button size="default">
-            <Plus className="h-4 w-4 mr-2" />
-            Cihaz Ekle
+        {hasActiveFilters && (
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            onClick={clearFilters}
+            className="h-9"
+          >
+            <X className="h-4 w-4 mr-2" />
+            Filtreleri Temizle
           </Button>
-        </DialogTrigger>
-        <DialogContent>
-          <DeviceForm onSuccess={() => setIsFormOpen(false)} />
-        </DialogContent>
-      </Dialog>
+        )}
+      </div>
     </div>
   );
 };
