@@ -1,18 +1,14 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
 import { Card } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
-import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Plus, StopCircle, Play } from "lucide-react";
+import { Search, StopCircle, Play } from "lucide-react";
 import { DeviceList } from "@/components/devices/DeviceList";
 import DeviceGroups from "@/components/devices/DeviceGroups";
-import DeviceForm from "@/components/devices/DeviceForm";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import axios from "axios";
-import { toast } from "sonner";
+import { DeviceHeader } from "@/components/devices/DeviceHeader";
+import { DeviceStats } from "@/components/devices/DeviceStats";
 
 const Devices = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -22,76 +18,19 @@ const Devices = () => {
   const [showEmergencyDialog, setShowEmergencyDialog] = useState(false);
   const [isEmergencyActive, setIsEmergencyActive] = useState(false);
 
-  const { data: stats } = useQuery({
-    queryKey: ['device-stats'],
-    queryFn: async () => {
-      const response = await fetch('http://localhost:5000/api/stats/devices');
-      if (!response.ok) {
-        throw new Error('Veriler yüklenirken bir hata oluştu');
-      }
-      return response.json();
-    }
-  });
-
-  const handleEmergencyStop = async () => {
-    try {
-      if (!isEmergencyActive) {
-        await axios.post('http://localhost:5000/api/devices/emergency-stop');
-        toast.success('Acil durum komutu gönderildi. Tüm cihazlar durduruluyor.');
-        setIsEmergencyActive(true);
-      } else {
-        await axios.post('http://localhost:5000/api/devices/emergency-reset');
-        toast.success('Acil durum kaldırıldı. Cihazlar normal çalışmaya devam ediyor.');
-        setIsEmergencyActive(false);
-      }
-      setShowEmergencyDialog(false);
-    } catch (error) {
-      console.error('Emergency action error:', error);
-      toast.error('Acil durum komutu gönderilemedi!');
-    }
-  };
-
   return (
     <div className="min-h-screen bg-background">
       <div className="p-8 space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold tracking-tight mb-2">Cihaz Yönetimi</h1>
-          <p className="text-muted-foreground">
-            Cihazları ve lokasyonları yönetin
-          </p>
-        </div>
+        <DeviceHeader 
+          isEmergencyActive={isEmergencyActive}
+          setIsEmergencyActive={setIsEmergencyActive}
+          isFormOpen={isFormOpen}
+          setIsFormOpen={setIsFormOpen}
+          showEmergencyDialog={showEmergencyDialog}
+          setShowEmergencyDialog={setShowEmergencyDialog}
+        />
 
-        {/* Stats Summary */}
-        <div className="grid grid-cols-4 gap-4">
-          <div className="bg-card rounded-lg p-4 border">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Toplam Cihaz</span>
-              <MapPin className="h-4 w-4 text-muted-foreground" />
-            </div>
-            <p className="text-2xl font-bold mt-2">{stats?.total || 0}</p>
-          </div>
-          <div className="bg-card rounded-lg p-4 border">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Çevrimiçi</span>
-              <div className="h-2 w-2 rounded-full bg-green-500" />
-            </div>
-            <p className="text-2xl font-bold mt-2 text-green-500">{stats?.online || 0}</p>
-          </div>
-          <div className="bg-card rounded-lg p-4 border">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Çevrimdışı</span>
-              <div className="h-2 w-2 rounded-full bg-red-500" />
-            </div>
-            <p className="text-2xl font-bold mt-2 text-red-500">{stats?.offline || 0}</p>
-          </div>
-          <div className="bg-card rounded-lg p-4 border">
-            <div className="flex items-center justify-between">
-              <span className="text-muted-foreground">Aktif Playlist</span>
-              <div className="h-2 w-2 rounded-full bg-blue-500" />
-            </div>
-            <p className="text-2xl font-bold mt-2 text-blue-500">{stats?.withPlaylist || 0}</p>
-          </div>
-        </div>
+        <DeviceStats />
 
         <Tabs defaultValue="devices" className="space-y-4">
           <div className="flex items-center justify-between">
@@ -116,9 +55,9 @@ const Devices = () => {
                   <SelectValue placeholder="Durum" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tümü ({stats?.total || 0})</SelectItem>
-                  <SelectItem value="online">Çevrimiçi ({stats?.online || 0})</SelectItem>
-                  <SelectItem value="offline">Çevrimdışı ({stats?.offline || 0})</SelectItem>
+                  <SelectItem value="all">Tümü</SelectItem>
+                  <SelectItem value="online">Çevrimiçi</SelectItem>
+                  <SelectItem value="offline">Çevrimdışı</SelectItem>
                 </SelectContent>
               </Select>
 
@@ -146,18 +85,6 @@ const Devices = () => {
                 )}
                 {isEmergencyActive ? 'Acil Durumu Kaldır' : 'Acil Durum Durdurma'}
               </Button>
-
-              <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-                <DialogTrigger asChild>
-                  <Button>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Cihaz Ekle
-                  </Button>
-                </DialogTrigger>
-                <DialogContent>
-                  <DeviceForm onSuccess={() => setIsFormOpen(false)} />
-                </DialogContent>
-              </Dialog>
             </div>
           </div>
 
@@ -169,30 +96,6 @@ const Devices = () => {
           </TabsContent>
         </Tabs>
       </div>
-
-      <AlertDialog open={showEmergencyDialog} onOpenChange={setShowEmergencyDialog}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>
-              {isEmergencyActive ? 'Acil Durumu Kaldır' : 'Acil Durum Durdurma'}
-            </AlertDialogTitle>
-            <AlertDialogDescription>
-              {isEmergencyActive 
-                ? 'Bu işlem tüm cihazları normal çalışma durumuna döndürecek ve müzik yayınını devam ettirecektir. Devam etmek istediğinizden emin misiniz?' 
-                : 'Bu işlem tüm cihazları durduracak ve ses çalmayı sonlandıracaktır. Bu işlem geri alınamaz ve sadece yönetici tarafından tekrar aktif edilebilir. Devam etmek istediğinizden emin misiniz?'}
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>İptal</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={handleEmergencyStop}
-              className={`${isEmergencyActive ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-red-600 hover:bg-red-700'}`}
-            >
-              {isEmergencyActive ? 'Acil Durumu Kaldır' : 'Acil Durum Durdurma'}
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
     </div>
   );
 };
