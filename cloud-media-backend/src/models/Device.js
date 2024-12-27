@@ -47,6 +47,12 @@ const deviceSchema = new mongoose.Schema({
     enum: ['loaded', 'loading', 'error', null],
     default: null
   },
+  downloadProgress: {
+    type: Number,
+    min: 0,
+    max: 100,
+    default: 0
+  },
   groupId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'DeviceGroup',

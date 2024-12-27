@@ -11,7 +11,8 @@ const bulkAssignPlaylist = async (req, res) => {
       { 
         $set: { 
           activePlaylist: playlistId,
-          playlistStatus: 'loading'
+          playlistStatus: 'loading',
+          downloadProgress: 0
         } 
       }
     );
