@@ -2,28 +2,14 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
+import { Form } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
 import { DialogTitle } from "@/components/ui/dialog";
-import * as z from "zod";
 import { zodResolver } from "@hookform/resolvers/zod";
-
-const formSchema = z.object({
-  name: z.string().min(1, "Cihaz adı zorunludur"),
-  token: z.string().length(6, "Token 6 haneli olmalıdır").regex(/^\d+$/, "Token sadece rakam içermelidir"),
-  location: z.string().min(1, "Konum zorunludur"),
-  volume: z.number().min(0).max(100).default(50),
-});
-
-type FormData = z.infer<typeof formSchema>;
+import { formSchema, FormData } from "./form/deviceFormSchema";
+import { useTokenValidation } from "./form/useTokenValidation";
+import { DeviceFormFields } from "./form/DeviceFormFields";
+import { DeviceInfoDisplay } from "./form/DeviceInfoDisplay";
 
 interface DeviceFormProps {
   onSuccess?: () => void;
@@ -31,9 +17,9 @@ interface DeviceFormProps {
 
 const DeviceForm = ({ onSuccess }: DeviceFormProps) => {
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [deviceInfo, setDeviceInfo] = useState<any>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { deviceInfo, validateToken } = useTokenValidation();
 
   const form = useForm<FormData>({
     resolver: zodResolver(formSchema),
@@ -44,27 +30,6 @@ const DeviceForm = ({ onSuccess }: DeviceFormProps) => {
       volume: 50,
     },
   });
-
-  const validateToken = async (token: string) => {
-    try {
-      const response = await fetch(`http://localhost:5000/api/tokens/validate/${token}`);
-      if (!response.ok) {
-        throw new Error("Geçersiz token");
-      }
-      const data = await response.json();
-      setDeviceInfo(data.deviceInfo);
-      toast({
-        title: "Token Doğrulandı",
-        description: "Token geçerli ve kullanılabilir.",
-        className: "bg-[#F2FCE2] border-green-500",
-        duration: 10000,
-      });
-      return data;
-    } catch (error) {
-      setDeviceInfo(null);
-      throw error;
-    }
-  };
 
   const createDevice = useMutation({
     mutationFn: async (data: FormData) => {
@@ -99,6 +64,19 @@ const DeviceForm = ({ onSuccess }: DeviceFormProps) => {
     },
   });
 
+  const handleTokenChange = async (token: string) => {
+    try {
+      await validateToken(token);
+    } catch (error) {
+      toast({
+        variant: "destructive",
+        title: "Geçersiz Token",
+        description: "Token geçersiz veya daha önce kullanılmış.",
+        duration: 10000,
+      });
+    }
+  };
+
   const onSubmit = async (data: FormData) => {
     setIsSubmitting(true);
     try {
@@ -115,96 +93,13 @@ const DeviceForm = ({ onSuccess }: DeviceFormProps) => {
       </DialogTitle>
       <Form {...form}>
         <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-          <FormField
-            control={form.control}
-            name="name"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Cihaz Adı</FormLabel>
-                <FormControl>
-                  <Input placeholder="Örn: Mağaza-1" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
+          <DeviceFormFields 
+            form={form} 
+            onTokenChange={handleTokenChange}
+            isSubmitting={isSubmitting}
           />
-
-          <FormField
-            control={form.control}
-            name="token"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Token</FormLabel>
-                <FormControl>
-                  <Input 
-                    placeholder="6 haneli token" 
-                    maxLength={6}
-                    {...field} 
-                    onChange={async (e) => {
-                      field.onChange(e);
-                      if (e.target.value.length === 6) {
-                        try {
-                          await validateToken(e.target.value);
-                        } catch (error) {
-                          toast({
-                            variant: "destructive",
-                            title: "Geçersiz Token",
-                            description: "Token geçersiz veya daha önce kullanılmış.",
-                            duration: 10000,
-                          });
-                        }
-                      }
-                    }}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="location"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Konum</FormLabel>
-                <FormControl>
-                  <Input placeholder="Örn: İstanbul" {...field} />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          <FormField
-            control={form.control}
-            name="volume"
-            render={({ field }) => (
-              <FormItem>
-                <FormLabel>Ses Seviyesi</FormLabel>
-                <FormControl>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={100}
-                    placeholder="50"
-                    {...field}
-                    onChange={(e) => field.onChange(Number(e.target.value))}
-                  />
-                </FormControl>
-                <FormMessage />
-              </FormItem>
-            )}
-          />
-
-          {deviceInfo && (
-            <div className="mt-4 p-4 bg-gray-50 rounded-lg">
-              <h3 className="font-semibold mb-2">Cihaz Bilgileri:</h3>
-              <p>Platform: {deviceInfo.platform}</p>
-              <p>İşlemci: {deviceInfo.cpus}</p>
-              <p>Toplam Bellek: {deviceInfo.totalMemory}</p>
-            </div>
-          )}
+          
+          <DeviceInfoDisplay deviceInfo={deviceInfo} />
 
           <Button type="submit" className="w-full" disabled={isSubmitting}>
             {isSubmitting ? "Ekleniyor..." : "Cihaz Ekle"}
