@@ -1,11 +1,33 @@
-import { Dialog } from "@headlessui/react";
 import { useEffect, useState } from "react";
 import { useQueryClient } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
-import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/components/ui/dialog";
 import { Input } from "@/components/ui/input";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
-import { Song } from "@/types/song";
+
+interface Song {
+  _id: string;
+  name: string;
+  artist: string;
+  genre: string;
+  album?: string;
+  year?: number;
+  language?: string;
+}
 
 interface SongEditDialogProps {
   song: Song | null;
@@ -20,6 +42,7 @@ const SongEditDialog = ({ song, open, onOpenChange }: SongEditDialogProps) => {
   const queryClient = useQueryClient();
   const [formData, setFormData] = useState<Partial<Song>>({});
 
+  // Şarkı verisi değiştiğinde form verilerini güncelle
   useEffect(() => {
     if (song) {
       setFormData({
@@ -66,94 +89,100 @@ const SongEditDialog = ({ song, open, onOpenChange }: SongEditDialogProps) => {
   };
 
   return (
-    <Dialog open={open} onClose={() => onOpenChange(false)} className="relative z-50">
-      <div className="fixed inset-0 bg-black/30" aria-hidden="true" />
-      
-      <div className="fixed inset-0 flex items-center justify-center p-4">
-        <Dialog.Panel className="mx-auto max-w-sm rounded bg-white p-6 shadow-xl">
-          <Dialog.Title className="text-lg font-medium leading-6 text-gray-900 mb-4">
-            Şarkı Bilgilerini Düzenle
-          </Dialog.Title>
-          
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="name">Şarkı Adı</Label>
-              <Input
-                id="name"
-                value={formData.name || ""}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="artist">Sanatçı</Label>
-              <Input
-                id="artist"
-                value={formData.artist || ""}
-                onChange={(e) => setFormData(prev => ({ ...prev, artist: e.target.value }))}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="genre">Tür</Label>
-              <select
-                id="genre"
-                value={formData.genre}
-                onChange={(e) => setFormData(prev => ({ ...prev, genre: e.target.value }))}
-                className="w-full rounded-md border border-gray-300 px-3 py-2 focus:outline-none focus:ring-2 focus:ring-blue-500"
-              >
-                <option value="">Tür seçin</option>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent>
+        <DialogHeader>
+          <DialogTitle>Şarkı Bilgilerini Düzenle</DialogTitle>
+          <DialogDescription>
+            Şarkı bilgilerini güncellemek için aşağıdaki formu kullanın.
+          </DialogDescription>
+        </DialogHeader>
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div className="space-y-2">
+            <Label htmlFor="name">Şarkı Adı</Label>
+            <Input
+              id="name"
+              value={formData.name || ""}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, name: e.target.value }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="artist">Sanatçı</Label>
+            <Input
+              id="artist"
+              value={formData.artist || ""}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, artist: e.target.value }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="genre">Tür</Label>
+            <Select
+              value={formData.genre}
+              onValueChange={(value) =>
+                setFormData((prev) => ({ ...prev, genre: value }))
+              }
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Tür seçin" />
+              </SelectTrigger>
+              <SelectContent>
                 {genres.map((genre) => (
-                  <option key={genre} value={genre}>
+                  <SelectItem key={genre} value={genre}>
                     {genre}
-                  </option>
+                  </SelectItem>
                 ))}
-              </select>
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="album">Albüm</Label>
-              <Input
-                id="album"
-                value={formData.album || ""}
-                onChange={(e) => setFormData(prev => ({ ...prev, album: e.target.value }))}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="year">Yıl</Label>
-              <Input
-                id="year"
-                type="number"
-                min="1900"
-                max={new Date().getFullYear()}
-                value={formData.year || ""}
-                onChange={(e) => setFormData(prev => ({ ...prev, year: Number(e.target.value) }))}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="language">Dil</Label>
-              <Input
-                id="language"
-                value={formData.language || ""}
-                onChange={(e) => setFormData(prev => ({ ...prev, language: e.target.value }))}
-              />
-            </div>
-            
-            <div className="flex justify-end space-x-2 mt-6">
-              <Button
-                type="button"
-                variant="outline"
-                onClick={() => onOpenChange(false)}
-              >
-                İptal
-              </Button>
-              <Button type="submit">Kaydet</Button>
-            </div>
-          </form>
-        </Dialog.Panel>
-      </div>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="album">Albüm</Label>
+            <Input
+              id="album"
+              value={formData.album || ""}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, album: e.target.value }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="year">Yıl</Label>
+            <Input
+              id="year"
+              type="number"
+              min="1900"
+              max={new Date().getFullYear()}
+              value={formData.year || ""}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, year: Number(e.target.value) }))
+              }
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="language">Dil</Label>
+            <Input
+              id="language"
+              value={formData.language || ""}
+              onChange={(e) =>
+                setFormData((prev) => ({ ...prev, language: e.target.value }))
+              }
+            />
+          </div>
+          <div className="flex justify-end space-x-2">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => onOpenChange(false)}
+            >
+              İptal
+            </Button>
+            <Button type="submit">Kaydet</Button>
+          </div>
+        </form>
+      </DialogContent>
     </Dialog>
   );
 };

@@ -1,14 +1,14 @@
 import { useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
-import { useToast } from "@/hooks/use-toast";
-import { Song } from "@/types/song";
-import { DateRange } from "react-day-picker";
-import { isWithinInterval, parseISO, startOfDay, endOfDay } from "date-fns";
-import { Loader2 } from "lucide-react";
 import SongList from "@/components/upload/SongList";
 import SongUploader from "@/components/upload/SongUploader";
+import { useQueryClient, useQuery } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { Song } from "@/types/song";
 import SongEditDialog from "@/components/upload/SongEditDialog";
+import { Loader2 } from "lucide-react";
 import { SongFilters } from "@/components/upload/SongFilters";
+import { DateRange } from "react-day-picker";
+import { isWithinInterval, parseISO, startOfDay, endOfDay } from "date-fns";
 
 const Upload = () => {
   const [editingSong, setEditingSong] = useState<Song | null>(null);
@@ -51,11 +51,13 @@ const Upload = () => {
     }
   };
 
-  const filteredSongs = songs.filter((song: Song) => {
+  // Filtreleme işlemi
+  const filteredSongs = songs.filter((song) => {
     const matchesSearch = song.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          song.artist.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesGenre = selectedGenre === "all" || song.genre === selectedGenre;
     
+    // Tarih aralığı kontrolü
     let matchesDateRange = true;
     if (dateRange?.from && dateRange?.to && song.createdAt) {
       const songDate = parseISO(song.createdAt);
@@ -68,7 +70,8 @@ const Upload = () => {
     return matchesSearch && matchesGenre && matchesDateRange;
   });
 
-  const genres: string[] = ["all", ...Array.from(new Set(songs.map((song: Song) => song.genre)))];
+  // Benzersiz türleri al
+  const genres = ["all", ...new Set(songs.map(song => song.genre))];
 
   if (isLoading) {
     return (

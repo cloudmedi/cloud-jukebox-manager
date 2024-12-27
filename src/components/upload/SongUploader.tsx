@@ -1,6 +1,8 @@
 import { useState } from "react";
 import { Upload, Music } from "lucide-react";
-import { useToast } from "@/hooks/use-toast";
+import { Button } from "@/components/ui/button";
+import { useToast } from "@/components/ui/use-toast";
+import { Progress } from "@/components/ui/progress";
 
 const SongUploader = ({ onUploadComplete }: { onUploadComplete: () => void }) => {
   const [uploading, setUploading] = useState(false);
@@ -67,23 +69,22 @@ const SongUploader = ({ onUploadComplete }: { onUploadComplete: () => void }) =>
   return (
     <div className="border-2 border-dashed rounded-lg p-8 text-center space-y-4">
       <div className="flex flex-col items-center justify-center gap-2">
-        <div className="bg-blue-100 p-4 rounded-full">
-          <Music className="h-8 w-8 text-blue-600" />
+        <div className="bg-primary/10 p-4 rounded-full">
+          <Music className="h-8 w-8 text-primary" />
         </div>
         <div>
           <h3 className="text-lg font-semibold">Şarkı Yükle</h3>
-          <p className="text-sm text-gray-500">
+          <p className="text-sm text-muted-foreground">
             Birden fazla MP3 dosyası seçebilirsiniz
           </p>
         </div>
       </div>
 
       <div className="flex justify-center">
-        <button
+        <Button
+          variant="outline"
           disabled={uploading}
-          className={`inline-flex items-center px-4 py-2 border border-transparent text-sm font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
-            uploading ? 'opacity-50 cursor-not-allowed' : ''
-          }`}
+          className="relative"
           onClick={() => document.getElementById('file-upload')?.click()}
         >
           <Upload className="mr-2 h-4 w-4" />
@@ -97,18 +98,13 @@ const SongUploader = ({ onUploadComplete }: { onUploadComplete: () => void }) =>
             onChange={handleFileChange}
             disabled={uploading}
           />
-        </button>
+        </Button>
       </div>
 
       {uploading && (
         <div className="space-y-2">
-          <div className="w-full bg-gray-200 rounded-full h-2.5">
-            <div
-              className="bg-blue-600 h-2.5 rounded-full transition-all duration-300"
-              style={{ width: `${progress}%` }}
-            ></div>
-          </div>
-          <p className="text-sm text-gray-500">
+          <Progress value={progress} className="w-full" />
+          <p className="text-sm text-muted-foreground">
             Yükleniyor... {progress}%
           </p>
         </div>

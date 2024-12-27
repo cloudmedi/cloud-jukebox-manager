@@ -1,24 +1,13 @@
 import { useState } from "react";
-import { useToast } from "@/hooks/use-toast";
-import { MoreVertical, Clock, Music, PlayCircle, Pencil, Trash2, Plus } from "lucide-react";
-import { formatDuration } from "@/lib/utils";
 import { Song } from "@/types/song";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { SongTableHeader } from "./SongTableHeader";
+import { SongTableRow } from "./SongTableRow";
+import { Table, TableBody } from "@/components/ui/table";
+import { useSelectedSongsStore } from "@/store/selectedSongsStore";
 import { Button } from "@/components/ui/button";
-import { Checkbox } from "@/components/ui/checkbox";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
+import { Plus, Trash2 } from "lucide-react";
+import { useNavigate } from "react-router-dom";
+import { useToast } from "@/hooks/use-toast";
 
 interface SongListProps {
   songs: Song[];
@@ -31,45 +20,79 @@ const SongList = ({
   onDelete,
   onEdit,
 }: SongListProps) => {
+  const navigate = useNavigate();
   const { toast } = useToast();
-  const [selectedSongs, setSelectedSongs] = useState<string[]>([]);
+  const [sortConfig, setSortConfig] = useState({
+    key: "name",
+    direction: "asc",
+  });
 
-  const handleDelete = async (songId: string) => {
-    try {
-      await onDelete(songId);
-      toast({
-        title: "Başarılı",
-        description: "Şarkı başarıyla silindi",
-      });
-    } catch (error) {
-      toast({
-        variant: "destructive",
-        title: "Hata",
-        description: "Şarkı silinirken bir hata oluştu",
-      });
+  const { selectedSongs, addSong, removeSong, clearSelection } = useSelectedSongsStore();
+
+  const sortedSongs = [...songs].sort((a, b) => {
+    if (!a[sortConfig.key] || !b[sortConfig.key]) return 0;
+    
+    const aValue = a[sortConfig.key];
+    const bValue = b[sortConfig.key];
+    
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      return sortConfig.direction === "asc"
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue);
     }
+    
+    return 0;
+  });
+
+  const handleSort = (key: string) => {
+    setSortConfig((current) => ({
+      key,
+      direction:
+        current.key === key && current.direction === "asc" ? "desc" : "asc",
+    }));
   };
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedSongs(songs.map(song => song._id));
+      sortedSongs.forEach(song => addSong(song));
     } else {
-      setSelectedSongs([]);
+      clearSelection();
     }
   };
 
-  const handleSelectSong = (songId: string, checked: boolean) => {
+  const handleSelect = (song: Song, checked: boolean) => {
     if (checked) {
-      setSelectedSongs([...selectedSongs, songId]);
+      addSong(song);
     } else {
-      setSelectedSongs(selectedSongs.filter(id => id !== songId));
+      removeSong(song._id);
     }
+  };
+
+  const handleCreatePlaylist = () => {
+    if (selectedSongs.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Lütfen en az bir şarkı seçin",
+      });
+      return;
+    }
+    navigate("/playlists/new");
   };
 
   const handleBulkDelete = async () => {
+    if (selectedSongs.length === 0) {
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Lütfen silmek için en az bir şarkı seçin",
+      });
+      return;
+    }
+
     try {
-      await Promise.all(selectedSongs.map(songId => onDelete(songId)));
-      setSelectedSongs([]);
+      await Promise.all(selectedSongs.map(song => onDelete(song._id)));
+      clearSelection();
       toast({
         title: "Başarılı",
         description: "Seçili şarkılar başarıyla silindi",
@@ -83,135 +106,41 @@ const SongList = ({
     }
   };
 
-  const handleAddToPlaylist = () => {
-    // Playlist ekleme işlemi
-    toast({
-      title: "Playlist'e Eklendi",
-      description: "Seçili şarkılar playlist'e eklendi",
-    });
-  };
-
-  if (songs.length === 0) {
-    return (
-      <div className="text-center py-10">
-        <Music className="mx-auto h-12 w-12 text-gray-400" />
-        <h3 className="mt-2 text-sm font-medium text-gray-900">Şarkı bulunamadı</h3>
-        <p className="mt-1 text-sm text-gray-500">Henüz hiç şarkı yüklenmemiş.</p>
-      </div>
-    );
-  }
-
   return (
     <div className="space-y-4">
       {selectedSongs.length > 0 && (
-        <div className="flex items-center gap-2 p-4 bg-muted rounded-lg">
-          <span className="text-sm text-muted-foreground">
-            {selectedSongs.length} şarkı seçildi
-          </span>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={handleAddToPlaylist}
-          >
+        <div className="flex items-center justify-end gap-4">
+          <Button onClick={handleCreatePlaylist} variant="default">
             <Plus className="h-4 w-4 mr-2" />
-            Playlist'e Ekle
+            Yeni Playlist Oluştur
           </Button>
-          <Button
-            variant="destructive"
-            size="sm"
-            onClick={handleBulkDelete}
-          >
+          <Button onClick={handleBulkDelete} variant="destructive">
             <Trash2 className="h-4 w-4 mr-2" />
             Seçilenleri Sil
           </Button>
         </div>
       )}
-
+      
       <div className="rounded-md border">
         <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[50px]">
-                <Checkbox
-                  checked={selectedSongs.length === songs.length}
-                  onCheckedChange={handleSelectAll}
-                  aria-label="Tümünü seç"
-                />
-              </TableHead>
-              <TableHead>Şarkı</TableHead>
-              <TableHead>Sanatçı</TableHead>
-              <TableHead>Tür</TableHead>
-              <TableHead>Albüm</TableHead>
-              <TableHead>Süre</TableHead>
-              <TableHead className="w-[70px]"></TableHead>
-            </TableRow>
-          </TableHeader>
+          <SongTableHeader
+            showCheckbox={true}
+            allSongs={sortedSongs}
+            sortConfig={sortConfig}
+            onSort={handleSort}
+            onSelectAll={handleSelectAll}
+            selectedCount={selectedSongs.length}
+          />
           <TableBody>
-            {songs.map((song) => (
-              <TableRow key={song._id}>
-                <TableCell>
-                  <Checkbox
-                    checked={selectedSongs.includes(song._id)}
-                    onCheckedChange={(checked) => handleSelectSong(song._id, checked as boolean)}
-                    aria-label={`${song.name} seç`}
-                  />
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <div className="relative group">
-                      <div className="w-12 h-12 bg-muted rounded-md flex items-center justify-center overflow-hidden">
-                        {song.artwork ? (
-                          <img 
-                            src={`http://localhost:5000${song.artwork}`} 
-                            alt={`${song.name} artwork`}
-                            className="w-full h-full object-cover"
-                          />
-                        ) : (
-                          <Music className="h-6 w-6 text-muted-foreground" />
-                        )}
-                      </div>
-                      <button className="absolute inset-0 bg-black/60 rounded-md opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center">
-                        <PlayCircle className="h-6 w-6 text-white" />
-                      </button>
-                    </div>
-                    <div>
-                      <p className="font-medium">{song.name}</p>
-                      <p className="text-sm text-muted-foreground">{song.artist}</p>
-                    </div>
-                  </div>
-                </TableCell>
-                <TableCell>{song.artist}</TableCell>
-                <TableCell>{song.genre}</TableCell>
-                <TableCell>{song.album || "-"}</TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Clock className="h-4 w-4 text-muted-foreground" />
-                    <span>{formatDuration(song.duration)}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                      <Button variant="ghost" size="icon">
-                        <MoreVertical className="h-4 w-4" />
-                      </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                      <DropdownMenuItem onClick={() => onEdit?.(song)}>
-                        <Pencil className="mr-2 h-4 w-4" />
-                        Düzenle
-                      </DropdownMenuItem>
-                      <DropdownMenuItem
-                        className="text-destructive"
-                        onClick={() => handleDelete(song._id)}
-                      >
-                        <Trash2 className="mr-2 h-4 w-4" />
-                        Sil
-                      </DropdownMenuItem>
-                    </DropdownMenuContent>
-                  </DropdownMenu>
-                </TableCell>
-              </TableRow>
+            {sortedSongs.map((song) => (
+              <SongTableRow
+                key={song._id}
+                song={song}
+                onDelete={onDelete}
+                onEdit={onEdit}
+                isSelected={selectedSongs.some(s => s._id === song._id)}
+                onSelect={handleSelect}
+              />
             ))}
           </TableBody>
         </Table>
