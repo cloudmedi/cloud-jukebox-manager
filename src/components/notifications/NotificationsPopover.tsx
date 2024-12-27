@@ -9,6 +9,8 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
+import { useEffect } from "react";
+import websocketService from "@/services/websocketService";
 
 interface Notification {
   id: string;
@@ -33,6 +35,25 @@ export function NotificationsPopover() {
     },
   });
 
+  // WebSocket bağlantısını dinle
+  useEffect(() => {
+    // WebSocket servisine bağlan
+    websocketService.addMessageHandler('notification', (message) => {
+      if (message.type === 'newNotification') {
+        // Yeni bildirim geldiğinde toast göster
+        toast({
+          title: message.notification.title,
+          description: message.notification.message,
+        });
+      }
+    });
+
+    return () => {
+      // Component unmount olduğunda cleanup yap
+      websocketService.removeMessageHandler('notification', () => {});
+    };
+  }, [toast]);
+
   const unreadCount = notifications.filter((n: Notification) => !n.read).length;
 
   const markAllAsRead = async () => {
@@ -44,6 +65,12 @@ export function NotificationsPopover() {
       if (!response.ok) {
         throw new Error('Bildirimler okundu olarak işaretlenemedi');
       }
+
+      // WebSocket üzerinden bildirim gönder
+      websocketService.sendMessage({
+        type: 'notification',
+        action: 'markAllRead'
+      });
 
       toast({
         title: "Başarılı",
