@@ -7,6 +7,7 @@ interface NotificationMessage {
     title: string;
     message: string;
   };
+  notificationId?: string;
 }
 
 export const handleNotificationMessage = (message: NotificationMessage) => {
@@ -23,9 +24,9 @@ export const handleNotificationMessage = (message: NotificationMessage) => {
       description: message.notification.message,
     });
   }
-  
-  // Bildirim okundu durumu güncellendiğinde
-  if (message.type === 'notificationRead') {
+
+  // Tekil bildirim okundu durumu güncellendiğinde
+  if (message.type === 'notificationRead' && message.notificationId) {
     queryClient.invalidateQueries({ queryKey: ['notifications'] });
   }
 };

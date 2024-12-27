@@ -57,6 +57,34 @@ export function NotificationsPopover() {
 
   const unreadCount = notifications.filter((n: Notification) => !n.read).length;
 
+  const markAsRead = async (notificationId: string) => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/notifications/${notificationId}/mark-read`, {
+        method: 'POST',
+      });
+      
+      if (!response.ok) {
+        throw new Error('Bildirim okundu olarak işaretlenemedi');
+      }
+
+      // WebSocket üzerinden bildirim gönder
+      websocketService.sendMessage({
+        type: 'notification',
+        action: 'markRead',
+        notificationId
+      });
+
+      queryClient.invalidateQueries({ queryKey: ['notifications'] });
+
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description: "Bildirim işaretlenirken bir hata oluştu",
+        variant: "destructive",
+      });
+    }
+  };
+
   const markAllAsRead = async () => {
     try {
       const response = await fetch('http://localhost:5000/api/notifications/mark-all-read', {
@@ -143,13 +171,14 @@ export function NotificationsPopover() {
               {notifications.map((notification: Notification) => (
                 <div
                   key={notification.id}
-                  className={`p-3 rounded-lg ${
-                    notification.read ? 'bg-background' : 'bg-muted'
+                  className={`p-3 rounded-lg cursor-pointer transition-colors ${
+                    notification.read ? 'bg-background' : 'bg-muted hover:bg-muted/80'
                   }`}
+                  onClick={() => !notification.read && markAsRead(notification.id)}
                 >
                   <div className="flex gap-2">
                     <span>{getNotificationIcon(notification.type)}</span>
-                    <div className="space-y-1">
+                    <div className="space-y-1 flex-1">
                       <p className="text-sm font-medium leading-none">
                         {notification.title}
                       </p>
@@ -160,6 +189,9 @@ export function NotificationsPopover() {
                         {new Date(notification.createdAt).toLocaleString('tr-TR')}
                       </p>
                     </div>
+                    {!notification.read && (
+                      <div className="w-2 h-2 rounded-full bg-blue-500 self-start mt-2" />
+                    )}
                   </div>
                 </div>
               ))}
