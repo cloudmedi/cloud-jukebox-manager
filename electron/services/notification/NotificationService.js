@@ -6,27 +6,28 @@ class NotificationService {
   }
 
   showNotification(title, body) {
-    return new Notification(this.appName, {
+    return new Notification(title, {
+      title: this.appName,
       body: body
     });
   }
 
   showPlaylistNotification(playlist) {
-    return this.showNotification('Yeni Playlist', 
+    return this.showNotification(this.appName, 
       `${playlist.name} playlist'i başarıyla indirildi.`
     );
   }
 
   showErrorNotification(message) {
-    return this.showNotification('Hata', message);
+    return this.showNotification(this.appName, message);
   }
 
   showSuccessNotification(message) {
-    return this.showNotification('Başarılı', message);
+    return this.showNotification(this.appName, message);
   }
 
   showLoadingNotification(message) {
-    return this.showNotification('İşlem Devam Ediyor', message);
+    return this.showNotification(this.appName, message);
   }
 }
 
