@@ -1,9 +1,8 @@
 import { useEffect, useState } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { Table, TableBody } from "@/components/ui/table";
 import { DeviceTableHeader } from "./DeviceTableHeader";
 import { DeviceTableRow } from "./DeviceTableRow";
-import { Table, TableBody } from "@/components/ui/table";
-import { DeviceFilters } from "./DeviceFilters";
 import { BulkActionsMenu } from "./bulk-actions/BulkActionsMenu";
 import websocketService from "@/services/websocketService";
 import { Device } from "@/services/deviceService";
@@ -16,11 +15,6 @@ import {
 
 export const DeviceList = () => {
   const queryClient = useQueryClient();
-  const [filterStatus, setFilterStatus] = useState<"all" | "online" | "offline">("all");
-  const [isFormOpen, setIsFormOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-  const [locationFilter, setLocationFilter] = useState("_all");
-  const [groupFilter, setGroupFilter] = useState("_all");
   const [selectedDevices, setSelectedDevices] = useState<string[]>([]);
   
   const { data: devices, isLoading } = useQuery({
@@ -42,17 +36,14 @@ export const DeviceList = () => {
 
       const updatedDevices = currentDevices.map(device => {
         if (device.token === data.token) {
-          // Check if device went offline
           if (device.isOnline && !data.isOnline) {
             showDeviceOfflineNotification(device.name);
           }
 
-          // Check volume threshold
           if (data.volume && data.volume >= VOLUME_THRESHOLD) {
             showVolumeWarning(device.name, data.volume);
           }
 
-          // Check playlist loading errors
           if (data.playlistStatus === 'error') {
             showPlaylistError(device.name, 'Playlist yüklenemedi');
           }
@@ -76,32 +67,9 @@ export const DeviceList = () => {
     };
   }, [queryClient]);
 
-  const filteredDevices = devices?.filter((device: Device) => {
-    if (filterStatus !== "all" && device.isOnline !== (filterStatus === "online")) {
-      return false;
-    }
-
-    if (locationFilter !== "_all" && device.location !== locationFilter) {
-      return false;
-    }
-
-    if (groupFilter !== "_all" && device.groupId !== groupFilter) {
-      return false;
-    }
-
-    const searchLower = searchQuery.toLowerCase();
-    return (
-      !searchQuery ||
-      device.name.toLowerCase().includes(searchLower) ||
-      device.token.toLowerCase().includes(searchLower) ||
-      (device.ipAddress && device.ipAddress.toLowerCase().includes(searchLower)) ||
-      device.location.toLowerCase().includes(searchLower)
-    );
-  });
-
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedDevices(filteredDevices.map((device: Device) => device._id));
+      setSelectedDevices(devices.map((device: Device) => device._id));
     } else {
       setSelectedDevices([]);
     }
@@ -125,19 +93,6 @@ export const DeviceList = () => {
 
   return (
     <div className="space-y-4">
-      <DeviceFilters 
-        filterStatus={filterStatus}
-        onFilterChange={setFilterStatus}
-        isFormOpen={isFormOpen}
-        setIsFormOpen={setIsFormOpen}
-        searchQuery={searchQuery}
-        setSearchQuery={setSearchQuery}
-        locationFilter={locationFilter}
-        setLocationFilter={setLocationFilter}
-        groupFilter={groupFilter}
-        setGroupFilter={setGroupFilter}
-      />
-      
       {selectedDevices.length > 0 && (
         <BulkActionsMenu 
           selectedDevices={selectedDevices}
@@ -145,15 +100,15 @@ export const DeviceList = () => {
         />
       )}
 
-      <div className="rounded-md border">
+      <div className="bg-card rounded-lg border">
         <Table>
           <DeviceTableHeader 
             onSelectAll={handleSelectAll}
-            allSelected={selectedDevices.length === filteredDevices?.length}
-            someSelected={selectedDevices.length > 0 && selectedDevices.length < filteredDevices?.length}
+            allSelected={selectedDevices.length === devices?.length}
+            someSelected={selectedDevices.length > 0 && selectedDevices.length < devices?.length}
           />
           <TableBody>
-            {filteredDevices?.map((device: Device) => (
+            {devices?.map((device: Device) => (
               <DeviceTableRow 
                 key={device._id} 
                 device={device}
