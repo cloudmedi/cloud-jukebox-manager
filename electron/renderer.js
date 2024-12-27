@@ -62,12 +62,19 @@ ipcRenderer.on('hide-emergency-message', () => {
 function showEmergencyMessage(title = 'Acil Durum Aktif', message = 'Müzik yayını geçici olarak durdurulmuştur.') {
   const container = document.createElement('div');
   container.id = 'emergency-message';
-  container.className = 'fixed top-0 left-0 right-0 bg-red-600 text-white p-4 text-center z-50';
+  container.className = 'emergency-banner';
   container.innerHTML = `
-    <h3 class="font-bold">${title}</h3>
-    <p>${message}</p>
+    <h3 class="emergency-title">${title}</h3>
+    <p class="emergency-text">${message}</p>
   `;
-  document.body.prepend(container);
+  
+  // Find the playlist info container and insert the emergency message after it
+  const playlistContainer = document.querySelector('.playlist-details');
+  if (playlistContainer) {
+    playlistContainer.insertAdjacentElement('afterend', container);
+  } else {
+    document.body.prepend(container);
+  }
 }
 
 function hideEmergencyMessage() {
@@ -419,4 +426,3 @@ ipcRenderer.on('show-toast', (event, toast) => {
       break;
   }
 });
-

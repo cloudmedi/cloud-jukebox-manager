@@ -186,3 +186,25 @@ body {
         opacity: 1;
     }
 }
+
+.emergency-banner {
+  background-color: rgba(239, 68, 68, 0.9);
+  padding: 8px 12px;
+  margin: 8px 0;
+  border-radius: 6px;
+  text-align: center;
+  animation: slideIn 0.3s ease;
+}
+
+.emergency-title {
+  font-size: 14px;
+  font-weight: 600;
+  color: white;
+  margin-bottom: 4px;
+}
+
+.emergency-text {
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.9);
+  margin: 0;
+}
