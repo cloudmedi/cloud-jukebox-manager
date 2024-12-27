@@ -28,9 +28,7 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
   }, [artwork]);
 
   const handleUploadClick = () => {
-    if (fileInputRef.current) {
-      fileInputRef.current.click();
-    }
+    fileInputRef.current?.click();
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -127,11 +125,11 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
                   </div>
                 </div>
                 
-                <input
+                <Input
                   ref={fileInputRef}
                   type="file"
                   accept="image/jpeg,image/jpg,image/png,image/webp"
-                  style={{ display: 'none' }}
+                  className="hidden"
                   onChange={handleFileChange}
                   {...field}
                 />
