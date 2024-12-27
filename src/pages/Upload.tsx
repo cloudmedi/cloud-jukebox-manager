@@ -51,7 +51,7 @@ const Upload = () => {
     }
   };
 
-  const filteredSongs = songs.filter((song) => {
+  const filteredSongs = songs.filter((song: Song) => {
     const matchesSearch = song.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          song.artist.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesGenre = selectedGenre === "all" || song.genre === selectedGenre;
@@ -68,7 +68,7 @@ const Upload = () => {
     return matchesSearch && matchesGenre && matchesDateRange;
   });
 
-  const genres = ["all", ...new Set(songs.map(song => song.genre))];
+  const genres: string[] = ["all", ...new Set(songs.map((song: Song) => song.genre))];
 
   if (isLoading) {
     return (

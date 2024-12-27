@@ -1,6 +1,6 @@
 import { Fragment } from "react";
 import { Listbox, Transition } from "@headlessui/react";
-import { ChevronUpDown, Check } from "lucide-react";
+import { ChevronsUpDown, Check } from "lucide-react";
 import { DateRange } from "react-day-picker";
 import { DateTimeRangePicker } from "@/components/reports/device-playback/DateTimeRangePicker";
 
@@ -43,7 +43,7 @@ export const SongFilters = ({
                 {selectedGenre === 'all' ? 'Tüm Türler' : selectedGenre}
               </span>
               <span className="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
-                <ChevronUpDown className="w-5 h-5 text-gray-400" />
+                <ChevronsUpDown className="w-5 h-5 text-gray-400" />
               </span>
             </Listbox.Button>
             <Transition
