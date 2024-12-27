@@ -308,12 +308,6 @@ ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
     playlistAudio.src = normalizedPath;
     playlistAudio.play().catch(err => console.error('Playback error:', err));
     
-    // Şarkı değiştiğinde main process'e bildir
-    ipcRenderer.send('song-changed', {
-      name: currentSong.name,
-      artist: currentSong.artist
-    });
-    
     // Şarkı değiştiğinde görsel bilgileri güncelle
     displayPlaylists();
   }

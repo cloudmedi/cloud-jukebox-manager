@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 const store = new Store();
@@ -63,72 +63,27 @@ function createWindow() {
 
 function createTray() {
   try {
+    // Tray ikonu oluştur
     const iconPath = path.join(__dirname, 'icon.png');
     console.log('Tray icon path:', iconPath);
     
     tray = new Tray(iconPath);
     
-    // Şu an çalan şarkı bilgisini al
-    const currentSong = store.get('currentSong', { name: '', artist: '' });
-    
     // Tray menüsünü oluştur
     const contextMenu = Menu.buildFromTemplate([
       {
-        label: 'Şu an çalıyor:',
-        enabled: false,
-        icon: path.join(__dirname, 'icon.png')
-      },
-      {
-        label: currentSong.name || 'Şarkı çalmıyor',
-        enabled: false,
-        icon: path.join(__dirname, 'icons', 'music.png')
-      },
-      {
-        label: currentSong.artist || '',
-        enabled: false,
-        icon: path.join(__dirname, 'icons', 'user.png')
-      },
-      { type: 'separator' },
-      {
-        label: 'Duraklat/Devam Et',
-        click: function() {
-          mainWindow.webContents.send('toggle-playback');
-        },
-        icon: path.join(__dirname, 'icons', 'play-pause.png')
-      },
-      {
-        label: 'Sonraki Şarkı',
-        click: function() {
-          mainWindow.webContents.send('next-track');
-        },
-        icon: path.join(__dirname, 'icons', 'skip-forward.png')
-      },
-      { type: 'separator' },
-      {
-        label: 'Uzaktan Kontrol Kodu:',
-        enabled: false,
-        icon: path.join(__dirname, 'icons', 'key.png')
-      },
-      {
-        label: store.get('deviceInfo.token', 'Kod bulunamadı'),
-        enabled: false
-      },
-      { type: 'separator' },
-      {
-        label: 'Uygulamayı Göster',
+        label: 'Show App',
         click: function() {
           mainWindow.show();
-          mainWindow.focus();
-        },
-        icon: path.join(__dirname, 'icons', 'maximize.png')
+          mainWindow.focus(); // Pencereyi ön plana getir
+        }
       },
       {
-        label: 'Uygulamadan Çık',
+        label: 'Close',
         click: function() {
           app.isQuitting = true;
           app.quit();
-        },
-        icon: path.join(__dirname, 'icons', 'x.png')
+        }
       }
     ]);
 
@@ -139,13 +94,13 @@ function createTray() {
     // Tray ikonuna çift tıklandığında uygulamayı göster
     tray.on('double-click', () => {
       mainWindow.show();
-      mainWindow.focus();
+      mainWindow.focus(); // Pencereyi ön plana getir
     });
     
     // Tray ikonuna tek tıklandığında uygulamayı göster
     tray.on('click', () => {
       mainWindow.show();
-      mainWindow.focus();
+      mainWindow.focus(); // Pencereyi ön plana getir
     });
     
     console.log('Tray created successfully');
@@ -153,14 +108,6 @@ function createTray() {
     console.error('Error creating tray:', error);
   }
 }
-
-// Şarkı değiştiğinde tray menüsünü güncelle
-ipcMain.on('song-changed', (event, song) => {
-  store.set('currentSong', song);
-  if (tray) {
-    createTray(); // Menüyü yeniden oluştur
-  }
-});
 
 app.whenReady().then(() => {
   createWindow();
