@@ -4,6 +4,7 @@ const { app } = require('electron');
 const playlistHandler = require('./playlist/PlaylistHandler');
 const DeleteMessageHandler = require('./websocket/handlers/DeleteMessageHandler');
 const CommandHandler = require('./handlers/CommandHandler');
+const deviceService = require('./deviceService');
 const store = new Store();
 
 class WebSocketService {
@@ -12,7 +13,20 @@ class WebSocketService {
     this.messageHandlers = new Map();
     this.deleteMessageHandler = new DeleteMessageHandler();
     this.setupHandlers();
-    this.connect();
+    this.ensureDeviceInfoAndConnect();
+  }
+
+  async ensureDeviceInfoAndConnect() {
+    try {
+      // Token yoksa oluştur
+      const token = deviceService.initializeDeviceToken();
+      console.log('Ensured device token exists:', token);
+      this.connect();
+    } catch (error) {
+      console.error('Error ensuring device info:', error);
+      // 5 saniye sonra tekrar dene
+      setTimeout(() => this.ensureDeviceInfoAndConnect(), 5000);
+    }
   }
 
   setupHandlers() {
@@ -49,17 +63,19 @@ class WebSocketService {
   }
 
   connect() {
-    const deviceInfo = store.get('deviceInfo');
-    if (!deviceInfo || !deviceInfo.token) {
-      console.log('No device info found');
+    // Her zaman token'ı taze al
+    const token = deviceService.getStoredToken();
+    if (!token) {
+      console.error('No token available for WebSocket connection');
       return;
     }
 
+    console.log('Connecting WebSocket with token:', token);
     this.ws = new WebSocket('ws://localhost:5000');
 
     this.ws.on('open', () => {
-      console.log('WebSocket connected');
-      this.sendAuth(deviceInfo.token);
+      console.log('WebSocket connected, sending auth...');
+      this.sendAuth(token);
       const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
       if (mainWindow) {
         mainWindow.webContents.send('websocket-status', true);

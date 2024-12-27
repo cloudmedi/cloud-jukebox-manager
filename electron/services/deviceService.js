@@ -25,32 +25,45 @@ function getDeviceInfo() {
 
 function generateSecureToken() {
   console.log('Generating new secure token...');
-  return crypto.randomInt(100000, 999999).toString();
+  const token = crypto.randomInt(100000, 999999).toString();
+  console.log('Generated token:', token);
+  return token;
+}
+
+function initializeDeviceToken() {
+  console.log('Initializing device token...');
+  const existingInfo = store.get('deviceInfo');
+  
+  if (existingInfo?.token) {
+    console.log('Found existing token:', existingInfo.token);
+    return existingInfo.token;
+  }
+
+  const token = generateSecureToken();
+  const deviceInfo = getDeviceInfo();
+  
+  const deviceData = { 
+    token,
+    deviceInfo,
+    registeredAt: new Date().toISOString(),
+    deviceId: crypto.randomBytes(16).toString('hex')
+  };
+
+  store.set('deviceInfo', deviceData);
+  console.log('Stored new device info:', deviceData);
+
+  // API'ye kayıt işlemini başlat ama beklemeden token'ı dön
+  apiService.registerToken(token, deviceInfo)
+    .then(() => console.log('Token registered with API successfully'))
+    .catch(error => console.error('Token registration error:', error));
+
+  return token;
 }
 
 async function registerDeviceToken() {
   console.log('Starting device token registration...');
-  const token = generateSecureToken();
-  const deviceInfo = getDeviceInfo();
-  
-  try {
-    console.log('Registering token with API...', token);
-    await apiService.registerToken(token, deviceInfo);
-    
-    const deviceData = { 
-      token,
-      deviceInfo,
-      registeredAt: new Date().toISOString(),
-      deviceId: crypto.randomBytes(16).toString('hex')
-    };
-
-    store.set('deviceInfo', deviceData);
-    console.log('Token registered and stored successfully:', deviceData);
-    return token;
-  } catch (error) {
-    console.error('Token registration failed:', error);
-    throw error;
-  }
+  const token = initializeDeviceToken();
+  return token;
 }
 
 function getStoredToken() {
@@ -59,8 +72,8 @@ function getStoredToken() {
   console.log('Stored device info:', deviceInfo);
 
   if (!deviceInfo?.token) {
-    console.log('No token found, initiating automatic registration...');
-    return registerDeviceToken();
+    console.log('No token found, initiating registration...');
+    return initializeDeviceToken();
   }
 
   return deviceInfo.token;
