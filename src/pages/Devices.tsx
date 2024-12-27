@@ -77,13 +77,6 @@ const Devices = () => {
               </SelectContent>
             </Select>
 
-            {activeTab === "groups" && (
-              <Button onClick={() => {}} variant="default">
-                <Plus className="h-4 w-4 mr-2" />
-                Yeni Grup
-              </Button>
-            )}
-
             {activeTab === "devices" && (
               <>
                 <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
