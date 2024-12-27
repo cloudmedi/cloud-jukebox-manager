@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, Tray, Menu } = require('electron');
+const { app, BrowserWindow, ipcMain, Tray, Menu, nativeImage } = require('electron');
 const path = require('path');
 const Store = require('electron-store');
 const store = new Store();
@@ -80,29 +80,34 @@ function createTray() {
       },
       {
         label: currentSong.name || 'Şarkı çalmıyor',
-        enabled: false
+        enabled: false,
+        icon: path.join(__dirname, 'icons', 'music.png')
       },
       {
         label: currentSong.artist || '',
-        enabled: false
+        enabled: false,
+        icon: path.join(__dirname, 'icons', 'user.png')
       },
       { type: 'separator' },
       {
         label: 'Duraklat/Devam Et',
         click: function() {
           mainWindow.webContents.send('toggle-playback');
-        }
+        },
+        icon: path.join(__dirname, 'icons', 'play-pause.png')
       },
       {
         label: 'Sonraki Şarkı',
         click: function() {
           mainWindow.webContents.send('next-track');
-        }
+        },
+        icon: path.join(__dirname, 'icons', 'skip-forward.png')
       },
       { type: 'separator' },
       {
         label: 'Uzaktan Kontrol Kodu:',
-        enabled: false
+        enabled: false,
+        icon: path.join(__dirname, 'icons', 'key.png')
       },
       {
         label: store.get('deviceInfo.token', 'Kod bulunamadı'),
@@ -114,14 +119,16 @@ function createTray() {
         click: function() {
           mainWindow.show();
           mainWindow.focus();
-        }
+        },
+        icon: path.join(__dirname, 'icons', 'maximize.png')
       },
       {
         label: 'Uygulamadan Çık',
         click: function() {
           app.isQuitting = true;
           app.quit();
-        }
+        },
+        icon: path.join(__dirname, 'icons', 'x.png')
       }
     ]);
 
