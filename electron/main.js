@@ -7,6 +7,8 @@ require('./services/audioService');
 
 let mainWindow;
 let tray = null;
+let currentSong = null;
+let isPlaying = true;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -61,46 +63,96 @@ function createWindow() {
   }
 }
 
+function updateTrayMenu() {
+  if (!tray) return;
+
+  const contextMenu = Menu.buildFromTemplate([
+    {
+      label: 'Open Soundtrack',
+      click: function() {
+        mainWindow.show();
+        mainWindow.focus();
+      }
+    },
+    { type: 'separator' },
+    {
+      label: 'Şu an çalıyor:',
+      enabled: false
+    },
+    {
+      label: currentSong ? currentSong.name : 'Şarkı seçilmedi',
+      enabled: false
+    },
+    {
+      label: currentSong ? currentSong.artist : '',
+      enabled: false
+    },
+    { type: 'separator' },
+    {
+      label: isPlaying ? 'Duraklat' : 'Devam Et',
+      click: function() {
+        const mainWindow = BrowserWindow.getAllWindows()[0];
+        if (mainWindow) {
+          mainWindow.webContents.send('toggle-playback');
+          isPlaying = !isPlaying;
+          updateTrayMenu();
+        }
+      }
+    },
+    {
+      label: 'Sonraki Şarkı',
+      click: function() {
+        const mainWindow = BrowserWindow.getAllWindows()[0];
+        if (mainWindow) {
+          mainWindow.webContents.send('next-track');
+        }
+      }
+    },
+    { type: 'separator' },
+    {
+      label: 'Uzaktan kontrol kodu:',
+      enabled: false
+    },
+    {
+      label: store.get('deviceInfo')?.token || 'Kod bulunamadı',
+      enabled: false
+    },
+    { type: 'separator' },
+    {
+      label: 'Çıkış',
+      click: function() {
+        app.isQuitting = true;
+        app.quit();
+      }
+    }
+  ]);
+
+  tray.setContextMenu(contextMenu);
+}
+
 function createTray() {
   try {
-    // Tray ikonu oluştur
     const iconPath = path.join(__dirname, 'icon.png');
     console.log('Tray icon path:', iconPath);
     
     tray = new Tray(iconPath);
     
-    // Tray menüsünü oluştur
-    const contextMenu = Menu.buildFromTemplate([
-      {
-        label: 'Show App',
-        click: function() {
-          mainWindow.show();
-          mainWindow.focus(); // Pencereyi ön plana getir
-        }
-      },
-      {
-        label: 'Close',
-        click: function() {
-          app.isQuitting = true;
-          app.quit();
-        }
-      }
-    ]);
+    // İlk menüyü oluştur
+    updateTrayMenu();
 
     // Tray ayarlarını yap
     tray.setToolTip('Cloud Media Player');
-    tray.setContextMenu(contextMenu);
 
     // Tray ikonuna çift tıklandığında uygulamayı göster
     tray.on('double-click', () => {
       mainWindow.show();
-      mainWindow.focus(); // Pencereyi ön plana getir
+      mainWindow.focus();
     });
     
     // Tray ikonuna tek tıklandığında uygulamayı göster
     tray.on('click', () => {
       mainWindow.show();
-      mainWindow.focus(); // Pencereyi ön plana getir
+      mainWindow.focus();
     });
     
     console.log('Tray created successfully');
@@ -109,9 +161,20 @@ function createTray() {
   }
 }
 
+// IPC handlers for updating tray menu
+ipcMain.on('update-song-info', (event, song) => {
+  currentSong = song;
+  updateTrayMenu();
+});
+
+ipcMain.on('update-playback-status', (event, playing) => {
+  isPlaying = playing;
+  updateTrayMenu();
+});
+
 app.whenReady().then(() => {
   createWindow();
-  createTray(); // Uygulama başladığında tray'i oluştur
+  createTray();
 });
 
 app.on('window-all-closed', () => {
