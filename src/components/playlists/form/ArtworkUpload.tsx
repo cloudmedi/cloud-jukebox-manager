@@ -28,16 +28,18 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
   }, [artwork]);
 
   const handleUploadClick = () => {
+    console.log("Upload button clicked"); // Debug log
     if (fileInputRef.current) {
+      console.log("Triggering file input click"); // Debug log
       fileInputRef.current.click();
     }
   };
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log("File change event triggered"); // Debug log
     const file = e.target.files?.[0];
     if (!file) return;
 
-    // Check file type
     if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
       toast({
         variant: "destructive",
@@ -47,7 +49,6 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
       return;
     }
 
-    // Check file size (5MB)
     if (file.size > 5 * 1024 * 1024) {
       toast({
         variant: "destructive",
@@ -116,7 +117,7 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
                       type="button"
                       variant="outline" 
                       onClick={handleUploadClick}
-                      className="w-full"
+                      className="w-full cursor-pointer"
                     >
                       <ImagePlus className="mr-2 h-5 w-5" />
                       {previewUrl ? "Resmi Değiştir" : "Kapak Resmi Seç"}
