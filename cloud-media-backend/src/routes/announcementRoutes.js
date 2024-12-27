@@ -4,6 +4,10 @@ const multer = require('multer');
 const path = require('path');
 const Announcement = require('../models/Announcement');
 const fs = require('fs');
+const DeleteMessage = require('../websocket/messages/DeleteMessage');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('announcement-routes');
 
 // Multer yapılandırması
 const storage = multer.diskStorage({
@@ -339,27 +343,37 @@ router.delete('/:id', async (req, res) => {
     // Ses dosyasını sil
     if (announcement.audioFile && fs.existsSync(announcement.audioFile)) {
       fs.unlinkSync(announcement.audioFile);
-      console.log(`Deleted audio file: ${announcement.audioFile}`);
+      logger.info(`Deleted audio file: ${announcement.audioFile}`);
     }
 
     // Anonsu veritabanından sil
     await Announcement.findByIdAndDelete(announcement._id);
-    console.log(`Announcement deleted from database: ${announcement._id}`);
+    logger.info(`Announcement deleted from database: ${announcement._id}`);
     
     // WebSocket üzerinden cihazlara silme komutu gönder
     if (req.wss) {
       announcement.targetDevices.forEach(deviceId => {
-        req.wss.sendToDevice(deviceId, {
-          type: 'command',
-          command: 'deleteAnnouncement',
-          announcementId: announcement._id.toString()
-        });
+        req.wss.sendToDevice(deviceId, 
+          DeleteMessage.createDeleteSuccess('announcement', announcement._id)
+        );
       });
+
+      // Admin'lere bildirim gönder
+      req.wss.broadcastToAdmins(
+        DeleteMessage.createDeleteSuccess('announcement', announcement._id)
+      );
     }
 
     res.json({ message: 'Anons başarıyla silindi' });
   } catch (error) {
-    console.error('Anons silme hatası:', error);
+    logger.error('Anons silme hatası:', error);
+    
+    if (req.wss) {
+      req.wss.broadcastToAdmins(
+        DeleteMessage.createDeleteError('announcement', req.params.id, error)
+      );
+    }
+    
     res.status(500).json({ message: 'Anons silinirken bir hata oluştu' });
   }
 });

@@ -2,6 +2,7 @@ const Store = require('electron-store');
 const fs = require('fs');
 const path = require('path');
 const { createLogger } = require('../../../utils/logger');
+const DeleteMessage = require('../../../websocket/messages/DeleteMessage');
 
 const store = new Store();
 const logger = createLogger('DeleteAnnouncementHandler');
@@ -46,24 +47,20 @@ class DeleteAnnouncementHandler {
       console.log(`Removed announcement ${announcementId} from local storage`);
       
       // Başarılı silme bildirimi gönder
-      this.sendDeletionStatus(announcementId, true);
+      this.ws.sendMessage(
+        DeleteMessage.createDeleteSuccess('announcement', announcementId)
+      );
       
       logger.info(`Successfully deleted announcement ${announcementId}`);
       console.log(`Deletion process completed for announcement ${announcementId}`);
     } catch (error) {
       console.error(`Error in deletion process for ${announcementId}:`, error);
       logger.error(`Error deleting announcement ${announcementId}:`, error);
-      this.sendDeletionStatus(announcementId, false);
+      
+      this.ws.sendMessage(
+        DeleteMessage.createDeleteError('announcement', announcementId, error)
+      );
     }
-  }
-
-  sendDeletionStatus(announcementId, success) {
-    console.log(`Sending deletion status - Announcement: ${announcementId}, Success: ${success}`);
-    this.ws.sendMessage({
-      type: 'announcementDeleted',
-      announcementId,
-      success
-    });
   }
 }
 
