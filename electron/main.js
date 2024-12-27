@@ -63,23 +63,61 @@ function createWindow() {
 
 function createTray() {
   try {
-    // Tray ikonu oluştur
     const iconPath = path.join(__dirname, 'icon.png');
     console.log('Tray icon path:', iconPath);
     
     tray = new Tray(iconPath);
     
+    // Şu an çalan şarkı bilgisini al
+    const currentSong = store.get('currentSong', { name: '', artist: '' });
+    
     // Tray menüsünü oluştur
     const contextMenu = Menu.buildFromTemplate([
       {
-        label: 'Show App',
+        label: 'Şu an çalıyor:',
+        enabled: false,
+        icon: path.join(__dirname, 'icon.png')
+      },
+      {
+        label: currentSong.name || 'Şarkı çalmıyor',
+        enabled: false
+      },
+      {
+        label: currentSong.artist || '',
+        enabled: false
+      },
+      { type: 'separator' },
+      {
+        label: 'Duraklat/Devam Et',
         click: function() {
-          mainWindow.show();
-          mainWindow.focus(); // Pencereyi ön plana getir
+          mainWindow.webContents.send('toggle-playback');
         }
       },
       {
-        label: 'Close',
+        label: 'Sonraki Şarkı',
+        click: function() {
+          mainWindow.webContents.send('next-track');
+        }
+      },
+      { type: 'separator' },
+      {
+        label: 'Uzaktan Kontrol Kodu:',
+        enabled: false
+      },
+      {
+        label: store.get('deviceInfo.token', 'Kod bulunamadı'),
+        enabled: false
+      },
+      { type: 'separator' },
+      {
+        label: 'Uygulamayı Göster',
+        click: function() {
+          mainWindow.show();
+          mainWindow.focus();
+        }
+      },
+      {
+        label: 'Uygulamadan Çık',
         click: function() {
           app.isQuitting = true;
           app.quit();
@@ -94,13 +132,13 @@ function createTray() {
     // Tray ikonuna çift tıklandığında uygulamayı göster
     tray.on('double-click', () => {
       mainWindow.show();
-      mainWindow.focus(); // Pencereyi ön plana getir
+      mainWindow.focus();
     });
     
     // Tray ikonuna tek tıklandığında uygulamayı göster
     tray.on('click', () => {
       mainWindow.show();
-      mainWindow.focus(); // Pencereyi ön plana getir
+      mainWindow.focus();
     });
     
     console.log('Tray created successfully');
@@ -108,6 +146,14 @@ function createTray() {
     console.error('Error creating tray:', error);
   }
 }
+
+// Şarkı değiştiğinde tray menüsünü güncelle
+ipcMain.on('song-changed', (event, song) => {
+  store.set('currentSong', song);
+  if (tray) {
+    createTray(); // Menüyü yeniden oluştur
+  }
+});
 
 app.whenReady().then(() => {
   createWindow();
