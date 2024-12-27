@@ -1,12 +1,11 @@
-import { useState, useCallback, useMemo, useRef } from "react";
-import { useVirtualizer } from "@tanstack/react-virtual";
+import { useState } from "react";
 import { Song } from "@/types/song";
 import { SongTableHeader } from "./SongTableHeader";
 import { SongTableRow } from "./SongTableRow";
 import { Table, TableBody } from "@/components/ui/table";
 import { useSelectedSongsStore } from "@/store/selectedSongsStore";
 import { Button } from "@/components/ui/button";
-import { Plus, Trash2, Loader2 } from "lucide-react";
+import { Plus, Trash2 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { useToast } from "@/hooks/use-toast";
 
@@ -16,63 +15,60 @@ interface SongListProps {
   onEdit?: (song: Song) => void;
 }
 
-const SongList = ({ songs, onDelete, onEdit }: SongListProps) => {
+const SongList = ({
+  songs,
+  onDelete,
+  onEdit,
+}: SongListProps) => {
   const navigate = useNavigate();
   const { toast } = useToast();
-  const [isDeleting, setIsDeleting] = useState(false);
   const [sortConfig, setSortConfig] = useState({
     key: "name",
     direction: "asc",
   });
 
   const { selectedSongs, addSong, removeSong, clearSelection } = useSelectedSongsStore();
-  const parentRef = useRef<HTMLTableSectionElement>(null);
 
-  const sortedSongs = useMemo(() => {
-    return [...songs].sort((a, b) => {
-      if (!a[sortConfig.key] || !b[sortConfig.key]) return 0;
-      const aValue = a[sortConfig.key];
-      const bValue = b[sortConfig.key];
-      if (typeof aValue === 'string' && typeof bValue === 'string') {
-        return sortConfig.direction === "asc"
-          ? aValue.localeCompare(bValue)
-          : bValue.localeCompare(aValue);
-      }
-      return 0;
-    });
-  }, [songs, sortConfig]);
-
-  const rowVirtualizer = useVirtualizer({
-    count: sortedSongs.length,
-    getScrollElement: () => parentRef.current,
-    estimateSize: () => 72,
-    overscan: 5,
+  const sortedSongs = [...songs].sort((a, b) => {
+    if (!a[sortConfig.key] || !b[sortConfig.key]) return 0;
+    
+    const aValue = a[sortConfig.key];
+    const bValue = b[sortConfig.key];
+    
+    if (typeof aValue === 'string' && typeof bValue === 'string') {
+      return sortConfig.direction === "asc"
+        ? aValue.localeCompare(bValue)
+        : bValue.localeCompare(aValue);
+    }
+    
+    return 0;
   });
 
-  const handleSort = useCallback((key: string) => {
+  const handleSort = (key: string) => {
     setSortConfig((current) => ({
       key,
-      direction: current.key === key && current.direction === "asc" ? "desc" : "asc",
+      direction:
+        current.key === key && current.direction === "asc" ? "desc" : "asc",
     }));
-  }, []);
+  };
 
-  const handleSelectAll = useCallback((checked: boolean) => {
+  const handleSelectAll = (checked: boolean) => {
     if (checked) {
       sortedSongs.forEach(song => addSong(song));
     } else {
       clearSelection();
     }
-  }, [sortedSongs, addSong, clearSelection]);
+  };
 
-  const handleSelect = useCallback((song: Song, checked: boolean) => {
+  const handleSelect = (song: Song, checked: boolean) => {
     if (checked) {
       addSong(song);
     } else {
       removeSong(song._id);
     }
-  }, [addSong, removeSong]);
+  };
 
-  const handleCreatePlaylist = useCallback(() => {
+  const handleCreatePlaylist = () => {
     if (selectedSongs.length === 0) {
       toast({
         variant: "destructive",
@@ -82,9 +78,9 @@ const SongList = ({ songs, onDelete, onEdit }: SongListProps) => {
       return;
     }
     navigate("/playlists/new");
-  }, [selectedSongs.length, navigate, toast]);
+  };
 
-  const handleBulkDelete = useCallback(async () => {
+  const handleBulkDelete = async () => {
     if (selectedSongs.length === 0) {
       toast({
         variant: "destructive",
@@ -95,7 +91,6 @@ const SongList = ({ songs, onDelete, onEdit }: SongListProps) => {
     }
 
     try {
-      setIsDeleting(true);
       await Promise.all(selectedSongs.map(song => onDelete(song._id)));
       clearSelection();
       toast({
@@ -108,43 +103,24 @@ const SongList = ({ songs, onDelete, onEdit }: SongListProps) => {
         title: "Hata",
         description: "Şarkılar silinirken bir hata oluştu",
       });
-    } finally {
-      setIsDeleting(false);
     }
-  }, [selectedSongs, onDelete, clearSelection, toast]);
+  };
 
   return (
     <div className="space-y-4">
       {selectedSongs.length > 0 && (
-        <div className="flex items-center justify-between gap-4 p-4 bg-muted/50 rounded-lg">
-          <p className="text-sm text-muted-foreground">
-            {selectedSongs.length} şarkı seçildi
-          </p>
-          <div className="flex items-center gap-2">
-            <Button
-              onClick={handleCreatePlaylist}
-              variant="default"
-              disabled={isDeleting}
-            >
-              <Plus className="h-4 w-4 mr-2" />
-              Yeni Playlist Oluştur
-            </Button>
-            <Button
-              onClick={handleBulkDelete}
-              variant="destructive"
-              disabled={isDeleting}
-            >
-              {isDeleting ? (
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-              ) : (
-                <Trash2 className="h-4 w-4 mr-2" />
-              )}
-              {isDeleting ? "Siliniyor..." : "Seçilenleri Sil"}
-            </Button>
-          </div>
+        <div className="flex items-center justify-end gap-4">
+          <Button onClick={handleCreatePlaylist} variant="default">
+            <Plus className="h-4 w-4 mr-2" />
+            Yeni Playlist Oluştur
+          </Button>
+          <Button onClick={handleBulkDelete} variant="destructive">
+            <Trash2 className="h-4 w-4 mr-2" />
+            Seçilenleri Sil
+          </Button>
         </div>
       )}
-
+      
       <div className="rounded-md border">
         <Table>
           <SongTableHeader
@@ -155,35 +131,17 @@ const SongList = ({ songs, onDelete, onEdit }: SongListProps) => {
             onSelectAll={handleSelectAll}
             selectedCount={selectedSongs.length}
           />
-          <TableBody
-            ref={parentRef}
-            className="relative block"
-            style={{
-              height: '600px',
-              overflow: 'auto',
-            }}
-          >
-            {rowVirtualizer.getVirtualItems().map((virtualRow) => {
-              const song = sortedSongs[virtualRow.index];
-              return (
-                <SongTableRow
-                  key={song._id}
-                  song={song}
-                  onDelete={onDelete}
-                  onEdit={onEdit}
-                  isSelected={selectedSongs.some(s => s._id === song._id)}
-                  onSelect={handleSelect}
-                  style={{
-                    position: 'absolute',
-                    top: 0,
-                    left: 0,
-                    width: '100%',
-                    transform: `translateY(${virtualRow.start}px)`,
-                    height: `${virtualRow.size}px`,
-                  }}
-                />
-              );
-            })}
+          <TableBody>
+            {sortedSongs.map((song) => (
+              <SongTableRow
+                key={song._id}
+                song={song}
+                onDelete={onDelete}
+                onEdit={onEdit}
+                isSelected={selectedSongs.some(s => s._id === song._id)}
+                onSelect={handleSelect}
+              />
+            ))}
           </TableBody>
         </Table>
       </div>
