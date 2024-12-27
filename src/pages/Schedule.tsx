@@ -5,19 +5,22 @@ import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import { Button } from "@/components/ui/button";
 import { Calendar, List } from "lucide-react";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PlaylistScheduleForm } from "@/components/schedule/PlaylistScheduleForm";
 import { useQuery } from "@tanstack/react-query";
-import { format } from "date-fns";
+import { Skeleton } from "@/components/ui/skeleton";
 
 const Schedule = () => {
   const [view, setView] = useState<"timeGridWeek" | "dayGridMonth">("timeGridWeek");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 
-  const { data: schedules } = useQuery({
+  const { data: schedules, isLoading } = useQuery({
     queryKey: ["playlist-schedules"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/playlist-schedules");
+      if (!response.ok) {
+        throw new Error("Failed to fetch schedules");
+      }
       return response.json();
     },
   });
@@ -26,13 +29,35 @@ const Schedule = () => {
     setIsDialogOpen(true);
   };
 
-  const events = schedules?.map((schedule: any) => ({
-    id: schedule._id,
-    title: `${schedule.playlist.name} - ${schedule.targets.devices.length > 0 ? 'Cihaz' : 'Grup'}`,
-    start: schedule.startDate,
-    end: schedule.endDate,
-    backgroundColor: schedule.status === 'active' ? '#10b981' : '#6b7280',
-  })) || [];
+  // Only create events if we have valid schedule data
+  const events = schedules?.map((schedule: any) => {
+    if (!schedule?.playlist) return null; // Skip if playlist is null
+    
+    return {
+      id: schedule._id,
+      title: `${schedule.playlist?.name || 'Unnamed Playlist'} - ${
+        schedule.targets?.devices?.length > 0 ? 'Cihaz' : 'Grup'
+      }`,
+      start: schedule.startDate,
+      end: schedule.endDate,
+      backgroundColor: schedule.status === 'active' ? '#10b981' : '#6b7280',
+    };
+  }).filter(Boolean) || []; // Filter out null events
+
+  if (isLoading) {
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center justify-between">
+          <Skeleton className="h-8 w-48" />
+          <div className="flex items-center gap-2">
+            <Skeleton className="h-8 w-24" />
+            <Skeleton className="h-8 w-24" />
+          </div>
+        </div>
+        <Skeleton className="h-[600px] w-full" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
