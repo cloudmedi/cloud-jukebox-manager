@@ -49,7 +49,7 @@ const Devices = () => {
             
             <Select value={filterStatus} onValueChange={(value: "all" | "online" | "offline") => setFilterStatus(value)}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Durum" />
+                <SelectValue placeholder="Tümü (14)" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="all">Tümü ({stats?.total || 0})</SelectItem>
