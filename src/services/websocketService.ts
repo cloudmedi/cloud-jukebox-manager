@@ -2,10 +2,12 @@ import { handleDeleteMessage } from './websocket/handlers/DeleteMessageHandler';
 import { handleDeviceStatusMessage } from './websocket/handlers/DeviceStatusHandler';
 import { handleInitialStateMessage } from './websocket/handlers/InitialStateHandler';
 
+type MessageHandler = (data: any) => void;
+
 class WebSocketService {
   private static instance: WebSocketService;
   private ws: WebSocket | null = null;
-  private messageHandlers: Map<string, (data: any) => void>;
+  private messageHandlers: Map<string, Set<MessageHandler>>;
 
   private constructor() {
     this.messageHandlers = new Map();
@@ -14,9 +16,9 @@ class WebSocketService {
   }
 
   private setupMessageHandlers() {
-    this.messageHandlers.set('delete', handleDeleteMessage);
-    this.messageHandlers.set('deviceStatus', handleDeviceStatusMessage);
-    this.messageHandlers.set('initialState', handleInitialStateMessage);
+    this.addMessageHandler('delete', handleDeleteMessage);
+    this.addMessageHandler('deviceStatus', handleDeviceStatusMessage);
+    this.addMessageHandler('initialState', handleInitialStateMessage);
   }
 
   public static getInstance(): WebSocketService {
@@ -55,11 +57,34 @@ class WebSocketService {
   }
 
   private handleMessage(message: any) {
-    const handler = this.messageHandlers.get(message.type);
-    if (handler) {
-      handler(message);
+    const handlers = this.messageHandlers.get(message.type);
+    if (handlers) {
+      handlers.forEach(handler => {
+        try {
+          handler(message);
+        } catch (error) {
+          console.error(`Handler error for message type ${message.type}:`, error);
+        }
+      });
     } else {
       console.warn('Unhandled message type:', message.type);
+    }
+  }
+
+  public addMessageHandler(type: string, handler: MessageHandler) {
+    if (!this.messageHandlers.has(type)) {
+      this.messageHandlers.set(type, new Set());
+    }
+    this.messageHandlers.get(type)?.add(handler);
+  }
+
+  public removeMessageHandler(type: string, handler: MessageHandler) {
+    const handlers = this.messageHandlers.get(type);
+    if (handlers) {
+      handlers.delete(handler);
+      if (handlers.size === 0) {
+        this.messageHandlers.delete(type);
+      }
     }
   }
 
