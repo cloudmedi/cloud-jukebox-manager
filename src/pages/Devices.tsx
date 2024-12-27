@@ -1,14 +1,15 @@
-import { DeviceList } from "@/components/devices/DeviceList";
-import DeviceGroups from "@/components/devices/DeviceGroups";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
-import { MapPin, Plus, Search } from "lucide-react";
+import { Card } from "@/components/ui/card";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
-import DeviceForm from "@/components/devices/DeviceForm";
-import { useState } from "react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { MapPin, Plus, Search } from "lucide-react";
+import { DeviceList } from "@/components/devices/DeviceList";
+import DeviceGroups from "@/components/devices/DeviceGroups";
+import DeviceForm from "@/components/devices/DeviceForm";
 
 const Devices = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -88,6 +89,17 @@ const Devices = () => {
                   className="pl-9 w-[300px]"
                 />
               </div>
+
+              <Select value={filterStatus} onValueChange={(value: "all" | "online" | "offline") => setFilterStatus(value)}>
+                <SelectTrigger className="w-[180px]">
+                  <SelectValue placeholder="Durum" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Tümü ({stats?.total || 0})</SelectItem>
+                  <SelectItem value="online">Çevrimiçi ({stats?.online || 0})</SelectItem>
+                  <SelectItem value="offline">Çevrimdışı ({stats?.offline || 0})</SelectItem>
+                </SelectContent>
+              </Select>
 
               <Select value={locationFilter} onValueChange={setLocationFilter}>
                 <SelectTrigger className="w-[180px]">
