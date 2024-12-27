@@ -1,13 +1,15 @@
 import { useState } from "react";
-import { Song } from "@/types/song";
-import { SongTableHeader } from "./SongTableHeader";
-import { SongTableRow } from "./SongTableRow";
-import { Table, TableBody } from "@/components/ui/table";
-import { useSelectedSongsStore } from "@/store/selectedSongsStore";
-import { Button } from "@/components/ui/button";
+import { useQuery } from "@tanstack/react-query";
 import { Plus, Trash2 } from "lucide-react";
-import { useNavigate } from "react-router-dom";
+import { Button } from "@/components/ui/button";
+import { ScrollArea } from "@/components/ui/scroll-area";
 import { useToast } from "@/hooks/use-toast";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { SongList } from "./SongList";
+import { AddSongDialog } from "./AddSongDialog";
+import { SongSkeleton } from "./SongSkeleton";
+import { Song } from "@/types/song";
+import { Table } from "@headlessui/react";
 
 interface SongListProps {
   songs: Song[];
@@ -20,129 +22,85 @@ const SongList = ({
   onDelete,
   onEdit,
 }: SongListProps) => {
-  const navigate = useNavigate();
   const { toast } = useToast();
-  const [sortConfig, setSortConfig] = useState({
-    key: "name",
-    direction: "asc",
-  });
 
-  const { selectedSongs, addSong, removeSong, clearSelection } = useSelectedSongsStore();
-
-  const sortedSongs = [...songs].sort((a, b) => {
-    if (!a[sortConfig.key] || !b[sortConfig.key]) return 0;
-    
-    const aValue = a[sortConfig.key];
-    const bValue = b[sortConfig.key];
-    
-    if (typeof aValue === 'string' && typeof bValue === 'string') {
-      return sortConfig.direction === "asc"
-        ? aValue.localeCompare(bValue)
-        : bValue.localeCompare(aValue);
-    }
-    
-    return 0;
-  });
-
-  const handleSort = (key: string) => {
-    setSortConfig((current) => ({
-      key,
-      direction:
-        current.key === key && current.direction === "asc" ? "desc" : "asc",
-    }));
-  };
-
-  const handleSelectAll = (checked: boolean) => {
-    if (checked) {
-      sortedSongs.forEach(song => addSong(song));
-    } else {
-      clearSelection();
-    }
-  };
-
-  const handleSelect = (song: Song, checked: boolean) => {
-    if (checked) {
-      addSong(song);
-    } else {
-      removeSong(song._id);
-    }
-  };
-
-  const handleCreatePlaylist = () => {
-    if (selectedSongs.length === 0) {
-      toast({
-        variant: "destructive",
-        title: "Hata",
-        description: "Lütfen en az bir şarkı seçin",
-      });
-      return;
-    }
-    navigate("/playlists/new");
-  };
-
-  const handleBulkDelete = async () => {
-    if (selectedSongs.length === 0) {
-      toast({
-        variant: "destructive",
-        title: "Hata",
-        description: "Lütfen silmek için en az bir şarkı seçin",
-      });
-      return;
-    }
-
+  const handleDelete = async (songId: string) => {
     try {
-      await Promise.all(selectedSongs.map(song => onDelete(song._id)));
-      clearSelection();
+      await onDelete(songId);
       toast({
         title: "Başarılı",
-        description: "Seçili şarkılar başarıyla silindi",
+        description: "Şarkı başarıyla silindi",
       });
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Hata",
-        description: "Şarkılar silinirken bir hata oluştu",
+        description: "Şarkı silinirken bir hata oluştu",
       });
     }
   };
 
   return (
     <div className="space-y-4">
-      {selectedSongs.length > 0 && (
-        <div className="flex items-center justify-end gap-4">
-          <Button onClick={handleCreatePlaylist} variant="default">
-            <Plus className="h-4 w-4 mr-2" />
-            Yeni Playlist Oluştur
-          </Button>
-          <Button onClick={handleBulkDelete} variant="destructive">
-            <Trash2 className="h-4 w-4 mr-2" />
-            Seçilenleri Sil
-          </Button>
-        </div>
-      )}
-      
       <div className="rounded-md border">
-        <Table>
-          <SongTableHeader
-            showCheckbox={true}
-            allSongs={sortedSongs}
-            sortConfig={sortConfig}
-            onSort={handleSort}
-            onSelectAll={handleSelectAll}
-            selectedCount={selectedSongs.length}
-          />
-          <TableBody>
-            {sortedSongs.map((song) => (
-              <SongTableRow
-                key={song._id}
-                song={song}
-                onDelete={onDelete}
-                onEdit={onEdit}
-                isSelected={selectedSongs.some(s => s._id === song._id)}
-                onSelect={handleSelect}
-              />
+        <Table className="min-w-full divide-y divide-gray-200">
+          <Table.Head className="bg-gray-50">
+            <Table.Row>
+              <Table.Cell className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Şarkı
+              </Table.Cell>
+              <Table.Cell className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Sanatçı
+              </Table.Cell>
+              <Table.Cell className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Tür
+              </Table.Cell>
+              <Table.Cell className="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider">
+                Albüm
+              </Table.Cell>
+              <Table.Cell className="relative px-6 py-3">
+                <span className="sr-only">İşlemler</span>
+              </Table.Cell>
+            </Table.Row>
+          </Table.Head>
+          <Table.Body className="bg-white divide-y divide-gray-200">
+            {songs.map((song) => (
+              <Table.Row key={song._id} className="hover:bg-gray-50">
+                <Table.Cell className="px-6 py-4 whitespace-nowrap">
+                  <div className="flex items-center">
+                    <div className="ml-4">
+                      <div className="text-sm font-medium text-gray-900">{song.name}</div>
+                    </div>
+                  </div>
+                </Table.Cell>
+                <Table.Cell className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">{song.artist}</div>
+                </Table.Cell>
+                <Table.Cell className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">{song.genre}</div>
+                </Table.Cell>
+                <Table.Cell className="px-6 py-4 whitespace-nowrap">
+                  <div className="text-sm text-gray-900">{song.album || "-"}</div>
+                </Table.Cell>
+                <Table.Cell className="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                  <Button
+                    variant="ghost"
+                    onClick={() => onEdit?.(song)}
+                    className="text-indigo-600 hover:text-indigo-900 mr-2"
+                  >
+                    Düzenle
+                  </Button>
+                  <Button
+                    variant="ghost"
+                    onClick={() => handleDelete(song._id)}
+                    className="text-red-600 hover:text-red-900"
+                  >
+                    Sil
+                  </Button>
+                </Table.Cell>
+              </Table.Row>
             ))}
-          </TableBody>
+          </Table.Body>
         </Table>
       </div>
     </div>
