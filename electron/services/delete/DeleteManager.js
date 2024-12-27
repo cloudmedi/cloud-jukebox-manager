@@ -1,11 +1,13 @@
 const PlaylistDeleteHandler = require('./handlers/PlaylistDeleteHandler');
 const SongDeleteHandler = require('./handlers/SongDeleteHandler');
+const DeviceDeleteHandler = require('./handlers/DeviceDeleteHandler');
 
 class DeleteManager {
   constructor() {
     this.handlers = new Map([
       ['playlist', new PlaylistDeleteHandler()],
-      ['song', new SongDeleteHandler()]
+      ['song', new SongDeleteHandler()],
+      ['device', new DeviceDeleteHandler()]
     ]);
   }
 
