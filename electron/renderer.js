@@ -310,7 +310,19 @@ ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
     
     // Şarkı değiştiğinde görsel bilgileri güncelle
     displayPlaylists();
+    
+    // Tray menüsünü güncelle
+    ipcRenderer.send('song-changed', {
+      name: currentSong.name,
+      artist: currentSong.artist
+    });
   }
+});
+
+// Sonraki şarkı için event listener
+ipcRenderer.on('next-song', () => {
+  console.log('Next song requested from tray menu');
+  ipcRenderer.invoke('song-ended');
 });
 
 // İlk yüklemede playlistleri göster
