@@ -2,7 +2,6 @@ import { handleDeleteMessage } from './websocket/handlers/DeleteMessageHandler';
 import { handleDeviceStatusMessage } from './websocket/handlers/DeviceStatusHandler';
 import { handleInitialStateMessage } from './websocket/handlers/InitialStateHandler';
 import { handleDeviceDelete } from './websocket/handlers/DeviceDeleteHandler';
-import { handleNotificationMessage } from './websocket/handlers/NotificationHandler';
 
 type MessageHandler = (data: any) => void;
 
@@ -22,7 +21,6 @@ class WebSocketService {
     this.addMessageHandler('delete', handleDeviceDelete);
     this.addMessageHandler('deviceStatus', handleDeviceStatusMessage);
     this.addMessageHandler('initialState', handleInitialStateMessage);
-    this.addMessageHandler('notification', handleNotificationMessage);
   }
 
   public static getInstance(): WebSocketService {

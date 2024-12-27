@@ -1,5 +1,5 @@
 import { Bell } from "lucide-react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import {
   Popover,
@@ -9,8 +9,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
-import { useEffect } from "react";
-import websocketService from "@/services/websocketService";
 
 interface Notification {
   id: string;
@@ -23,7 +21,6 @@ interface Notification {
 
 export function NotificationsPopover() {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
 
   const { data: notifications = [], isLoading } = useQuery({
     queryKey: ['notifications'],
@@ -36,54 +33,7 @@ export function NotificationsPopover() {
     },
   });
 
-  // WebSocket bağlantısını dinle
-  useEffect(() => {
-    const handleNotification = (message: any) => {
-      if (message.type === 'newNotification') {
-        queryClient.invalidateQueries({ queryKey: ['notifications'] });
-        toast({
-          title: message.notification.title,
-          description: message.notification.message,
-        });
-      }
-    };
-
-    websocketService.addMessageHandler('notification', handleNotification);
-
-    return () => {
-      websocketService.removeMessageHandler('notification', handleNotification);
-    };
-  }, [queryClient, toast]);
-
   const unreadCount = notifications.filter((n: Notification) => !n.read).length;
-
-  const markAsRead = async (notificationId: string) => {
-    try {
-      const response = await fetch(`http://localhost:5000/api/notifications/${notificationId}/mark-read`, {
-        method: 'POST',
-      });
-      
-      if (!response.ok) {
-        throw new Error('Bildirim okundu olarak işaretlenemedi');
-      }
-
-      // WebSocket üzerinden bildirim gönder
-      websocketService.sendMessage({
-        type: 'notification',
-        action: 'markRead',
-        notificationId
-      });
-
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
-
-    } catch (error) {
-      toast({
-        title: "Hata",
-        description: "Bildirim işaretlenirken bir hata oluştu",
-        variant: "destructive",
-      });
-    }
-  };
 
   const markAllAsRead = async () => {
     try {
@@ -94,14 +44,6 @@ export function NotificationsPopover() {
       if (!response.ok) {
         throw new Error('Bildirimler okundu olarak işaretlenemedi');
       }
-
-      // WebSocket üzerinden bildirim gönder
-      websocketService.sendMessage({
-        type: 'notification',
-        action: 'markAllRead'
-      });
-
-      queryClient.invalidateQueries({ queryKey: ['notifications'] });
 
       toast({
         title: "Başarılı",
@@ -171,14 +113,13 @@ export function NotificationsPopover() {
               {notifications.map((notification: Notification) => (
                 <div
                   key={notification.id}
-                  className={`p-3 rounded-lg cursor-pointer transition-colors ${
-                    notification.read ? 'bg-background' : 'bg-muted hover:bg-muted/80'
+                  className={`p-3 rounded-lg ${
+                    notification.read ? 'bg-background' : 'bg-muted'
                   }`}
-                  onClick={() => !notification.read && markAsRead(notification.id)}
                 >
                   <div className="flex gap-2">
                     <span>{getNotificationIcon(notification.type)}</span>
-                    <div className="space-y-1 flex-1">
+                    <div className="space-y-1">
                       <p className="text-sm font-medium leading-none">
                         {notification.title}
                       </p>
@@ -189,9 +130,6 @@ export function NotificationsPopover() {
                         {new Date(notification.createdAt).toLocaleString('tr-TR')}
                       </p>
                     </div>
-                    {!notification.read && (
-                      <div className="w-2 h-2 rounded-full bg-blue-500 self-start mt-2" />
-                    )}
                   </div>
                 </div>
               ))}
