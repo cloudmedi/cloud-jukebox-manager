@@ -207,6 +207,21 @@ class AudioService {
       });
     }
   }
+
+  handleSongDeleted(songId) {
+    if (this.currentSound && this.queue[this.currentIndex]._id === songId) {
+      // Çalan şarkı silindiyse sonraki şarkıya geç
+      this.handleNextSong();
+    }
+    
+    // Kuyruktaki şarkıyı sil
+    this.queue = this.queue.filter(song => song._id !== songId);
+    
+    // Çalma listesini güncelle
+    if (this.playlist) {
+      this.playlist.songs = this.playlist.songs.filter(song => song._id !== songId);
+    }
+  }
 }
 
 module.exports = new AudioService();

@@ -9,55 +9,57 @@ class SongDeleteHandler extends BaseDeleteHandler {
     this.store = new Store();
   }
 
-  async preDelete(id, data) {
-    const { playlistId } = data;
-    if (!playlistId) {
-      throw new Error('Playlist ID is required for song deletion');
-    }
-
+  async preDelete(id) {
+    // Tüm playlistleri kontrol et
     const playlists = this.store.get('playlists', []);
-    const playlist = playlists.find(p => p._id === playlistId);
-    
-    if (!playlist) {
-      throw new Error('Playlist not found');
-    }
-  }
+    let songFound = false;
 
-  async executeDelete(id, data) {
-    const { playlistId } = data;
-    const playlists = this.store.get('playlists', []);
-    const playlist = playlists.find(p => p._id === playlistId);
-    
-    if (playlist) {
-      // Şarkıyı bul
-      const song = playlist.songs.find(s => s._id === id);
-      
-      // Şarkı dosyasını sil
-      if (song && song.localPath && fs.existsSync(song.localPath)) {
-        try {
-          fs.unlinkSync(song.localPath);
-          console.log('Deleted song file:', song.localPath);
-        } catch (error) {
-          console.error('Error deleting song file:', error);
-        }
+    // Şarkıyı içeren playlistleri bul
+    for (const playlist of playlists) {
+      if (playlist.songs.some(song => song._id === id)) {
+        songFound = true;
+        break;
       }
-      
-      // Playlist'ten şarkıyı kaldır
-      playlist.songs = playlist.songs.filter(s => s._id !== id);
-      
-      // Store'u güncelle
-      const updatedPlaylists = playlists.map(p => 
-        p._id === playlistId ? playlist : p
-      );
-      this.store.set('playlists', updatedPlaylists);
-      console.log('Song removed from playlist:', id);
+    }
+
+    if (!songFound) {
+      throw new Error('Song not found in any playlist');
     }
   }
 
-  async postDelete(id, data) {
+  async executeDelete(id) {
+    const playlists = this.store.get('playlists', []);
+    let songToDelete = null;
+    
+    // Her playlist'te şarkıyı ara ve sil
+    const updatedPlaylists = playlists.map(playlist => {
+      const songIndex = playlist.songs.findIndex(s => s._id === id);
+      if (songIndex !== -1) {
+        songToDelete = playlist.songs[songIndex];
+        playlist.songs = playlist.songs.filter(s => s._id !== id);
+      }
+      return playlist;
+    });
+
+    // Şarkı dosyasını sil
+    if (songToDelete && songToDelete.localPath && fs.existsSync(songToDelete.localPath)) {
+      try {
+        fs.unlinkSync(songToDelete.localPath);
+        console.log('Deleted song file:', songToDelete.localPath);
+      } catch (error) {
+        console.error('Error deleting song file:', error);
+      }
+    }
+
+    // Store'u güncelle
+    this.store.set('playlists', updatedPlaylists);
+    console.log('Song removed from playlists:', id);
+  }
+
+  async postDelete(id) {
     // Player'ı güncelle
     if (global.audioService) {
-      global.audioService.handleSongDeleted(data.playlistId, id);
+      global.audioService.handleSongDeleted(id);
     }
   }
 }
