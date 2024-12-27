@@ -14,6 +14,8 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent } from "@/components/ui/dialog";
 import { DeviceGroupForm } from "./DeviceGroupForm";
 import { DeviceGroupActions } from "./DeviceGroupActions";
+import { Button } from "@/components/ui/button";
+import { Plus } from "lucide-react";
 
 interface DeviceGroup {
   _id: string;
@@ -52,6 +54,10 @@ const DeviceGroups = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold tracking-tight">Cihaz Grupları</h2>
+        <Button onClick={() => setIsFormOpen(true)} variant="default">
+          <Plus className="h-4 w-4 mr-2" />
+          Yeni Grup
+        </Button>
       </div>
 
       <div className="rounded-md border">
