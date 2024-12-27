@@ -6,16 +6,20 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { MapPin, Plus, Search } from "lucide-react";
+import { MapPin, Plus, StopCircle } from "lucide-react";
 import { DeviceList } from "@/components/devices/DeviceList";
 import DeviceGroups from "@/components/devices/DeviceGroups";
 import DeviceForm from "@/components/devices/DeviceForm";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
+import axios from "axios";
+import { toast } from "sonner";
 
 const Devices = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [filterStatus, setFilterStatus] = useState<"all" | "online" | "offline">("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [locationFilter, setLocationFilter] = useState("_all");
+  const [showEmergencyDialog, setShowEmergencyDialog] = useState(false);
 
   const { data: stats } = useQuery({
     queryKey: ['device-stats'],
@@ -27,6 +31,17 @@ const Devices = () => {
       return response.json();
     }
   });
+
+  const handleEmergencyStop = async () => {
+    try {
+      await axios.post('http://localhost:5000/api/devices/emergency-stop');
+      toast.success('Acil durum komutu gönderildi. Tüm cihazlar durduruluyor.');
+      setShowEmergencyDialog(false);
+    } catch (error) {
+      console.error('Emergency stop error:', error);
+      toast.error('Acil durum komutu gönderilemedi!');
+    }
+  };
 
   return (
     <div className="min-h-screen bg-background">
@@ -113,6 +128,15 @@ const Devices = () => {
                 </SelectContent>
               </Select>
 
+              <Button 
+                variant="destructive" 
+                onClick={() => setShowEmergencyDialog(true)}
+                className="bg-red-600 hover:bg-red-700"
+              >
+                <StopCircle className="h-4 w-4 mr-2" />
+                Acil Durum Durdurma
+              </Button>
+
               <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
                 <DialogTrigger asChild>
                   <Button>
@@ -135,6 +159,28 @@ const Devices = () => {
           </TabsContent>
         </Tabs>
       </div>
+
+      <AlertDialog open={showEmergencyDialog} onOpenChange={setShowEmergencyDialog}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Acil Durum Durdurma</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bu işlem tüm cihazları durduracak ve ses çalmayı sonlandıracaktır. 
+              Bu işlem geri alınamaz ve sadece yönetici tarafından tekrar aktif edilebilir.
+              Devam etmek istediğinizden emin misiniz?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>İptal</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleEmergencyStop}
+              className="bg-red-600 hover:bg-red-700"
+            >
+              Acil Durum Durdurma
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
