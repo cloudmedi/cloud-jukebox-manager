@@ -9,7 +9,7 @@ const AnnouncementAudioService = require('./services/audio/AnnouncementAudioServ
 const PlaylistInitializer = require('./services/playlist/PlaylistInitializer');
 
 const playlistAudio = document.getElementById('audioPlayer');
-const audioHandler = new AudioEventHandler();
+const audioHandler = new AudioEventHandler(playlistAudio);
 
 // Initialize volume
 playlistAudio.volume = 0.7; // 70%
@@ -49,13 +49,7 @@ ipcRenderer.on('websocket-status', (event, isConnected) => {
 
 // İndirme progress
 ipcRenderer.on('download-progress', (event, { songName, progress }) => {
-    console.log(`Download progress for ${songName}: ${progress}%`);
-    
-    // WebSocket'e indirme durumunu gönder
-    ipcRenderer.send('websocket-message', {
-        type: 'downloadProgress',
-        progress: progress
-    });
+    UIManager.showDownloadProgress(progress, songName);
 });
 
 // Hata mesajları
@@ -217,52 +211,13 @@ ipcRenderer.on('playlist-received', (event, playlist) => {
   
   store.set('playlists', playlists);
   
-  // İndirme başladığında WebSocket'e bildir
-  ipcRenderer.send('websocket-message', {
-    type: 'playlistStatus',
-    status: 'loading',
-    progress: 0
-  });
-  
   const shouldAutoPlay = playbackStateManager.getPlaybackState();
   if (shouldAutoPlay) {
     console.log('Auto-playing new playlist:', playlist);
-    ipcRenderer.invoke('play-playlist', playlist)
-      .then(() => {
-        // İndirme tamamlandığında WebSocket'e bildir
-        ipcRenderer.send('websocket-message', {
-          type: 'playlistStatus',
-          status: 'loaded',
-          progress: 100
-        });
-      })
-      .catch(error => {
-        console.error('Error playing playlist:', error);
-        ipcRenderer.send('websocket-message', {
-          type: 'playlistStatus',
-          status: 'error',
-          progress: 0
-        });
-      });
+    ipcRenderer.invoke('play-playlist', playlist);
   } else {
     console.log('Loading new playlist without auto-play');
-    ipcRenderer.invoke('load-playlist', playlist)
-      .then(() => {
-        // İndirme tamamlandığında WebSocket'e bildir
-        ipcRenderer.send('websocket-message', {
-          type: 'playlistStatus',
-          status: 'loaded',
-          progress: 100
-        });
-      })
-      .catch(error => {
-        console.error('Error loading playlist:', error);
-        ipcRenderer.send('websocket-message', {
-          type: 'playlistStatus',
-          status: 'error',
-          progress: 0
-        });
-      });
+    ipcRenderer.invoke('load-playlist', playlist);
   }
   
   deleteOldPlaylists();
@@ -401,3 +356,4 @@ ipcRenderer.on('show-toast', (event, toast) => {
       break;
   }
 });
+

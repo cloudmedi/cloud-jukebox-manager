@@ -18,7 +18,6 @@ export interface Device {
     artist: string;
   } | null;
   playlistStatus: 'loaded' | 'loading' | 'error' | null;
-  downloadProgress?: number;
   groupId: string | null;
   lastSeen: string;
   createdAt: string;
