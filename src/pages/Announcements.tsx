@@ -3,10 +3,10 @@ import { AnnouncementList } from "@/components/announcements/AnnouncementList";
 
 const Announcements = () => {
   return (
-    <div className="container mx-auto py-6">
-      <div className="flex items-center justify-between mb-6">
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Anons Yönetimi</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Anons Yönetimi</h1>
           <p className="text-muted-foreground">
             Yeni anons oluşturun ve zamanlamayı ayarlayın
           </p>
