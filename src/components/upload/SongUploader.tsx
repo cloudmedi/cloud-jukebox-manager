@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { Upload, Music } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
 import { Progress } from "@/components/ui/progress";
 
 const SongUploader = ({ onUploadComplete }: { onUploadComplete: () => void }) => {
@@ -18,16 +18,13 @@ const SongUploader = ({ onUploadComplete }: { onUploadComplete: () => void }) =>
 
     const totalFiles = files.length;
     let uploadedFiles = 0;
+    let failedUploads = 0;
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
       
       if (!file.type.startsWith('audio/')) {
-        toast({
-          variant: "destructive",
-          title: "Hata",
-          description: `${file.name} geçerli bir ses dosyası değil`,
-        });
+        failedUploads++;
         continue;
       }
 
@@ -45,21 +42,24 @@ const SongUploader = ({ onUploadComplete }: { onUploadComplete: () => void }) =>
         uploadedFiles++;
         setProgress(Math.round((uploadedFiles / totalFiles) * 100));
         
-        toast({
-          title: "Başarılı",
-          description: `${file.name} başarıyla yüklendi`,
-        });
       } catch (error) {
-        toast({
-          variant: "destructive",
-          title: "Hata",
-          description: `${file.name} yüklenirken bir hata oluştu`,
-        });
+        failedUploads++;
       }
     }
 
+    // Yükleme tamamlandığında tek bir bildirim göster
     if (uploadedFiles > 0) {
+      toast({
+        title: "Yükleme Tamamlandı",
+        description: `${uploadedFiles} şarkı başarıyla yüklendi${failedUploads > 0 ? `, ${failedUploads} şarkı yüklenemedi` : ''}.`,
+      });
       onUploadComplete();
+    } else if (failedUploads > 0) {
+      toast({
+        variant: "destructive",
+        title: "Yükleme Başarısız",
+        description: "Hiçbir şarkı yüklenemedi.",
+      });
     }
     
     setUploading(false);
