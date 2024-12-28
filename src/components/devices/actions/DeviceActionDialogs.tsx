@@ -32,7 +32,7 @@ interface DeviceActionDialogsProps {
   onDeleteDialogChange: (open: boolean) => void;
   onRestartDialogChange: (open: boolean) => void;
   onVolumeChange: (volume: number) => void;
-  onGroupChange: (groupId: string | null) => void;
+  onGroupChange: (groupId: string | null) => Promise<void>;
   onDelete: () => void;
   onRestart: () => void;
 }
