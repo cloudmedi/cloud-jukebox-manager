@@ -59,12 +59,10 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
   const handleEmergencyAction = async () => {
     try {
       if (!isEmergencyActive) {
-        // Emergency Stop
         await deviceService.emergencyStop();
         setIsEmergencyActive(true);
         toast.success('Acil durum aktifleştirildi. Tüm cihazlar durduruldu.');
       } else {
-        // Emergency Reset - Resume playback
         await deviceService.emergencyReset();
         setIsEmergencyActive(false);
         toast.success('Acil durum kaldırıldı. Cihazlar normal çalışmaya devam ediyor.');
@@ -153,12 +151,12 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="bg-background border shadow-lg">
           <DropdownMenuItem onClick={handlePlayPause}>
-            {device.isPlaying ? (
-              <Pause className="mr-2 h-4 w-4" />
-            ) : (
+            {!device.isPlaying ? (
               <Play className="mr-2 h-4 w-4" />
+            ) : (
+              <Pause className="mr-2 h-4 w-4" />
             )}
-            {device.isPlaying ? 'Durdur' : 'Oynat'}
+            {!device.isPlaying ? 'Çal' : 'Duraklat'}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setIsRestartDialogOpen(true)}>
             <RefreshCcw className="mr-2 h-4 w-4" />
