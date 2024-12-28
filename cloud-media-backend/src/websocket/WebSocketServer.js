@@ -3,6 +3,7 @@ const MessageHandler = require('./handlers/MessageHandler');
 const StatusHandler = require('./handlers/StatusHandler');
 const AdminConnectionHandler = require('./handlers/AdminConnectionHandler');
 const DeviceConnectionHandler = require('./handlers/DeviceConnectionHandler');
+const Device = require('../models/Device');
 
 class WebSocketServer {
   constructor(server) {
@@ -86,6 +87,23 @@ class WebSocketServer {
           token: token,
           error: message.error
         });
+        break;
+
+      case 'downloadProgress':
+        const deviceProgress = await Device.findOne({ token });
+        if (deviceProgress) {
+          await Device.findByIdAndUpdate(deviceProgress._id, {
+            downloadProgress: message.progress,
+            playlistStatus: message.progress === 100 ? 'loaded' : 'loading'
+          });
+
+          this.broadcastToAdmins({
+            type: 'deviceStatus',
+            token: token,
+            downloadProgress: message.progress,
+            playlistStatus: message.progress === 100 ? 'loaded' : 'loading'
+          });
+        }
         break;
 
       default:

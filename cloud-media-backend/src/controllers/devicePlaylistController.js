@@ -11,7 +11,8 @@ const bulkAssignPlaylist = async (req, res) => {
       { 
         $set: { 
           activePlaylist: playlistId,
-          playlistStatus: 'loading'
+          playlistStatus: 'loading',
+          downloadProgress: 0
         } 
       }
     );
@@ -20,6 +21,9 @@ const bulkAssignPlaylist = async (req, res) => {
     const devices = await Device.find({ _id: { $in: deviceIds } });
     
     for (const device of devices) {
+      // İndirme başladığında progress 0
+      await Device.findByIdAndUpdate(device._id, { downloadProgress: 0 });
+      
       const sent = req.wss.sendToDevice(device.token, {
         type: 'command',
         command: 'loadPlaylist',
@@ -44,6 +48,32 @@ const bulkAssignPlaylist = async (req, res) => {
   }
 };
 
+const updateDeviceProgress = async (req, res) => {
+  try {
+    const { deviceId, progress } = req.body;
+    
+    await Device.findByIdAndUpdate(deviceId, {
+      downloadProgress: progress,
+      playlistStatus: progress === 100 ? 'loaded' : 'loading'
+    });
+
+    // WebSocket ile progress güncellemesini gönder
+    const device = await Device.findById(deviceId);
+    if (device) {
+      req.wss.sendToDevice(device.token, {
+        type: 'downloadProgress',
+        progress: progress
+      });
+    }
+
+    res.json({ success: true });
+  } catch (error) {
+    console.error('Progress update error:', error);
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
-  bulkAssignPlaylist
+  bulkAssignPlaylist,
+  updateDeviceProgress
 };
