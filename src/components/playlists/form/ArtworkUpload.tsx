@@ -66,6 +66,7 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
 
     if (!validateFile(file)) {
       e.target.value = '';
+      setPreviewUrl(null);
       return;
     }
 
@@ -85,9 +86,9 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
             clearInterval(interval);
             return 100;
           }
-          return prev + 10;
+          return prev + 5;
         });
-      }, 100);
+      }, 50);
 
       toast({
         title: "Başarılı",
@@ -100,6 +101,8 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
         description: "Kapak resmi yüklenirken bir hata oluştu.",
       });
       console.error('Artwork upload error:', error);
+      setPreviewUrl(null);
+      setUploadProgress(0);
     }
   };
 
@@ -125,7 +128,7 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
                           <img
                             src={previewUrl}
                             alt="Kapak resmi önizleme"
-                            className="h-full w-full object-cover"
+                            className="h-full w-full object-cover transition-transform duration-300 hover:scale-105"
                           />
                         ) : (
                           <div className="flex h-full items-center justify-center bg-muted">
@@ -163,7 +166,7 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
 
                 {uploadProgress > 0 && uploadProgress < 100 && (
                   <div className="space-y-2">
-                    <Progress value={uploadProgress} />
+                    <Progress value={uploadProgress} className="transition-all duration-300" />
                     <p className="text-sm text-muted-foreground">
                       Yükleniyor... {uploadProgress}%
                     </p>

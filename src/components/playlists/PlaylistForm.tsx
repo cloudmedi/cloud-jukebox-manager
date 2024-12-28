@@ -10,6 +10,8 @@ import { SongSelector } from "./form/SongSelector";
 import { Save } from "lucide-react";
 import { useSelectedSongsStore } from "@/store/selectedSongsStore";
 import { useEffect } from "react";
+import { useQueryClient } from "@tanstack/react-query";
+import { useNavigate } from "react-router-dom";
 
 const MAX_FILE_SIZE = 5000000;
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -51,6 +53,8 @@ export const PlaylistForm = ({
   isEditing = false,
 }: PlaylistFormProps) => {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
+  const navigate = useNavigate();
   const { selectedSongs, clearSelection } = useSelectedSongsStore();
 
   const form = useForm<PlaylistFormValues>({
@@ -93,22 +97,36 @@ export const PlaylistForm = ({
         throw new Error("İşlem başarısız oldu");
       }
 
+      const result = await response.json();
+
+      // WebSocket üzerinden playlist'i gönder
+      if (window.electron) {
+        window.electron.send('playlist-created', result);
+      }
+
       toast({
         title: `Playlist ${isEditing ? "güncellendi" : "oluşturuldu"}`,
         description: "İşlem başarıyla tamamlandı",
       });
 
+      // Cache'i güncelle
+      await queryClient.invalidateQueries({ queryKey: ["playlists"] });
+
       clearSelection();
+      form.reset();
 
       if (onSuccess) {
         onSuccess();
       }
+
+      navigate("/playlists");
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Hata",
         description: "Bir hata oluştu. Lütfen tekrar deneyin.",
       });
+      console.error('Playlist form error:', error);
     }
   };
 
