@@ -8,6 +8,7 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { DeviceGroupForm } from "./DeviceGroupForm";
 import { DeviceGroupActions } from "./DeviceGroupActions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { cn } from "@/lib/utils";
 
 interface DeviceGroup {
   _id: string;
@@ -18,6 +19,23 @@ interface DeviceGroup {
   createdBy: string;
   createdAt: string;
 }
+
+const getGroupColor = (groupId: string) => {
+  // Hash the groupId to generate a consistent color
+  const hash = groupId.split('').reduce((acc, char) => char.charCodeAt(0) + acc, 0);
+  
+  // Define color classes with lighter background colors suitable for table rows
+  const colors = [
+    "hover:bg-blue-50/50 bg-blue-50/30",
+    "hover:bg-purple-50/50 bg-purple-50/30",
+    "hover:bg-pink-50/50 bg-pink-50/30",
+    "hover:bg-yellow-50/50 bg-yellow-50/30",
+    "hover:bg-green-50/50 bg-green-50/30",
+    "hover:bg-orange-50/50 bg-orange-50/30"
+  ];
+  
+  return colors[hash % colors.length];
+};
 
 const DeviceGroups = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -77,7 +95,10 @@ const DeviceGroups = () => {
           </TableHeader>
           <TableBody>
             {groups?.map((group: DeviceGroup) => (
-              <TableRow key={group._id} className="group">
+              <TableRow key={group._id} className={cn(
+                "group transition-colors",
+                getGroupColor(group._id)
+              )}>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Monitor className="h-4 w-4 text-muted-foreground" />
