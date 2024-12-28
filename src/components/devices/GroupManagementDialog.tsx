@@ -30,24 +30,17 @@ const GroupManagementDialog = ({
     setSelectedGroupId(currentGroupId);
   }, [currentGroupId]);
 
-  const { data: groupsData } = useQuery({
+  const { data: groupsResponse } = useQuery({
     queryKey: ["device-groups"],
     queryFn: async () => {
-      try {
-        const response = await fetch("http://localhost:5000/api/device-groups");
-        if (!response.ok) throw new Error("Gruplar yüklenemedi");
-        const data = await response.json();
-        return data;
-      } catch (error) {
-        console.error("Grup yükleme hatası:", error);
-        toast.error("Gruplar yüklenirken bir hata oluştu");
-        return { groups: [] };
-      }
+      const response = await fetch("http://localhost:5000/api/device-groups");
+      if (!response.ok) throw new Error("Gruplar yüklenemedi");
+      return response.json();
     },
   });
 
-  // Ensure we have an array of groups, even if empty
-  const groups = groupsData?.groups || [];
+  // Ensure we have an array of groups
+  const groups = Array.isArray(groupsResponse?.groups) ? groupsResponse.groups : [];
 
   const handleSave = async () => {
     try {
