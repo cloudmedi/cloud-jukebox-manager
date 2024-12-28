@@ -8,6 +8,13 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { DeviceGroupForm } from "./DeviceGroupForm";
 import { DeviceGroupActions } from "./DeviceGroupActions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface DeviceGroup {
   _id: string;
@@ -46,20 +53,32 @@ const DeviceGroups = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold tracking-tight">Cihaz Grupları</h2>
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Users className="mr-2 h-4 w-4" />
-              Yeni Grup
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DeviceGroupForm onSuccess={() => {
-              setIsFormOpen(false);
-              refetch();
-            }} />
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-4">
+          <Select defaultValue="_all">
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Tüm Bölgeler" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">Tüm Bölgeler</SelectItem>
+              <SelectItem value="istanbul">İstanbul</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Users className="mr-2 h-4 w-4" />
+                Yeni Grup
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DeviceGroupForm onSuccess={() => {
+                setIsFormOpen(false);
+                refetch();
+              }} />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="rounded-md border">
