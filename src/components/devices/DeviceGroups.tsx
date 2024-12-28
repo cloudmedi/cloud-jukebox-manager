@@ -1,4 +1,4 @@
-import { useState, useRef } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
@@ -8,6 +8,8 @@ import { DeviceGroupForm } from "./DeviceGroupForm";
 import { BulkGroupActions } from "./group-actions/BulkGroupActions";
 import { DeviceGroupsTable } from "./table/DeviceGroupsTable";
 import { GroupShortcuts } from "./shortcuts/GroupShortcuts";
+import { GroupTemplateDialog } from "./group-templates/GroupTemplateDialog";
+import { useToast } from "@/components/ui/use-toast";
 import type { DeviceGroup } from "./types";
 
 const DeviceGroups = () => {
@@ -15,6 +17,7 @@ const DeviceGroups = () => {
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const searchInputRef = useRef<HTMLInputElement>(null);
+  const { toast } = useToast();
 
   const { data: groups = [], isLoading, refetch } = useQuery({
     queryKey: ["device-groups"],
@@ -43,9 +46,16 @@ const DeviceGroups = () => {
         })
       );
       refetch();
+      toast({
+        title: "Başarılı",
+        description: "Seçili gruplar silindi",
+      });
     } catch (error) {
-      console.error('Bulk delete error:', error);
-      throw error;
+      toast({
+        title: "Hata",
+        description: "Gruplar silinirken bir hata oluştu",
+        variant: "destructive"
+      });
     }
   };
 
@@ -68,6 +78,32 @@ const DeviceGroups = () => {
   const handleNewGroup = () => setIsFormOpen(true);
   const handleSearch = () => searchInputRef.current?.focus();
 
+  // Klavye kısayolları
+  const handleKeyPress = (e: KeyboardEvent) => {
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
+      switch (e.key.toLowerCase()) {
+        case 'n':
+          e.preventDefault();
+          handleNewGroup();
+          break;
+        case 'r':
+          e.preventDefault();
+          refetch();
+          break;
+        case 'f':
+          e.preventDefault();
+          handleSearch();
+          break;
+      }
+    }
+  };
+
+  // Klavye kısayollarını dinle
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, []);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[200px]">
@@ -86,19 +122,20 @@ const DeviceGroups = () => {
 
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold tracking-tight">Cihaz Grupları</h2>
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              Yeni Grup
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DeviceGroupForm onSuccess={() => {
-              setIsFormOpen(false);
-              refetch();
-            }} />
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-2">
+          <GroupTemplateDialog />
+          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+            <DialogTrigger asChild>
+              <Button>Yeni Grup</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DeviceGroupForm onSuccess={() => {
+                setIsFormOpen(false);
+                refetch();
+              }} />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="flex items-center gap-4">

@@ -1,110 +1,125 @@
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
-import { MoreVertical, Pencil, Trash2 } from "lucide-react";
-import { Dialog, DialogContent } from "@/components/ui/dialog";
-import { useState } from "react";
-import { DeviceGroupForm } from "./DeviceGroupForm";
-import { toast } from "sonner";
-
-interface DeviceGroup {
-  _id: string;
-  name: string;
-  description: string;
-  devices: string[];
-  status: 'active' | 'inactive';
-  createdBy: string;
-}
+import { MoreHorizontal, Copy, Save, Trash } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
+import { GroupHistoryDialog } from "./group-history/GroupHistoryDialog";
+import { GroupStatsDialog } from "./group-stats/GroupStatsDialog";
 
 interface DeviceGroupActionsProps {
-  group: DeviceGroup;
+  group: any;
   onSuccess: () => void;
 }
 
 export const DeviceGroupActions = ({ group, onSuccess }: DeviceGroupActionsProps) => {
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const { toast } = useToast();
 
   const handleDelete = async () => {
     try {
       const response = await fetch(`http://localhost:5000/api/device-groups/${group._id}`, {
-        method: 'DELETE'
+        method: "DELETE",
       });
 
-      if (!response.ok) {
-        throw new Error('Grup silinirken bir hata oluştu');
-      }
+      if (!response.ok) throw new Error("Grup silinemedi");
 
-      toast.success('Grup başarıyla silindi');
+      toast({
+        title: "Başarılı",
+        description: "Grup silindi",
+      });
+
       onSuccess();
-      setIsDeleteDialogOpen(false);
     } catch (error) {
-      toast.error('Grup silinirken bir hata oluştu');
+      toast({
+        title: "Hata",
+        description: "Grup silinirken bir hata oluştu",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleClone = async () => {
+    try {
+      const response = await fetch(`http://localhost:5000/api/device-groups/${group._id}/clone`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: `${group.name} Kopyası`,
+          createdBy: "admin" // TODO: Gerçek kullanıcı bilgisi eklenecek
+        })
+      });
+
+      if (!response.ok) throw new Error("Grup kopyalanamadı");
+
+      toast({
+        title: "Başarılı",
+        description: "Grup kopyalandı",
+      });
+
+      onSuccess();
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description: "Grup kopyalanırken bir hata oluştu",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleSaveAsTemplate = async () => {
+    try {
+      const response = await fetch("http://localhost:5000/api/device-groups/templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          name: group.name,
+          description: group.description,
+          devices: group.devices,
+          createdBy: "admin" // TODO: Gerçek kullanıcı bilgisi eklenecek
+        })
+      });
+
+      if (!response.ok) throw new Error("Şablon oluşturulamadı");
+
+      toast({
+        title: "Başarılı",
+        description: "Grup şablon olarak kaydedildi",
+      });
+
+      onSuccess();
+    } catch (error) {
+      toast({
+        title: "Hata",
+        description: "Şablon oluşturulurken bir hata oluştu",
+        variant: "destructive",
+      });
     }
   };
 
   return (
-    <>
+    <div className="flex items-center gap-2">
+      <GroupHistoryDialog groupId={group._id} />
+      <GroupStatsDialog groupId={group._id} />
+      
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon">
-            <MoreVertical className="h-4 w-4" />
+            <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end">
-          <DropdownMenuItem onClick={() => setIsEditDialogOpen(true)}>
-            <Pencil className="mr-2 h-4 w-4" />
-            Düzenle
+          <DropdownMenuItem onClick={handleClone}>
+            <Copy className="h-4 w-4 mr-2" />
+            Kopyala
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-red-600">
-            <Trash2 className="mr-2 h-4 w-4" />
+          <DropdownMenuItem onClick={handleSaveAsTemplate}>
+            <Save className="h-4 w-4 mr-2" />
+            Şablon Olarak Kaydet
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={handleDelete} className="text-red-600">
+            <Trash className="h-4 w-4 mr-2" />
             Sil
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Grubu silmek istediğinizden emin misiniz?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Bu işlem geri alınamaz. Grup kalıcı olarak silinecektir.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>İptal</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
-              Sil
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
-        <DialogContent>
-          <DeviceGroupForm 
-            group={group} 
-            onSuccess={() => {
-              setIsEditDialogOpen(false);
-              onSuccess();
-            }} 
-          />
-        </DialogContent>
-      </Dialog>
-    </>
+    </div>
   );
 };
