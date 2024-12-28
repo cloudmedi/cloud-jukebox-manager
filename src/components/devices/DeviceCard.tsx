@@ -4,7 +4,7 @@ import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
-import { Volume2, Play, Loader2, AlertCircle, MapPin, CheckCircle2, XCircle, Pause } from "lucide-react";
+import { Volume2, Play, Loader2, AlertCircle, MapPin, CheckCircle2, XCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import DeviceActions from "./DeviceActions";
 import { cn } from "@/lib/utils";
@@ -52,6 +52,7 @@ export const DeviceCard = ({ device, isSelected, onSelect }: DeviceCardProps) =>
   const getGroupColor = (groupId?: string) => {
     if (!groupId) return "bg-gray-100";
     
+    // Hash the groupId to generate a consistent color
     const hash = groupId.split('').reduce((acc, char) => char.charCodeAt(0) + acc, 0);
     const colors = [
       "bg-blue-100", "bg-green-100", "bg-purple-100", 
@@ -74,25 +75,17 @@ export const DeviceCard = ({ device, isSelected, onSelect }: DeviceCardProps) =>
               <p className="text-sm text-muted-foreground font-mono">{device.token}</p>
             </div>
           </div>
-          <div className="flex items-center gap-2">
-            {device.isOnline ? (
-              <Badge className="bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25">
-                <CheckCircle2 className="h-3 w-3 mr-1" />
-                Çevrimiçi
-              </Badge>
-            ) : (
-              <Badge variant="destructive" className="bg-red-500/15 text-red-500 hover:bg-red-500/25">
-                <XCircle className="h-3 w-3 mr-1" />
-                Çevrimdışı
-              </Badge>
-            )}
-            {device.isOnline && device.status === 'stopped' && (
-              <Badge variant="secondary" className="bg-yellow-500/15 text-yellow-500 hover:bg-yellow-500/25">
-                <Pause className="h-3 w-3 mr-1" />
-                Durduruldu
-              </Badge>
-            )}
-          </div>
+          {device.isOnline ? (
+            <Badge className="bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25">
+              <CheckCircle2 className="h-3 w-3 mr-1" />
+              Çevrimiçi
+            </Badge>
+          ) : (
+            <Badge variant="destructive" className="bg-red-500/15 text-red-500 hover:bg-red-500/25">
+              <XCircle className="h-3 w-3 mr-1" />
+              Çevrimdışı
+            </Badge>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
