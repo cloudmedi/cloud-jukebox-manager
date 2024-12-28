@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Table, TableBody } from "@/components/ui/table";
 import { DeviceTableHeader } from "./DeviceTableHeader";
 import { DeviceTableRow } from "./DeviceTableRow";
@@ -8,8 +8,15 @@ import { DeviceCard } from "./DeviceCard";
 import websocketService from "@/services/websocketService";
 import { Device } from "@/services/deviceService";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { 
+  showDeviceOfflineNotification, 
+  showVolumeWarning, 
+  showPlaylistError,
+  VOLUME_THRESHOLD 
+} from "@/utils/notificationUtils";
 
 export const DeviceList = () => {
+  const queryClient = useQueryClient();
   const [selectedDevices, setSelectedDevices] = useState<string[]>([]);
   const isMobile = useIsMobile();
   
@@ -25,16 +32,43 @@ export const DeviceList = () => {
   });
 
   useEffect(() => {
-    // Add WebSocket message handlers
-    websocketService.addMessageHandler('deviceStatus', () => {
-      // The device status handler in DeviceStatusHandler.ts will update the cache
-      // No need to do anything here
-    });
+    const handleDeviceStatus = (data: any) => {
+      const currentDevices = queryClient.getQueryData<Device[]>(['devices']);
+      
+      if (!currentDevices) return;
+
+      const updatedDevices = currentDevices.map(device => {
+        if (device.token === data.token) {
+          if (device.isOnline && !data.isOnline) {
+            showDeviceOfflineNotification(device.name);
+          }
+
+          if (data.volume && data.volume >= VOLUME_THRESHOLD) {
+            showVolumeWarning(device.name, data.volume);
+          }
+
+          if (data.playlistStatus === 'error') {
+            showPlaylistError(device.name, 'Playlist yüklenemedi');
+          }
+          
+          return { 
+            ...device, 
+            ...data,
+            playlistStatus: data.playlistStatus || device.playlistStatus
+          };
+        }
+        return device;
+      });
+
+      queryClient.setQueryData(['devices'], updatedDevices);
+    };
+
+    websocketService.addMessageHandler('deviceStatus', handleDeviceStatus);
 
     return () => {
-      websocketService.removeMessageHandler('deviceStatus', () => {});
+      websocketService.removeMessageHandler('deviceStatus', handleDeviceStatus);
     };
-  }, []);
+  }, [queryClient]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
