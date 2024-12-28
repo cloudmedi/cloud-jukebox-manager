@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Search } from "lucide-react";
+import { Search, LayoutGrid, LayoutList } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { DeviceGroupForm } from "./DeviceGroupForm";
@@ -10,12 +10,14 @@ import { DeviceGroupsTable } from "./table/DeviceGroupsTable";
 import { GroupShortcuts } from "./shortcuts/GroupShortcuts";
 import { GroupTemplateDialog } from "./group-templates/GroupTemplateDialog";
 import { useToast } from "@/components/ui/use-toast";
+import { DeviceGroupGrid } from "./grid/DeviceGroupGrid";
 import type { DeviceGroup } from "./types";
 
 const DeviceGroups = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const [viewMode, setViewMode] = useState<"grid" | "list">("list");
   const searchInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
@@ -94,11 +96,14 @@ const DeviceGroups = () => {
           e.preventDefault();
           handleSearch();
           break;
+        case 'v':
+          e.preventDefault();
+          setViewMode(prev => prev === "list" ? "grid" : "list");
+          break;
       }
     }
   };
 
-  // Klavye kısayollarını dinle
   useEffect(() => {
     window.addEventListener('keydown', handleKeyPress);
     return () => window.removeEventListener('keydown', handleKeyPress);
@@ -123,6 +128,24 @@ const DeviceGroups = () => {
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold tracking-tight">Cihaz Grupları</h2>
         <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 border rounded-lg p-1">
+            <Button
+              variant={viewMode === "list" ? "secondary" : "ghost"}
+              size="icon"
+              onClick={() => setViewMode("list")}
+              className="h-8 w-8"
+            >
+              <LayoutList className="h-4 w-4" />
+            </Button>
+            <Button
+              variant={viewMode === "grid" ? "secondary" : "ghost"}
+              size="icon"
+              onClick={() => setViewMode("grid")}
+              className="h-8 w-8"
+            >
+              <LayoutGrid className="h-4 w-4" />
+            </Button>
+          </div>
           <GroupTemplateDialog />
           <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
             <DialogTrigger asChild>
@@ -159,13 +182,22 @@ const DeviceGroups = () => {
         />
       )}
 
-      <DeviceGroupsTable
-        groups={filteredGroups}
-        selectedGroups={selectedGroups}
-        onSelectAll={handleSelectAll}
-        onSelectGroup={handleSelectGroup}
-        onRefresh={refetch}
-      />
+      {viewMode === "list" ? (
+        <DeviceGroupsTable
+          groups={filteredGroups}
+          selectedGroups={selectedGroups}
+          onSelectAll={handleSelectAll}
+          onSelectGroup={handleSelectGroup}
+          onRefresh={refetch}
+        />
+      ) : (
+        <DeviceGroupGrid
+          groups={filteredGroups}
+          selectedGroups={selectedGroups}
+          onSelectGroup={handleSelectGroup}
+          onRefresh={refetch}
+        />
+      )}
     </div>
   );
 };
