@@ -11,6 +11,7 @@ import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SendPlaylistDialog } from "./SendPlaylistDialog";
 import { useState } from "react";
+import { formatDuration } from "@/lib/utils";
 
 interface PlaylistCardProps {
   playlist: {
@@ -105,9 +106,7 @@ export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: Playli
               <span>{playlist.songs?.length || 0} şarkı</span>
             </div>
             <span>
-              {playlist.totalDuration
-                ? `${Math.floor(playlist.totalDuration / 60)} dk`
-                : "0 dk"}
+              {formatDuration(playlist.totalDuration || 0)}
             </span>
           </div>
         </CardContent>

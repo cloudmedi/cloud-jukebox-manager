@@ -6,7 +6,14 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const formatDuration = (duration: number) => {
-  const minutes = Math.floor(duration / 60);
-  const seconds = duration % 60;
-  return `${minutes}:${seconds.toString().padStart(2, "0")}`;
+  if (!duration) return '0 dk';
+  
+  const hours = Math.floor(duration / 3600);
+  const minutes = Math.floor((duration % 3600) / 60);
+  
+  if (hours > 0) {
+    return `${hours} sa${minutes > 0 ? ` ${minutes} dk` : ''}`; 
+  }
+  
+  return `${minutes} dk`;
 };
