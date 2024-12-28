@@ -6,23 +6,16 @@ import ScheduleStats from "@/components/reports/ScheduleStats";
 import PerformanceStats from "@/components/reports/PerformanceStats";
 import DevicePlaybackReport from "@/components/reports/DevicePlaybackReport";
 import ErrorLogs from "@/components/reports/ErrorLogs";
-import { GroupStatistics } from "@/components/reports/group-stats/GroupStatistics";
-import { ExportOptions } from "@/components/reports/group-stats/ExportOptions";
 
 const Reports = () => {
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h2 className="text-3xl font-bold tracking-tight">Raporlama</h2>
-        <ExportOptions />
       </div>
 
-      <Tabs defaultValue="groups" className="space-y-4">
+      <Tabs defaultValue="playback" className="space-y-4">
         <TabsList>
-          <TabsTrigger value="groups" className="flex items-center gap-2">
-            <Smartphone className="h-4 w-4" />
-            Grup İstatistikleri
-          </TabsTrigger>
           <TabsTrigger value="playback" className="flex items-center gap-2">
             <PlayCircle className="h-4 w-4" />
             Oynatma İstatistikleri
@@ -48,10 +41,6 @@ const Reports = () => {
             Hata Logları
           </TabsTrigger>
         </TabsList>
-
-        <TabsContent value="groups">
-          <GroupStatistics />
-        </TabsContent>
 
         <TabsContent value="playback">
           <PlaybackStats />

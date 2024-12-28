@@ -21,10 +21,12 @@ import {
   Save,
   Trash2,
   MoreVertical,
-  Info,
+  History,
+  BarChart2
 } from "lucide-react";
 import { useState } from "react";
-import { GroupDetailsDialog } from "./group-details/GroupDetailsDialog";
+import { GroupHistoryDialog } from "./group-history/GroupHistoryDialog";
+import { GroupStatsDialog } from "./group-stats/GroupStatsDialog";
 import { toast } from "sonner";
 import type { DeviceGroup } from "./types";
 
@@ -35,7 +37,8 @@ interface DeviceGroupActionsProps {
 
 export const DeviceGroupActions = ({ group, onSuccess }: DeviceGroupActionsProps) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
+  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
+  const [isStatsDialogOpen, setIsStatsDialogOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const handleDelete = async () => {
@@ -108,10 +111,6 @@ export const DeviceGroupActions = ({ group, onSuccess }: DeviceGroupActionsProps
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="bg-background border shadow-lg">
-          <DropdownMenuItem onClick={() => setIsDetailsDialogOpen(true)}>
-            <Info className="mr-2 h-4 w-4" />
-            Detaylar
-          </DropdownMenuItem>
           <DropdownMenuItem onClick={handleClone}>
             <Copy className="mr-2 h-4 w-4" />
             Kopyala
@@ -119,6 +118,14 @@ export const DeviceGroupActions = ({ group, onSuccess }: DeviceGroupActionsProps
           <DropdownMenuItem onClick={handleSaveAsTemplate}>
             <Save className="mr-2 h-4 w-4" />
             Şablon Olarak Kaydet
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setIsHistoryDialogOpen(true)}>
+            <History className="mr-2 h-4 w-4" />
+            Geçmiş
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setIsStatsDialogOpen(true)}>
+            <BarChart2 className="mr-2 h-4 w-4" />
+            İstatistikler
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive">
             <Trash2 className="mr-2 h-4 w-4" />
@@ -144,10 +151,16 @@ export const DeviceGroupActions = ({ group, onSuccess }: DeviceGroupActionsProps
         </AlertDialogContent>
       </AlertDialog>
 
-      <GroupDetailsDialog
-        group={group}
-        isOpen={isDetailsDialogOpen}
-        onClose={() => setIsDetailsDialogOpen(false)}
+      <GroupHistoryDialog
+        groupId={group._id}
+        open={isHistoryDialogOpen}
+        onOpenChange={setIsHistoryDialogOpen}
+      />
+
+      <GroupStatsDialog
+        groupId={group._id}
+        open={isStatsDialogOpen}
+        onOpenChange={setIsStatsDialogOpen}
       />
     </>
   );

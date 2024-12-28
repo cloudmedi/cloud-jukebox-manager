@@ -1,102 +1,83 @@
-import { useState } from "react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
-import { toast } from "sonner";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Card, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Save } from "lucide-react";
+import { useToast } from "@/components/ui/use-toast";
 
 export const GroupTemplateDialog = () => {
-  const [open, setOpen] = useState(false);
-  const [rule, setRule] = useState("location");
-  const [prefix, setPrefix] = useState("");
-
-  const { data: devices = [] } = useQuery({
-    queryKey: ["devices"],
+  const { toast } = useToast();
+  
+  const { data: templates = [], isLoading } = useQuery({
+    queryKey: ["group-templates"],
     queryFn: async () => {
-      const response = await fetch("http://localhost:5000/api/devices");
-      if (!response.ok) throw new Error("Cihazlar yüklenemedi");
-      return response.json();
-    },
+      const response = await fetch("http://localhost:5000/api/device-groups?template=true");
+      if (!response.ok) throw new Error("Şablonlar yüklenemedi");
+      const data = await response.json();
+      return data.groups;
+    }
   });
 
-  const handleCreateGroups = async () => {
+  const handleUseTemplate = async (templateId: string) => {
     try {
-      const response = await fetch("http://localhost:5000/api/device-groups/auto-create", {
+      const response = await fetch(`http://localhost:5000/api/device-groups/${templateId}/clone`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ rule, prefix }),
+        body: JSON.stringify({
+          name: `${templates.find(t => t._id === templateId)?.name} Kopyası`,
+          createdBy: "admin" // TODO: Gerçek kullanıcı bilgisi eklenecek
+        })
       });
 
-      if (!response.ok) throw new Error("Gruplar oluşturulamadı");
+      if (!response.ok) throw new Error("Şablon kullanılamadı");
 
-      toast.success("Gruplar başarıyla oluşturuldu");
-      setOpen(false);
+      toast({
+        title: "Başarılı",
+        description: "Grup şablondan oluşturuldu",
+      });
     } catch (error) {
-      toast.error("Gruplar oluşturulurken bir hata oluştu");
+      toast({
+        title: "Hata",
+        description: "Şablon kullanılırken bir hata oluştu",
+        variant: "destructive"
+      });
     }
   };
 
   return (
-    <Dialog open={open} onOpenChange={setOpen}>
-      <Button variant="outline" onClick={() => setOpen(true)}>
-        Otomatik Grup Oluştur
-      </Button>
-      <DialogContent>
+    <Dialog>
+      <DialogTrigger asChild>
+        <Button variant="outline">Şablonlar</Button>
+      </DialogTrigger>
+      <DialogContent className="max-w-2xl">
         <DialogHeader>
-          <DialogTitle>Otomatik Grup Oluşturma</DialogTitle>
-          <DialogDescription>
-            Seçtiğiniz kurala göre cihazlar için otomatik gruplar oluşturulacak
-          </DialogDescription>
+          <DialogTitle>Grup Şablonları</DialogTitle>
         </DialogHeader>
-
-        <div className="space-y-4">
-          <div>
-            <Label>Gruplama Kuralı</Label>
-            <Select value={rule} onValueChange={setRule}>
-              <SelectTrigger>
-                <SelectValue placeholder="Kural seçin" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="location">Lokasyona Göre</SelectItem>
-                <SelectItem value="status">Duruma Göre</SelectItem>
-                <SelectItem value="custom">Özel Kural</SelectItem>
-              </SelectContent>
-            </Select>
+        <ScrollArea className="h-[400px] pr-4">
+          <div className="grid gap-4">
+            {isLoading ? (
+              <div>Yükleniyor...</div>
+            ) : templates.length === 0 ? (
+              <div>Henüz şablon bulunmuyor</div>
+            ) : (
+              templates.map((template: any) => (
+                <Card key={template._id}>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <div>
+                      <CardTitle>{template.name}</CardTitle>
+                      <CardDescription>{template.description}</CardDescription>
+                    </div>
+                    <Button onClick={() => handleUseTemplate(template._id)} size="sm">
+                      <Save className="h-4 w-4 mr-2" />
+                      Kullan
+                    </Button>
+                  </CardHeader>
+                </Card>
+              ))
+            )}
           </div>
-
-          <div>
-            <Label>Grup İsim Öneki</Label>
-            <Input
-              placeholder="Örn: Mağaza-"
-              value={prefix}
-              onChange={(e) => setPrefix(e.target.value)}
-            />
-          </div>
-        </div>
-
-        <DialogFooter>
-          <Button variant="outline" onClick={() => setOpen(false)}>
-            İptal
-          </Button>
-          <Button onClick={handleCreateGroups}>
-            Grupları Oluştur
-          </Button>
-        </DialogFooter>
+        </ScrollArea>
       </DialogContent>
     </Dialog>
   );
