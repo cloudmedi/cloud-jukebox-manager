@@ -1,104 +1,68 @@
-import { useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
+import { MoreHorizontal, Tags, FolderPlus, Star, StarOff, Trash } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import {
-  Copy,
-  Save,
-  Trash2,
-  MoreVertical,
-  History,
-  BarChart2
-} from "lucide-react";
-import { useState } from "react";
-import { GroupHistoryDialog } from "./group-history/GroupHistoryDialog";
-import { GroupStatsDialog } from "./group-stats/GroupStatsDialog";
 import { toast } from "sonner";
-import type { DeviceGroup } from "./types";
+import { GroupTagsDialog } from "./group-tags/GroupTagsDialog";
+import { SubgroupDialog } from "./group-hierarchy/SubgroupDialog";
 
 interface DeviceGroupActionsProps {
-  group: DeviceGroup;
+  group: any;
   onSuccess: () => void;
 }
 
 export const DeviceGroupActions = ({ group, onSuccess }: DeviceGroupActionsProps) => {
-  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
-  const [isStatsDialogOpen, setIsStatsDialogOpen] = useState(false);
-  const queryClient = useQueryClient();
+  const [showTagsDialog, setShowTagsDialog] = useState(false);
+  const [showSubgroupDialog, setShowSubgroupDialog] = useState(false);
 
   const handleDelete = async () => {
+    if (!confirm("Bu grubu silmek istediğinizden emin misiniz?")) return;
+
     try {
-      const response = await fetch(`http://localhost:5000/api/device-groups/${group._id}`, {
-        method: "DELETE",
-      });
+      const response = await fetch(
+        `http://localhost:5000/api/device-groups/${group._id}`,
+        {
+          method: "DELETE",
+        }
+      );
 
       if (!response.ok) throw new Error("Grup silinemedi");
 
-      queryClient.invalidateQueries({ queryKey: ["device-groups"] });
       toast.success("Grup silindi");
-      setIsDeleteDialogOpen(false);
+      onSuccess();
     } catch (error) {
-      console.error("Delete error:", error);
-      toast.error("Grup silinemedi");
+      toast.error("Bir hata oluştu");
     }
   };
 
-  const handleClone = async () => {
+  const toggleFavorite = async () => {
     try {
-      const response = await fetch(`http://localhost:5000/api/device-groups/${group._id}/clone`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: `${group.name} (Kopya)`,
-          createdBy: "admin" // TODO: Gerçek kullanıcı bilgisi eklenecek
-        })
-      });
+      const response = await fetch(
+        `http://localhost:5000/api/device-groups/${group._id}/favorite`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ isFavorite: !group.isFavorite }),
+        }
+      );
 
-      if (!response.ok) throw new Error("Grup kopyalanamadı");
+      if (!response.ok) throw new Error("İşlem başarısız");
 
-      queryClient.invalidateQueries({ queryKey: ["device-groups"] });
-      toast.success("Grup kopyalandı");
+      toast.success(
+        group.isFavorite
+          ? "Favorilerden kaldırıldı"
+          : "Favorilere eklendi"
+      );
+      onSuccess();
     } catch (error) {
-      console.error("Clone error:", error);
-      toast.error("Grup kopyalanamadı");
-    }
-  };
-
-  const handleSaveAsTemplate = async () => {
-    try {
-      const response = await fetch("http://localhost:5000/api/device-groups/templates", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          name: group.name,
-          description: group.description,
-          devices: group.devices,
-          createdBy: "admin" // TODO: Gerçek kullanıcı bilgisi eklenecek
-        })
-      });
-
-      if (!response.ok) throw new Error("Şablon oluşturulamadı");
-
-      queryClient.invalidateQueries({ queryKey: ["device-groups"] });
-      toast.success("Grup şablon olarak kaydedildi");
-    } catch (error) {
-      console.error("Template error:", error);
-      toast.error("Şablon oluşturulamadı");
+      toast.error("Bir hata oluştu");
     }
   };
 
@@ -106,61 +70,51 @@ export const DeviceGroupActions = ({ group, onSuccess }: DeviceGroupActionsProps
     <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
-          <Button variant="ghost" size="icon">
-            <MoreVertical className="h-4 w-4" />
+          <Button variant="ghost" className="h-8 w-8 p-0">
+            <MoreHorizontal className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end" className="bg-background border shadow-lg">
-          <DropdownMenuItem onClick={handleClone}>
-            <Copy className="mr-2 h-4 w-4" />
-            Kopyala
+        <DropdownMenuContent align="end">
+          <DropdownMenuItem onClick={() => setShowTagsDialog(true)}>
+            <Tags className="h-4 w-4 mr-2" />
+            Etiketler
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleSaveAsTemplate}>
-            <Save className="mr-2 h-4 w-4" />
-            Şablon Olarak Kaydet
+          <DropdownMenuItem onClick={() => setShowSubgroupDialog(true)}>
+            <FolderPlus className="h-4 w-4 mr-2" />
+            Alt Grup Ekle
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setIsHistoryDialogOpen(true)}>
-            <History className="mr-2 h-4 w-4" />
-            Geçmiş
+          <DropdownMenuItem onClick={toggleFavorite}>
+            {group.isFavorite ? (
+              <>
+                <StarOff className="h-4 w-4 mr-2" />
+                Favorilerden Kaldır
+              </>
+            ) : (
+              <>
+                <Star className="h-4 w-4 mr-2" />
+                Favorilere Ekle
+              </>
+            )}
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setIsStatsDialogOpen(true)}>
-            <BarChart2 className="mr-2 h-4 w-4" />
-            İstatistikler
-          </DropdownMenuItem>
-          <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive">
-            <Trash2 className="mr-2 h-4 w-4" />
+          <DropdownMenuItem onClick={handleDelete} className="text-red-600">
+            <Trash className="h-4 w-4 mr-2" />
             Sil
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Grubu silmek istediğinizden emin misiniz?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Bu işlem geri alınamaz. Grup kalıcı olarak silinecektir.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>İptal</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
-              Sil
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <GroupHistoryDialog
-        groupId={group._id}
-        open={isHistoryDialogOpen}
-        onOpenChange={setIsHistoryDialogOpen}
+      <GroupTagsDialog
+        group={group}
+        isOpen={showTagsDialog}
+        onClose={() => setShowTagsDialog(false)}
+        onSuccess={onSuccess}
       />
 
-      <GroupStatsDialog
-        groupId={group._id}
-        open={isStatsDialogOpen}
-        onOpenChange={setIsStatsDialogOpen}
+      <SubgroupDialog
+        parentGroup={group}
+        isOpen={showSubgroupDialog}
+        onClose={() => setShowSubgroupDialog(false)}
+        onSuccess={onSuccess}
       />
     </>
   );

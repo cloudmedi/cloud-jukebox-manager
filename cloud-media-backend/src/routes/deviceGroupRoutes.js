@@ -13,11 +13,37 @@ router.use('/', templateRoutes);
 // Tüm grupları getir
 router.get('/', async (req, res) => {
   try {
-    const { template, page = 1, limit = 10 } = req.query;
-    const query = template ? { isTemplate: true } : { isTemplate: false };
+    const { 
+      template, 
+      page = 1, 
+      limit = 10, 
+      parentGroup = null,
+      tag,
+      favorites,
+      search 
+    } = req.query;
+    
+    let query = template ? { isTemplate: true } : { isTemplate: false };
+    
+    if (parentGroup) {
+      query.parentGroup = parentGroup;
+    }
+    
+    if (tag) {
+      query.tags = tag;
+    }
+    
+    if (favorites === 'true') {
+      query.isFavorite = true;
+    }
+    
+    if (search) {
+      query.name = { $regex: search, $options: 'i' };
+    }
     
     const groups = await DeviceGroup.find(query)
       .populate('devices', 'name token location isOnline')
+      .populate('parentGroup', 'name')
       .skip((page - 1) * limit)
       .limit(Number(limit));
       
@@ -31,6 +57,65 @@ router.get('/', async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
+  }
+});
+
+// Alt grupları getir
+router.get('/:id/subgroups', async (req, res) => {
+  try {
+    const groups = await DeviceGroup.find({ parentGroup: req.params.id })
+      .populate('devices', 'name token location isOnline');
+    res.json(groups);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Üst grupları getir
+router.get('/:id/ancestors', async (req, res) => {
+  try {
+    const group = await DeviceGroup.findById(req.params.id);
+    if (!group) {
+      return res.status(404).json({ message: 'Grup bulunamadı' });
+    }
+    const ancestors = await group.getAncestors();
+    res.json(ancestors);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Etiketleri güncelle
+router.patch('/:id/tags', async (req, res) => {
+  try {
+    const group = await DeviceGroup.findById(req.params.id);
+    if (!group) {
+      return res.status(404).json({ message: 'Grup bulunamadı' });
+    }
+    
+    group.tags = req.body.tags;
+    await group.save();
+    
+    res.json(group);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Favorilere ekle/çıkar
+router.patch('/:id/favorite', async (req, res) => {
+  try {
+    const group = await DeviceGroup.findById(req.params.id);
+    if (!group) {
+      return res.status(404).json({ message: 'Grup bulunamadı' });
+    }
+    
+    group.isFavorite = req.body.isFavorite;
+    await group.save();
+    
+    res.json(group);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
   }
 });
 
