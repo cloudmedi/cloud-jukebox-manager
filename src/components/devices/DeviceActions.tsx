@@ -153,15 +153,15 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="bg-background border shadow-lg">
           <DropdownMenuItem onClick={handlePlayPause}>
-            {device.isPlaying ? (
+            {!device.isPlaying ? (
               <>
-                <Pause className="mr-2 h-4 w-4" />
-                Duraklat
+                <Play className="mr-2 h-4 w-4" />
+                Çal
               </>
             ) : (
               <>
-                <Play className="mr-2 h-4 w-4" />
-                Oynat
+                <Pause className="mr-2 h-4 w-4" />
+                Duraklat
               </>
             )}
           </DropdownMenuItem>
