@@ -51,12 +51,12 @@ export const DeviceActionMenu = ({
       </DropdownMenuTrigger>
       <DropdownMenuContent align="end" className="bg-background border shadow-lg">
         <DropdownMenuItem onClick={onPlayPause}>
-          {device.isPlaying ? (
+          {!device.isPlaying ? (
             <Pause className="mr-2 h-4 w-4" />
           ) : (
             <Play className="mr-2 h-4 w-4" />
           )}
-          {device.isPlaying ? 'Duraklat' : 'Çal'}
+          {!device.isPlaying ? 'Duraklat' : 'Çal'}
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onRestartClick}>
           <RefreshCcw className="mr-2 h-4 w-4" />
