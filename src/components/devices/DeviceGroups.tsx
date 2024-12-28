@@ -29,6 +29,7 @@ import {
 import { SortableTableRow } from "./group-table/SortableTableRow";
 import { BulkActions } from "./group-table/BulkActions";
 import { DeviceGroup } from "./types";
+import { toast } from "sonner";
 
 const DeviceGroups = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -55,7 +56,7 @@ const DeviceGroups = () => {
 
   const filteredGroups = groups.filter((group: DeviceGroup) =>
     group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    group.description.toLowerCase().includes(searchQuery.toLowerCase())
+    group.description?.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleDragEnd = (event: any) => {
@@ -65,7 +66,6 @@ const DeviceGroups = () => {
       const oldIndex = groups.findIndex((group: DeviceGroup) => group._id === active.id);
       const newIndex = groups.findIndex((group: DeviceGroup) => group._id === over.id);
       
-      // Backend'e sıralama güncellemesi gönderilecek endpoint eklendiğinde burası güncellenecek
       console.log(`Moved group from index ${oldIndex} to ${newIndex}`);
     }
   };
