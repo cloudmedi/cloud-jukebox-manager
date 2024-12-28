@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
@@ -7,7 +7,6 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { DeviceGroupForm } from "./DeviceGroupForm";
 import { BulkGroupActions } from "./group-actions/BulkGroupActions";
 import { DeviceGroupsTable } from "./table/DeviceGroupsTable";
-import { GroupTemplateDialog } from "./group-templates/GroupTemplateDialog";
 import { useToast } from "@/components/ui/use-toast";
 import type { DeviceGroup } from "./types";
 
@@ -30,8 +29,7 @@ const DeviceGroups = () => {
   });
 
   const filteredGroups = groups.filter((group: DeviceGroup) => 
-    group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    group.description?.toLowerCase().includes(searchQuery.toLowerCase())
+    group.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const handleBulkDelete = async (groupIds: string[]) => {
@@ -87,7 +85,6 @@ const DeviceGroups = () => {
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold tracking-tight">Cihaz Grupları</h2>
         <div className="flex items-center gap-2">
-          <GroupTemplateDialog />
           <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
             <DialogTrigger asChild>
               <Button>Yeni Grup</Button>
