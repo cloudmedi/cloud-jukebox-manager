@@ -1,6 +1,6 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent } from "@/components/ui/card";
-import { ChartBarBig, TrendingUp, TrendingDown, Music } from "lucide-react";
+import { Music2, Headphones, Music4, Music3 } from "lucide-react";
 
 export const DeviceStats = () => {
   const { data: stats } = useQuery({
@@ -19,33 +19,33 @@ export const DeviceStats = () => {
       title: "Toplam Cihaz",
       value: stats?.total || 0,
       change: "+2%",
-      trend: "up",
-      icon: ChartBarBig,
-      color: "blue"
+      icon: Music2,
+      color: "text-purple-500",
+      bgColor: "bg-purple-100"
     },
     {
       title: "Çevrimiçi",
       value: stats?.online || 0,
       change: "+5%",
-      trend: "up",
-      icon: TrendingUp,
-      color: "green"
+      icon: Headphones,
+      color: "text-emerald-500",
+      bgColor: "bg-emerald-100"
     },
     {
       title: "Çevrimdışı",
       value: stats?.offline || 0,
       change: "-3%",
-      trend: "down",
-      icon: TrendingDown,
-      color: "red"
+      icon: Music4,
+      color: "text-red-500",
+      bgColor: "bg-red-100"
     },
     {
       title: "Aktif Playlist",
       value: stats?.withPlaylist || 0,
       change: "+8%",
-      trend: "up",
-      icon: Music,
-      color: "purple"
+      icon: Music3,
+      color: "text-blue-500",
+      bgColor: "bg-blue-100"
     }
   ];
 
@@ -54,7 +54,7 @@ export const DeviceStats = () => {
       {stats_data.map((stat, index) => (
         <Card 
           key={index} 
-          className="relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1"
+          className="relative overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-none bg-gradient-to-br from-white to-gray-50"
         >
           <CardContent className="p-6">
             <div className="flex justify-between items-start">
@@ -67,18 +67,18 @@ export const DeviceStats = () => {
                     {stat.value}
                   </h2>
                   <span className={`text-sm font-medium ${
-                    stat.trend === 'up' ? 'text-green-500' : 'text-red-500'
+                    stat.change.startsWith('+') ? 'text-emerald-500' : 'text-red-500'
                   }`}>
                     {stat.change}
                   </span>
                 </div>
               </div>
-              <div className={`p-3 rounded-full bg-${stat.color}-100/50`}>
-                <stat.icon className={`w-5 h-5 text-${stat.color}-500`} />
+              <div className={`p-3 rounded-full ${stat.bgColor}`}>
+                <stat.icon className={`w-5 h-5 ${stat.color}`} />
               </div>
             </div>
-            <div className={`absolute bottom-0 left-0 h-1 bg-${stat.color}-500`} style={{
-              width: stat.trend === 'up' ? '70%' : '30%'
+            <div className={`absolute bottom-0 left-0 h-1 ${stat.bgColor}`} style={{
+              width: stat.change.startsWith('+') ? '70%' : '30%'
             }} />
           </CardContent>
         </Card>
