@@ -1,6 +1,14 @@
 const express = require('express');
 const router = express.Router();
 const DeviceGroup = require('../models/DeviceGroup');
+const historyRoutes = require('./device-groups/groupHistoryRoutes');
+const statisticsRoutes = require('./device-groups/groupStatisticsRoutes');
+const templateRoutes = require('./device-groups/groupTemplateRoutes');
+
+// Mount sub-routers
+router.use('/', historyRoutes);
+router.use('/', statisticsRoutes);
+router.use('/', templateRoutes);
 
 // Tüm grupları getir
 router.get('/', async (req, res) => {
@@ -35,33 +43,6 @@ router.get('/:id', async (req, res) => {
       return res.status(404).json({ message: 'Grup bulunamadı' });
     }
     res.json(group);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Grup geçmişini getir
-router.get('/:id/history', async (req, res) => {
-  try {
-    const group = await DeviceGroup.findById(req.params.id);
-    if (!group) {
-      return res.status(404).json({ message: 'Grup bulunamadı' });
-    }
-    res.json(group.history);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Grup istatistiklerini getir
-router.get('/:id/statistics', async (req, res) => {
-  try {
-    const group = await DeviceGroup.findById(req.params.id);
-    if (!group) {
-      return res.status(404).json({ message: 'Grup bulunamadı' });
-    }
-    const stats = await group.updateStatistics();
-    res.json(stats);
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
@@ -120,51 +101,6 @@ router.patch('/:id', async (req, res) => {
 
     const updatedGroup = await group.save();
     res.json(updatedGroup);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
-
-// Grup klonla
-router.post('/:id/clone', async (req, res) => {
-  try {
-    const sourceGroup = await DeviceGroup.findById(req.params.id);
-    if (!sourceGroup) {
-      return res.status(404).json({ message: 'Kaynak grup bulunamadı' });
-    }
-
-    const clonedGroup = await sourceGroup.clone(
-      req.body.name,
-      req.body.createdBy
-    );
-
-    // Geçmişe kaydet
-    clonedGroup.history.push({
-      action: 'clone',
-      changes: {
-        sourceGroup: sourceGroup._id,
-        clonedName: req.body.name
-      },
-      performedBy: req.body.createdBy
-    });
-    await clonedGroup.save();
-
-    res.status(201).json(clonedGroup);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
-
-// Şablon oluştur
-router.post('/templates', async (req, res) => {
-  try {
-    const template = await DeviceGroup.createTemplate({
-      name: req.body.name,
-      description: req.body.description,
-      devices: req.body.devices,
-      createdBy: req.body.createdBy
-    });
-    res.status(201).json(template);
   } catch (error) {
     res.status(400).json({ message: error.message });
   }
