@@ -9,6 +9,7 @@ class WebSocketService {
   private static instance: WebSocketService;
   private ws: WebSocket | null = null;
   private messageHandlers: Map<string, Set<MessageHandler>>;
+  private reconnectTimeout: NodeJS.Timeout | null = null;
 
   private constructor() {
     this.messageHandlers = new Map();
@@ -21,6 +22,19 @@ class WebSocketService {
     this.addMessageHandler('delete', handleDeviceDelete);
     this.addMessageHandler('deviceStatus', handleDeviceStatusMessage);
     this.addMessageHandler('initialState', handleInitialStateMessage);
+    
+    // Add command status handler
+    this.addMessageHandler('commandStatus', (message) => {
+      console.log('Command status received:', message);
+      if (message.command === 'setVolume' && message.success) {
+        // Trigger a device status update when volume is successfully set
+        handleDeviceStatusMessage({
+          type: 'deviceStatus',
+          token: message.token,
+          volume: message.volume
+        });
+      }
+    });
   }
 
   public static getInstance(): WebSocketService {
@@ -36,13 +50,17 @@ class WebSocketService {
     this.ws = new WebSocket('ws://localhost:5000/admin');
 
     this.ws.onopen = () => {
-      console.log('WebSocket bağlantısı kuruldu');
+      console.log('WebSocket connected');
+      if (this.reconnectTimeout) {
+        clearTimeout(this.reconnectTimeout);
+        this.reconnectTimeout = null;
+      }
     };
 
     this.ws.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);
-        console.log('Received WebSocket message:', message); // Debug log
+        console.log('Received WebSocket message:', message);
         this.handleMessage(message);
       } catch (error) {
         console.error('Message parsing error:', error);
@@ -50,8 +68,8 @@ class WebSocketService {
     };
 
     this.ws.onclose = () => {
-      console.log('WebSocket bağlantısı kapandı, yeniden bağlanılıyor...');
-      setTimeout(() => this.connect(), 5000);
+      console.log('WebSocket disconnected, reconnecting...');
+      this.reconnectTimeout = setTimeout(() => this.connect(), 5000);
     };
 
     this.ws.onerror = (error) => {
@@ -60,24 +78,16 @@ class WebSocketService {
   }
 
   private handleMessage(message: any) {
-    console.log('Handling message:', message); // Debug log
-    
-    // Special handling for volume commands
-    if (message.type === 'command' && message.command === 'setVolume') {
-      const handlers = this.messageHandlers.get('deviceStatus');
-      if (handlers) {
-        handlers.forEach(handler => {
-          try {
-            handler({
-              type: 'deviceStatus',
-              token: message.token,
-              volume: message.volume
-            });
-          } catch (error) {
-            console.error('Volume handler error:', error);
-          }
-        });
-      }
+    console.log('Handling message:', message);
+
+    // Handle volume command responses
+    if (message.type === 'commandStatus' && message.command === 'setVolume') {
+      handleDeviceStatusMessage({
+        type: 'deviceStatus',
+        token: message.token,
+        volume: message.volume
+      });
+      return;
     }
 
     const handlers = this.messageHandlers.get(message.type);
@@ -113,10 +123,10 @@ class WebSocketService {
 
   public sendMessage(message: any) {
     if (this.ws?.readyState === WebSocket.OPEN) {
-      console.log('Sending WebSocket message:', message); // Debug log
+      console.log('Sending WebSocket message:', message);
       this.ws.send(JSON.stringify(message));
     } else {
-      console.error('WebSocket bağlantısı kurulamadı');
+      console.error('WebSocket connection not available');
       this.connect();
     }
   }
@@ -126,6 +136,11 @@ class WebSocketService {
       this.ws.close();
       this.ws = null;
     }
+    if (this.reconnectTimeout) {
+      clearTimeout(this.reconnectTimeout);
+      this.reconnectTimeout = null;
+    }
+    this.messageHandlers.clear();
   }
 }
 

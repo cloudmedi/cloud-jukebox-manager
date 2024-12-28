@@ -1,5 +1,5 @@
 import { useEffect, useState } from "react";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Table, TableBody } from "@/components/ui/table";
 import { DeviceTableHeader } from "./DeviceTableHeader";
 import { DeviceTableRow } from "./DeviceTableRow";
@@ -8,15 +8,8 @@ import { DeviceCard } from "./DeviceCard";
 import websocketService from "@/services/websocketService";
 import { Device } from "@/services/deviceService";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { 
-  showDeviceOfflineNotification, 
-  showVolumeWarning, 
-  showPlaylistError,
-  VOLUME_THRESHOLD 
-} from "@/utils/notificationUtils";
 
 export const DeviceList = () => {
-  const queryClient = useQueryClient();
   const [selectedDevices, setSelectedDevices] = useState<string[]>([]);
   const isMobile = useIsMobile();
   
@@ -32,54 +25,16 @@ export const DeviceList = () => {
   });
 
   useEffect(() => {
-    const handleDeviceStatus = (data: any) => {
-      console.log('Handling device status update:', data); // Debug log
-      
-      const currentDevices = queryClient.getQueryData<Device[]>(['devices']);
-      if (!currentDevices) return;
-
-      const updatedDevices = currentDevices.map(device => {
-        if (device.token === data.token) {
-          // Create new device state
-          const updatedDevice = {
-            ...device,
-            ...data,
-            // Explicitly handle volume updates
-            volume: data.volume !== undefined ? data.volume : device.volume,
-            // Keep other fields
-            playlistStatus: data.playlistStatus || device.playlistStatus,
-            isOnline: data.isOnline !== undefined ? data.isOnline : device.isOnline
-          };
-
-          // Handle notifications
-          if (device.isOnline && !updatedDevice.isOnline) {
-            showDeviceOfflineNotification(device.name);
-          }
-
-          if (updatedDevice.volume >= VOLUME_THRESHOLD) {
-            showVolumeWarning(device.name, updatedDevice.volume);
-          }
-
-          if (data.playlistStatus === 'error') {
-            showPlaylistError(device.name, 'Playlist yüklenemedi');
-          }
-
-          console.log('Updated device state:', updatedDevice); // Debug log
-          return updatedDevice;
-        }
-        return device;
-      });
-
-      queryClient.setQueryData(['devices'], updatedDevices);
-    };
-
     // Add WebSocket message handlers
-    websocketService.addMessageHandler('deviceStatus', handleDeviceStatus);
+    websocketService.addMessageHandler('deviceStatus', () => {
+      // The device status handler in DeviceStatusHandler.ts will update the cache
+      // No need to do anything here
+    });
 
     return () => {
-      websocketService.removeMessageHandler('deviceStatus', handleDeviceStatus);
+      websocketService.removeMessageHandler('deviceStatus', () => {});
     };
-  }, [queryClient]);
+  }, []);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
