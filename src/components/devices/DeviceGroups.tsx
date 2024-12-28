@@ -30,6 +30,7 @@ import { SortableTableRow } from "./group-table/SortableTableRow";
 import { BulkActions } from "./group-table/BulkActions";
 import { DeviceGroup } from "./types";
 import { toast } from "sonner";
+import { HoverCard, HoverCardContent, HoverCardTrigger } from "@/components/ui/hover-card";
 
 const DeviceGroups = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -57,6 +58,7 @@ const DeviceGroups = () => {
 
   const reorderMutation = useMutation({
     mutationFn: async ({ groupId, oldIndex, newIndex }: { groupId: string, oldIndex: number, newIndex: number }) => {
+      console.log('Sending reorder request:', { groupId, oldIndex, newIndex });
       const response = await fetch("http://localhost:5000/api/device-groups/reorder", {
         method: "POST",
         headers: {
@@ -76,14 +78,10 @@ const DeviceGroups = () => {
       toast.success("Grup sıralaması güncellendi");
     },
     onError: (error: Error) => {
+      console.error('Reorder error:', error);
       toast.error(error.message);
     },
   });
-
-  const filteredGroups = groups.filter((group: DeviceGroup) =>
-    group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    group.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   const handleDragEnd = (event: any) => {
     const { active, over } = event;
@@ -91,6 +89,8 @@ const DeviceGroups = () => {
     if (active.id !== over.id) {
       const oldIndex = groups.findIndex((group: DeviceGroup) => group._id === active.id);
       const newIndex = groups.findIndex((group: DeviceGroup) => group._id === over.id);
+      
+      console.log('Drag end:', { oldIndex, newIndex, groupId: active.id });
       
       reorderMutation.mutate({
         groupId: active.id,
@@ -102,11 +102,16 @@ const DeviceGroups = () => {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedGroups(filteredGroups.map((group: DeviceGroup) => group._id));
+      setSelectedGroups(groups.map((group: DeviceGroup) => group._id));
     } else {
       setSelectedGroups([]);
     }
   };
+
+  const filteredGroups = groups.filter((group: DeviceGroup) =>
+    group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    group.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (isLoading) {
     return (
@@ -185,19 +190,43 @@ const DeviceGroups = () => {
             >
               <TableBody>
                 {filteredGroups.map((group: DeviceGroup) => (
-                  <SortableTableRow
-                    key={group._id}
-                    group={group}
-                    selected={selectedGroups.includes(group._id)}
-                    onSelect={(checked) => {
-                      if (checked) {
-                        setSelectedGroups(prev => [...prev, group._id]);
-                      } else {
-                        setSelectedGroups(prev => prev.filter(id => id !== group._id));
-                      }
-                    }}
-                    onSuccess={() => queryClient.invalidateQueries({ queryKey: ["device-groups"] })}
-                  />
+                  <HoverCard key={group._id}>
+                    <HoverCardTrigger asChild>
+                      <div>
+                        <SortableTableRow
+                          group={group}
+                          selected={selectedGroups.includes(group._id)}
+                          onSelect={(checked) => {
+                            if (checked) {
+                              setSelectedGroups(prev => [...prev, group._id]);
+                            } else {
+                              setSelectedGroups(prev => prev.filter(id => id !== group._id));
+                            }
+                          }}
+                          onSuccess={() => queryClient.invalidateQueries({ queryKey: ["device-groups"] })}
+                        />
+                      </div>
+                    </HoverCardTrigger>
+                    <HoverCardContent className="w-80">
+                      <div className="space-y-2">
+                        <h4 className="text-sm font-semibold">{group.name}</h4>
+                        <p className="text-sm text-muted-foreground">{group.description}</p>
+                        <div className="text-sm">
+                          <strong>Cihaz Sayısı:</strong> {group.devices.length}
+                        </div>
+                        <div className="text-sm">
+                          <strong>Durum:</strong> {group.status === 'active' ? 'Aktif' : 'Pasif'}
+                        </div>
+                        <div className="text-sm">
+                          <strong>Oluşturan:</strong> {group.createdBy}
+                        </div>
+                        <div className="text-sm">
+                          <strong>Oluşturma Tarihi:</strong>{' '}
+                          {new Date(group.createdAt).toLocaleDateString('tr-TR')}
+                        </div>
+                      </div>
+                    </HoverCardContent>
+                  </HoverCard>
                 ))}
               </TableBody>
             </SortableContext>

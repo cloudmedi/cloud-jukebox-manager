@@ -117,6 +117,7 @@ router.delete('/:id/devices/:deviceId', async (req, res) => {
 router.post('/reorder', async (req, res) => {
   try {
     const { oldIndex, newIndex, groupId } = req.body;
+    console.log('Reorder request:', { oldIndex, newIndex, groupId });
     
     // Tüm grupları sıraya göre getir
     const groups = await DeviceGroup.find().sort({ order: 1 });
@@ -136,6 +137,8 @@ router.post('/reorder', async (req, res) => {
       newOrder = (prevOrder + nextOrder) / 2;
     }
 
+    console.log('Calculated new order:', newOrder);
+
     // Grubu güncelle
     const updatedGroup = await DeviceGroup.findByIdAndUpdate(
       groupId,
@@ -144,8 +147,8 @@ router.post('/reorder', async (req, res) => {
     );
 
     // WebSocket ile değişikliği bildir
-    if (req.wss) {
-      req.wss.broadcastToAdmins({
+    if (req.app.get('wss')) {
+      req.app.get('wss').broadcastToAdmins({
         type: 'groupReorder',
         data: {
           groupId,
@@ -158,6 +161,7 @@ router.post('/reorder', async (req, res) => {
 
     res.json(updatedGroup);
   } catch (error) {
+    console.error('Reorder error:', error);
     res.status(500).json({ message: error.message });
   }
 });

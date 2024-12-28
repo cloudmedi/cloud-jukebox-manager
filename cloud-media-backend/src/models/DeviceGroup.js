@@ -21,7 +21,8 @@ const deviceGroupSchema = new mongoose.Schema({
   },
   order: {
     type: Number,
-    default: 1000
+    default: 1000,
+    index: true // Sıralama için index eklendi
   },
   createdBy: {
     type: String,
