@@ -17,8 +17,6 @@ interface GroupManagementDialogProps {
   onGroupChange: (groupId: string | null) => Promise<void>;
 }
 
-const API_URL = import.meta.env.VITE_API_URL || 'http://localhost:5000/api';
-
 const GroupManagementDialog = ({
   isOpen,
   onClose,
@@ -28,25 +26,28 @@ const GroupManagementDialog = ({
   const [selectedGroupId, setSelectedGroupId] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
 
-  // currentGroupId değiştiğinde selectedGroupId'yi güncelle
   useEffect(() => {
     setSelectedGroupId(currentGroupId);
   }, [currentGroupId]);
 
-  const { data: groups = [] } = useQuery({
+  const { data: groupsData } = useQuery({
     queryKey: ["device-groups"],
     queryFn: async () => {
       try {
-        const response = await fetch(`${API_URL}/device-groups`);
+        const response = await fetch("http://localhost:5000/api/device-groups");
         if (!response.ok) throw new Error("Gruplar yüklenemedi");
-        return response.json();
+        const data = await response.json();
+        return data;
       } catch (error) {
         console.error("Grup yükleme hatası:", error);
         toast.error("Gruplar yüklenirken bir hata oluştu");
-        return [];
+        return { groups: [] };
       }
     },
   });
+
+  // Ensure we have an array of groups, even if empty
+  const groups = groupsData?.groups || [];
 
   const handleSave = async () => {
     try {
@@ -62,6 +63,8 @@ const GroupManagementDialog = ({
     }
   };
 
+  const selectedGroup = groups.find((group: Group) => group._id === selectedGroupId);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
@@ -76,7 +79,7 @@ const GroupManagementDialog = ({
           >
             <SelectTrigger>
               <SelectValue placeholder="Grup seçin">
-                {groups.find((g: Group) => g._id === selectedGroupId)?.name || "Grup seçin"}
+                {selectedGroup?.name || "Grup seçin"}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
