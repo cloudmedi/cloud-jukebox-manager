@@ -1,8 +1,6 @@
 import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Search } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { DeviceGroupForm } from "./DeviceGroupForm";
 import { BulkGroupActions } from "./group-actions/BulkGroupActions";
@@ -14,9 +12,7 @@ import type { DeviceGroup } from "./types";
 
 const DeviceGroups = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
-  const searchInputRef = useRef<HTMLInputElement>(null);
   const { toast } = useToast();
 
   const { data: groups = [], isLoading, refetch } = useQuery({
@@ -29,11 +25,6 @@ const DeviceGroups = () => {
       return response.json();
     },
   });
-
-  const filteredGroups = groups.filter((group: DeviceGroup) => 
-    group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    group.description?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   const handleBulkDelete = async (groupIds: string[]) => {
     try {
@@ -61,7 +52,7 @@ const DeviceGroups = () => {
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      setSelectedGroups(filteredGroups.map((group: DeviceGroup) => group._id));
+      setSelectedGroups(groups.map((group: DeviceGroup) => group._id));
     } else {
       setSelectedGroups([]);
     }
@@ -76,7 +67,6 @@ const DeviceGroups = () => {
   };
 
   const handleNewGroup = () => setIsFormOpen(true);
-  const handleSearch = () => searchInputRef.current?.focus();
 
   // Klavye kısayolları
   const handleKeyPress = (e: KeyboardEvent) => {
@@ -89,10 +79,6 @@ const DeviceGroups = () => {
         case 'r':
           e.preventDefault();
           refetch();
-          break;
-        case 'f':
-          e.preventDefault();
-          handleSearch();
           break;
       }
     }
@@ -117,7 +103,6 @@ const DeviceGroups = () => {
       <GroupShortcuts
         onNewGroup={handleNewGroup}
         onRefresh={refetch}
-        onSearch={handleSearch}
       />
 
       <div className="flex justify-between items-center">
@@ -138,19 +123,6 @@ const DeviceGroups = () => {
         </div>
       </div>
 
-      <div className="flex items-center gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            ref={searchInputRef}
-            placeholder="Grup adı veya açıklama ara..."
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            className="pl-9"
-          />
-        </div>
-      </div>
-
       {selectedGroups.length > 0 && (
         <BulkGroupActions
           selectedGroups={selectedGroups}
@@ -160,7 +132,7 @@ const DeviceGroups = () => {
       )}
 
       <DeviceGroupsTable
-        groups={filteredGroups}
+        groups={groups}
         selectedGroups={selectedGroups}
         onSelectAll={handleSelectAll}
         onSelectGroup={handleSelectGroup}
