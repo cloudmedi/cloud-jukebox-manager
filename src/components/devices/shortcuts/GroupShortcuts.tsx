@@ -4,7 +4,7 @@ import { useToast } from '@/components/ui/use-toast';
 interface GroupShortcutsProps {
   onNewGroup: () => void;
   onRefresh: () => void;
-  onSearch: () => void;
+  onSearch?: () => void;  // Made optional with '?'
 }
 
 export const GroupShortcuts = ({ onNewGroup, onRefresh, onSearch }: GroupShortcutsProps) => {
@@ -32,12 +32,14 @@ export const GroupShortcuts = ({ onNewGroup, onRefresh, onSearch }: GroupShortcu
             });
             break;
           case 'f': // Arama
-            e.preventDefault();
-            onSearch();
-            toast({
-              title: "Kısayol Kullanıldı",
-              description: "Arama kutusuna odaklanıldı",
-            });
+            if (onSearch) {  // Only call if onSearch is provided
+              e.preventDefault();
+              onSearch();
+              toast({
+                title: "Kısayol Kullanıldı",
+                description: "Arama kutusuna odaklanıldı",
+              });
+            }
             break;
         }
       }
