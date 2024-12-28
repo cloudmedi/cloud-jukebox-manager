@@ -6,6 +6,20 @@ export function cn(...inputs: ClassValue[]) {
 }
 
 export const formatDuration = (seconds: number) => {
+  if (!seconds) return '0 dk';
+  
+  const hours = Math.floor(seconds / 3600);
+  const minutes = Math.floor((seconds % 3600) / 60);
+  
+  if (hours > 0) {
+    return `${hours} sa${minutes > 0 ? ` ${minutes} dk` : ''}`; 
+  }
+  
+  return `${minutes} dk`;
+};
+
+// Upload kısmı için ayrı bir formatlama fonksiyonu
+export const formatSongDuration = (seconds: number) => {
   if (!seconds) return '0:00';
   
   const minutes = Math.floor(seconds / 60);
