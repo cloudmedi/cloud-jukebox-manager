@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Users, CheckCircle2, XCircle, MoreVertical } from "lucide-react";
+import { Users, CheckCircle2, XCircle, Search } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -15,6 +15,10 @@ import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { DeviceGroupForm } from "./DeviceGroupForm";
 import { DeviceGroupActions } from "./DeviceGroupActions";
+import { GroupPreviewCard } from "./group-preview/GroupPreviewCard";
+import { BulkGroupActions } from "./group-actions/BulkGroupActions";
+import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface DeviceGroup {
   _id: string;
@@ -26,25 +30,13 @@ interface DeviceGroup {
   createdAt: string;
 }
 
-const getGroupColor = (groupId: string) => {
-  const colors = [
-    "bg-blue-50 hover:bg-blue-100",
-    "bg-green-50 hover:bg-green-100",
-    "bg-purple-50 hover:bg-purple-100",
-    "bg-pink-50 hover:bg-pink-100",
-    "bg-yellow-50 hover:bg-yellow-100",
-    "bg-orange-50 hover:bg-orange-100"
-  ];
-  
-  const hash = groupId.split('').reduce((acc, char) => char.charCodeAt(0) + acc, 0);
-  return colors[hash % colors.length];
-};
-
 const DeviceGroups = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const { toast } = useToast();
 
-  const { data: groups, isLoading, refetch } = useQuery({
+  const { data: groups = [], isLoading, refetch } = useQuery({
     queryKey: ["device-groups"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/device-groups");
@@ -54,6 +46,44 @@ const DeviceGroups = () => {
       return response.json();
     },
   });
+
+  const filteredGroups = groups.filter((group: DeviceGroup) => 
+    group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    group.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleBulkDelete = async (groupIds: string[]) => {
+    try {
+      await Promise.all(
+        groupIds.map(async (groupId) => {
+          const response = await fetch(`http://localhost:5000/api/device-groups/${groupId}`, {
+            method: "DELETE",
+          });
+          if (!response.ok) throw new Error(`Failed to delete group ${groupId}`);
+        })
+      );
+      refetch();
+    } catch (error) {
+      console.error('Bulk delete error:', error);
+      throw error;
+    }
+  };
+
+  const handleSelectAll = (checked: boolean) => {
+    if (checked) {
+      setSelectedGroups(filteredGroups.map((group: DeviceGroup) => group._id));
+    } else {
+      setSelectedGroups([]);
+    }
+  };
+
+  const handleSelectGroup = (groupId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedGroups(prev => [...prev, groupId]);
+    } else {
+      setSelectedGroups(prev => prev.filter(id => id !== groupId));
+    }
+  };
 
   if (isLoading) {
     return (
@@ -82,31 +112,68 @@ const DeviceGroups = () => {
         </Dialog>
       </div>
 
+      <div className="flex items-center gap-4">
+        <div className="relative flex-1">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input
+            placeholder="Grup adı veya açıklama ara..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            className="pl-9"
+          />
+        </div>
+      </div>
+
+      {selectedGroups.length > 0 && (
+        <BulkGroupActions
+          selectedGroups={selectedGroups}
+          onClearSelection={() => setSelectedGroups([])}
+          onDeleteGroups={handleBulkDelete}
+        />
+      )}
+
       <div className="rounded-md border">
         <Table>
           <TableHeader>
             <TableRow>
+              <TableHead className="w-12">
+                <Checkbox
+                  checked={selectedGroups.length === filteredGroups.length}
+                  onCheckedChange={handleSelectAll}
+                />
+              </TableHead>
               <TableHead>Grup Adı</TableHead>
-              <TableHead>Açıklama</TableHead>
               <TableHead>Cihazlar</TableHead>
               <TableHead>Durum</TableHead>
               <TableHead>Oluşturan</TableHead>
-              <TableHead>Oluşturma Tarihi</TableHead>
               <TableHead className="text-right">İşlemler</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody>
-            {groups?.map((group: DeviceGroup) => (
-              <TableRow 
-                key={group._id}
-                className={getGroupColor(group._id)}
-              >
-                <TableCell className="font-medium">{group.name}</TableCell>
-                <TableCell>{group.description}</TableCell>
+            {filteredGroups.map((group: DeviceGroup) => (
+              <TableRow key={group._id}>
+                <TableCell>
+                  <Checkbox
+                    checked={selectedGroups.includes(group._id)}
+                    onCheckedChange={(checked) => handleSelectGroup(group._id, checked)}
+                  />
+                </TableCell>
+                <TableCell>
+                  <GroupPreviewCard group={group}>
+                    <div className="cursor-help">
+                      <div className="font-medium">{group.name}</div>
+                      {group.description && (
+                        <div className="text-sm text-muted-foreground">
+                          {group.description}
+                        </div>
+                      )}
+                    </div>
+                  </GroupPreviewCard>
+                </TableCell>
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-muted-foreground" />
-                    <span className="font-medium">{group.devices.length}</span>
+                    <span>{group.devices.length}</span>
                   </div>
                 </TableCell>
                 <TableCell>
@@ -123,9 +190,6 @@ const DeviceGroups = () => {
                   )}
                 </TableCell>
                 <TableCell>{group.createdBy}</TableCell>
-                <TableCell>
-                  {new Date(group.createdAt).toLocaleString("tr-TR")}
-                </TableCell>
                 <TableCell className="text-right">
                   <DeviceGroupActions group={group} onSuccess={refetch} />
                 </TableCell>
