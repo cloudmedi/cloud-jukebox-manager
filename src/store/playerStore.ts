@@ -4,49 +4,37 @@ interface Song {
   _id: string;
   name: string;
   artist: string;
-  filePath: string;
-  artwork?: string;
+  filePath?: string;
+  artwork?: string | null;
 }
 
 interface PlayerState {
   isPlaying: boolean;
-  currentSong: Song | null;
-  queue: Song[];
-  volume: number;
   currentTime: number;
   duration: number;
-  showPlayer: boolean;
+  volume: number;
+  currentSong: Song | null;
+  queue: Song[];
   setIsPlaying: (isPlaying: boolean) => void;
-  setCurrentSong: (song: Song) => void;
-  setQueue: (songs: Song[]) => void;
-  addToQueue: (song: Song) => void;
-  removeFromQueue: (songId: string) => void;
-  setVolume: (volume: number) => void;
   setCurrentTime: (time: number) => void;
   setDuration: (duration: number) => void;
-  setShowPlayer: (show: boolean) => void;
+  setVolume: (volume: number) => void;
   nextSong: () => void;
   previousSong: () => void;
+  setCurrentSong: (song: Song) => void;
 }
 
 export const usePlayerStore = create<PlayerState>((set, get) => ({
   isPlaying: false,
-  currentSong: null,
-  queue: [],
-  volume: 1,
   currentTime: 0,
   duration: 0,
-  showPlayer: false,
+  volume: 100,
+  currentSong: null,
+  queue: [],
   setIsPlaying: (isPlaying) => set({ isPlaying }),
-  setCurrentSong: (song) => set({ currentSong: song, showPlayer: true }),
-  setQueue: (songs) => set({ queue: songs }),
-  addToQueue: (song) => set((state) => ({ queue: [...state.queue, song] })),
-  removeFromQueue: (songId) => 
-    set((state) => ({ queue: state.queue.filter(song => song._id !== songId) })),
-  setVolume: (volume) => set({ volume }),
   setCurrentTime: (currentTime) => set({ currentTime }),
   setDuration: (duration) => set({ duration }),
-  setShowPlayer: (show) => set({ showPlayer: show }),
+  setVolume: (volume) => set({ volume }),
   nextSong: () => {
     const { queue, currentSong } = get();
     if (!currentSong || queue.length === 0) return;
@@ -62,5 +50,6 @@ export const usePlayerStore = create<PlayerState>((set, get) => ({
     const currentIndex = queue.findIndex(song => song._id === currentSong._id);
     const previousIndex = (currentIndex - 1 + queue.length) % queue.length;
     set({ currentSong: queue[previousIndex] });
-  }
+  },
+  setCurrentSong: (song) => set({ currentSong: song })
 }));

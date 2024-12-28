@@ -3,7 +3,7 @@ import { Outlet } from "react-router-dom";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import Sidebar from "./Sidebar";
 import Header from "./Header";
-import Player from "@/components/player/Player";
+import Player from "../player/Player";
 
 type PlayerContextType = {
   showPlayer: boolean;
