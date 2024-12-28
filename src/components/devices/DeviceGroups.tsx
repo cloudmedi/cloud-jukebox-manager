@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Users, CheckCircle2, XCircle2, MoreVertical } from "lucide-react";
+import { Users, CheckCircle2, XCircle, MoreVertical } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -117,7 +117,7 @@ const DeviceGroups = () => {
                     </Badge>
                   ) : (
                     <Badge variant="secondary" className="bg-gray-500/15 text-gray-500 hover:bg-gray-500/25">
-                      <XCircle2 className="h-3 w-3 mr-1" />
+                      <XCircle className="h-3 w-3 mr-1" />
                       Pasif
                     </Badge>
                   )}
