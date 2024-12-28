@@ -90,18 +90,11 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
 
   const handlePlayPause = async () => {
     try {
-      console.log('Sending play/pause command for device:', device.token);
-      console.log('Current playing state:', device.isPlaying);
-      
-      const command = device.isPlaying ? 'pause' : 'play';
-      
       websocketService.sendMessage({
         type: 'command',
         token: device.token,
-        command: command
+        command: device.isPlaying ? 'pause' : 'play'
       });
-
-      console.log('Command sent:', command);
       toast.success(`${device.isPlaying ? 'Durdurma' : 'Oynatma'} komutu gönderildi`);
     } catch (error) {
       console.error('Play/Pause error:', error);
@@ -158,12 +151,12 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="bg-background border shadow-lg">
           <DropdownMenuItem onClick={handlePlayPause}>
-            {device.isPlaying ? (
-              <Pause className="mr-2 h-4 w-4" />
-            ) : (
+            {!device.isPlaying ? (
               <Play className="mr-2 h-4 w-4" />
+            ) : (
+              <Pause className="mr-2 h-4 w-4" />
             )}
-            {device.isPlaying ? 'Duraklat' : 'Çal'}
+            {!device.isPlaying ? 'Çal' : 'Duraklat'}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setIsRestartDialogOpen(true)}>
             <RefreshCcw className="mr-2 h-4 w-4" />

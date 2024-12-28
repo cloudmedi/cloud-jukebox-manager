@@ -61,7 +61,6 @@ class WebSocketServer {
         break;
 
       case 'playbackStatus':
-        console.log('Received playback status:', message);
         this.broadcastToAdmins({
           type: 'deviceStatus',
           token: token,
