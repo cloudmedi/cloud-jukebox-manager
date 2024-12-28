@@ -12,12 +12,17 @@ interface DeviceGroupsTableProps {
 }
 
 export const DeviceGroupsTable = ({
-  groups,
+  groups = [], // Provide default empty array
   selectedGroups,
   onSelectAll,
   onSelectGroup,
   onRefresh
 }: DeviceGroupsTableProps) => {
+  // Filter out any undefined or null values
+  const validGroups = groups.filter((group): group is DeviceGroup => 
+    group !== undefined && group !== null && typeof group === 'object' && '_id' in group
+  );
+
   return (
     <div className="rounded-md border">
       <Table>
@@ -25,7 +30,7 @@ export const DeviceGroupsTable = ({
           <TableRow>
             <TableHead className="w-12">
               <Checkbox
-                checked={selectedGroups.length === groups.length && groups.length > 0}
+                checked={selectedGroups.length === validGroups.length && validGroups.length > 0}
                 onCheckedChange={(checked) => onSelectAll(checked === true)}
               />
             </TableHead>
@@ -37,7 +42,7 @@ export const DeviceGroupsTable = ({
           </TableRow>
         </TableHeader>
         <TableBody>
-          {groups.map((group) => (
+          {validGroups.map((group) => (
             <DeviceGroupTableRow
               key={group._id}
               group={group}
