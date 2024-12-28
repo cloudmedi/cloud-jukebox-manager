@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useInfiniteQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import { Input } from "@/components/ui/input";
@@ -7,43 +7,31 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { DeviceGroupForm } from "./DeviceGroupForm";
 import { BulkGroupActions } from "./group-actions/BulkGroupActions";
 import { DeviceGroupsTable } from "./table/DeviceGroupsTable";
-import { useInView } from "react-intersection-observer";
-import { toast } from "sonner";
 import type { DeviceGroup } from "./types";
-
-const ITEMS_PER_PAGE = 10;
 
 const DeviceGroups = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
-  const queryClient = useQueryClient();
-  const { ref, inView } = useInView();
 
-  const {
-    data,
-    isLoading,
-    fetchNextPage,
-    hasNextPage,
-    isFetchingNextPage
-  } = useInfiniteQuery({
-    queryKey: ["device-groups", searchQuery],
-    queryFn: async ({ pageParam = 1 }) => {
-      const response = await fetch(
-        `http://localhost:5000/api/device-groups?page=${pageParam}&limit=${ITEMS_PER_PAGE}&search=${searchQuery}`
-      );
-      if (!response.ok) throw new Error("Gruplar yüklenirken bir hata oluştu");
+  const { data: groups = [], isLoading, refetch } = useQuery({
+    queryKey: ["device-groups"],
+    queryFn: async () => {
+      const response = await fetch("http://localhost:5000/api/device-groups");
+      if (!response.ok) {
+        throw new Error("Gruplar yüklenirken bir hata oluştu");
+      }
       return response.json();
     },
-    getNextPageParam: (lastPage, pages) => {
-      if (!lastPage.hasMore) return undefined;
-      return pages.length + 1;
-    },
-    initialPageParam: 1,
   });
 
-  const deleteMutation = useMutation({
-    mutationFn: async (groupIds: string[]) => {
+  const filteredGroups = groups.filter((group: DeviceGroup) => 
+    group.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    group.description?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleBulkDelete = async (groupIds: string[]) => {
+    try {
       await Promise.all(
         groupIds.map(async (groupId) => {
           const response = await fetch(`http://localhost:5000/api/device-groups/${groupId}`, {
@@ -52,48 +40,16 @@ const DeviceGroups = () => {
           if (!response.ok) throw new Error(`Failed to delete group ${groupId}`);
         })
       );
-    },
-    onMutate: async (groupIds) => {
-      await queryClient.cancelQueries({ queryKey: ["device-groups"] });
-      const previousGroups = queryClient.getQueryData(["device-groups"]);
-
-      queryClient.setQueryData(["device-groups"], (old: any) => ({
-        pages: old.pages.map((page: any) => ({
-          ...page,
-          groups: page.groups.filter((group: DeviceGroup) => !groupIds.includes(group._id))
-        }))
-      }));
-
-      return { previousGroups };
-    },
-    onError: (err, variables, context) => {
-      if (context?.previousGroups) {
-        queryClient.setQueryData(["device-groups"], context.previousGroups);
-      }
-      toast.error("Gruplar silinirken bir hata oluştu");
-    },
-    onSuccess: () => {
-      toast.success("Seçili gruplar başarıyla silindi");
-      setSelectedGroups([]);
-    }
-  });
-
-  if (inView && hasNextPage && !isFetchingNextPage) {
-    fetchNextPage();
-  }
-
-  const handleBulkDelete = async (groupIds: string[]) => {
-    try {
-      await deleteMutation.mutateAsync(groupIds);
+      refetch();
     } catch (error) {
       console.error('Bulk delete error:', error);
+      throw error;
     }
   };
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {
-      const allGroups = data?.pages.flatMap(page => page.groups.map((group: DeviceGroup) => group._id)) || [];
-      setSelectedGroups(allGroups);
+      setSelectedGroups(filteredGroups.map((group: DeviceGroup) => group._id));
     } else {
       setSelectedGroups([]);
     }
@@ -107,8 +63,13 @@ const DeviceGroups = () => {
     }
   };
 
-  // Ensure we have valid groups data before passing to table
-  const allGroups = data?.pages.flatMap(page => page.groups || []) || [];
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-[200px]">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -116,12 +77,14 @@ const DeviceGroups = () => {
         <h2 className="text-2xl font-bold tracking-tight">Cihaz Grupları</h2>
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogTrigger asChild>
-            <Button>Yeni Grup</Button>
+            <Button>
+              Yeni Grup
+            </Button>
           </DialogTrigger>
           <DialogContent>
             <DeviceGroupForm onSuccess={() => {
               setIsFormOpen(false);
-              queryClient.invalidateQueries({ queryKey: ["device-groups"] });
+              refetch();
             }} />
           </DialogContent>
         </Dialog>
@@ -148,20 +111,12 @@ const DeviceGroups = () => {
       )}
 
       <DeviceGroupsTable
-        groups={allGroups}
+        groups={filteredGroups}
         selectedGroups={selectedGroups}
         onSelectAll={handleSelectAll}
         onSelectGroup={handleSelectGroup}
-        onRefresh={() => queryClient.invalidateQueries({ queryKey: ["device-groups"] })}
+        onRefresh={refetch}
       />
-
-      {(hasNextPage || isFetchingNextPage) && (
-        <div ref={ref} className="flex justify-center p-4">
-          {isFetchingNextPage && (
-            <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
-          )}
-        </div>
-      )}
     </div>
   );
 };
