@@ -1,15 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Plus, MoreVertical } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
+import { Users, Laptop2, Headphones, Speaker, Monitor } from "lucide-react";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
@@ -25,6 +17,27 @@ interface DeviceGroup {
   createdBy: string;
   createdAt: string;
 }
+
+const getGroupIcon = (groupId: string) => {
+  // Hash the groupId to consistently assign an icon
+  const icons = [Laptop2, Headphones, Speaker, Monitor];
+  const hash = groupId.split('').reduce((acc, char) => char.charCodeAt(0) + acc, 0);
+  const IconComponent = icons[hash % icons.length];
+  return IconComponent;
+};
+
+const getGroupColor = (groupId: string) => {
+  const colors = [
+    "bg-blue-100 border-blue-200",
+    "bg-purple-100 border-purple-200",
+    "bg-pink-100 border-pink-200",
+    "bg-green-100 border-green-200",
+    "bg-yellow-100 border-yellow-200",
+    "bg-orange-100 border-orange-200"
+  ];
+  const hash = groupId.split('').reduce((acc, char) => char.charCodeAt(0) + acc, 0);
+  return colors[hash % colors.length];
+};
 
 const DeviceGroups = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -53,55 +66,70 @@ const DeviceGroups = () => {
     <div className="space-y-6">
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold tracking-tight">Cihaz Grupları</h2>
+        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Users className="mr-2 h-4 w-4" />
+              Yeni Grup
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DeviceGroupForm onSuccess={() => {
+              setIsFormOpen(false);
+              refetch();
+            }} />
+          </DialogContent>
+        </Dialog>
       </div>
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Grup Adı</TableHead>
-              <TableHead>Açıklama</TableHead>
-              <TableHead>Cihaz Sayısı</TableHead>
-              <TableHead>Durum</TableHead>
-              <TableHead>Oluşturan</TableHead>
-              <TableHead>Oluşturma Tarihi</TableHead>
-              <TableHead className="text-right">İşlemler</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {groups?.map((group: DeviceGroup) => (
-              <TableRow key={group._id}>
-                <TableCell className="font-medium">{group.name}</TableCell>
-                <TableCell>{group.description}</TableCell>
-                <TableCell>{group.devices.length}</TableCell>
-                <TableCell>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        {groups?.map((group: DeviceGroup) => {
+          const GroupIcon = getGroupIcon(group._id);
+          const colorClass = getGroupColor(group._id);
+          
+          return (
+            <div
+              key={group._id}
+              className={`relative rounded-lg border p-4 transition-all hover:shadow-lg ${colorClass}`}
+            >
+              <div className="flex items-start justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="p-2 rounded-full bg-white/50">
+                    <GroupIcon className="h-5 w-5" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold">{group.name}</h3>
+                    <p className="text-sm text-muted-foreground">{group.description}</p>
+                  </div>
+                </div>
+                <DeviceGroupActions group={group} onSuccess={refetch} />
+              </div>
+
+              <div className="mt-4 space-y-3">
+                <div className="flex items-center justify-between">
                   <Badge
                     variant={group.status === 'active' ? "success" : "secondary"}
+                    className="capitalize"
                   >
                     {group.status === 'active' ? 'Aktif' : 'Pasif'}
                   </Badge>
-                </TableCell>
-                <TableCell>{group.createdBy}</TableCell>
-                <TableCell>
-                  {new Date(group.createdAt).toLocaleString("tr-TR")}
-                </TableCell>
-                <TableCell className="text-right">
-                  <DeviceGroupActions group={group} onSuccess={refetch} />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+                  <div className="flex items-center gap-2">
+                    <Users className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">{group.devices.length} Cihaz</span>
+                  </div>
+                </div>
 
-      <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-        <DialogContent>
-          <DeviceGroupForm onSuccess={() => {
-            setIsFormOpen(false);
-            refetch();
-          }} />
-        </DialogContent>
-      </Dialog>
+                <div className="text-sm text-muted-foreground">
+                  Oluşturan: {group.createdBy}
+                </div>
+                <div className="text-sm text-muted-foreground">
+                  Tarih: {new Date(group.createdAt).toLocaleDateString("tr-TR")}
+                </div>
+              </div>
+            </div>
+          );
+        })}
+      </div>
     </div>
   );
 };
