@@ -1,4 +1,3 @@
-const { parseFile } = require('music-metadata');
 const fs = require('fs');
 const path = require('path');
 const Song = require('../models/Song');
@@ -9,6 +8,9 @@ const logger = createLogger('song-service');
 const handleFileUpload = async (file) => {
   try {
     logger.info(`Processing uploaded file: ${file.originalname}`);
+    
+    // Dynamic import music-metadata
+    const { parseFile } = await import('music-metadata');
     
     // Metadata'yı oku
     const metadata = await parseFile(file.path);
