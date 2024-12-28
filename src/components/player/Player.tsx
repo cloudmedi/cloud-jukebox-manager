@@ -14,7 +14,7 @@ import {
 } from "lucide-react";
 import { formatDuration } from "@/lib/utils";
 
-export const Player = () => {
+export function Player() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const {
     currentSong,
@@ -185,4 +185,4 @@ export const Player = () => {
       </Button>
     </div>
   );
-};
+}
