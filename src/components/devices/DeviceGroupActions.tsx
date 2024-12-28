@@ -1,17 +1,45 @@
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { useQueryClient } from "@tanstack/react-query";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
-import { MoreHorizontal, Copy, Save, Trash } from "lucide-react";
-import { useToast } from "@/components/ui/use-toast";
+import {
+  Copy,
+  Save,
+  Trash2,
+  MoreVertical,
+  History,
+  BarChart2
+} from "lucide-react";
+import { useState } from "react";
 import { GroupHistoryDialog } from "./group-history/GroupHistoryDialog";
 import { GroupStatsDialog } from "./group-stats/GroupStatsDialog";
+import { toast } from "sonner";
+import type { DeviceGroup } from "./types";
 
 interface DeviceGroupActionsProps {
-  group: any;
+  group: DeviceGroup;
   onSuccess: () => void;
 }
 
 export const DeviceGroupActions = ({ group, onSuccess }: DeviceGroupActionsProps) => {
-  const { toast } = useToast();
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isHistoryDialogOpen, setIsHistoryDialogOpen] = useState(false);
+  const [isStatsDialogOpen, setIsStatsDialogOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const handleDelete = async () => {
     try {
@@ -21,18 +49,12 @@ export const DeviceGroupActions = ({ group, onSuccess }: DeviceGroupActionsProps
 
       if (!response.ok) throw new Error("Grup silinemedi");
 
-      toast({
-        title: "Başarılı",
-        description: "Grup silindi",
-      });
-
-      onSuccess();
+      queryClient.invalidateQueries({ queryKey: ["device-groups"] });
+      toast.success("Grup silindi");
+      setIsDeleteDialogOpen(false);
     } catch (error) {
-      toast({
-        title: "Hata",
-        description: "Grup silinirken bir hata oluştu",
-        variant: "destructive",
-      });
+      console.error("Delete error:", error);
+      toast.error("Grup silinemedi");
     }
   };
 
@@ -42,25 +64,18 @@ export const DeviceGroupActions = ({ group, onSuccess }: DeviceGroupActionsProps
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          name: `${group.name} Kopyası`,
+          name: `${group.name} (Kopya)`,
           createdBy: "admin" // TODO: Gerçek kullanıcı bilgisi eklenecek
         })
       });
 
       if (!response.ok) throw new Error("Grup kopyalanamadı");
 
-      toast({
-        title: "Başarılı",
-        description: "Grup kopyalandı",
-      });
-
-      onSuccess();
+      queryClient.invalidateQueries({ queryKey: ["device-groups"] });
+      toast.success("Grup kopyalandı");
     } catch (error) {
-      toast({
-        title: "Hata",
-        description: "Grup kopyalanırken bir hata oluştu",
-        variant: "destructive",
-      });
+      console.error("Clone error:", error);
+      toast.error("Grup kopyalanamadı");
     }
   };
 
@@ -79,47 +94,74 @@ export const DeviceGroupActions = ({ group, onSuccess }: DeviceGroupActionsProps
 
       if (!response.ok) throw new Error("Şablon oluşturulamadı");
 
-      toast({
-        title: "Başarılı",
-        description: "Grup şablon olarak kaydedildi",
-      });
-
-      onSuccess();
+      queryClient.invalidateQueries({ queryKey: ["device-groups"] });
+      toast.success("Grup şablon olarak kaydedildi");
     } catch (error) {
-      toast({
-        title: "Hata",
-        description: "Şablon oluşturulurken bir hata oluştu",
-        variant: "destructive",
-      });
+      console.error("Template error:", error);
+      toast.error("Şablon oluşturulamadı");
     }
   };
 
   return (
-    <div className="flex items-center gap-2">
-      <GroupHistoryDialog groupId={group._id} />
-      <GroupStatsDialog groupId={group._id} />
-      
+    <>
       <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" size="icon">
-            <MoreHorizontal className="h-4 w-4" />
+            <MoreVertical className="h-4 w-4" />
           </Button>
         </DropdownMenuTrigger>
-        <DropdownMenuContent align="end">
+        <DropdownMenuContent align="end" className="bg-background border shadow-lg">
           <DropdownMenuItem onClick={handleClone}>
-            <Copy className="h-4 w-4 mr-2" />
+            <Copy className="mr-2 h-4 w-4" />
             Kopyala
           </DropdownMenuItem>
           <DropdownMenuItem onClick={handleSaveAsTemplate}>
-            <Save className="h-4 w-4 mr-2" />
+            <Save className="mr-2 h-4 w-4" />
             Şablon Olarak Kaydet
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleDelete} className="text-red-600">
-            <Trash className="h-4 w-4 mr-2" />
+          <DropdownMenuItem onClick={() => setIsHistoryDialogOpen(true)}>
+            <History className="mr-2 h-4 w-4" />
+            Geçmiş
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setIsStatsDialogOpen(true)}>
+            <BarChart2 className="mr-2 h-4 w-4" />
+            İstatistikler
+          </DropdownMenuItem>
+          <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive">
+            <Trash2 className="mr-2 h-4 w-4" />
             Sil
           </DropdownMenuItem>
         </DropdownMenuContent>
       </DropdownMenu>
-    </div>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Grubu silmek istediğinizden emin misiniz?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Bu işlem geri alınamaz. Grup kalıcı olarak silinecektir.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>İptal</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
+              Sil
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <GroupHistoryDialog
+        groupId={group._id}
+        open={isHistoryDialogOpen}
+        onOpenChange={setIsHistoryDialogOpen}
+      />
+
+      <GroupStatsDialog
+        groupId={group._id}
+        open={isStatsDialogOpen}
+        onOpenChange={setIsStatsDialogOpen}
+      />
+    </>
   );
 };

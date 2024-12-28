@@ -1,23 +1,30 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
-import { useQuery } from "@tanstack/react-query";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { History } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import type { GroupHistory } from "../types";
 
 interface GroupHistoryDialogProps {
   groupId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-export const GroupHistoryDialog = ({ groupId }: GroupHistoryDialogProps) => {
+export const GroupHistoryDialog = ({ groupId, open, onOpenChange }: GroupHistoryDialogProps) => {
   const { data: history = [], isLoading } = useQuery({
     queryKey: ["group-history", groupId],
     queryFn: async () => {
       const response = await fetch(`http://localhost:5000/api/device-groups/${groupId}/history`);
       if (!response.ok) throw new Error("Geçmiş yüklenemedi");
       return response.json();
-    }
+    },
+    enabled: open
   });
 
   const getActionText = (action: string) => {
@@ -31,13 +38,8 @@ export const GroupHistoryDialog = ({ groupId }: GroupHistoryDialogProps) => {
   };
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="icon">
-          <History className="h-4 w-4" />
-        </Button>
-      </DialogTrigger>
-      <DialogContent>
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Grup Geçmişi</DialogTitle>
         </DialogHeader>
@@ -48,7 +50,7 @@ export const GroupHistoryDialog = ({ groupId }: GroupHistoryDialogProps) => {
             <div>Geçmiş bulunamadı</div>
           ) : (
             <div className="space-y-4">
-              {history.map((entry: any, index: number) => (
+              {history.map((entry: GroupHistory, index: number) => (
                 <div key={index} className="flex items-start gap-4 text-sm">
                   <div className="min-w-24 text-muted-foreground">
                     {format(new Date(entry.timestamp), "dd MMM yyyy HH:mm", { locale: tr })}

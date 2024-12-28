@@ -1,32 +1,34 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useQuery } from "@tanstack/react-query";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
-import { BarChart2 } from "lucide-react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import type { GroupStatistics } from "../types";
 
 interface GroupStatsDialogProps {
   groupId: string;
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
 }
 
-export const GroupStatsDialog = ({ groupId }: GroupStatsDialogProps) => {
+export const GroupStatsDialog = ({ groupId, open, onOpenChange }: GroupStatsDialogProps) => {
   const { data: stats, isLoading } = useQuery({
     queryKey: ["group-stats", groupId],
     queryFn: async () => {
       const response = await fetch(`http://localhost:5000/api/device-groups/${groupId}/statistics`);
       if (!response.ok) throw new Error("İstatistikler yüklenemedi");
       return response.json();
-    }
+    },
+    enabled: open
   });
 
   return (
-    <Dialog>
-      <DialogTrigger asChild>
-        <Button variant="ghost" size="icon">
-          <BarChart2 className="h-4 w-4" />
-        </Button>
-      </DialogTrigger>
-      <DialogContent className="max-w-2xl">
+    <Dialog open={open} onOpenChange={onOpenChange}>
+      <DialogContent className="sm:max-w-[600px]">
         <DialogHeader>
           <DialogTitle>Grup İstatistikleri</DialogTitle>
         </DialogHeader>
@@ -42,7 +44,7 @@ export const GroupStatsDialog = ({ groupId }: GroupStatsDialogProps) => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats?.totalDevices}</div>
+                  <div className="text-2xl font-bold">{stats?.totalDevices || 0}</div>
                 </CardContent>
               </Card>
               <Card>
@@ -52,7 +54,7 @@ export const GroupStatsDialog = ({ groupId }: GroupStatsDialogProps) => {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats?.activeDevices}</div>
+                  <div className="text-2xl font-bold">{stats?.activeDevices || 0}</div>
                 </CardContent>
               </Card>
             </div>
