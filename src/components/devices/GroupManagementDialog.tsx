@@ -33,13 +33,15 @@ const GroupManagementDialog = ({
     setSelectedGroupId(currentGroupId);
   }, [currentGroupId]);
 
-  const { data: groups = [] } = useQuery({
+  const { data: groupsData } = useQuery({
     queryKey: ["device-groups"],
     queryFn: async () => {
       try {
         const response = await fetch(`${API_URL}/device-groups`);
         if (!response.ok) throw new Error("Gruplar yüklenemedi");
-        return response.json();
+        const data = await response.json();
+        // API'den gelen groups array'ini kontrol et
+        return data.groups || [];
       } catch (error) {
         console.error("Grup yükleme hatası:", error);
         toast.error("Gruplar yüklenirken bir hata oluştu");
@@ -47,6 +49,9 @@ const GroupManagementDialog = ({
       }
     },
   });
+
+  // API'den gelen veriyi doğru şekilde işle
+  const groups = Array.isArray(groupsData) ? groupsData : [];
 
   const handleSave = async () => {
     try {
@@ -62,6 +67,8 @@ const GroupManagementDialog = ({
     }
   };
 
+  const selectedGroup = groups.find(g => g._id === selectedGroupId);
+
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent>
@@ -70,13 +77,13 @@ const GroupManagementDialog = ({
         </DialogHeader>
         <div className="py-6">
           <Select
-            value={selectedGroupId || undefined}
+            value={selectedGroupId || ""}
             onValueChange={(value) => setSelectedGroupId(value)}
             disabled={isSaving}
           >
             <SelectTrigger>
               <SelectValue placeholder="Grup seçin">
-                {groups.find((g: Group) => g._id === selectedGroupId)?.name || "Grup seçin"}
+                {selectedGroup?.name || "Grup seçin"}
               </SelectValue>
             </SelectTrigger>
             <SelectContent>
