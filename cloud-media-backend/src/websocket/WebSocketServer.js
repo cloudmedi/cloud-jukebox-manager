@@ -62,7 +62,7 @@ class WebSocketServer {
         break;
 
       case 'downloadProgress':
-        this.handleDownloadProgress(token, message);
+        await this.handleDownloadProgress(token, message);
         break;
 
       default:
@@ -79,11 +79,15 @@ class WebSocketServer {
         return;
       }
 
+      console.log(`Processing progress update for device ${token}:`, message);
+
       // Update device progress
-      await Device.findByIdAndUpdate(device._id, {
+      const updatedDevice = await Device.findByIdAndUpdate(device._id, {
         downloadProgress: message.progress,
         playlistStatus: message.progress === 100 ? 'loaded' : 'loading'
-      });
+      }, { new: true });
+
+      console.log(`Updated device ${token} progress:`, updatedDevice);
 
       // Broadcast progress to admin clients
       this.broadcastToAdmins({
@@ -93,7 +97,7 @@ class WebSocketServer {
         playlistStatus: message.progress === 100 ? 'loaded' : 'loading'
       });
 
-      console.log(`Progress updated for device ${token}: ${message.progress}%`);
+      console.log(`Progress broadcast sent for device ${token}: ${message.progress}%`);
     } catch (error) {
       console.error('Error handling download progress:', error);
     }
