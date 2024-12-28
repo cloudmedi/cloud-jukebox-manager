@@ -9,6 +9,8 @@ import { StatusFilter } from "./filters/StatusFilter";
 import { LocationFilter } from "./filters/LocationFilter";
 import { GroupFilter } from "./filters/GroupFilter";
 import { FilterActions } from "./filters/FilterActions";
+import { Device } from "@/services/deviceService";
+import type { DeviceGroup } from "./types";
 
 interface DeviceFiltersProps {
   filterStatus: "all" | "online" | "offline";
@@ -37,7 +39,7 @@ export const DeviceFilters = ({
 }: DeviceFiltersProps) => {
   const isMobile = useIsMobile();
 
-  const { data: devices = [] } = useQuery({
+  const { data: devices = [] } = useQuery<Device[]>({
     queryKey: ['devices'],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/devices");
@@ -46,7 +48,7 @@ export const DeviceFilters = ({
     }
   });
 
-  const { data: groups = [] } = useQuery({
+  const { data: groups = [] } = useQuery<DeviceGroup[]>({
     queryKey: ['device-groups'],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/device-groups");
@@ -56,8 +58,8 @@ export const DeviceFilters = ({
   });
 
   const uniqueLocations = Array.from(
-    new Set(devices.map((device: any) => device.location))
-  ).filter(Boolean);
+    new Set(devices.map((device: Device) => device.location))
+  ).filter((location): location is string => Boolean(location));
 
   const hasActiveFilters = filterStatus !== "all" || locationFilter !== "_all" || groupFilter !== "_all";
 
