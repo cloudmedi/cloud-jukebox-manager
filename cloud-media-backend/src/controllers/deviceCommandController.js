@@ -115,116 +115,73 @@ const playAnnouncement = async (req, res) => {
 
 const emergencyStop = async (req, res) => {
   try {
-    console.log('Emergency stop initiated');
-    
-    // Activate emergency state
+    // EmergencyStateManager'ı aktifleştir
     await EmergencyStateManager.activateEmergency();
     
-    // Find all active devices
+    // Tüm aktif cihazları bul
     const devices = await Device.find({ isOnline: true });
-    let successCount = 0;
     
-    // Send emergency stop to each device
+    // Her cihaz için emergency stop işlemi
     for (const device of devices) {
+      // WebSocket üzerinden emergency stop komutu gönder
       const sent = req.wss.sendToDevice(device.token, {
         type: 'command',
         command: 'emergency-stop'
       });
 
-      if (sent) {
-        successCount++;
-        await device.updateOne({
-          emergencyStopped: true,
-          playlistStatus: 'emergency-stopped',
-          volume: 0
-        });
+      if (!sent) {
+        console.error(`Failed to send emergency stop to device ${device.token}`);
       }
     }
 
-    // Broadcast to admins
+    // Admin'lere broadcast
     req.wss.broadcastToAdmins({
       type: 'emergency',
       action: 'stopped',
-      message: `Tüm cihazlar acil durum nedeniyle durduruldu (${successCount}/${devices.length} başarılı)`
+      message: 'Tüm cihazlar acil durum nedeniyle durduruldu'
     });
 
-    // Create notification
-    await Notification.create({
-      type: 'emergency',
-      title: 'Acil Durum Aktif',
-      message: 'Tüm cihazlar acil durum nedeniyle durduruldu',
-      read: false
-    });
-
-    res.json({ 
-      message: 'Acil durum durdurma komutu gönderildi',
-      success: true,
-      affectedDevices: successCount
-    });
+    res.json({ message: 'Acil durum durdurma komutu gönderildi' });
   } catch (error) {
     console.error('Emergency stop error:', error);
-    res.status(500).json({ 
-      message: error.message || 'Acil durum komutu gönderilemedi',
-      success: false 
-    });
+    res.status(500).json({ message: error.message });
   }
 };
 
 const emergencyReset = async (req, res) => {
   try {
-    console.log('Emergency reset initiated');
-    
-    // Deactivate emergency state
+    // EmergencyStateManager'ı deaktive et
     await EmergencyStateManager.deactivateEmergency();
     
-    // Find all emergency stopped devices
+    // Tüm cihazları bul
     const devices = await Device.find({ emergencyStopped: true });
-    let successCount = 0;
     
-    // Send emergency reset to each device
+    // Her cihaz için emergency reset işlemi
     for (const device of devices) {
+      // WebSocket üzerinden emergency reset ve resume playback komutu gönder
       const sent = req.wss.sendToDevice(device.token, {
         type: 'command',
         command: 'emergency-reset',
-        action: 'resume-playback'
+        action: 'resume-playback',
+        resumePlayback: true  // Explicitly tell device to resume playback
       });
 
-      if (sent) {
-        successCount++;
-        await device.updateOne({
-          emergencyStopped: false,
-          playlistStatus: 'loaded',
-          volume: 50 // Reset to default volume
-        });
+      if (!sent) {
+        console.error(`Failed to send emergency reset to device ${device.token}`);
       }
     }
 
-    // Broadcast to admins
+    // Admin'lere broadcast
     req.wss.broadcastToAdmins({
       type: 'emergency',
       action: 'reset',
-      message: `Acil durum durumu kaldırıldı (${successCount}/${devices.length} başarılı)`
+      message: 'Acil durum durumu kaldırıldı, cihazlar normal çalışmaya devam ediyor'
     });
 
-    // Create notification
-    await Notification.create({
-      type: 'emergency',
-      title: 'Acil Durum Kaldırıldı',
-      message: 'Cihazlar normal çalışmaya devam ediyor',
-      read: false
-    });
-
-    res.json({ 
-      message: 'Acil durum sıfırlama komutu gönderildi',
-      success: true,
-      affectedDevices: successCount
-    });
+    res.json({ message: 'Acil durum sıfırlama komutu gönderildi' });
   } catch (error) {
     console.error('Emergency reset error:', error);
-    res.status(500).json({ 
-      message: error.message || 'Acil durum sıfırlama komutu gönderilemedi',
-      success: false 
-    });
+    res.status(500).json({ message: error.message });
   }
 };
 

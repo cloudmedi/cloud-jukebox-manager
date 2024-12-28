@@ -19,7 +19,6 @@ export interface Device {
     artist: string;
   };
   playlistStatus?: string;
-  emergencyStopped?: boolean;
   deviceInfo?: {
     hostname: string;
     platform: string;
@@ -65,22 +64,26 @@ export const deviceService = {
   },
 
   emergencyStop: async () => {
-    try {
-      const response = await axios.post(`${API_URL}/emergency-stop`);
-      return response.data;
-    } catch (error) {
-      console.error('Emergency stop error:', error);
-      throw error;
+    const response = await fetch(`${API_URL}/emergency-stop`, {
+      method: 'POST',
+    });
+    
+    if (!response.ok) {
+      throw new Error('Emergency stop failed');
     }
+    
+    return response.json();
   },
 
   emergencyReset: async () => {
-    try {
-      const response = await axios.post(`${API_URL}/emergency-reset`);
-      return response.data;
-    } catch (error) {
-      console.error('Emergency reset error:', error);
-      throw error;
+    const response = await fetch(`${API_URL}/emergency-reset`, {
+      method: 'POST',
+    });
+    
+    if (!response.ok) {
+      throw new Error('Emergency reset failed');
     }
+    
+    return response.json();
   }
 };
