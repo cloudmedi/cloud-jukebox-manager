@@ -7,7 +7,6 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { DeviceGroupForm } from "./DeviceGroupForm";
 import { BulkGroupActions } from "./group-actions/BulkGroupActions";
 import { DeviceGroupsTable } from "./table/DeviceGroupsTable";
-import { GroupShortcuts } from "./shortcuts/GroupShortcuts";
 import { GroupTemplateDialog } from "./group-templates/GroupTemplateDialog";
 import { useToast } from "@/components/ui/use-toast";
 import type { DeviceGroup } from "./types";
@@ -75,35 +74,6 @@ const DeviceGroups = () => {
     }
   };
 
-  const handleNewGroup = () => setIsFormOpen(true);
-  const handleSearch = () => searchInputRef.current?.focus();
-
-  // Klavye kısayolları
-  const handleKeyPress = (e: KeyboardEvent) => {
-    if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
-      switch (e.key.toLowerCase()) {
-        case 'n':
-          e.preventDefault();
-          handleNewGroup();
-          break;
-        case 'r':
-          e.preventDefault();
-          refetch();
-          break;
-        case 'f':
-          e.preventDefault();
-          handleSearch();
-          break;
-      }
-    }
-  };
-
-  // Klavye kısayollarını dinle
-  useEffect(() => {
-    window.addEventListener('keydown', handleKeyPress);
-    return () => window.removeEventListener('keydown', handleKeyPress);
-  }, []);
-
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[200px]">
@@ -114,12 +84,6 @@ const DeviceGroups = () => {
 
   return (
     <div className="space-y-6">
-      <GroupShortcuts
-        onNewGroup={handleNewGroup}
-        onRefresh={refetch}
-        onSearch={handleSearch}
-      />
-
       <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold tracking-tight">Cihaz Grupları</h2>
         <div className="flex items-center gap-2">
@@ -143,7 +107,7 @@ const DeviceGroups = () => {
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             ref={searchInputRef}
-            placeholder="Grup adı veya açıklama ara..."
+            placeholder="Grup adı ara..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="pl-9"
