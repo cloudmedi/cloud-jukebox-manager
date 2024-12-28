@@ -29,7 +29,7 @@ export interface Device {
     networkInterfaces: string[];
     osVersion: string;
   };
-  status?: 'playing' | 'stopped' | 'paused';  // Added status property
+  status?: 'playing' | 'stopped' | 'paused';
   groupId?: string;
   lastSeen: string;
   createdAt?: string;
