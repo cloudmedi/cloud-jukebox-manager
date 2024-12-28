@@ -1,8 +1,10 @@
 import { useNavigate } from "react-router-dom";
 import { useQuery } from "@tanstack/react-query";
 import { PlaylistCard } from "@/components/playlists/PlaylistCard";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Music2 } from "lucide-react";
+import { toast } from "sonner";
+import websocketService from "@/services/websocketService";
 
 const Index = () => {
   const navigate = useNavigate();
@@ -18,6 +20,33 @@ const Index = () => {
     },
   });
 
+  const handleSendToDevice = async (playlist: any) => {
+    try {
+      // WebSocket üzerinden playlist'i gönder
+      websocketService.sendMessage({
+        type: 'playlist',
+        action: 'send',
+        data: {
+          _id: playlist._id,
+          name: playlist.name,
+          artwork: playlist.artwork,
+          songs: playlist.songs.map((song: any) => ({
+            _id: song._id,
+            name: song.name,
+            artist: song.artist,
+            filePath: song.filePath,
+            duration: song.duration
+          }))
+        }
+      });
+      
+      toast.success("Playlist cihaza gönderiliyor");
+    } catch (error) {
+      console.error('Playlist gönderme hatası:', error);
+      toast.error("Playlist gönderilemedi");
+    }
+  };
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[400px]">
@@ -28,14 +57,12 @@ const Index = () => {
 
   return (
     <div className="space-y-8 p-6 bg-white">
-      {/* Header */}
       <div className="flex items-center justify-between mb-6">
         <h1 className="text-2xl font-semibold tracking-tight">
           Music for Business
         </h1>
       </div>
 
-      {/* Playlists Section */}
       {!playlists?.length ? (
         <div 
           className="flex flex-col items-center justify-center rounded-lg border bg-card p-8 text-center"
@@ -49,37 +76,38 @@ const Index = () => {
           </p>
         </div>
       ) : (
-        <ScrollArea className="w-full" orientation="horizontal">
-          <div className="flex space-x-4 pb-4 min-w-full">
+        <ScrollArea className="w-full">
+          <div className="flex space-x-4 pb-4">
             {playlists.map((playlist) => (
-              <PlaylistCard
-                key={playlist._id}
-                playlist={playlist}
-                onDelete={(id) => {
-                  // Delete functionality
-                  fetch(`http://localhost:5000/api/playlists/${id}`, {
-                    method: "DELETE",
-                  })
-                    .then(response => {
-                      if (!response.ok) {
-                        throw new Error("Playlist silinemedi");
-                      }
-                      // Optionally, you can add a toast notification here
+              <div key={playlist._id} className="w-[300px] flex-none">
+                <PlaylistCard
+                  playlist={playlist}
+                  onDelete={(id) => {
+                    fetch(`http://localhost:5000/api/playlists/${id}`, {
+                      method: "DELETE",
                     })
-                    .catch(error => {
-                      console.error("Error deleting playlist:", error);
-                    });
-                }}
-                onEdit={(id) => navigate(`/playlists/${id}/edit`)}
-                onPlay={(id) => {
-                  const mainLayout = document.querySelector('.main-layout');
-                  if (mainLayout) {
-                    mainLayout.setAttribute('data-player-visible', 'true');
-                  }
-                }}
-              />
+                      .then(response => {
+                        if (!response.ok) {
+                          throw new Error("Playlist silinemedi");
+                        }
+                      })
+                      .catch(error => {
+                        console.error("Error deleting playlist:", error);
+                      });
+                  }}
+                  onEdit={(id) => navigate(`/playlists/${id}/edit`)}
+                  onPlay={(id) => {
+                    const mainLayout = document.querySelector('.main-layout');
+                    if (mainLayout) {
+                      mainLayout.setAttribute('data-player-visible', 'true');
+                    }
+                  }}
+                  onSendToDevice={() => handleSendToDevice(playlist)}
+                />
+              </div>
             ))}
           </div>
+          <ScrollBar orientation="horizontal" />
         </ScrollArea>
       )}
     </div>

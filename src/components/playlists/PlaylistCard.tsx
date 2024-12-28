@@ -16,11 +16,12 @@ interface PlaylistCardProps {
   onDelete: (id: string) => void;
   onEdit?: (id: string) => void;
   onPlay?: (id: string) => void;
+  onSendToDevice?: () => void;
 }
 
-export const PlaylistCard = memo(({ playlist, onPlay }: PlaylistCardProps) => {
+export const PlaylistCard = memo(({ playlist, onPlay, onSendToDevice }: PlaylistCardProps) => {
   return (
-    <Card className="group relative w-[280px] h-[360px] flex flex-col bg-white border shadow-sm hover:shadow-md transition-all duration-300">
+    <Card className="group relative w-full h-[360px] flex flex-col bg-white border shadow-sm hover:shadow-md transition-all duration-300">
       {/* Artwork */}
       <div className="relative aspect-square w-full overflow-hidden">
         {playlist.artwork ? (
@@ -66,13 +67,7 @@ export const PlaylistCard = memo(({ playlist, onPlay }: PlaylistCardProps) => {
           <Button 
             variant="outline" 
             className="w-full"
-            onClick={() => {
-              // Cihaza gönderme dialog'unu aç
-              const sendDialog = document.querySelector('[data-send-dialog]');
-              if (sendDialog) {
-                (sendDialog as HTMLDialogElement).showModal();
-              }
-            }}
+            onClick={onSendToDevice}
           >
             <Send className="mr-2 h-4 w-4" />
             Cihaza Gönder
