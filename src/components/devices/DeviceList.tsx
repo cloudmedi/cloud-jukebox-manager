@@ -33,35 +33,39 @@ export const DeviceList = () => {
 
   useEffect(() => {
     const handleDeviceStatus = (data: any) => {
-      const currentDevices = queryClient.getQueryData<Device[]>(['devices']);
+      console.log('Handling device status update:', data); // Debug log
       
+      const currentDevices = queryClient.getQueryData<Device[]>(['devices']);
       if (!currentDevices) return;
 
       const updatedDevices = currentDevices.map(device => {
         if (device.token === data.token) {
-          // Ses seviyesi güncellemesi geldiğinde
-          if (typeof data.volume === 'number') {
-            console.log(`Updating volume for device ${device.token} to ${data.volume}`);
-          }
+          // Create new device state
+          const updatedDevice = {
+            ...device,
+            ...data,
+            // Explicitly handle volume updates
+            volume: data.volume !== undefined ? data.volume : device.volume,
+            // Keep other fields
+            playlistStatus: data.playlistStatus || device.playlistStatus,
+            isOnline: data.isOnline !== undefined ? data.isOnline : device.isOnline
+          };
 
-          if (device.isOnline && !data.isOnline) {
+          // Handle notifications
+          if (device.isOnline && !updatedDevice.isOnline) {
             showDeviceOfflineNotification(device.name);
           }
 
-          if (data.volume && data.volume >= VOLUME_THRESHOLD) {
-            showVolumeWarning(device.name, data.volume);
+          if (updatedDevice.volume >= VOLUME_THRESHOLD) {
+            showVolumeWarning(device.name, updatedDevice.volume);
           }
 
           if (data.playlistStatus === 'error') {
             showPlaylistError(device.name, 'Playlist yüklenemedi');
           }
-          
-          return { 
-            ...device, 
-            ...data,
-            volume: typeof data.volume === 'number' ? data.volume : device.volume,
-            playlistStatus: data.playlistStatus || device.playlistStatus
-          };
+
+          console.log('Updated device state:', updatedDevice); // Debug log
+          return updatedDevice;
         }
         return device;
       });
@@ -69,22 +73,11 @@ export const DeviceList = () => {
       queryClient.setQueryData(['devices'], updatedDevices);
     };
 
-    // Volume update handler'ı
-    const handleVolumeUpdate = (data: any) => {
-      if (data.type === 'command' && data.command === 'setVolume') {
-        handleDeviceStatus({
-          token: data.token,
-          volume: data.volume
-        });
-      }
-    };
-
+    // Add WebSocket message handlers
     websocketService.addMessageHandler('deviceStatus', handleDeviceStatus);
-    websocketService.addMessageHandler('command', handleVolumeUpdate);
 
     return () => {
       websocketService.removeMessageHandler('deviceStatus', handleDeviceStatus);
-      websocketService.removeMessageHandler('command', handleVolumeUpdate);
     };
   }, [queryClient]);
 

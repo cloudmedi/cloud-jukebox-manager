@@ -49,6 +49,13 @@ const setVolume = async (req, res) => {
     if (sent) {
       await device.setVolume(volume);
       
+      // Broadcast volume update to all admin clients
+      req.wss.broadcastToAdmins({
+        type: 'deviceStatus',
+        token: device.token,
+        volume: volume
+      });
+      
       // Check volume threshold
       if (volume >= 80) {
         await Notification.create({

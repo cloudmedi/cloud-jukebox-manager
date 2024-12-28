@@ -42,6 +42,7 @@ class WebSocketService {
     this.ws.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);
+        console.log('Received WebSocket message:', message); // Debug log
         this.handleMessage(message);
       } catch (error) {
         console.error('Message parsing error:', error);
@@ -59,6 +60,26 @@ class WebSocketService {
   }
 
   private handleMessage(message: any) {
+    console.log('Handling message:', message); // Debug log
+    
+    // Special handling for volume commands
+    if (message.type === 'command' && message.command === 'setVolume') {
+      const handlers = this.messageHandlers.get('deviceStatus');
+      if (handlers) {
+        handlers.forEach(handler => {
+          try {
+            handler({
+              type: 'deviceStatus',
+              token: message.token,
+              volume: message.volume
+            });
+          } catch (error) {
+            console.error('Volume handler error:', error);
+          }
+        });
+      }
+    }
+
     const handlers = this.messageHandlers.get(message.type);
     if (handlers) {
       handlers.forEach(handler => {
@@ -92,6 +113,7 @@ class WebSocketService {
 
   public sendMessage(message: any) {
     if (this.ws?.readyState === WebSocket.OPEN) {
+      console.log('Sending WebSocket message:', message); // Debug log
       this.ws.send(JSON.stringify(message));
     } else {
       console.error('WebSocket bağlantısı kurulamadı');
