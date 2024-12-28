@@ -87,7 +87,7 @@ export const DeviceCard = ({ device, isSelected, onSelect }: DeviceCardProps) =>
                 Çevrimdışı
               </Badge>
             )}
-            {device.isOnline && !device.isPlaying && (
+            {device.isOnline && device.status === 'stopped' && (
               <Badge variant="secondary" className="bg-yellow-500/15 text-yellow-500 hover:bg-yellow-500/25">
                 <Pause className="h-3 w-3 mr-1" />
                 Durduruldu
