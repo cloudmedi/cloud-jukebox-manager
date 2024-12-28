@@ -120,6 +120,59 @@ router.delete('/:id', async (req, res) => {
   }
 });
 
+// Grup klonlama
+router.post('/:id/clone', async (req, res) => {
+  try {
+    const sourceGroup = await DeviceGroup.findById(req.params.id);
+    if (!sourceGroup) {
+      return res.status(404).json({ message: 'Kaynak grup bulunamadı' });
+    }
+
+    const clonedGroup = await sourceGroup.clone(
+      `${sourceGroup.name} (Kopya)`,
+      req.body.createdBy
+    );
+
+    // Geçmişe kaydet
+    clonedGroup.history.push({
+      action: 'clone',
+      changes: {
+        sourceGroup: sourceGroup._id,
+        clonedName: clonedGroup.name
+      },
+      performedBy: req.body.createdBy
+    });
+    await clonedGroup.save();
+
+    res.status(201).json(clonedGroup);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Toplu grup klonlama
+router.post('/bulk/clone', async (req, res) => {
+  try {
+    const { groupIds, createdBy } = req.body;
+    const clonedGroups = [];
+
+    for (const groupId of groupIds) {
+      const sourceGroup = await DeviceGroup.findById(groupId);
+      if (sourceGroup) {
+        const clonedGroup = await sourceGroup.clone(
+          `${sourceGroup.name} (Kopya)`,
+          createdBy
+        );
+        clonedGroups.push(clonedGroup);
+      }
+    }
+
+    res.status(201).json(clonedGroups);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
 // Gruba cihaz ekle
 router.post('/:id/devices', async (req, res) => {
   try {
