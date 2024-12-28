@@ -9,6 +9,7 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarFooter,
+  SidebarSeparator,
 } from "@/components/ui/sidebar";
 import { Link } from "react-router-dom";
 
@@ -48,8 +49,10 @@ const Sidebar = () => {
         </SidebarGroup>
       </SidebarContent>
       <SidebarFooter>
-        <div className="px-4 py-2 text-sm text-muted-foreground">
-          V2.1
+        <SidebarSeparator />
+        <div className="flex items-center justify-between px-4 py-3">
+          <span className="text-sm font-medium text-muted-foreground">Version</span>
+          <span className="text-sm font-semibold bg-secondary/50 px-2 py-0.5 rounded">V2.1</span>
         </div>
       </SidebarFooter>
     </SidebarContainer>
