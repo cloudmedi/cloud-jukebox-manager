@@ -53,21 +53,29 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isRestartDialogOpen, setIsRestartDialogOpen] = useState(false);
-  const [isEmergencyActive, setIsEmergencyActive] = useState(false);
+  const [isEmergencyDialogOpen, setIsEmergencyDialogOpen] = useState(false);
   const queryClient = useQueryClient();
 
   const handleEmergencyAction = async () => {
     try {
-      if (!isEmergencyActive) {
-        // Emergency Stop
-        await deviceService.emergencyStop();
-        setIsEmergencyActive(true);
-        toast.success('Acil durum aktifleştirildi. Tüm cihazlar durduruldu.');
+      setIsEmergencyDialogOpen(false);
+      
+      if (!device.emergencyStopped) {
+        const response = await deviceService.emergencyStop();
+        if (response.success) {
+          toast.success('Acil durum komutu gönderildi. Tüm cihazlar durduruluyor.');
+          queryClient.invalidateQueries({ queryKey: ['devices'] });
+        } else {
+          toast.error('Acil durum komutu gönderilemedi!');
+        }
       } else {
-        // Emergency Reset - Resume playback
-        await deviceService.emergencyReset();
-        setIsEmergencyActive(false);
-        toast.success('Acil durum kaldırıldı. Cihazlar normal çalışmaya devam ediyor.');
+        const response = await deviceService.emergencyReset();
+        if (response.success) {
+          toast.success('Acil durum kaldırıldı. Cihazlar normal çalışmaya devam ediyor.');
+          queryClient.invalidateQueries({ queryKey: ['devices'] });
+        } else {
+          toast.error('Acil durum sıfırlama komutu gönderilemedi!');
+        }
       }
     } catch (error) {
       console.error('Emergency action error:', error);
@@ -152,6 +160,10 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
           </Button>
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="bg-background border shadow-lg">
+          <DropdownMenuItem onClick={() => setIsEmergencyDialogOpen(true)}>
+            <AlertOctagon className={`mr-2 h-4 w-4 ${device.emergencyStopped ? 'text-yellow-500' : 'text-red-500'}`} />
+            {device.emergencyStopped ? 'Acil Durumu Kaldır' : 'Acil Durum'}
+          </DropdownMenuItem>
           <DropdownMenuItem onClick={handlePlayPause}>
             {device.isPlaying ? (
               <Pause className="mr-2 h-4 w-4" />
@@ -176,10 +188,6 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
             <Info className="mr-2 h-4 w-4" />
             Cihaz Detayları
           </DropdownMenuItem>
-          <DropdownMenuItem onClick={handleEmergencyAction}>
-            <AlertOctagon className={`mr-2 h-4 w-4 ${isEmergencyActive ? 'text-red-500' : ''}`} />
-            {isEmergencyActive ? 'Acil Durumu Kaldır' : 'Acil Durum Durdurma'}
-          </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive">
             <Trash2 className="mr-2 h-4 w-4" />
             Cihazı Sil
@@ -187,35 +195,25 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
         </DropdownMenuContent>
       </DropdownMenu>
 
-      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+      <AlertDialog open={isEmergencyDialogOpen} onOpenChange={setIsEmergencyDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
-            <AlertDialogTitle>Cihazı silmek istediğinizden emin misiniz?</AlertDialogTitle>
+            <AlertDialogTitle>
+              {device.emergencyStopped ? 'Acil Durumu Kaldır' : 'Acil Durum Durdurma'}
+            </AlertDialogTitle>
             <AlertDialogDescription>
-              Bu işlem geri alınamaz. Cihaz kalıcı olarak silinecektir.
+              {device.emergencyStopped 
+                ? 'Bu işlem tüm cihazları normal çalışma durumuna döndürecek ve müzik yayınını devam ettirecektir. Devam etmek istediğinizden emin misiniz?' 
+                : 'Bu işlem tüm cihazları durduracak ve ses çalmayı sonlandıracaktır. Bu işlem geri alınamaz ve sadece yönetici tarafından tekrar aktif edilebilir. Devam etmek istediğinizden emin misiniz?'}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>İptal</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground">
-              Sil
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
-      <AlertDialog open={isRestartDialogOpen} onOpenChange={setIsRestartDialogOpen}>
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Cihazı yeniden başlatmak istediğinizden emin misiniz?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Cihaz yeniden başlatılacak ve geçici olarak çevrimdışı olacaktır.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>İptal</AlertDialogCancel>
-            <AlertDialogAction onClick={handleRestart}>
-              Yeniden Başlat
+            <AlertDialogAction 
+              onClick={handleEmergencyAction}
+              className={`${device.emergencyStopped ? 'bg-yellow-600 hover:bg-yellow-700' : 'bg-red-600 hover:bg-red-700'}`}
+            >
+              {device.emergencyStopped ? 'Acil Durumu Kaldır' : 'Acil Durum Durdurma'}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
