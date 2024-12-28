@@ -24,6 +24,14 @@ const bulkAssignPlaylist = async (req, res) => {
     for (const device of devices) {
       console.log(`Sending playlist ${playlistId} to device ${device.token}`);
       
+      // İlk olarak progress sıfırlandı bilgisini gönder
+      req.wss.broadcastToAdmins({
+        type: 'deviceStatus',
+        token: device.token,
+        downloadProgress: 0,
+        playlistStatus: 'loading'
+      });
+      
       const sent = req.wss.sendToDevice(device.token, {
         type: 'command',
         command: 'loadPlaylist',
@@ -32,7 +40,6 @@ const bulkAssignPlaylist = async (req, res) => {
 
       if (!sent) {
         console.log(`Device ${device.token} is offline, creating notification`);
-        // Create notification for offline devices
         await Notification.create({
           type: 'playlist',
           title: 'Playlist Yükleme Hatası',
@@ -41,16 +48,6 @@ const bulkAssignPlaylist = async (req, res) => {
         });
       }
     }
-
-    // Broadcast initial status to admin clients
-    devices.forEach(device => {
-      req.wss.broadcastToAdmins({
-        type: 'deviceStatus',
-        token: device.token,
-        downloadProgress: 0,
-        playlistStatus: 'loading'
-      });
-    });
 
     res.json({ message: 'Playlist başarıyla atandı' });
   } catch (error) {
@@ -64,41 +61,38 @@ const updateDeviceProgress = async (req, res) => {
     const { deviceId, progress } = req.body;
     console.log(`Updating device ${deviceId} progress to ${progress}`);
     
-    // Update device progress and status
-    const updatedDevice = await Device.findByIdAndUpdate(
-      deviceId,
-      {
-        downloadProgress: progress,
-        playlistStatus: progress === 100 ? 'loaded' : 'loading'
-      },
-      { new: true }
-    );
-
-    if (!updatedDevice) {
+    // Önce device'ı bul
+    const device = await Device.findById(deviceId);
+    if (!device) {
       console.error(`Device not found: ${deviceId}`);
       return res.status(404).json({ message: 'Device not found' });
     }
 
-    console.log('Device updated:', updatedDevice);
+    // Progress ve status'u güncelle
+    device.downloadProgress = progress;
+    device.playlistStatus = progress === 100 ? 'loaded' : 'loading';
+    await device.save();
 
-    // WebSocket ile progress güncellemesini gönder
-    req.wss.sendToDevice(updatedDevice.token, {
+    console.log('Device updated:', device);
+
+    // Admin'lere progress güncellemesini bildir
+    req.wss.broadcastToAdmins({
+      type: 'deviceStatus',
+      token: device.token,
+      downloadProgress: progress,
+      playlistStatus: device.playlistStatus
+    });
+
+    // Device'a progress güncellemesini bildir
+    req.wss.sendToDevice(device.token, {
       type: 'downloadProgress',
       progress: progress,
       deviceId: deviceId
     });
 
-    // Broadcast to admin clients
-    req.wss.broadcastToAdmins({
-      type: 'deviceStatus',
-      token: updatedDevice.token,
-      downloadProgress: progress,
-      playlistStatus: progress === 100 ? 'loaded' : 'loading'
-    });
-
     res.json({ 
       success: true,
-      device: updatedDevice
+      device: device
     });
   } catch (error) {
     console.error('Progress update error:', error);

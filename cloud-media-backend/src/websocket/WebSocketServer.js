@@ -49,59 +49,58 @@ class WebSocketServer {
     }, 30000);
   }
 
-  async handleDeviceMessage(token, message) {
-    console.log(`Handling device message from ${token}:`, message);
-    
-    switch (message.type) {
-      case 'status':
-        await this.statusHandler.handleOnlineStatus(token, message.isOnline);
-        break;
+async handleDeviceMessage(token, message) {
+  console.log(`Handling device message from ${token}:`, message);
+  
+  switch (message.type) {
+    case 'status':
+      await this.statusHandler.handleOnlineStatus(token, message.isOnline);
+      break;
 
-      case 'playlistStatus':
-        await this.statusHandler.handlePlaylistStatus(token, message);
-        break;
+    case 'playlistStatus':
+      await this.statusHandler.handlePlaylistStatus(token, message);
+      break;
 
-      case 'downloadProgress':
-        await this.handleDownloadProgress(token, message);
-        break;
+    case 'downloadProgress':
+      await this.handleDownloadProgress(token, message);
+      break;
 
-      default:
-        console.log('Unknown message type:', message.type);
-        break;
-    }
+    default:
+      console.log('Unknown message type:', message.type);
+      break;
   }
+}
 
-  async handleDownloadProgress(token, message) {
-    try {
-      const device = await Device.findOne({ token });
-      if (!device) {
-        console.error('Device not found for token:', token);
-        return;
-      }
-
-      console.log(`Processing progress update for device ${token}:`, message);
-
-      // Update device progress
-      const updatedDevice = await Device.findByIdAndUpdate(device._id, {
-        downloadProgress: message.progress,
-        playlistStatus: message.progress === 100 ? 'loaded' : 'loading'
-      }, { new: true });
-
-      console.log(`Updated device ${token} progress:`, updatedDevice);
-
-      // Broadcast progress to admin clients immediately after update
-      this.broadcastToAdmins({
-        type: 'deviceStatus',
-        token: token,
-        downloadProgress: message.progress,
-        playlistStatus: message.progress === 100 ? 'loaded' : 'loading'
-      });
-
-      console.log(`Progress broadcast sent for device ${token}: ${message.progress}%`);
-    } catch (error) {
-      console.error('Error handling download progress:', error);
+async handleDownloadProgress(token, message) {
+  try {
+    const device = await Device.findOne({ token });
+    if (!device) {
+      console.error('Device not found for token:', token);
+      return;
     }
+
+    console.log(`Processing progress update for device ${token}:`, message);
+
+    // Update device progress
+    device.downloadProgress = message.progress;
+    device.playlistStatus = message.progress === 100 ? 'loaded' : 'loading';
+    await device.save();
+
+    console.log(`Updated device ${token} progress:`, device);
+
+    // Broadcast progress to admin clients immediately after update
+    this.broadcastToAdmins({
+      type: 'deviceStatus',
+      token: token,
+      downloadProgress: message.progress,
+      playlistStatus: device.playlistStatus
+    });
+
+    console.log(`Progress broadcast sent for device ${token}: ${message.progress}%`);
+  } catch (error) {
+    console.error('Error handling download progress:', error);
   }
+}
 
   broadcastToAdmins(message) {
     console.log('Broadcasting to admins:', message);
