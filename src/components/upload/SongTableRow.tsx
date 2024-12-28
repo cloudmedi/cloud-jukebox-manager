@@ -120,7 +120,7 @@ export const SongTableRow = ({
       <TableCell>{song.artist}</TableCell>
       <TableCell>{song.genre}</TableCell>
       <TableCell>{song.album || "-"}</TableCell>
-      <TableCell>{formatSongDuration(song.duration)}</TableCell>
+      <TableCell>{formatDuration(song.duration)}</TableCell>
       <TableCell>
         {new Date(song.createdAt).toLocaleDateString("tr-TR")}
       </TableCell>
