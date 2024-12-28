@@ -1,38 +1,47 @@
-const NodeID3 = require('node-id3');
+const { parseFile } = require('music-metadata');
 const fs = require('fs');
 const path = require('path');
 const Song = require('../models/Song');
+const { createLogger } = require('../utils/logger');
+
+const logger = createLogger('song-service');
 
 const handleFileUpload = async (file) => {
   try {
-    // ID3 etiketlerini oku
-    const tags = NodeID3.read(file.path);
+    logger.info(`Processing uploaded file: ${file.originalname}`);
     
-    // Metadata'dan bilgileri al
-    const artist = tags.artist || 'Bilinmeyen Sanatçı';
-    const title = tags.title || file.originalname;
-    const album = tags.album || '';
-    const genre = tags.genre || 'Other';
-    const year = tags.year ? parseInt(tags.year) : null;
+    // Metadata'yı oku
+    const metadata = await parseFile(file.path);
+    logger.info('Metadata parsed successfully');
+
+    // Temel bilgileri al
+    const title = metadata.common.title || path.parse(file.originalname).name;
+    const artist = metadata.common.artist || 'Bilinmeyen Sanatçı';
+    const album = metadata.common.album || '';
+    const genre = metadata.common.genre?.[0] || 'Other';
+    const year = metadata.common.year || null;
     
+    // Süreyi saniye cinsinden al ve yuvarla
+    const duration = Math.round(metadata.format.duration || 0);
+
     // Artwork'ü kaydet
     let artworkPath = null;
-    if (tags.image && tags.image.imageBuffer) {
-      // Artwork klasörünü oluştur
+    if (metadata.common.picture && metadata.common.picture[0]) {
+      const picture = metadata.common.picture[0];
       const artworkDir = path.join('uploads', 'artworks');
+      
+      // Artwork klasörünü oluştur
       if (!fs.existsSync(artworkDir)) {
         fs.mkdirSync(artworkDir, { recursive: true });
       }
       
-      const artworkFileName = `artwork-${Date.now()}.jpg`;
+      const artworkFileName = `artwork-${Date.now()}.${picture.format.split('/')[1]}`;
       const artworkFullPath = path.join(artworkDir, artworkFileName);
       
-      fs.writeFileSync(artworkFullPath, tags.image.imageBuffer);
+      fs.writeFileSync(artworkFullPath, picture.data);
       artworkPath = `/uploads/artworks/${artworkFileName}`;
+      logger.info(`Artwork saved: ${artworkPath}`);
     }
-    
-    // Varsayılan süre
-    const duration = 0;
 
     const song = new Song({
       name: title,
@@ -46,8 +55,10 @@ const handleFileUpload = async (file) => {
       createdBy: 'system'
     });
 
+    logger.info('Song document created, saving to database');
     return await song.save();
   } catch (error) {
+    logger.error('Error in handleFileUpload:', error);
     throw error;
   }
 };
