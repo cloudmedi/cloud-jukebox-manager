@@ -18,7 +18,7 @@ export const formatDuration = (seconds: number) => {
   return `${minutes} dk`;
 };
 
-// Upload kısmı için ayrı bir formatlama fonksiyonu
+// Upload kısmı için normal süre formatı (3:45 gibi)
 export const formatSongDuration = (seconds: number) => {
   if (!seconds) return '0:00';
   
