@@ -16,14 +16,15 @@ interface DeviceTableRowProps {
 }
 
 export const DeviceTableRow = ({ device, isSelected, onSelect }: DeviceTableRowProps) => {
-  const renderPlaylistStatus = () => {
+
+const renderPlaylistStatus = () => {
     if (!device.playlistStatus) return "-";
 
     switch (device.playlistStatus) {
       case "loaded":
         return (
           <div className="flex items-center gap-2 text-emerald-500">
-            <Play className="h-4 w-4" />
+            <CheckCircle2 className="h-4 w-4" />
             <span>Yüklendi</span>
           </div>
         );
