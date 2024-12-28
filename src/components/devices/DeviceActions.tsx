@@ -151,12 +151,12 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
         </DropdownMenuTrigger>
         <DropdownMenuContent align="end" className="bg-background border shadow-lg">
           <DropdownMenuItem onClick={handlePlayPause}>
-            {device.isPlaying ? (
+            {!device.isPlaying ? (
               <Play className="mr-2 h-4 w-4" />
             ) : (
               <Pause className="mr-2 h-4 w-4" />
             )}
-            {device.isPlaying ? 'Çal' : 'Duraklat'}
+            {!device.isPlaying ? 'Çal' : 'Duraklat'}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setIsRestartDialogOpen(true)}>
             <RefreshCcw className="mr-2 h-4 w-4" />
