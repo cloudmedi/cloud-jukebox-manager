@@ -5,14 +5,19 @@ import { usePlaybackStore } from "@/store/playbackStore";
 import PlayerControls from "./PlayerControls";
 import VolumeControl from "./VolumeControl";
 import ProgressBar from "./ProgressBar";
+import { Song } from "@/types/song";
 
-const Player = () => {
+interface PlayerProps {
+  className?: string;
+}
+
+export const Player = ({ className }: PlayerProps) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [volume, setVolume] = useState(70);
   const [isMuted, setIsMuted] = useState(false);
   const [progress, setProgress] = useState(0);
   const [duration, setDuration] = useState(0);
-  const audioRef = useRef(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
   const isMobile = useIsMobile();
   
   const { currentSong, next, previous } = usePlaybackStore();
@@ -68,7 +73,7 @@ const Player = () => {
     }
   };
 
-  const handleVolumeChange = (value) => {
+  const handleVolumeChange = (value: number[]) => {
     if (audioRef.current) {
       setVolume(value[0]);
       audioRef.current.volume = value[0] / 100;
@@ -83,7 +88,7 @@ const Player = () => {
     }
   };
 
-  const handleSeek = (value) => {
+  const handleSeek = (value: number[]) => {
     if (audioRef.current) {
       audioRef.current.currentTime = value[0];
       setProgress(value[0]);
@@ -93,7 +98,7 @@ const Player = () => {
   if (!currentSong) return null;
 
   return (
-    <div className="fixed bottom-0 left-0 right-0 h-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t border-border/40">
+    <div className={`fixed bottom-0 left-0 right-0 h-20 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-t border-border/40 ${className}`}>
       <audio ref={audioRef} />
       <div className={`mx-auto h-full flex items-center ${isMobile ? 'px-2 flex-col justify-center gap-2 h-auto py-4' : 'container px-4 justify-between'}`}>
         <div className={`flex items-center gap-4 ${isMobile ? 'w-full justify-between' : ''}`}>
@@ -104,7 +109,8 @@ const Player = () => {
                 alt={`${currentSong.name} artwork`}
                 className="w-full h-full object-cover"
                 onError={(e) => {
-                  e.target.src = '/placeholder.svg';
+                  const target = e.target as HTMLImageElement;
+                  target.src = '/placeholder.svg';
                 }}
               />
             ) : (

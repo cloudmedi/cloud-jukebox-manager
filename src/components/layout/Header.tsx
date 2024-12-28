@@ -1,6 +1,6 @@
 import { SettingsDialog } from "@/components/settings/SettingsDialog";
 import { NotificationsPopover } from "@/components/notifications/NotificationsPopover";
-import { Player } from "@/components/player/Player";
+import Player from "@/components/player/Player";
 import { usePlayerStore } from "@/store/playerStore";
 
 const Header = () => {
