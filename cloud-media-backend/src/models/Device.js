@@ -31,12 +31,20 @@ const deviceSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+
   volume: {
     type: Number,
-    min: 0,
-    max: 100,
-    default: 50
+    min: [0, 'Ses seviyesi 0\'dan küçük olamaz'],
+    max: [100, 'Ses seviyesi 100\'den büyük olamaz'],
+    default: 50,
+    validate: {
+      validator: function(v) {
+        return Number.isInteger(v) && v >= 0 && v <= 100;
+      },
+      message: 'Ses seviyesi 0-100 arasında tam sayı olmalıdır'
+    }
   },
+
   activePlaylist: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Playlist',
@@ -82,12 +90,9 @@ deviceSchema.methods.updateStatus = async function(isOnline) {
   }
 };
 
-// Ses seviyesini güncelleme methodu
-deviceSchema.methods.setVolume = function(volume) {
-  if (volume < 0 || volume > 100) {
-    throw new Error('Ses seviyesi 0-100 arasında olmalıdır');
-  }
-  this.volume = volume;
+deviceSchema.methods.setVolume = async function(volume) {
+  const normalizedVolume = Math.max(0, Math.min(100, volume));
+  this.volume = normalizedVolume;
   return this.save();
 };
 
