@@ -97,12 +97,10 @@ export const DeviceList = () => {
   return (
     <div className="space-y-4">
       {selectedDevices.length > 0 && (
-        <div className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <BulkActionsMenu 
-            selectedDevices={selectedDevices}
-            onClearSelection={() => setSelectedDevices([])}
-          />
-        </div>
+        <BulkActionsMenu 
+          selectedDevices={selectedDevices}
+          onClearSelection={() => setSelectedDevices([])}
+        />
       )}
 
       {isMobile ? (
