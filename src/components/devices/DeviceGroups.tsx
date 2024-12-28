@@ -8,7 +8,6 @@ import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { DeviceGroupForm } from "./DeviceGroupForm";
 import { DeviceGroupActions } from "./DeviceGroupActions";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { cn } from "@/lib/utils";
 
 interface DeviceGroup {
   _id: string;
@@ -19,23 +18,6 @@ interface DeviceGroup {
   createdBy: string;
   createdAt: string;
 }
-
-const getGroupColor = (groupId: string) => {
-  // Hash the groupId to generate a consistent color
-  const hash = groupId.split('').reduce((acc, char) => char.charCodeAt(0) + acc, 0);
-  
-  // Define color classes with lighter background colors suitable for table rows
-  const colors = [
-    "hover:bg-blue-50/50 bg-blue-50/30",
-    "hover:bg-purple-50/50 bg-purple-50/30",
-    "hover:bg-pink-50/50 bg-pink-50/30",
-    "hover:bg-yellow-50/50 bg-yellow-50/30",
-    "hover:bg-green-50/50 bg-green-50/30",
-    "hover:bg-orange-50/50 bg-orange-50/30"
-  ];
-  
-  return colors[hash % colors.length];
-};
 
 const DeviceGroups = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
@@ -62,33 +44,22 @@ const DeviceGroups = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between mb-6">
+      <div className="flex justify-between items-center">
         <h2 className="text-2xl font-bold tracking-tight">Cihaz Grupları</h2>
-        <div className="flex items-center gap-4">
-          <Select value="_all">
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Tüm Bölgeler" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="_all">Tüm Bölgeler</SelectItem>
-            </SelectContent>
-          </Select>
-          
-          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-            <DialogTrigger asChild>
-              <Button>
-                <Users className="mr-2 h-4 w-4" />
-                Yeni Grup
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DeviceGroupForm onSuccess={() => {
-                setIsFormOpen(false);
-                refetch();
-              }} />
-            </DialogContent>
-          </Dialog>
-        </div>
+        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Users className="mr-2 h-4 w-4" />
+              Yeni Grup
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DeviceGroupForm onSuccess={() => {
+              setIsFormOpen(false);
+              refetch();
+            }} />
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="rounded-md border">
@@ -106,10 +77,7 @@ const DeviceGroups = () => {
           </TableHeader>
           <TableBody>
             {groups?.map((group: DeviceGroup) => (
-              <TableRow key={group._id} className={cn(
-                "group transition-colors",
-                getGroupColor(group._id)
-              )}>
+              <TableRow key={group._id} className="group">
                 <TableCell>
                   <div className="flex items-center gap-2">
                     <Monitor className="h-4 w-4 text-muted-foreground" />
