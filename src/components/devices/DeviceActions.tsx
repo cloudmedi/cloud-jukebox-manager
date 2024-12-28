@@ -154,11 +154,16 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
         <DropdownMenuContent align="end" className="bg-background border shadow-lg">
           <DropdownMenuItem onClick={handlePlayPause}>
             {device.isPlaying ? (
-              <Pause className="mr-2 h-4 w-4" />
+              <>
+                <Pause className="mr-2 h-4 w-4" />
+                Duraklat
+              </>
             ) : (
-              <Play className="mr-2 h-4 w-4" />
+              <>
+                <Play className="mr-2 h-4 w-4" />
+                Oynat
+              </>
             )}
-            {device.isPlaying ? 'Durdur' : 'Oynat'}
           </DropdownMenuItem>
           <DropdownMenuItem onClick={() => setIsRestartDialogOpen(true)}>
             <RefreshCcw className="mr-2 h-4 w-4" />
