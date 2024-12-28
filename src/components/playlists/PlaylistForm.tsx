@@ -4,14 +4,13 @@ import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
+import { useQueryClient } from "@tanstack/react-query";
 import { BasicInfoForm } from "./form/BasicInfoForm";
 import { ArtworkUpload } from "./form/ArtworkUpload";
 import { SongSelector } from "./form/SongSelector";
 import { Save } from "lucide-react";
 import { useSelectedSongsStore } from "@/store/selectedSongsStore";
 import { useEffect } from "react";
-import { useQueryClient } from "@tanstack/react-query";
-import { useNavigate } from "react-router-dom";
 
 const MAX_FILE_SIZE = 5000000;
 const ACCEPTED_IMAGE_TYPES = ["image/jpeg", "image/jpg", "image/png", "image/webp"];
@@ -54,7 +53,6 @@ export const PlaylistForm = ({
 }: PlaylistFormProps) => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const navigate = useNavigate();
   const { selectedSongs, clearSelection } = useSelectedSongsStore();
 
   const form = useForm<PlaylistFormValues>({
@@ -68,6 +66,7 @@ export const PlaylistForm = ({
     },
   });
 
+  // Seçili şarkıları forma ekle
   useEffect(() => {
     if (selectedSongs.length > 0) {
       form.setValue('songs', selectedSongs.map(song => song._id));
@@ -97,36 +96,25 @@ export const PlaylistForm = ({
         throw new Error("İşlem başarısız oldu");
       }
 
-      const result = await response.json();
-
-      // WebSocket üzerinden playlist'i gönder
-      if (typeof window !== 'undefined' && window.electron) {
-        window.electron.send('playlist-created', result);
-      }
+      queryClient.invalidateQueries({ queryKey: ["playlists"] });
 
       toast({
         title: `Playlist ${isEditing ? "güncellendi" : "oluşturuldu"}`,
         description: "İşlem başarıyla tamamlandı",
       });
 
-      // Cache'i güncelle
-      await queryClient.invalidateQueries({ queryKey: ["playlists"] });
-
+      // Seçili şarkıları temizle
       clearSelection();
-      form.reset();
 
       if (onSuccess) {
         onSuccess();
       }
-
-      navigate("/playlists");
     } catch (error) {
       toast({
         variant: "destructive",
         title: "Hata",
         description: "Bir hata oluştu. Lütfen tekrar deneyin.",
       });
-      console.error('Playlist form error:', error);
     }
   };
 
