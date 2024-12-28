@@ -54,13 +54,9 @@ const DeviceGroups = () => {
       );
     },
     onMutate: async (groupIds) => {
-      // Cancel outgoing refetches
       await queryClient.cancelQueries({ queryKey: ["device-groups"] });
-
-      // Snapshot the previous value
       const previousGroups = queryClient.getQueryData(["device-groups"]);
 
-      // Optimistically remove the deleted groups
       queryClient.setQueryData(["device-groups"], (old: any) => ({
         pages: old.pages.map((page: any) => ({
           ...page,
@@ -71,7 +67,6 @@ const DeviceGroups = () => {
       return { previousGroups };
     },
     onError: (err, variables, context) => {
-      // Rollback on error
       if (context?.previousGroups) {
         queryClient.setQueryData(["device-groups"], context.previousGroups);
       }
@@ -83,7 +78,6 @@ const DeviceGroups = () => {
     }
   });
 
-  // Intersection Observer için useEffect
   if (inView && hasNextPage && !isFetchingNextPage) {
     fetchNextPage();
   }
@@ -113,7 +107,8 @@ const DeviceGroups = () => {
     }
   };
 
-  const allGroups = data?.pages.flatMap(page => page.groups) || [];
+  // Ensure we have valid groups data before passing to table
+  const allGroups = data?.pages.flatMap(page => page.groups || []) || [];
 
   return (
     <div className="space-y-6">
