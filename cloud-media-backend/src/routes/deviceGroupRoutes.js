@@ -2,12 +2,27 @@ const express = require('express');
 const router = express.Router();
 const DeviceGroup = require('../models/DeviceGroup');
 
-// Tüm grupları getir
+// Tüm grupları getir (paginated)
 router.get('/', async (req, res) => {
   try {
-    const groups = await DeviceGroup.find()
-      .populate('devices', 'name token location isOnline');
-    res.json(groups);
+    const page = parseInt(req.query.page) || 1;
+    const limit = parseInt(req.query.limit) || 10;
+    const skip = (page - 1) * limit;
+
+    const [groups, total] = await Promise.all([
+      DeviceGroup.find()
+        .populate('devices', 'name token location isOnline')
+        .skip(skip)
+        .limit(limit)
+        .sort({ createdAt: -1 }),
+      DeviceGroup.countDocuments()
+    ]);
+
+    res.json({
+      groups,
+      total,
+      hasMore: total > skip + groups.length
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
