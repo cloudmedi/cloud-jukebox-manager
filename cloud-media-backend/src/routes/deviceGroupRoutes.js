@@ -4,48 +4,20 @@ const DeviceGroup = require('../models/DeviceGroup');
 const historyRoutes = require('./device-groups/groupHistoryRoutes');
 const statisticsRoutes = require('./device-groups/groupStatisticsRoutes');
 const templateRoutes = require('./device-groups/groupTemplateRoutes');
-const favoriteRoutes = require('./device-groups/groupFavoriteRoutes');
 
 // Mount sub-routers
 router.use('/', historyRoutes);
 router.use('/', statisticsRoutes);
 router.use('/', templateRoutes);
-router.use('/', favoriteRoutes);
 
 // Tüm grupları getir
 router.get('/', async (req, res) => {
   try {
-    const { 
-      template, 
-      page = 1, 
-      limit = 10, 
-      parentGroup = null,
-      tag,
-      favorites,
-      search 
-    } = req.query;
-    
-    let query = template ? { isTemplate: true } : { isTemplate: false };
-    
-    if (parentGroup) {
-      query.parentGroup = parentGroup;
-    }
-    
-    if (tag) {
-      query.tags = tag;
-    }
-    
-    if (favorites === 'true') {
-      query.isFavorite = true;
-    }
-    
-    if (search) {
-      query.name = { $regex: search, $options: 'i' };
-    }
+    const { template, page = 1, limit = 10 } = req.query;
+    const query = template ? { isTemplate: true } : { isTemplate: false };
     
     const groups = await DeviceGroup.find(query)
       .populate('devices', 'name token location isOnline')
-      .populate('parentGroup', 'name')
       .skip((page - 1) * limit)
       .limit(Number(limit));
       
@@ -59,48 +31,6 @@ router.get('/', async (req, res) => {
     });
   } catch (error) {
     res.status(500).json({ message: error.message });
-  }
-});
-
-// Alt grupları getir
-router.get('/:id/subgroups', async (req, res) => {
-  try {
-    const groups = await DeviceGroup.find({ parentGroup: req.params.id })
-      .populate('devices', 'name token location isOnline');
-    res.json(groups);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Üst grupları getir
-router.get('/:id/ancestors', async (req, res) => {
-  try {
-    const group = await DeviceGroup.findById(req.params.id);
-    if (!group) {
-      return res.status(404).json({ message: 'Grup bulunamadı' });
-    }
-    const ancestors = await group.getAncestors();
-    res.json(ancestors);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
-  }
-});
-
-// Etiketleri güncelle
-router.patch('/:id/tags', async (req, res) => {
-  try {
-    const group = await DeviceGroup.findById(req.params.id);
-    if (!group) {
-      return res.status(404).json({ message: 'Grup bulunamadı' });
-    }
-    
-    group.tags = req.body.tags;
-    await group.save();
-    
-    res.json(group);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
   }
 });
 
