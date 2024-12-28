@@ -7,7 +7,7 @@ import DeviceActions from "./DeviceActions";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Volume2, Play, Loader2, AlertCircle, MapPin, CheckCircle2, XCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from "@/components/ui/tooltip";
+import { cn } from "@/lib/utils";
 
 interface DeviceTableRowProps {
   device: Device;
@@ -22,62 +22,49 @@ export const DeviceTableRow = ({ device, isSelected, onSelect }: DeviceTableRowP
     switch (device.playlistStatus) {
       case "loaded":
         return (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>
-                <div className="flex items-center gap-2 text-emerald-500">
-                  <Play className="h-4 w-4" />
-                  <span>Yüklendi</span>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Playlist başarıyla yüklendi ve oynatmaya hazır</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <div className="flex items-center gap-2 text-emerald-500">
+            <Play className="h-4 w-4" />
+            <span>Yüklendi</span>
+          </div>
         );
       case "loading":
         return (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2 text-orange-500">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>İndiriliyor %{device.downloadProgress || 0}</span>
-                  </div>
-                  <Progress value={device.downloadProgress || 0} className="h-1.5 w-32" />
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Playlist indiriliyor, lütfen bekleyin</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-orange-500">
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span>İndiriliyor %{device.downloadProgress || 0}</span>
+            </div>
+            <Progress value={device.downloadProgress || 0} className="h-1.5 w-32" />
+          </div>
         );
       case "error":
         return (
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger>
-                <div className="flex items-center gap-2 text-red-500">
-                  <AlertCircle className="h-4 w-4" />
-                  <span>Yükleme Hatası</span>
-                </div>
-              </TooltipTrigger>
-              <TooltipContent>
-                <p>Playlist yüklenirken bir hata oluştu</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
+          <div className="flex items-center gap-2 text-red-500">
+            <AlertCircle className="h-4 w-4" />
+            <span>Yükleme Hatası</span>
+          </div>
         );
       default:
         return "-";
     }
   };
 
+  const getGroupColor = (groupId?: string) => {
+    if (!groupId) return "";
+    
+    const hash = groupId.split('').reduce((acc, char) => char.charCodeAt(0) + acc, 0);
+    const colors = [
+      "hover:bg-blue-50/50", "hover:bg-green-50/50", "hover:bg-purple-50/50",
+      "hover:bg-pink-50/50", "hover:bg-yellow-50/50", "hover:bg-orange-50/50"
+    ];
+    return colors[hash % colors.length];
+  };
+
   return (
-    <TableRow className="transition-colors hover:bg-muted/50 group">
+    <TableRow className={cn(
+      "transition-colors group",
+      getGroupColor(device.groupId)
+    )}>
       <TableCell>
         <Checkbox checked={isSelected} onCheckedChange={onSelect} />
       </TableCell>
@@ -99,12 +86,12 @@ export const DeviceTableRow = ({ device, isSelected, onSelect }: DeviceTableRowP
       <TableCell>{device.ipAddress || "-"}</TableCell>
       <TableCell>
         {device.isOnline ? (
-          <Badge className="bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25 group-hover:bg-emerald-500/20">
+          <Badge className="bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25">
             <CheckCircle2 className="h-3 w-3 mr-1" />
             Çevrimiçi
           </Badge>
         ) : (
-          <Badge variant="destructive" className="bg-red-500/15 text-red-500 hover:bg-red-500/25 group-hover:bg-red-500/20">
+          <Badge variant="destructive" className="bg-red-500/15 text-red-500 hover:bg-red-500/25">
             <XCircle className="h-3 w-3 mr-1" />
             Çevrimdışı
           </Badge>

@@ -7,6 +7,7 @@ import { tr } from "date-fns/locale";
 import { Volume2, Play, Loader2, AlertCircle, MapPin, CheckCircle2, XCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import DeviceActions from "./DeviceActions";
+import { cn } from "@/lib/utils";
 
 interface DeviceCardProps {
   device: Device;
@@ -48,8 +49,23 @@ export const DeviceCard = ({ device, isSelected, onSelect }: DeviceCardProps) =>
     }
   };
 
+  const getGroupColor = (groupId?: string) => {
+    if (!groupId) return "bg-gray-100";
+    
+    // Hash the groupId to generate a consistent color
+    const hash = groupId.split('').reduce((acc, char) => char.charCodeAt(0) + acc, 0);
+    const colors = [
+      "bg-blue-100", "bg-green-100", "bg-purple-100", 
+      "bg-pink-100", "bg-yellow-100", "bg-orange-100"
+    ];
+    return colors[hash % colors.length];
+  };
+
   return (
-    <Card className="transition-all duration-200 hover:shadow-lg">
+    <Card className={cn(
+      "transition-all duration-200 hover:shadow-lg",
+      getGroupColor(device.groupId)
+    )}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
