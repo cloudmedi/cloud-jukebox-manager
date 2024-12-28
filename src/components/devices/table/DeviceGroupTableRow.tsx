@@ -5,6 +5,7 @@ import { Users, CheckCircle2, XCircle } from "lucide-react";
 import { DeviceGroup } from "../types";
 import { GroupPreviewCard } from "../group-preview/GroupPreviewCard";
 import { DeviceGroupActions } from "../DeviceGroupActions";
+import { cn } from "@/lib/utils";
 
 interface DeviceGroupTableRowProps {
   group: DeviceGroup;
@@ -13,6 +14,20 @@ interface DeviceGroupTableRowProps {
   onRefresh: () => void;
 }
 
+const getGroupColor = (groupId: string) => {
+  const colors = [
+    "hover:bg-blue-50/50 border-l-4 border-blue-400",
+    "hover:bg-green-50/50 border-l-4 border-green-400",
+    "hover:bg-purple-50/50 border-l-4 border-purple-400",
+    "hover:bg-pink-50/50 border-l-4 border-pink-400",
+    "hover:bg-yellow-50/50 border-l-4 border-yellow-400",
+    "hover:bg-orange-50/50 border-l-4 border-orange-400"
+  ];
+  
+  const hash = groupId.split('').reduce((acc, char) => char.charCodeAt(0) + acc, 0);
+  return colors[hash % colors.length];
+};
+
 export const DeviceGroupTableRow = ({
   group,
   isSelected,
@@ -20,7 +35,10 @@ export const DeviceGroupTableRow = ({
   onRefresh
 }: DeviceGroupTableRowProps) => {
   return (
-    <TableRow>
+    <TableRow className={cn(
+      "transition-all duration-200",
+      getGroupColor(group._id)
+    )}>
       <TableCell>
         <Checkbox
           checked={isSelected}
@@ -42,7 +60,9 @@ export const DeviceGroupTableRow = ({
       <TableCell>
         <div className="flex items-center gap-2">
           <Users className="h-4 w-4 text-muted-foreground" />
-          <span>{group.devices.length}</span>
+          <Badge variant="outline" className="bg-background">
+            {group.devices.length} cihaz
+          </Badge>
         </div>
       </TableCell>
       <TableCell>
