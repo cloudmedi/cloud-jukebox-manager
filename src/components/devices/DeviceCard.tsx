@@ -4,7 +4,7 @@ import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
-import { Volume2, Play, Loader2, AlertCircle, MapPin, CheckCircle2, XCircle } from "lucide-react";
+import { Volume2, Play, Loader2, AlertCircle, MapPin, CheckCircle2, XCircle, PauseCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import DeviceActions from "./DeviceActions";
 import { cn } from "@/lib/utils";
@@ -52,7 +52,6 @@ export const DeviceCard = ({ device, isSelected, onSelect }: DeviceCardProps) =>
   const getGroupColor = (groupId?: string) => {
     if (!groupId) return "bg-gray-100";
     
-    // Hash the groupId to generate a consistent color
     const hash = groupId.split('').reduce((acc, char) => char.charCodeAt(0) + acc, 0);
     const colors = [
       "bg-blue-100", "bg-green-100", "bg-purple-100", 
@@ -63,9 +62,17 @@ export const DeviceCard = ({ device, isSelected, onSelect }: DeviceCardProps) =>
 
   return (
     <Card className={cn(
-      "transition-all duration-200 hover:shadow-lg",
+      "transition-all duration-200 hover:shadow-lg relative",
       getGroupColor(device.groupId)
     )}>
+      {!device.isPlaying && (
+        <div className="absolute -top-2 -right-2 z-10">
+          <Badge variant="destructive" className="animate-pulse">
+            <PauseCircle className="h-3 w-3 mr-1" />
+            Durduruldu
+          </Badge>
+        </div>
+      )}
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
