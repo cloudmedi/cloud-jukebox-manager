@@ -72,13 +72,11 @@ class WebSocketServer {
         const device = await Device.findOne({ token });
         if (!device) return;
 
-        const normalizedVolume = Math.max(0, Math.min(100, message.volume));
-        await device.setVolume(normalizedVolume);
-        
+        await device.setVolume(message.volume);
         this.broadcastToAdmins({
           type: 'deviceStatus',
           token: token,
-          volume: normalizedVolume
+          volume: message.volume
         });
         break;
 

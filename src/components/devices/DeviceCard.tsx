@@ -17,7 +17,7 @@ interface DeviceCardProps {
 
 export const DeviceCard = ({ device, isSelected, onSelect }: DeviceCardProps) => {
 
-  const renderPlaylistStatus = () => {
+const renderPlaylistStatus = () => {
     if (!device.playlistStatus) return "-";
 
     switch (device.playlistStatus) {
@@ -62,15 +62,6 @@ export const DeviceCard = ({ device, isSelected, onSelect }: DeviceCardProps) =>
     return colors[hash % colors.length];
   };
 
-  const renderVolumeStatus = () => {
-    return (
-      <div className="flex items-center gap-2 text-sm">
-        <Volume2 className="h-4 w-4 text-muted-foreground" />
-        <span>%{device.volume || 0}</span>
-      </div>
-    );
-  };
-
   return (
     <Card className={cn(
       "transition-all duration-200 hover:shadow-lg",
@@ -103,7 +94,10 @@ export const DeviceCard = ({ device, isSelected, onSelect }: DeviceCardProps) =>
           <MapPin className="h-4 w-4 text-muted-foreground" />
           <span>{device.location || "-"}</span>
         </div>
-        {renderVolumeStatus()}
+        <div className="flex items-center gap-2 text-sm">
+          <Volume2 className="h-4 w-4 text-muted-foreground" />
+          <span>%{device.volume}</span>
+        </div>
         <div className="text-sm">{renderPlaylistStatus()}</div>
         <div className="text-sm text-muted-foreground">
           Son görülme: {formatDistanceToNow(new Date(device.lastSeen), {
