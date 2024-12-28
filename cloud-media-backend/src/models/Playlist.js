@@ -45,6 +45,26 @@ playlistSchema.methods.getSongCount = function() {
   return this.songs.length;
 };
 
+// Toplam süreyi hesaplayan middleware
+playlistSchema.pre('save', async function(next) {
+  if (this.isModified('songs')) {
+    try {
+      // Populate songs to get their durations
+      const populatedPlaylist = await this.populate('songs');
+      
+      // Calculate total duration
+      this.totalDuration = populatedPlaylist.songs.reduce((total, song) => {
+        return total + (song.duration || 0);
+      }, 0);
+      
+      console.log(`Total duration calculated: ${this.totalDuration} seconds`);
+    } catch (error) {
+      console.error('Error calculating total duration:', error);
+    }
+  }
+  next();
+});
+
 // Playlist silindiğinde cihazlardan referansını temizle
 playlistSchema.pre('remove', async function(next) {
   console.log('=================== PLAYLIST SİLME BAŞLANGICI ===================');
