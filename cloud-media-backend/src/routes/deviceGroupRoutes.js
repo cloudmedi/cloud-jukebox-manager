@@ -146,9 +146,13 @@ router.post('/reorder', async (req, res) => {
       { new: true }
     );
 
+    if (!updatedGroup) {
+      return res.status(404).json({ message: 'Grup bulunamadı' });
+    }
+
     // WebSocket ile değişikliği bildir
-    if (req.app.get('wss')) {
-      req.app.get('wss').broadcastToAdmins({
+    if (req.wss) {
+      req.wss.broadcastToAdmins({
         type: 'groupReorder',
         data: {
           groupId,
