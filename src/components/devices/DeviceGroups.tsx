@@ -1,40 +1,18 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Users, CheckCircle2, XCircle, Search } from "lucide-react";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
-import { useToast } from "@/hooks/use-toast";
+import { Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
 import { DeviceGroupForm } from "./DeviceGroupForm";
-import { DeviceGroupActions } from "./DeviceGroupActions";
-import { GroupPreviewCard } from "./group-preview/GroupPreviewCard";
 import { BulkGroupActions } from "./group-actions/BulkGroupActions";
-import { Input } from "@/components/ui/input";
-import { Checkbox } from "@/components/ui/checkbox";
-
-interface DeviceGroup {
-  _id: string;
-  name: string;
-  description: string;
-  devices: string[];
-  status: 'active' | 'inactive';
-  createdBy: string;
-  createdAt: string;
-}
+import { DeviceGroupsTable } from "./table/DeviceGroupsTable";
+import type { DeviceGroup } from "./types";
 
 const DeviceGroups = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
-  const { toast } = useToast();
 
   const { data: groups = [], isLoading, refetch } = useQuery({
     queryKey: ["device-groups"],
@@ -132,72 +110,13 @@ const DeviceGroups = () => {
         />
       )}
 
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-12">
-                <Checkbox
-                  checked={selectedGroups.length === filteredGroups.length}
-                  onCheckedChange={handleSelectAll}
-                />
-              </TableHead>
-              <TableHead>Grup Adı</TableHead>
-              <TableHead>Cihazlar</TableHead>
-              <TableHead>Durum</TableHead>
-              <TableHead>Oluşturan</TableHead>
-              <TableHead className="text-right">İşlemler</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredGroups.map((group: DeviceGroup) => (
-              <TableRow key={group._id}>
-                <TableCell>
-                  <Checkbox
-                    checked={selectedGroups.includes(group._id)}
-                    onCheckedChange={(checked) => handleSelectGroup(group._id, checked)}
-                  />
-                </TableCell>
-                <TableCell>
-                  <GroupPreviewCard group={group}>
-                    <div className="cursor-help">
-                      <div className="font-medium">{group.name}</div>
-                      {group.description && (
-                        <div className="text-sm text-muted-foreground">
-                          {group.description}
-                        </div>
-                      )}
-                    </div>
-                  </GroupPreviewCard>
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <Users className="h-4 w-4 text-muted-foreground" />
-                    <span>{group.devices.length}</span>
-                  </div>
-                </TableCell>
-                <TableCell>
-                  {group.status === 'active' ? (
-                    <Badge className="bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25">
-                      <CheckCircle2 className="h-3 w-3 mr-1" />
-                      Aktif
-                    </Badge>
-                  ) : (
-                    <Badge variant="secondary" className="bg-gray-500/15 text-gray-500 hover:bg-gray-500/25">
-                      <XCircle className="h-3 w-3 mr-1" />
-                      Pasif
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell>{group.createdBy}</TableCell>
-                <TableCell className="text-right">
-                  <DeviceGroupActions group={group} onSuccess={refetch} />
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </div>
+      <DeviceGroupsTable
+        groups={filteredGroups}
+        selectedGroups={selectedGroups}
+        onSelectAll={handleSelectAll}
+        onSelectGroup={handleSelectGroup}
+        onRefresh={refetch}
+      />
     </div>
   );
 };
