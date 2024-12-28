@@ -8,6 +8,7 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Link } from "react-router-dom";
 
@@ -46,6 +47,11 @@ const Sidebar = () => {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter>
+        <div className="px-4 py-2 text-sm text-muted-foreground">
+          V2.1
+        </div>
+      </SidebarFooter>
     </SidebarContainer>
   );
 };
