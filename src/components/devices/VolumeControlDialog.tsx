@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Slider } from "@/components/ui/slider";
 import { Button } from "@/components/ui/button";
@@ -17,13 +17,18 @@ const VolumeControlDialog = ({
 }: VolumeControlDialogProps) => {
   const [volume, setVolume] = useState(currentVolume);
 
+  useEffect(() => {
+    // Update local state when currentVolume prop changes
+    setVolume(currentVolume);
+  }, [currentVolume]);
+
   const handleVolumeChange = (values: number[]) => {
-    setVolume(values[0]);
+    const newVolume = Math.max(0, Math.min(100, values[0]));
+    setVolume(newVolume);
   };
 
   const handleSave = () => {
     onVolumeChange(volume);
-    onClose();
   };
 
   return (
@@ -38,10 +43,11 @@ const VolumeControlDialog = ({
             value={[volume]}
             onValueChange={handleVolumeChange}
             max={100}
+            min={0}
             step={1}
             className="w-full"
           />
-          <span className="min-w-[3ch]">{volume}</span>
+          <span className="min-w-[3ch]">%{volume}</span>
         </div>
         <div className="flex justify-end gap-2">
           <Button variant="outline" onClick={onClose}>

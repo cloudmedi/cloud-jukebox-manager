@@ -68,12 +68,21 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
 
   const handleVolumeChange = async (volume: number) => {
     try {
+      // Volume validation
+      const normalizedVolume = Math.max(0, Math.min(100, volume));
+      
+      if (normalizedVolume !== volume) {
+        toast.error('Ses seviyesi 0-100 arasında olmalıdır');
+        return;
+      }
+
       websocketService.sendMessage({
         type: 'command',
         token: device.token,
         command: 'setVolume',
-        volume: volume
+        volume: normalizedVolume
       });
+      
       setIsVolumeDialogOpen(false);
       toast.success('Ses seviyesi değiştirme komutu gönderildi');
     } catch (error) {
