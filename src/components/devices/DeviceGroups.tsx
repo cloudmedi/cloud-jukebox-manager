@@ -1,7 +1,15 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
-import { Users, Laptop2, Headphones, Speaker, Monitor } from "lucide-react";
+import { Users, CheckCircle2, XCircle, MoreVertical } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { useToast } from "@/hooks/use-toast";
 import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
@@ -18,23 +26,16 @@ interface DeviceGroup {
   createdAt: string;
 }
 
-const getGroupIcon = (groupId: string) => {
-  // Hash the groupId to consistently assign an icon
-  const icons = [Laptop2, Headphones, Speaker, Monitor];
-  const hash = groupId.split('').reduce((acc, char) => char.charCodeAt(0) + acc, 0);
-  const IconComponent = icons[hash % icons.length];
-  return IconComponent;
-};
-
 const getGroupColor = (groupId: string) => {
   const colors = [
-    "bg-blue-100 border-blue-200",
-    "bg-purple-100 border-purple-200",
-    "bg-pink-100 border-pink-200",
-    "bg-green-100 border-green-200",
-    "bg-yellow-100 border-yellow-200",
-    "bg-orange-100 border-orange-200"
+    "bg-blue-50 hover:bg-blue-100",
+    "bg-green-50 hover:bg-green-100",
+    "bg-purple-50 hover:bg-purple-100",
+    "bg-pink-50 hover:bg-pink-100",
+    "bg-yellow-50 hover:bg-yellow-100",
+    "bg-orange-50 hover:bg-orange-100"
   ];
+  
   const hash = groupId.split('').reduce((acc, char) => char.charCodeAt(0) + acc, 0);
   return colors[hash % colors.length];
 };
@@ -69,7 +70,6 @@ const DeviceGroups = () => {
         <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
           <DialogTrigger asChild>
             <Button>
-              <Users className="mr-2 h-4 w-4" />
               Yeni Grup
             </Button>
           </DialogTrigger>
@@ -82,53 +82,57 @@ const DeviceGroups = () => {
         </Dialog>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-        {groups?.map((group: DeviceGroup) => {
-          const GroupIcon = getGroupIcon(group._id);
-          const colorClass = getGroupColor(group._id);
-          
-          return (
-            <div
-              key={group._id}
-              className={`relative rounded-lg border p-4 transition-all hover:shadow-lg ${colorClass}`}
-            >
-              <div className="flex items-start justify-between">
-                <div className="flex items-center gap-3">
-                  <div className="p-2 rounded-full bg-white/50">
-                    <GroupIcon className="h-5 w-5" />
-                  </div>
-                  <div>
-                    <h3 className="font-semibold">{group.name}</h3>
-                    <p className="text-sm text-muted-foreground">{group.description}</p>
-                  </div>
-                </div>
-                <DeviceGroupActions group={group} onSuccess={refetch} />
-              </div>
-
-              <div className="mt-4 space-y-3">
-                <div className="flex items-center justify-between">
-                  <Badge
-                    variant={group.status === 'active' ? "success" : "secondary"}
-                    className="capitalize"
-                  >
-                    {group.status === 'active' ? 'Aktif' : 'Pasif'}
-                  </Badge>
+      <div className="rounded-md border">
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Grup Adı</TableHead>
+              <TableHead>Açıklama</TableHead>
+              <TableHead>Cihazlar</TableHead>
+              <TableHead>Durum</TableHead>
+              <TableHead>Oluşturan</TableHead>
+              <TableHead>Oluşturma Tarihi</TableHead>
+              <TableHead className="text-right">İşlemler</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {groups?.map((group: DeviceGroup) => (
+              <TableRow 
+                key={group._id}
+                className={getGroupColor(group._id)}
+              >
+                <TableCell className="font-medium">{group.name}</TableCell>
+                <TableCell>{group.description}</TableCell>
+                <TableCell>
                   <div className="flex items-center gap-2">
                     <Users className="h-4 w-4 text-muted-foreground" />
-                    <span className="text-sm font-medium">{group.devices.length} Cihaz</span>
+                    <span className="font-medium">{group.devices.length}</span>
                   </div>
-                </div>
-
-                <div className="text-sm text-muted-foreground">
-                  Oluşturan: {group.createdBy}
-                </div>
-                <div className="text-sm text-muted-foreground">
-                  Tarih: {new Date(group.createdAt).toLocaleDateString("tr-TR")}
-                </div>
-              </div>
-            </div>
-          );
-        })}
+                </TableCell>
+                <TableCell>
+                  {group.status === 'active' ? (
+                    <Badge className="bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25">
+                      <CheckCircle2 className="h-3 w-3 mr-1" />
+                      Aktif
+                    </Badge>
+                  ) : (
+                    <Badge variant="secondary" className="bg-gray-500/15 text-gray-500 hover:bg-gray-500/25">
+                      <XCircle className="h-3 w-3 mr-1" />
+                      Pasif
+                    </Badge>
+                  )}
+                </TableCell>
+                <TableCell>{group.createdBy}</TableCell>
+                <TableCell>
+                  {new Date(group.createdAt).toLocaleString("tr-TR")}
+                </TableCell>
+                <TableCell className="text-right">
+                  <DeviceGroupActions group={group} onSuccess={refetch} />
+                </TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
       </div>
     </div>
   );
