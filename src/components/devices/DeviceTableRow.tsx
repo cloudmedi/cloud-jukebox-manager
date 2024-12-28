@@ -5,7 +5,7 @@ import { tr } from "date-fns/locale";
 import { Device } from "@/services/deviceService";
 import DeviceActions from "./DeviceActions";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Volume2, Play, Loader2, AlertCircle, MapPin, CheckCircle2, XCircle, PauseCircle } from "lucide-react";
+import { Volume2, Play, Loader2, AlertCircle, MapPin, CheckCircle2, XCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
@@ -62,17 +62,9 @@ export const DeviceTableRow = ({ device, isSelected, onSelect }: DeviceTableRowP
 
   return (
     <TableRow className={cn(
-      "transition-colors group relative",
+      "transition-colors group",
       getGroupColor(device.groupId)
     )}>
-      {!device.isPlaying && (
-        <div className="absolute -top-2 -right-2 z-10">
-          <Badge variant="destructive" className="animate-pulse">
-            <PauseCircle className="h-3 w-3 mr-1" />
-            Durduruldu
-          </Badge>
-        </div>
-      )}
       <TableCell>
         <Checkbox checked={isSelected} onCheckedChange={onSelect} />
       </TableCell>
