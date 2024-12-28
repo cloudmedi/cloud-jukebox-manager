@@ -61,54 +61,41 @@ class WebSocketServer {
         await this.statusHandler.handlePlaylistStatus(token, message);
         break;
 
-      case 'playbackStatus':
-        this.broadcastToAdmins({
-          type: 'deviceStatus',
-          token: token,
-          isPlaying: message.status === 'playing'
-        });
-        break;
-
-      case 'volume':
-        const device = await Device.findOne({ token });
-        if (!device) return;
-
-        await device.setVolume(message.volume);
-        this.broadcastToAdmins({
-          type: 'deviceStatus',
-          token: token,
-          volume: message.volume
-        });
-        break;
-
-      case 'error':
-        this.broadcastToAdmins({
-          type: 'deviceError',
-          token: token,
-          error: message.error
-        });
-        break;
-
       case 'downloadProgress':
-        const deviceProgress = await Device.findOne({ token });
-        if (deviceProgress) {
-          await Device.findByIdAndUpdate(deviceProgress._id, {
-            downloadProgress: message.progress,
-            playlistStatus: message.progress === 100 ? 'loaded' : 'loading'
-          });
-
-          this.broadcastToAdmins({
-            type: 'deviceStatus',
-            token: token,
-            downloadProgress: message.progress,
-            playlistStatus: message.progress === 100 ? 'loaded' : 'loading'
-          });
-        }
+        this.handleDownloadProgress(token, message);
         break;
 
       default:
         console.log('Unknown message type:', message.type);
         break;
+    }
+  }
+
+  async handleDownloadProgress(token, message) {
+    try {
+      const device = await Device.findOne({ token });
+      if (!device) {
+        console.error('Device not found for token:', token);
+        return;
+      }
+
+      // Update device progress
+      await Device.findByIdAndUpdate(device._id, {
+        downloadProgress: message.progress,
+        playlistStatus: message.progress === 100 ? 'loaded' : 'loading'
+      });
+
+      // Broadcast progress to admin clients
+      this.broadcastToAdmins({
+        type: 'deviceStatus',
+        token: token,
+        downloadProgress: message.progress,
+        playlistStatus: message.progress === 100 ? 'loaded' : 'loading'
+      });
+
+      console.log(`Progress updated for device ${token}: ${message.progress}%`);
+    } catch (error) {
+      console.error('Error handling download progress:', error);
     }
   }
 

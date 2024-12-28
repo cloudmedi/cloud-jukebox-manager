@@ -5,7 +5,7 @@ const bulkAssignPlaylist = async (req, res) => {
   try {
     const { deviceIds, playlistId } = req.body;
 
-    // Update all devices with the new playlist
+    // Update all devices with the new playlist and reset progress
     await Device.updateMany(
       { _id: { $in: deviceIds } },
       { 
@@ -51,22 +51,40 @@ const bulkAssignPlaylist = async (req, res) => {
 const updateDeviceProgress = async (req, res) => {
   try {
     const { deviceId, progress } = req.body;
+    console.log(`Updating device ${deviceId} progress to ${progress}`);
     
-    await Device.findByIdAndUpdate(deviceId, {
+    // Update device progress and status
+    const updatedDevice = await Device.findByIdAndUpdate(deviceId, {
+      downloadProgress: progress,
+      playlistStatus: progress === 100 ? 'loaded' : 'loading'
+    }, { new: true });
+
+    if (!updatedDevice) {
+      console.error(`Device not found: ${deviceId}`);
+      return res.status(404).json({ message: 'Device not found' });
+    }
+
+    console.log(`Device updated:`, updatedDevice);
+
+    // WebSocket ile progress güncellemesini gönder
+    req.wss.sendToDevice(updatedDevice.token, {
+      type: 'downloadProgress',
+      progress: progress,
+      deviceId: deviceId
+    });
+
+    // Broadcast to admin clients
+    req.wss.broadcastToAdmins({
+      type: 'deviceStatus',
+      token: updatedDevice.token,
       downloadProgress: progress,
       playlistStatus: progress === 100 ? 'loaded' : 'loading'
     });
 
-    // WebSocket ile progress güncellemesini gönder
-    const device = await Device.findById(deviceId);
-    if (device) {
-      req.wss.sendToDevice(device.token, {
-        type: 'downloadProgress',
-        progress: progress
-      });
-    }
-
-    res.json({ success: true });
+    res.json({ 
+      success: true,
+      device: updatedDevice
+    });
   } catch (error) {
     console.error('Progress update error:', error);
     res.status(500).json({ message: error.message });
