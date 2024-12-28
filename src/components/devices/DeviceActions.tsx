@@ -90,18 +90,19 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
 
   const handlePlayPause = async () => {
     try {
+      console.log('Sending play/pause command for device:', device.token);
       console.log('Current playing state:', device.isPlaying);
+      
+      const command = device.isPlaying ? 'pause' : 'play';
       
       websocketService.sendMessage({
         type: 'command',
         token: device.token,
-        command: device.isPlaying ? 'pause' : 'play'
+        command: command
       });
 
-      // Başarılı mesajını göster
+      console.log('Command sent:', command);
       toast.success(`${device.isPlaying ? 'Durdurma' : 'Oynatma'} komutu gönderildi`);
-      
-      console.log('Command sent:', device.isPlaying ? 'pause' : 'play');
     } catch (error) {
       console.error('Play/Pause error:', error);
       toast.error('Komut gönderilemedi');

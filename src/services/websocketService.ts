@@ -1,55 +1,45 @@
-import { handleDeleteMessage } from './websocket/handlers/DeleteMessageHandler';
-import { handleDeviceStatusMessage } from './websocket/handlers/DeviceStatusHandler';
-import { handleInitialStateMessage } from './websocket/handlers/InitialStateHandler';
-import { handleDeviceDelete } from './websocket/handlers/DeviceDeleteHandler';
-
-type MessageHandler = (data: any) => void;
+import { toast } from "sonner";
 
 class WebSocketService {
-  private static instance: WebSocketService;
   private ws: WebSocket | null = null;
-  private messageHandlers: Map<string, Set<MessageHandler>>;
+  private messageHandlers = new Map();
 
-  private constructor() {
-    this.messageHandlers = new Map();
-    this.setupMessageHandlers();
+  constructor() {
     this.connect();
+    this.setupHandlers();
   }
 
-  private setupMessageHandlers() {
-    this.addMessageHandler('delete', handleDeleteMessage);
-    this.addMessageHandler('delete', handleDeviceDelete);
-    this.addMessageHandler('deviceStatus', handleDeviceStatusMessage);
-    this.addMessageHandler('initialState', handleInitialStateMessage);
+  private setupHandlers() {
+    // Mevcut handler'ları ekle
+    this.addMessageHandler('deviceStatus', (message) => {
+      console.log('Device status received:', message);
+      // Device status güncellemelerini işle
+    });
+
+    this.addMessageHandler('commandStatus', (message) => {
+      console.log('Command status received:', message);
+      if (message.command === 'play' || message.command === 'pause') {
+        // Play/Pause durumunu güncelle
+        const successMessage = message.command === 'play' ? 'Müzik başlatıldı' : 'Müzik duraklatıldı';
+        toast.success(successMessage);
+      }
+    });
   }
 
-  public static getInstance(): WebSocketService {
-    if (!WebSocketService.instance) {
-      WebSocketService.instance = new WebSocketService();
-    }
-    return WebSocketService.instance;
-  }
-
-  private connect() {
-    if (this.ws?.readyState === WebSocket.OPEN) return;
-
-    this.ws = new WebSocket('ws://localhost:5000/admin');
+  connect() {
+    this.ws = new WebSocket('ws://localhost:5000');
 
     this.ws.onopen = () => {
-      console.log('WebSocket bağlantısı kuruldu');
+      console.log('WebSocket connected');
     };
 
     this.ws.onmessage = (event) => {
-      try {
-        const message = JSON.parse(event.data);
-        this.handleMessage(message);
-      } catch (error) {
-        console.error('Message parsing error:', error);
-      }
+      const message = JSON.parse(event.data);
+      this.handleMessage(message);
     };
 
     this.ws.onclose = () => {
-      console.log('WebSocket bağlantısı kapandı, yeniden bağlanılıyor...');
+      console.log('WebSocket disconnected, reconnecting...');
       setTimeout(() => this.connect(), 5000);
     };
 
@@ -58,10 +48,18 @@ class WebSocketService {
     };
   }
 
-  private handleMessage(message: any) {
+  sendMessage(message: any) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(message));
+    } else {
+      console.error('WebSocket connection not ready');
+    }
+  }
+
+  handleMessage(message: any) {
     const handlers = this.messageHandlers.get(message.type);
     if (handlers) {
-      handlers.forEach(handler => {
+      handlers.forEach((handler: Function) => {
         try {
           handler(message);
         } catch (error) {
@@ -69,18 +67,18 @@ class WebSocketService {
         }
       });
     } else {
-      console.warn('Unhandled message type:', message.type);
+      console.log('Unhandled message type:', message.type);
     }
   }
 
-  public addMessageHandler(type: string, handler: MessageHandler) {
+  addMessageHandler(type: string, handler: Function) {
     if (!this.messageHandlers.has(type)) {
       this.messageHandlers.set(type, new Set());
     }
     this.messageHandlers.get(type)?.add(handler);
   }
 
-  public removeMessageHandler(type: string, handler: MessageHandler) {
+  removeMessageHandler(type: string, handler: Function) {
     const handlers = this.messageHandlers.get(type);
     if (handlers) {
       handlers.delete(handler);
@@ -89,22 +87,6 @@ class WebSocketService {
       }
     }
   }
-
-  public sendMessage(message: any) {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message));
-    } else {
-      console.error('WebSocket bağlantısı kurulamadı');
-      this.connect();
-    }
-  }
-
-  public cleanup() {
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
-    }
-  }
 }
 
-export default WebSocketService.getInstance();
+export default new WebSocketService();
