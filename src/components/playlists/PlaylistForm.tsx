@@ -4,7 +4,6 @@ import * as z from "zod";
 import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { useToast } from "@/hooks/use-toast";
-import { useQueryClient } from "@tanstack/react-query";
 import { BasicInfoForm } from "./form/BasicInfoForm";
 import { ArtworkUpload } from "./form/ArtworkUpload";
 import { SongSelector } from "./form/SongSelector";
@@ -52,7 +51,6 @@ export const PlaylistForm = ({
   isEditing = false,
 }: PlaylistFormProps) => {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
   const { selectedSongs, clearSelection } = useSelectedSongsStore();
 
   const form = useForm<PlaylistFormValues>({
@@ -66,7 +64,6 @@ export const PlaylistForm = ({
     },
   });
 
-  // Seçili şarkıları forma ekle
   useEffect(() => {
     if (selectedSongs.length > 0) {
       form.setValue('songs', selectedSongs.map(song => song._id));
@@ -96,14 +93,11 @@ export const PlaylistForm = ({
         throw new Error("İşlem başarısız oldu");
       }
 
-      queryClient.invalidateQueries({ queryKey: ["playlists"] });
-
       toast({
         title: `Playlist ${isEditing ? "güncellendi" : "oluşturuldu"}`,
         description: "İşlem başarıyla tamamlandı",
       });
 
-      // Seçili şarkıları temizle
       clearSelection();
 
       if (onSuccess) {
