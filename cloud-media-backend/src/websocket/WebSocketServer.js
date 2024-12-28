@@ -89,7 +89,7 @@ class WebSocketServer {
 
       console.log(`Updated device ${token} progress:`, updatedDevice);
 
-      // Broadcast progress to admin clients
+      // Broadcast progress to admin clients immediately after update
       this.broadcastToAdmins({
         type: 'deviceStatus',
         token: token,
