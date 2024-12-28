@@ -4,11 +4,13 @@ const DeviceGroup = require('../models/DeviceGroup');
 const historyRoutes = require('./device-groups/groupHistoryRoutes');
 const statisticsRoutes = require('./device-groups/groupStatisticsRoutes');
 const templateRoutes = require('./device-groups/groupTemplateRoutes');
+const favoriteRoutes = require('./device-groups/groupFavoriteRoutes');
 
 // Mount sub-routers
 router.use('/', historyRoutes);
 router.use('/', statisticsRoutes);
 router.use('/', templateRoutes);
+router.use('/', favoriteRoutes);
 
 // Tüm grupları getir
 router.get('/', async (req, res) => {
@@ -94,23 +96,6 @@ router.patch('/:id/tags', async (req, res) => {
     }
     
     group.tags = req.body.tags;
-    await group.save();
-    
-    res.json(group);
-  } catch (error) {
-    res.status(400).json({ message: error.message });
-  }
-});
-
-// Favorilere ekle/çıkar
-router.patch('/:id/favorite', async (req, res) => {
-  try {
-    const group = await DeviceGroup.findById(req.params.id);
-    if (!group) {
-      return res.status(404).json({ message: 'Grup bulunamadı' });
-    }
-    
-    group.isFavorite = req.body.isFavorite;
     await group.save();
     
     res.json(group);
