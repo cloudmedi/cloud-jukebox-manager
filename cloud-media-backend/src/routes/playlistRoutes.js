@@ -36,6 +36,18 @@ const upload = multer({
   }
 });
 
+// Toplam süre hesaplama yardımcı fonksiyonu
+const calculateTotalDuration = async (songIds) => {
+  try {
+    const Song = require('../models/Song');
+    const songs = await Song.find({ _id: { $in: songIds } });
+    return songs.reduce((total, song) => total + (song.duration || 0), 0);
+  } catch (error) {
+    logger.error('Error calculating total duration:', error);
+    return 0;
+  }
+};
+
 // Tüm playlistleri getir
 router.get('/', async (req, res) => {
   try {
@@ -66,13 +78,17 @@ router.get('/:id', async (req, res) => {
 // Yeni playlist oluştur
 router.post('/', upload.single('artwork'), async (req, res) => {
   try {
+    const songIds = req.body.songs ? (Array.isArray(req.body.songs) ? req.body.songs : [req.body.songs]) : [];
+    const totalDuration = await calculateTotalDuration(songIds);
+
     const playlist = new Playlist({
       name: req.body.name,
       description: req.body.description,
-      songs: req.body.songs ? (Array.isArray(req.body.songs) ? req.body.songs : [req.body.songs]) : [],
+      songs: songIds,
       artwork: req.file ? `/uploads/playlists/${req.file.filename}` : null,
       createdBy: req.body.createdBy || 'system',
-      isShuffled: req.body.isShuffled === 'true'
+      isShuffled: req.body.isShuffled === 'true',
+      totalDuration: totalDuration
     });
 
     const newPlaylist = await playlist.save();
@@ -94,8 +110,18 @@ router.patch('/:id', upload.single('artwork'), async (req, res) => {
       playlist.artwork = `/uploads/playlists/${req.file.filename}`;
     }
 
+    // Şarkı listesi güncellendiyse toplam süreyi yeniden hesapla
+    if (req.body.songs) {
+      const songIds = Array.isArray(req.body.songs) ? req.body.songs : [req.body.songs];
+      playlist.songs = songIds;
+      playlist.totalDuration = await calculateTotalDuration(songIds);
+    }
+
+    // Diğer alanları güncelle
     Object.keys(req.body).forEach(key => {
-      playlist[key] = req.body[key];
+      if (key !== 'songs') { // songs alanını yukarıda işledik
+        playlist[key] = req.body[key];
+      }
     });
 
     const updatedPlaylist = await playlist.save();

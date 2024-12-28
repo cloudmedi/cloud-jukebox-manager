@@ -45,7 +45,20 @@ playlistSchema.methods.getSongCount = function() {
   return this.songs.length;
 };
 
-// Playlist silindiğinde cihazlardan referansını temizle
+// Şarkı eklendiğinde veya çıkarıldığında toplam süreyi güncelle
+playlistSchema.pre('save', async function(next) {
+  if (this.isModified('songs')) {
+    const Song = mongoose.model('Song');
+    try {
+      const songs = await Song.find({ _id: { $in: this.songs } });
+      this.totalDuration = songs.reduce((total, song) => total + (song.duration || 0), 0);
+    } catch (error) {
+      console.error('Toplam süre hesaplama hatası:', error);
+    }
+  }
+  next();
+});
+
 playlistSchema.pre('remove', async function(next) {
   console.log('=================== PLAYLIST SİLME BAŞLANGICI ===================');
   console.log('Silinecek playlist ID:', this._id);
