@@ -19,11 +19,6 @@ const deviceGroupSchema = new mongoose.Schema({
     enum: ['active', 'inactive'],
     default: 'active'
   },
-  order: {
-    type: Number,
-    default: 1000,
-    index: true
-  },
   createdBy: {
     type: String,
     required: true
