@@ -100,7 +100,7 @@ export const PlaylistForm = ({
       const result = await response.json();
 
       // WebSocket üzerinden playlist'i gönder
-      if (window.electron) {
+      if (typeof window !== 'undefined' && window.electron) {
         window.electron.send('playlist-created', result);
       }
 
