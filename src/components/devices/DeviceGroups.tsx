@@ -62,22 +62,33 @@ const DeviceGroups = () => {
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between mb-6">
         <h2 className="text-2xl font-bold tracking-tight">Cihaz Grupları</h2>
-        <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Users className="mr-2 h-4 w-4" />
-              Yeni Grup
-            </Button>
-          </DialogTrigger>
-          <DialogContent>
-            <DeviceGroupForm onSuccess={() => {
-              setIsFormOpen(false);
-              refetch();
-            }} />
-          </DialogContent>
-        </Dialog>
+        <div className="flex items-center gap-4">
+          <Select value="_all">
+            <SelectTrigger className="w-[180px]">
+              <SelectValue placeholder="Tüm Bölgeler" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="_all">Tüm Bölgeler</SelectItem>
+            </SelectContent>
+          </Select>
+          
+          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Users className="mr-2 h-4 w-4" />
+                Yeni Grup
+              </Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DeviceGroupForm onSuccess={() => {
+                setIsFormOpen(false);
+                refetch();
+              }} />
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
       <div className="rounded-md border">
