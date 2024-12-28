@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Search } from "lucide-react";
 import {
@@ -35,6 +35,7 @@ const DeviceGroups = () => {
   const [isFormOpen, setIsFormOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
+  const queryClient = useQueryClient();
 
   const sensors = useSensors(
     useSensor(PointerSensor),
@@ -43,7 +44,7 @@ const DeviceGroups = () => {
     })
   );
 
-  const { data: groups = [], isLoading, refetch } = useQuery({
+  const { data: groups = [], isLoading } = useQuery({
     queryKey: ["device-groups"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/device-groups");
@@ -51,6 +52,31 @@ const DeviceGroups = () => {
         throw new Error("Gruplar yüklenirken bir hata oluştu");
       }
       return response.json();
+    },
+  });
+
+  const reorderMutation = useMutation({
+    mutationFn: async ({ groupId, oldIndex, newIndex }: { groupId: string, oldIndex: number, newIndex: number }) => {
+      const response = await fetch("http://localhost:5000/api/device-groups/reorder", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ groupId, oldIndex, newIndex }),
+      });
+      
+      if (!response.ok) {
+        throw new Error("Sıralama güncellenirken bir hata oluştu");
+      }
+      
+      return response.json();
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["device-groups"] });
+      toast.success("Grup sıralaması güncellendi");
+    },
+    onError: (error: Error) => {
+      toast.error(error.message);
     },
   });
 
@@ -66,7 +92,11 @@ const DeviceGroups = () => {
       const oldIndex = groups.findIndex((group: DeviceGroup) => group._id === active.id);
       const newIndex = groups.findIndex((group: DeviceGroup) => group._id === over.id);
       
-      console.log(`Moved group from index ${oldIndex} to ${newIndex}`);
+      reorderMutation.mutate({
+        groupId: active.id,
+        oldIndex,
+        newIndex,
+      });
     }
   };
 
@@ -97,7 +127,7 @@ const DeviceGroups = () => {
           <DialogContent>
             <DeviceGroupForm onSuccess={() => {
               setIsFormOpen(false);
-              refetch();
+              queryClient.invalidateQueries({ queryKey: ["device-groups"] });
             }} />
           </DialogContent>
         </Dialog>
@@ -119,7 +149,7 @@ const DeviceGroups = () => {
             selectedGroups={selectedGroups} 
             onSuccess={() => {
               setSelectedGroups([]);
-              refetch();
+              queryClient.invalidateQueries({ queryKey: ["device-groups"] });
             }} 
           />
         )}
@@ -166,7 +196,7 @@ const DeviceGroups = () => {
                         setSelectedGroups(prev => prev.filter(id => id !== group._id));
                       }
                     }}
-                    onSuccess={refetch}
+                    onSuccess={() => queryClient.invalidateQueries({ queryKey: ["device-groups"] })}
                   />
                 ))}
               </TableBody>

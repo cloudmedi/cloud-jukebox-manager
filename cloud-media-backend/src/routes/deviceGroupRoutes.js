@@ -114,4 +114,53 @@ router.delete('/:id/devices/:deviceId', async (req, res) => {
   }
 });
 
+// Grup sıralamasını güncelle
+router.post('/reorder', async (req, res) => {
+  try {
+    const { oldIndex, newIndex, groupId } = req.body;
+    
+    // Tüm grupları sıraya göre getir
+    const groups = await DeviceGroup.find().sort({ order: 1 });
+    
+    // Taşınan grubun yeni order değerini hesapla
+    let newOrder;
+    if (newIndex === 0) {
+      // En başa taşınıyorsa
+      newOrder = groups[0].order ? groups[0].order / 2 : 1000;
+    } else if (newIndex >= groups.length - 1) {
+      // En sona taşınıyorsa
+      newOrder = groups[groups.length - 1].order + 1000;
+    } else {
+      // Arada bir yere taşınıyorsa
+      const prevOrder = groups[newIndex - 1].order || 0;
+      const nextOrder = groups[newIndex].order || prevOrder + 1000;
+      newOrder = (prevOrder + nextOrder) / 2;
+    }
+
+    // Grubu güncelle
+    const updatedGroup = await DeviceGroup.findByIdAndUpdate(
+      groupId,
+      { $set: { order: newOrder } },
+      { new: true }
+    );
+
+    // WebSocket ile değişikliği bildir
+    if (req.wss) {
+      req.wss.broadcastToAdmins({
+        type: 'groupReorder',
+        data: {
+          groupId,
+          newOrder,
+          oldIndex,
+          newIndex
+        }
+      });
+    }
+
+    res.json(updatedGroup);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
 module.exports = router;
