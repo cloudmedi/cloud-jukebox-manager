@@ -39,6 +39,11 @@ export const DeviceList = () => {
 
       const updatedDevices = currentDevices.map(device => {
         if (device.token === data.token) {
+          // Ses seviyesi güncellemesi geldiğinde
+          if (typeof data.volume === 'number') {
+            console.log(`Updating volume for device ${device.token} to ${data.volume}`);
+          }
+
           if (device.isOnline && !data.isOnline) {
             showDeviceOfflineNotification(device.name);
           }
@@ -54,6 +59,7 @@ export const DeviceList = () => {
           return { 
             ...device, 
             ...data,
+            volume: typeof data.volume === 'number' ? data.volume : device.volume,
             playlistStatus: data.playlistStatus || device.playlistStatus
           };
         }
@@ -63,10 +69,22 @@ export const DeviceList = () => {
       queryClient.setQueryData(['devices'], updatedDevices);
     };
 
+    // Volume update handler'ı
+    const handleVolumeUpdate = (data: any) => {
+      if (data.type === 'command' && data.command === 'setVolume') {
+        handleDeviceStatus({
+          token: data.token,
+          volume: data.volume
+        });
+      }
+    };
+
     websocketService.addMessageHandler('deviceStatus', handleDeviceStatus);
+    websocketService.addMessageHandler('command', handleVolumeUpdate);
 
     return () => {
       websocketService.removeMessageHandler('deviceStatus', handleDeviceStatus);
+      websocketService.removeMessageHandler('command', handleVolumeUpdate);
     };
   }, [queryClient]);
 
