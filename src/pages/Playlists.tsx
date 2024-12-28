@@ -1,7 +1,7 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Plus } from "lucide-react";
-import { PlaylistList } from "@/components/playlists/PlaylistList";
+import { PlaylistTable } from "@/components/playlists/PlaylistTable";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 
@@ -38,7 +38,7 @@ const Playlists = () => {
         </Button>
       </div>
 
-      <PlaylistList 
+      <PlaylistTable 
         playlists={playlists || []} 
         onPlaylistUpdate={handlePlaylistUpdate}
       />
