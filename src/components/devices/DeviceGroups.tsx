@@ -1,11 +1,17 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
+import { Button } from "@/components/ui/button";
+import { Dialog, DialogContent, DialogTrigger } from "@/components/ui/dialog";
+import { DeviceGroupForm } from "./DeviceGroupForm";
 import { BulkGroupActions } from "./group-actions/BulkGroupActions";
 import { DeviceGroupsTable } from "./table/DeviceGroupsTable";
+import { GroupShortcuts } from "./shortcuts/GroupShortcuts";
+import { GroupTemplateDialog } from "./group-templates/GroupTemplateDialog";
 import { useToast } from "@/components/ui/use-toast";
 import type { DeviceGroup } from "./types";
 
 const DeviceGroups = () => {
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [selectedGroups, setSelectedGroups] = useState<string[]>([]);
   const { toast } = useToast();
 
@@ -60,6 +66,30 @@ const DeviceGroups = () => {
     }
   };
 
+  const handleNewGroup = () => setIsFormOpen(true);
+
+  // Klavye kısayolları
+  const handleKeyPress = (e: KeyboardEvent) => {
+    if ((e.ctrlKey || e.metaKey) && e.shiftKey) {
+      switch (e.key.toLowerCase()) {
+        case 'n':
+          e.preventDefault();
+          handleNewGroup();
+          break;
+        case 'r':
+          e.preventDefault();
+          refetch();
+          break;
+      }
+    }
+  };
+
+  // Klavye kısayollarını dinle
+  useEffect(() => {
+    window.addEventListener('keydown', handleKeyPress);
+    return () => window.removeEventListener('keydown', handleKeyPress);
+  }, []);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-[200px]">
@@ -70,7 +100,28 @@ const DeviceGroups = () => {
 
   return (
     <div className="space-y-6">
-      <h2 className="text-2xl font-bold tracking-tight">Cihaz Grupları</h2>
+      <GroupShortcuts
+        onNewGroup={handleNewGroup}
+        onRefresh={refetch}
+      />
+
+      <div className="flex justify-between items-center">
+        <h2 className="text-2xl font-bold tracking-tight">Cihaz Grupları</h2>
+        <div className="flex items-center gap-2">
+          <GroupTemplateDialog />
+          <Dialog open={isFormOpen} onOpenChange={setIsFormOpen}>
+            <DialogTrigger asChild>
+              <Button>Yeni Grup</Button>
+            </DialogTrigger>
+            <DialogContent>
+              <DeviceGroupForm onSuccess={() => {
+                setIsFormOpen(false);
+                refetch();
+              }} />
+            </DialogContent>
+          </Dialog>
+        </div>
+      </div>
 
       {selectedGroups.length > 0 && (
         <BulkGroupActions
