@@ -11,6 +11,7 @@ class TrayService {
     this.currentSong = null;
     this.isAnnouncementPlaying = false;
     this.announcementRemainingTime = 0;
+    this.updateInterval = null;
   }
 
   createTray() {
@@ -163,6 +164,27 @@ class TrayService {
     console.log('Setting announcement state:', { isPlaying, remainingTime });
     this.isAnnouncementPlaying = isPlaying;
     this.announcementRemainingTime = remainingTime;
+    
+    // Eğer interval varsa temizle
+    if (this.updateInterval) {
+      clearInterval(this.updateInterval);
+      this.updateInterval = null;
+    }
+    
+    // Anons çalıyorsa yeni interval başlat
+    if (isPlaying && remainingTime > 0) {
+      this.updateInterval = setInterval(() => {
+        this.announcementRemainingTime = Math.max(0, this.announcementRemainingTime - 1);
+        this.updateTrayMenu();
+        
+        // Süre bittiyse interval'i temizle
+        if (this.announcementRemainingTime <= 0 && this.updateInterval) {
+          clearInterval(this.updateInterval);
+          this.updateInterval = null;
+        }
+      }, 1000);
+    }
+    
     this.updateTrayMenu();
   }
 
