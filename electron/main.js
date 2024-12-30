@@ -68,10 +68,17 @@ function updateTrayMenu(song = currentSong) {
   const contextMenu = Menu.buildFromTemplate([
     {
       label: 'Cloud Media Player',
-      enabled: false,
-      id: 'app-name'
+      click: function() {
+        mainWindow.show();
+        mainWindow.focus();
+      }
     },
     { type: 'separator' },
+    {
+      label: 'Şu an çalıyor:',
+      enabled: false,
+      id: 'now-playing-label'
+    },
     {
       label: song?.name || 'Şarkı çalmıyor',
       enabled: false,
@@ -84,35 +91,23 @@ function updateTrayMenu(song = currentSong) {
     },
     { type: 'separator' },
     {
-      label: isPlaying ? '⏸️ Duraklat' : '▶️ Çal',
+      label: isPlaying ? 'Duraklat' : 'Çal',
       click: function() {
         mainWindow.webContents.send('toggle-playback');
       }
     },
     {
-      label: '⏭️ Sonraki Şarkı',
+      label: 'Sonraki Şarkı',
       click: function() {
         mainWindow.webContents.send('next-song');
       }
     },
     { type: 'separator' },
     {
-      label: 'Cihaz Bilgisi',
-      submenu: [
-        {
-          label: `Token: ${deviceInfo?.token || 'Yok'}`,
-          enabled: false
-        }
-      ]
+      label: `Token: ${deviceInfo?.token || 'Yok'}`,
+      enabled: false
     },
     { type: 'separator' },
-    {
-      label: 'Uygulamayı Göster',
-      click: function() {
-        mainWindow.show();
-        mainWindow.focus();
-      }
-    },
     {
       label: 'Çıkış',
       click: function() {
@@ -149,68 +144,7 @@ function createTray() {
     tray.on('right-click', (event, bounds) => {
       const { x, y } = bounds;
       const contextMenu = tray.getContextMenu();
-      contextMenu.popup({ 
-        x: x - 250,
-        y: y,
-        width: 500,
-        customStylesheet: `
-          :root {
-            --menu-bg: #1a1b1e;
-            --menu-border: #2d2d2d;
-            --menu-hover: #2d2d2d;
-            --menu-text: #ffffff;
-            --menu-disabled: #666666;
-            --menu-separator: #2d2d2d;
-          }
-          
-          .menu {
-            background: var(--menu-bg);
-            border: 1px solid var(--menu-border);
-            border-radius: 12px;
-            padding: 8px;
-            min-width: 500px;
-          }
-          
-          .menu-item {
-            border-radius: 8px;
-            margin: 4px;
-            padding: 12px 20px;
-            color: var(--menu-text);
-            font-size: 14px;
-            font-weight: 500;
-          }
-          
-          .menu-item:hover {
-            background: var(--menu-hover);
-          }
-          
-          .menu-item.disabled {
-            color: var(--menu-disabled);
-          }
-          
-          .separator {
-            background: var(--menu-separator);
-            margin: 8px 4px;
-            height: 1px;
-          }
-          
-          #app-name {
-            font-size: 16px;
-            font-weight: 600;
-            padding: 16px 20px;
-          }
-          
-          #song-name {
-            font-size: 15px;
-            font-weight: 500;
-          }
-          
-          #artist-name {
-            font-size: 13px;
-            color: var(--menu-disabled);
-          }
-        `
-      });
+      contextMenu.popup({ x: x - 100, y: y });
     });
     
     console.log('Tray created successfully');
