@@ -11,6 +11,7 @@ const PlayerUIManager = require('./services/ui/PlayerUIManager');
 const VolumeManager = require('./services/audio/VolumeManager');
 const ArtworkManager = require('./services/ui/ArtworkManager');
 const ScreenshotEventHandler = require('./services/screenshot/ScreenshotEventHandler');
+const websocketService = require('./services/websocketService');
 
 const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
@@ -505,5 +506,22 @@ ipcRenderer.on('show-toast', (event, toast) => {
         body: toast.message
       });
       break;
+  }
+});
+
+// Screenshot event listener
+ipcRenderer.on('screenshot-taken', (event, result) => {
+  console.log('Screenshot result received:', result.success);
+  
+  if (result.success) {
+    // WebSocket üzerinden admin paneline gönder
+    websocketService.sendScreenshot(result.token, result.data);
+  } else {
+    console.error('Screenshot error:', result.error);
+    websocketService.sendMessage({
+      type: 'error',
+      token: result.token,
+      error: 'Screenshot failed: ' + result.error
+    });
   }
 });

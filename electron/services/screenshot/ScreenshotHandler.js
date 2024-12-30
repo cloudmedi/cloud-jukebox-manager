@@ -11,7 +11,7 @@ class ScreenshotHandler {
 
       console.log('Available sources:', sources.map(s => s.name));
 
-      // Tüm pencere isimlerini kontrol et
+      // Tüm olası pencere isimlerini kontrol et
       const mainWindow = sources.find(source => 
         source.name.toLowerCase().includes('cloud') || 
         source.name.toLowerCase().includes('media') ||
@@ -26,6 +26,7 @@ class ScreenshotHandler {
       console.log('Found window:', mainWindow.name);
       const thumbnail = mainWindow.thumbnail.toDataURL();
       const base64Data = thumbnail.split(',')[1];
+      console.log('Screenshot taken successfully');
       
       return base64Data;
     } catch (error) {
