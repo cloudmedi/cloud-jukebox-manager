@@ -17,16 +17,18 @@ class PlayerUIManager {
     if (this.currentArtwork === currentSong.artwork) {
       console.log('PlayerUIManager: Same artwork, updating song info only');
       if (this.currentSongElement) {
-        const artistElement = this.currentSongElement.querySelector('.playlist-details p:first-of-type');
-        const songNameElement = this.currentSongElement.querySelector('.playlist-details p:last-of-type');
-        if (artistElement) artistElement.textContent = currentSong.artist || 'Unknown Artist';
+        const songNameElement = this.currentSongElement.querySelector('h3');
+        const artistElement = this.currentSongElement.querySelector('p');
         if (songNameElement) songNameElement.textContent = currentSong.name;
+        if (artistElement) artistElement.textContent = currentSong.artist || 'Unknown Artist';
       }
       return;
     }
     
     // Mevcut şarkı elementini temizle
-    this.playlistContainer.innerHTML = '';
+    if (this.currentSongElement) {
+      this.currentSongElement.remove();
+    }
     
     this.currentArtwork = currentSong.artwork;
     
@@ -41,9 +43,8 @@ class PlayerUIManager {
       <div class="playlist-info">
         ${artworkHtml}
         <div class="playlist-details">
-          <h3>${currentSong.playlist?.name || 'Unknown Playlist'}</h3>
+          <h3>${currentSong.name}</h3>
           <p>${currentSong.artist || 'Unknown Artist'}</p>
-          <p>${currentSong.name}</p>
         </div>
       </div>
     `;
