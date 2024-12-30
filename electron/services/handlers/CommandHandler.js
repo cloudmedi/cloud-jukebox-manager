@@ -1,8 +1,7 @@
 const { BrowserWindow } = require('electron');
-const ScreenshotHandler = require('../screenshot/ScreenshotHandler');
 
 class CommandHandler {
-  static async handleCommand(message) {
+  static handleCommand(message) {
     console.log('Processing command:', message);
     const mainWindow = BrowserWindow.getAllWindows()[0];
     
@@ -12,25 +11,6 @@ class CommandHandler {
     }
 
     switch (message.command) {
-      case 'screenshot':
-        try {
-          console.log('Taking screenshot...');
-          const screenshotData = await ScreenshotHandler.takeScreenshot();
-          mainWindow.webContents.send('screenshot-taken', {
-            success: true,
-            data: screenshotData,
-            token: message.token
-          });
-        } catch (error) {
-          console.error('Screenshot error:', error);
-          mainWindow.webContents.send('screenshot-taken', {
-            success: false,
-            error: error.message,
-            token: message.token
-          });
-        }
-        break;
-
       case 'songRemoved':
         console.log('Handling songRemoved command:', message.data);
         mainWindow.webContents.send('songRemoved', {
