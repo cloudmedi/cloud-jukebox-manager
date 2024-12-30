@@ -2,6 +2,7 @@ const { ipcRenderer } = require('electron');
 const Store = require('electron-store');
 const fs = require('fs');
 const store = new Store();
+const AudioEventManager = require('./services/audio/AudioEventManager');
 const AudioEventHandler = require('./services/audio/AudioEventHandler');
 const playbackStateManager = require('./services/audio/PlaybackStateManager');
 const UIManager = require('./services/ui/UIManager');
@@ -14,9 +15,8 @@ const ScreenshotEventHandler = require('./services/screenshot/ScreenshotEventHan
 
 // Başlangıç ayarları
 const playlistAudio = document.getElementById('audioPlayer');
-const audioHandler = new AudioEventHandler(playlistAudio);
-const playbackStatus = document.createElement('div');
-playbackStatus.className = 'playback-status stopped';
+const audioEventManager = new AudioEventManager(playlistAudio);
+const playbackStatus = audioEventManager.getPlaybackStatusElement();
 
 // Titlebar'a playback status ekle
 const titlebarControls = document.createElement('div');
@@ -27,7 +27,6 @@ titlebarControls.appendChild(document.getElementById('closeButton'));
 const titlebar = document.querySelector('.titlebar');
 titlebar.appendChild(titlebarControls);
 
-// Playback durumu değişikliklerini dinle
 playlistAudio.addEventListener('play', () => {
     playbackStatus.className = 'playback-status playing';
 });
