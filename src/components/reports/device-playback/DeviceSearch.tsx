@@ -22,7 +22,7 @@ interface Device {
 }
 
 interface DeviceSearchProps {
-  devices?: Device[];
+  devices: Device[];
   selectedDevice: string;
   onDeviceSelect: (deviceId: string) => void;
   isLoading: boolean;
@@ -47,7 +47,7 @@ export function DeviceSearch({
           disabled={isLoading}
         >
           {selectedDevice
-            ? devices.find((device) => device._id === selectedDevice)?.name
+            ? devices.find((device) => device._id === selectedDevice)?.name || "Cihaz seçin..."
             : "Cihaz seçin..."}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
@@ -62,7 +62,7 @@ export function DeviceSearch({
                 key={device._id}
                 value={device._id}
                 onSelect={(currentValue) => {
-                  onDeviceSelect(currentValue);
+                  onDeviceSelect(currentValue === selectedDevice ? "" : currentValue);
                   setOpen(false);
                 }}
               >
@@ -72,7 +72,7 @@ export function DeviceSearch({
                     selectedDevice === device._id ? "opacity-100" : "opacity-0"
                   )}
                 />
-                {device.name}
+                <span>{device.name}</span>
                 {device.location && (
                   <span className="ml-2 text-muted-foreground">
                     ({device.location})
