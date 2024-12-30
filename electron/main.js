@@ -20,7 +20,7 @@ function createWindow() {
     maxHeight: 300,
     resizable: false,
     backgroundColor: '#1a1b1e',
-    frame: true, // Frame'i true yapıyoruz
+    frame: true,
     title: 'Cloud Media Player',
     webPreferences: {
       nodeIntegration: true,
@@ -30,7 +30,7 @@ function createWindow() {
     }
   });
 
-  // Pencere referansını global olarak saklayalım
+  // Pencereyi global olarak sakla
   global.mainWindow = mainWindow;
 
   mainWindow.loadFile('index.html');

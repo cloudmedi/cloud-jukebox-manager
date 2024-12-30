@@ -4,7 +4,7 @@ const screenshotHandler = require('../screenshot/ScreenshotHandler');
 class CommandHandler {
   static async handleCommand(message) {
     console.log('Processing command:', message);
-    const mainWindow = global.mainWindow || BrowserWindow.getAllWindows()[0];
+    const mainWindow = global.mainWindow;
     
     if (!mainWindow) {
       console.log('No main window found');
