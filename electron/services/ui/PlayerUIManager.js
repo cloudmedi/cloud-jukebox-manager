@@ -9,8 +9,9 @@ class PlayerUIManager {
 
     const container = document.getElementById('currentSongInfo');
     if (!container) {
-      console.error('Current song info container not found!');
-      return;
+      console.error('Current song info container not found! Creating container...');
+      this.createContainer();
+      return this.updateCurrentSong(currentSong); // Recursive call after creating container
     }
 
     let songNameElement = container.querySelector('.song-name');
@@ -35,7 +36,7 @@ class PlayerUIManager {
     }
 
     // Elementleri güncelle
-    songNameElement.textContent = currentSong.name;
+    songNameElement.textContent = currentSong.name || 'Unknown Song';
     artistElement.textContent = currentSong.artist || 'Unknown Artist';
     console.log('Song info updated successfully');
 
@@ -45,6 +46,32 @@ class PlayerUIManager {
       name: currentSong.name,
       artist: currentSong.artist
     });
+  }
+
+  static createContainer() {
+    console.log('Creating current song info container...');
+    const container = document.createElement('div');
+    container.id = 'currentSongInfo';
+    container.className = 'current-song-info';
+
+    // Boş elementleri oluştur
+    const songName = document.createElement('h3');
+    songName.className = 'song-name';
+    const artistName = document.createElement('p');
+    artistName.className = 'artist-name';
+
+    container.appendChild(songName);
+    container.appendChild(artistName);
+
+    // Container'ı playlist container'dan önce ekle
+    const playlistContainer = document.getElementById('playlistContainer');
+    if (playlistContainer) {
+      playlistContainer.parentNode.insertBefore(container, playlistContainer);
+      console.log('Container created and inserted successfully');
+    } else {
+      document.querySelector('.container').appendChild(container);
+      console.log('Container created and appended to main container');
+    }
   }
 }
 
