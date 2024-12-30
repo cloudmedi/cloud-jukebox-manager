@@ -39,15 +39,11 @@ class UIManager {
 
     updateConnectionStatus(isConnected) {
         if (isConnected) {
-            // Bağlantı başarılı olduğunda token bilgilerini gizle
             this.deviceInfoElement.style.display = 'none';
         } else {
-            // Bağlantı koptuğunda token bilgilerini göster
             this.deviceInfoElement.style.display = 'block';
+            this.connectionStatus.textContent = 'Şu anda bir çalma listesi yok. Lütfen bir çalma listesi ekleyin.';
         }
-        
-        this.connectionStatus.className = `connection-status ${isConnected ? 'connected' : 'disconnected'}`;
-        this.connectionStatus.textContent = isConnected ? 'Bağlı' : 'Bağlantı Kesildi';
     }
 
     displayPlaylists(playlist) {
