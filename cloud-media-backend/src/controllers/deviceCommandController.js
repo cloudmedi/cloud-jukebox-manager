@@ -34,12 +34,23 @@ const restartDevice = async (req, res) => {
 
 const setVolume = async (req, res) => {
   try {
+    console.log('Volume command received:', { 
+      deviceId: req.params.id, 
+      volume: req.body.volume 
+    });
+
     const device = await Device.findById(req.params.id);
     if (!device) {
+      console.log('Device not found:', req.params.id);
       return res.status(404).json({ message: 'Cihaz bulunamadı' });
     }
 
     const volume = req.body.volume;
+    console.log('Sending volume command to device:', {
+      token: device.token,
+      volume: volume
+    });
+
     const sent = req.wss.sendToDevice(device.token, {
       type: 'command',
       command: 'setVolume',
@@ -48,9 +59,14 @@ const setVolume = async (req, res) => {
 
     if (sent) {
       await device.setVolume(volume);
+      console.log('Volume updated successfully:', {
+        deviceId: device._id,
+        volume: volume
+      });
       
       // Check volume threshold
       if (volume >= 80) {
+        console.log('High volume notification created');
         await Notification.create({
           type: 'device',
           title: 'Yüksek Ses Seviyesi',
@@ -61,9 +77,11 @@ const setVolume = async (req, res) => {
       
       res.json({ message: 'Ses seviyesi güncellendi' });
     } else {
+      console.log('Device is offline:', device.token);
       res.status(404).json({ message: 'Cihaz çevrimiçi değil' });
     }
   } catch (error) {
+    console.error('Volume control error:', error);
     res.status(500).json({ message: error.message });
   }
 };

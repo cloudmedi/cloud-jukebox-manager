@@ -118,16 +118,24 @@ class AudioPlayer {
   }
 
   setVolume(volume) {
+    console.log('AudioPlayer setVolume called:', { 
+      rawVolume: volume,
+      normalizedVolume: volume / 100 
+    });
+    
     // Volume değerini 0-100 arasında tut
     const normalizedVolume = Math.max(0, Math.min(100, volume));
+    console.log('Volume normalized:', normalizedVolume);
     
     // 0-100 arasındaki değeri 0-1 arasına dönüştür
     this.volume = normalizedVolume / 100;
     this.audio.volume = this.volume;
+    console.log('Audio element volume set:', this.audio.volume);
 
     // Store'a kaydet
     const store = new Store();
     store.set('volume', normalizedVolume);
+    console.log('Volume saved to store:', normalizedVolume);
 
     // Başarılı volume değişikliğini bildir
     websocketService.sendMessage({
@@ -135,6 +143,7 @@ class AudioPlayer {
       status: 'success',
       volume: normalizedVolume
     });
+    console.log('Volume update success message sent');
   }
 
   updatePlaybackState(state) {
