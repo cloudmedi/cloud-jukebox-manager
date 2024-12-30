@@ -4,67 +4,57 @@ const { ipcRenderer } = require('electron');
 let audio = new Audio();
 
 ipcRenderer.on('load-audio', (event, data) => {
+  console.log('Loading audio:', data);
   audio.src = data.path;
-  audio.volume = data.volume;
+  audio.volume = data.volume / 100;
   if (data.autoplay) {
     audio.play().catch(console.error);
   }
 });
 
 ipcRenderer.on('audio-play', () => {
+  console.log('Play command received');
   audio.play().catch(console.error);
 });
 
+ipcRenderer.on('audio-pause', () => {
+  console.log('Pause command received');
+  audio.pause();
+});
+
 ipcRenderer.on('audio-stop', () => {
+  console.log('Stop command received');
   audio.pause();
   audio.currentTime = 0;
 });
 
 ipcRenderer.on('set-volume', (event, volume) => {
-  audio.volume = volume;
+  console.log('Setting volume:', volume);
+  audio.volume = volume / 100;
 });
 
 // Handle audio events
 audio.addEventListener('ended', () => {
+  console.log('Audio ended');
   ipcRenderer.send('audio-ended');
 });
 
 audio.addEventListener('error', (e) => {
+  console.error('Audio error:', e);
   ipcRenderer.send('audio-error', e.message);
 });
 
-// Handle playback controls
-ipcRenderer.on('toggle-playback', () => {
-  if (audio.paused) {
-    audio.play().catch(console.error);
-  } else {
-    audio.pause();
-  }
+audio.addEventListener('play', () => {
+  console.log('Audio started playing');
+  ipcRenderer.send('playback-status-update', { isPlaying: true });
 });
 
-ipcRenderer.on('update-player', (event, data) => {
-  if (data.currentSong) {
-    audio.src = data.currentSong.localPath;
-    if (data.isPlaying) {
-      audio.play().catch(console.error);
-    }
-  }
+audio.addEventListener('pause', () => {
+  console.log('Audio paused');
+  ipcRenderer.send('playback-status-update', { isPlaying: false });
 });
 
-// Emergency handlers
-ipcRenderer.on('emergency-stop', () => {
-  audio.pause();
-  audio.volume = 0;
-});
-
-ipcRenderer.on('emergency-reset', () => {
-  const savedVolume = localStorage.getItem('savedVolume');
-  if (savedVolume) {
-    audio.volume = parseFloat(savedVolume);
-  }
-});
-
-// Volume persistence
+// Save volume state
 window.addEventListener('beforeunload', () => {
   localStorage.setItem('savedVolume', audio.volume);
 });
@@ -74,19 +64,3 @@ const savedVolume = localStorage.getItem('savedVolume');
 if (savedVolume) {
   audio.volume = parseFloat(savedVolume);
 }
-
-// Playback status updates
-audio.addEventListener('play', () => {
-  ipcRenderer.send('playback-status-update', { isPlaying: true });
-});
-
-audio.addEventListener('pause', () => {
-  ipcRenderer.send('playback-status-update', { isPlaying: false });
-});
-
-audio.addEventListener('timeupdate', () => {
-  ipcRenderer.send('playback-time-update', {
-    currentTime: audio.currentTime,
-    duration: audio.duration
-  });
-});
