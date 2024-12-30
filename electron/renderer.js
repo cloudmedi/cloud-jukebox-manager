@@ -42,7 +42,10 @@ ipcRenderer.on('emergency-stop', () => {
   const store = new Store();
   store.set('playbackState', {
     isPlaying: false,
-    emergencyStopped: true
+    emergencyStopped: true,
+    wasPlaying: playlistAudio ? !playlistAudio.paused : false,
+    volume: playlistAudio ? playlistAudio.volume : 0,
+    currentTime: playlistAudio ? playlistAudio.currentTime : 0
   });
 
   // UI'ı güncelle
@@ -209,6 +212,25 @@ ipcRenderer.on('auto-play-playlist', (event, playlist) => {
       }
     }
   }
+});
+
+// Uygulama başlatıldığında emergency durumunu kontrol et
+document.addEventListener('DOMContentLoaded', () => {
+  console.log('Checking emergency state on startup');
+  const store = new Store();
+  const emergencyState = store.get('emergencyState');
+  
+  if (emergencyState && emergencyState.isActive) {
+    console.log('Emergency state is active, stopping playback');
+    if (playlistAudio) {
+      playlistAudio.pause();
+      playlistAudio.volume = 0;
+    }
+    showEmergencyMessage();
+  }
+  
+  console.log('DOM loaded, displaying playlists');
+  displayPlaylists();
 });
 
 function displayPlaylists() {
@@ -479,12 +501,6 @@ ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
 ipcRenderer.on('next-song', () => {
   console.log('Next song requested from tray menu');
   ipcRenderer.invoke('song-ended');
-});
-
-// İlk yüklemede playlistleri göster
-document.addEventListener('DOMContentLoaded', () => {
-  console.log('DOM loaded, displaying playlists');
-  displayPlaylists();
 });
 
 // Toast bildirimleri için event listener
