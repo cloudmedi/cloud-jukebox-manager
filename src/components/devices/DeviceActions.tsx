@@ -36,10 +36,14 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
         command: 'take-screenshot'
       });
 
-      if (response?.type === 'screenshot' && response.data) {
-        setScreenshotData(response.data);
-      } else {
-        toast.error('Ekran görüntüsü alınamadı');
+      console.log('Screenshot response:', response);
+
+      if (response?.type === 'screenshot') {
+        if (response.success && response.data) {
+          setScreenshotData(response.data);
+        } else {
+          toast.error(response.error || 'Ekran görüntüsü alınamadı');
+        }
       }
     } catch (error) {
       console.error('Screenshot error:', error);
