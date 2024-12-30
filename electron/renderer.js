@@ -1,10 +1,9 @@
 const { ipcRenderer } = require('electron');
 const Store = require('electron-store');
 const store = new Store();
-const AudioEventHandler = require('./services/audio/AudioEventHandler');
+const AudioEventHandler = require('./services/audio/handlers/AudioEventHandler');
 const playbackStateManager = require('./services/audio/PlaybackStateManager');
 const websocketService = require('./services/websocketService');
-const PlayerUIManager = require('./services/ui/PlayerUIManager');
 const EmergencyStateManager = require('./services/emergency/EmergencyStateManager');
 const VolumeManager = require('./services/audio/VolumeManager');
 const ArtworkManager = require('./services/ui/ArtworkManager');
@@ -59,32 +58,30 @@ websocketService.addMessageHandler('command', (message) => {
 
 // Playlist yükleme ve çalma işlemleri
 ipcRenderer.on('play-playlist', async (event, playlist) => {
-  console.log('1. Play playlist request received:', playlist);
+  console.log('Play playlist request received:', playlist);
   
   if (!playlist || !playlist.songs || playlist.songs.length === 0) {
-    console.error('2. Invalid playlist or empty songs array');
+    console.error('Invalid playlist or empty songs array');
     return;
   }
 
   try {
     const currentSong = playlist.songs[0];
-    console.log('2. Current song:', {
-      name: currentSong.name,
-      artist: currentSong.artist,
-      localPath: currentSong.localPath
-    });
+    console.log('Current song:', currentSong);
+
+    if (!currentSong.localPath) {
+      console.error('Song localPath is missing:', currentSong);
+      return;
+    }
 
     const normalizedPath = currentSong.localPath.replace(/\\/g, '/');
     playlistAudio.src = normalizedPath;
     
-    console.log('3. Setting audio source to:', normalizedPath);
+    console.log('Setting audio source to:', normalizedPath);
     
     playlistAudio.play().catch(err => {
-      console.error('4. Playback error:', err);
+      console.error('Playback error:', err);
     });
-    
-    // UI'ı güncelle
-    PlayerUIManager.updateCurrentSong(currentSong);
     
     // Playback state'i güncelle
     playbackStateManager.updateState({
@@ -155,3 +152,4 @@ playlistAudio.addEventListener('loadeddata', () => {
     playlistAudio.play();
   }
 });
+
