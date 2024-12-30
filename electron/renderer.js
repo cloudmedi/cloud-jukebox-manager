@@ -1,7 +1,7 @@
 const { ipcRenderer } = require('electron');
 const Store = require('electron-store');
 const fs = require('fs');
-const store = new Store(); // Store'u geri ekleyelim
+const store = new Store();
 const { createArtworkUrl } = require('./utils/artworkUtils');
 const AudioEventHandler = require('./services/audio/AudioEventHandler');
 const playbackStateManager = require('./services/audio/PlaybackStateManager');
@@ -231,8 +231,10 @@ function displayPlaylists() {
     const playlistElement = document.createElement('div');
     playlistElement.className = 'playlist-item';
     
-    // Artwork URL'sini createArtworkUrl ile oluştur
-    const artworkUrl = createArtworkUrl(lastPlaylist.artwork);
+    // Artwork URL'sini düzgün oluştur
+    const baseUrl = process.env.BASE_URL || 'http://localhost:5000';
+    const artworkUrl = lastPlaylist.artwork ? `${baseUrl}${lastPlaylist.artwork}` : null;
+    console.log('Artwork URL:', artworkUrl);
     
     playlistElement.innerHTML = `
       <div class="playlist-info">
