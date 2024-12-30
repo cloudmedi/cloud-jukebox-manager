@@ -18,5 +18,20 @@ contextBridge.exposeInMainWorld('electron', {
       console.error('Screenshot error:', error);
       throw error;
     }
+  },
+
+  // WebSocket üzerinden screenshot yanıtını gönder
+  sendScreenshotResponse: (imageData) => {
+    ipcRenderer.send('screenshot-response', imageData);
+  }
+});
+
+// Screenshot komutunu dinle
+ipcRenderer.on('take-screenshot', async () => {
+  try {
+    const screenshot = await window.electron.captureScreenshot();
+    window.electron.sendScreenshotResponse(screenshot);
+  } catch (error) {
+    console.error('Screenshot capture error:', error);
   }
 });
