@@ -269,8 +269,6 @@ ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
 });
 
 // Sonraki şarkı için event listener
-
-// Sonraki şarkı için event listener
 ipcRenderer.on('next-song', async () => {
   console.log('Next song requested from tray menu');
   
@@ -286,17 +284,9 @@ ipcRenderer.on('next-song', async () => {
     if (currentPlaylist && currentPlaylist.currentSong) {
       console.log('Updating UI with new song:', currentPlaylist.currentSong);
       
-      // UI'ı güncelle
-      const songNameElement = document.querySelector('.song-name');
-      const artistElement = document.querySelector('.artist-name');
-      
-      if (songNameElement && artistElement) {
-        songNameElement.textContent = currentPlaylist.currentSong.name;
-        artistElement.textContent = currentPlaylist.currentSong.artist;
-        console.log('UI updated successfully');
-      } else {
-        console.error('UI elements not found!');
-      }
+      // PlayerUIManager'ı kullanarak UI'ı güncelle
+      const PlayerUIManager = require('./services/ui/PlayerUIManager');
+      PlayerUIManager.updateCurrentSong(currentPlaylist.currentSong);
       
       // Tray menüsünü güncelle
       ipcRenderer.send('song-changed', {
@@ -343,4 +333,3 @@ ipcRenderer.on('show-toast', (event, toast) => {
       break;
   }
 });
-
