@@ -27,7 +27,12 @@ body {
     font-size: 12px;
     font-weight: 500;
     opacity: 0.8;
-    padding-left: 8px;
+}
+
+.titlebar-controls {
+    display: flex;
+    align-items: center;
+    -webkit-app-region: no-drag;
 }
 
 .titlebar-button {
