@@ -80,6 +80,15 @@ class WebSocketServer {
         });
         break;
 
+      case 'screenshot':
+        console.log('Screenshot received from device:', token);
+        this.broadcastToAdmins({
+          type: 'screenshot',
+          token: token,
+          data: message.data
+        });
+        break;
+
       case 'error':
         this.broadcastToAdmins({
           type: 'deviceError',
