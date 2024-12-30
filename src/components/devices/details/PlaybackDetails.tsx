@@ -22,13 +22,24 @@ export const PlaybackDetails = ({ device }: PlaybackDetailsProps) => {
 
         <div className="space-y-2">
           <span className="text-sm text-muted-foreground">Playlist Durumu</span>
-          <p>{device.playlistStatus || "Bilinmiyor"}</p>
+          <p className="flex items-center gap-2">
+            {device.playlistStatus === 'loaded' && (
+              <span className="text-green-500">Yüklendi</span>
+            )}
+            {device.playlistStatus === 'loading' && (
+              <span className="text-yellow-500">Yükleniyor...</span>
+            )}
+            {device.playlistStatus === 'error' && (
+              <span className="text-red-500">Hata</span>
+            )}
+            {!device.playlistStatus && "Playlist yok"}
+          </p>
         </div>
       </div>
 
       <Separator />
 
-      {device.currentSong && (
+      {device.currentSong ? (
         <div>
           <span className="text-sm text-muted-foreground">Çalan Şarkı</span>
           <div className="flex items-center gap-2 mt-2 bg-muted/50 p-3 rounded-md">
@@ -40,6 +51,10 @@ export const PlaybackDetails = ({ device }: PlaybackDetailsProps) => {
               </p>
             </div>
           </div>
+        </div>
+      ) : (
+        <div className="text-sm text-muted-foreground">
+          Şu anda çalan şarkı yok
         </div>
       )}
     </div>
