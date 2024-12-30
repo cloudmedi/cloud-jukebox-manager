@@ -2,6 +2,7 @@ import axios from 'axios';
 
 export interface Device {
   _id: string;
+  id: string; // Eklendi
   name: string;
   token: string;
   location: string;
