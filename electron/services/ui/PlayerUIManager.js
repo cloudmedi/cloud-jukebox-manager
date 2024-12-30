@@ -13,59 +13,49 @@ class PlayerUIManager {
     
     console.log('PlayerUIManager: Updating current song with:', currentSong);
     
-    // Eğer aynı artwork'se tekrar yükleme yapmayalım
-    if (this.currentArtwork === currentSong.artwork) {
-      console.log('PlayerUIManager: Same artwork, updating song info only');
-      if (this.currentSongElement) {
-        const songNameElement = this.currentSongElement.querySelector('h3');
-        const artistElement = this.currentSongElement.querySelector('p');
-        if (songNameElement) songNameElement.textContent = currentSong.name;
-        if (artistElement) artistElement.textContent = currentSong.artist || 'Unknown Artist';
+    // Tüm playlist-item elementlerini güncelle
+    const playlistItems = this.playlistContainer.getElementsByClassName('playlist-item');
+    
+    // Her playlist-item için güncelleme yap
+    Array.from(playlistItems).forEach(item => {
+      // Artwork güncelleme
+      const artworkContainer = item.querySelector('.playlist-artwork-placeholder');
+      if (artworkContainer && currentSong.artwork) {
+        // Placeholder'ı kaldır ve img ekle
+        const img = document.createElement('img');
+        img.src = `http://localhost:5000${currentSong.artwork}`;
+        img.alt = currentSong.name;
+        img.className = 'playlist-artwork';
+        img.onerror = (error) => {
+          console.error('PlayerUIManager: Artwork loading error:', {
+            src: img.src,
+            error: error
+          });
+          // Hata durumunda placeholder'a geri dön
+          const placeholder = document.createElement('div');
+          placeholder.className = 'playlist-artwork-placeholder';
+          img.replaceWith(placeholder);
+        };
+        
+        img.onload = () => {
+          console.log('PlayerUIManager: Artwork loaded successfully:', img.src);
+        };
+        
+        artworkContainer.replaceWith(img);
       }
-      return;
-    }
-    
-    // Mevcut şarkı elementini temizle
-    if (this.currentSongElement) {
-      this.currentSongElement.remove();
-    }
-    
-    this.currentArtwork = currentSong.artwork;
-    
-    // Yeni şarkı elementi oluştur
-    this.currentSongElement = document.createElement('div');
-    this.currentSongElement.className = 'playlist-item';
-    
-    // ArtworkManager'ı kullan
-    const artworkHtml = require('./ArtworkManager').createArtworkHtml(currentSong.artwork, currentSong.name);
-    
-    this.currentSongElement.innerHTML = `
-      <div class="playlist-info">
-        ${artworkHtml}
-        <div class="playlist-details">
-          <h3>${currentSong.name}</h3>
-          <p>${currentSong.artist || 'Unknown Artist'}</p>
-        </div>
-      </div>
-    `;
-    
-    console.log('PlayerUIManager: Created new song element with artwork');
-    this.playlistContainer.appendChild(this.currentSongElement);
 
-    // Artwork yükleme durumunu kontrol et
-    const artworkImg = this.currentSongElement.querySelector('img');
-    if (artworkImg) {
-      artworkImg.addEventListener('load', () => {
-        console.log('PlayerUIManager: Artwork loaded successfully:', artworkImg.src);
-      });
-      
-      artworkImg.addEventListener('error', (error) => {
-        console.error('PlayerUIManager: Artwork loading error:', {
-          src: artworkImg.src,
-          error: error
-        });
-      });
-    }
+      // Şarkı bilgilerini güncelle
+      const details = item.querySelector('.playlist-details');
+      if (details) {
+        const songName = details.querySelector('h3');
+        const artistName = details.querySelector('p');
+        
+        if (songName) songName.textContent = currentSong.name;
+        if (artistName) artistName.textContent = currentSong.artist;
+      }
+    });
+
+    console.log('PlayerUIManager: UI update completed');
   }
 }
 
