@@ -10,6 +10,7 @@ const PlaylistInitializer = require('./services/playlist/PlaylistInitializer');
 const PlayerUIManager = require('./services/ui/PlayerUIManager');
 const VolumeManager = require('./services/audio/VolumeManager');
 
+// Audio player setup
 const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
 
@@ -210,42 +211,44 @@ ipcRenderer.on('auto-play-playlist', (event, playlist) => {
 });
 
 function displayPlaylists() {
-  console.log('8. Starting displayPlaylists()');
+  console.log('Starting displayPlaylists()');
   const playlists = store.get('playlists', []);
   const playlistContainer = document.getElementById('playlistContainer');
   
   if (!playlistContainer) {
-    console.error('9. Playlist container not found');
+    console.error('Playlist container not found');
     return;
   }
   
-  console.log('10. Current playlists:', playlists);
+  console.log('Current playlists:', playlists);
   
   playlistContainer.innerHTML = '';
   
   // Son playlist'i göster
   const lastPlaylist = playlists[playlists.length - 1];
   if (lastPlaylist) {
-    console.log('11. Displaying last playlist:', lastPlaylist);
+    console.log('Displaying last playlist:', lastPlaylist);
     const playlistElement = document.createElement('div');
     playlistElement.className = 'playlist-item';
     
-    // Artwork URL'ini oluştur ve cache'le
-    const artworkUrl = lastPlaylist.artwork ? 
-      (lastPlaylist.artwork.startsWith('http') ? lastPlaylist.artwork : `http://localhost:5000${lastPlaylist.artwork}`) : 
-      null;
-    
-    // Artwork URL'ini store'a kaydet
-    if (artworkUrl) {
-      store.set('currentArtwork', artworkUrl);
+    // Artwork URL'ini oluştur
+    let artworkUrl = lastPlaylist.artwork;
+    if (artworkUrl && !artworkUrl.startsWith('http')) {
+      artworkUrl = `http://localhost:5000${artworkUrl}`;
     }
     
     console.log('Artwork URL:', artworkUrl);
     
+    // Store'a artwork URL'ini kaydet
+    if (artworkUrl) {
+      store.set('currentArtwork', artworkUrl);
+    }
+    
     playlistElement.innerHTML = `
       <div class="playlist-info">
         ${artworkUrl ? 
-          `<img src="${artworkUrl}" alt="${lastPlaylist.name}" class="playlist-artwork" onerror="this.style.display='none'"/>` :
+          `<img src="${artworkUrl}" alt="${lastPlaylist.name}" class="playlist-artwork" 
+           onerror="this.style.display='none'" onload="console.log('Artwork loaded successfully')"/>` :
           '<div class="playlist-artwork-placeholder"></div>'
         }
         <div class="playlist-details">
@@ -257,9 +260,9 @@ function displayPlaylists() {
     `;
     
     playlistContainer.appendChild(playlistElement);
-    console.log('12. Playlist element added to DOM');
+    console.log('Playlist element added to DOM');
   } else {
-    console.warn('13. No playlist available to display');
+    console.warn('No playlist available to display');
   }
 }
 
@@ -278,6 +281,10 @@ ipcRenderer.on('playlist-received', (event, playlist) => {
     playlist.artwork = playlist.artwork || existingArtwork;
     playlists[existingIndex] = playlist;
   } else {
+    // Yeni playlist için artwork URL'ini işle
+    if (playlist.artwork && !playlist.artwork.startsWith('http')) {
+      playlist.artwork = `http://localhost:5000${playlist.artwork}`;
+    }
     playlists.push(playlist);
   }
   
