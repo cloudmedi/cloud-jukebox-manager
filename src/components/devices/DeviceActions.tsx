@@ -22,6 +22,25 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
   const [isEmergencyActive, setIsEmergencyActive] = useState(false);
   const queryClient = useQueryClient();
 
+  const handleScreenshot = async () => {
+    try {
+      console.log('Sending screenshot command to device:', device.token);
+      
+      // WebSocket üzerinden screenshot komutu gönder
+      websocketService.sendMessage({
+        type: 'command',
+        token: device.token,
+        command: 'screenshot'
+      });
+      
+      setIsScreenshotDialogOpen(true);
+      toast.success('Ekran görüntüsü alma komutu gönderildi');
+    } catch (error) {
+      console.error('Screenshot error:', error);
+      toast.error('Ekran görüntüsü alınamadı');
+    }
+  };
+
   const handleEmergencyAction = async () => {
     try {
       if (!isEmergencyActive) {
@@ -132,7 +151,7 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
         onRestartClick={() => setIsRestartDialogOpen(true)}
         onDeleteClick={() => setIsDeleteDialogOpen(true)}
         onEmergencyClick={handleEmergencyAction}
-        onScreenshotClick={() => setIsScreenshotDialogOpen(true)}
+        onScreenshotClick={handleScreenshot}
       />
 
       <DeviceActionDialogs
