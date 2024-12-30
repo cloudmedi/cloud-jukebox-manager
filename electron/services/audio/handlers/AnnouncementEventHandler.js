@@ -23,6 +23,7 @@ class AnnouncementEventHandler {
         console.log('Kaydedilen playlist indeksi:', this.lastPlaylistIndex);
       }
 
+      // Playlist'i duraklat
       if (this.wasPlaylistPlaying) {
         console.log('Playlist duraklatılıyor');
         this.playlistAudio.pause();
@@ -34,7 +35,7 @@ class AnnouncementEventHandler {
       console.log('Anons başladı');
       this.isAnnouncementPlaying = true;
       
-      // Eğer playlist hala çalıyorsa, duraklat
+      // Playlist'i kesinlikle duraklat
       if (!this.playlistAudio.paused) {
         console.log('Playlist zorla duraklatılıyor');
         this.playlistAudio.pause();
@@ -57,9 +58,8 @@ class AnnouncementEventHandler {
   resetAnnouncementState() {
     console.log('Anons durumu sıfırlanıyor');
     console.log('Önceki playlist durumu:', this.wasPlaylistPlaying);
-    console.log('Son playlist indeksi:', this.lastPlaylistIndex);
     
-    // Kampanyayı duraklat ve zamanı sıfırla
+    // Kampanyayı duraklat ve temizle
     this.campaignAudio.pause();
     this.campaignAudio.currentTime = 0;
     this.campaignAudio.src = '';
@@ -83,7 +83,7 @@ class AnnouncementEventHandler {
       }, 500);
     }
     
-    // wasPlaylistPlaying durumunu sıfırla
+    // State'i temizle
     this.wasPlaylistPlaying = false;
   }
 
@@ -95,7 +95,6 @@ class AnnouncementEventHandler {
 
     try {
       console.log('Anons başlatılıyor:', audioPath);
-      console.log('Mevcut playlist durumu:', this.playlistAudio.paused ? 'duraklatılmış' : 'çalıyor');
       
       // Önce playlist'i duraklat
       if (!this.playlistAudio.paused) {
@@ -104,11 +103,14 @@ class AnnouncementEventHandler {
         this.playlistAudio.pause();
       }
       
-      // Her seferinde src'yi yeniden ayarla
+      // Anons ses dosyasını yükle
       this.campaignAudio.src = audioPath;
-      
-      // Ses dosyasını yükle ve çal
       await this.campaignAudio.load();
+      
+      // Volume'u ayarla ve çal
+      const store = new Store();
+      const volume = store.get('volume', 70);
+      this.campaignAudio.volume = volume / 100;
       this.campaignAudio.currentTime = 0;
       await this.campaignAudio.play();
       
