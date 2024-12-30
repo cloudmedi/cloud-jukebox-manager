@@ -4,29 +4,63 @@ const DeleteService = require('../services/DeleteService');
 
 const restartDevice = async (req, res) => {
   try {
+    console.log('Restart command received for device:', req.params.id);
+    
     const device = await Device.findById(req.params.id);
     if (!device) {
+      console.log('Device not found:', req.params.id);
       return res.status(404).json({ message: 'Cihaz bulunamadı' });
     }
 
+    console.log('Sending restart command to device:', {
+      deviceId: device._id,
+      token: device.token
+    });
+
+    // WebSocket üzerinden cihaza restart komutu gönder
     const sent = req.wss.sendToDevice(device.token, {
       type: 'command',
-      command: 'restart'
+      command: 'restart',
+      deviceId: device._id
     });
 
     if (sent) {
-      res.json({ message: 'Cihaz yeniden başlatılıyor' });
+      console.log('Restart command sent successfully');
+      
+      // Başarılı gönderim durumunda bildirim oluştur
+      await Notification.create({
+        type: 'device',
+        title: 'Cihaz Yeniden Başlatılıyor',
+        message: `${device.name} cihazı yeniden başlatılıyor`,
+        read: false
+      });
+
+      res.json({ 
+        message: 'Cihaz yeniden başlatılıyor',
+        success: true 
+      });
     } else {
+      console.log('Device is offline, creating notification');
+      
+      // Cihaz çevrimdışıysa bildirim oluştur
       await Notification.create({
         type: 'device',
         title: 'Cihaz Çevrimdışı',
         message: `${device.name} cihazı çevrimdışı olduğu için komut gönderilemedi`,
         read: false
       });
-      res.status(404).json({ message: 'Cihaz çevrimiçi değil' });
+
+      res.status(404).json({ 
+        message: 'Cihaz çevrimiçi değil',
+        success: false 
+      });
     }
   } catch (error) {
-    res.status(500).json({ message: error.message });
+    console.error('Restart command error:', error);
+    res.status(500).json({ 
+      message: error.message,
+      success: false 
+    });
   }
 };
 
