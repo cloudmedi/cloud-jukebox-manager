@@ -14,7 +14,6 @@ class ScreenshotHandler {
 
       // Electron uygulamasını bul
       const mainWindow = sources.find(source => 
-        source.name.includes('Cloud Media Player') || 
         source.name === 'Cloud Media Player'
       );
 
