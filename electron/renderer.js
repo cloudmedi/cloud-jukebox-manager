@@ -231,10 +231,18 @@ function displayPlaylists() {
     console.log('11. Displaying last playlist:', lastPlaylist);
     const playlistElement = document.createElement('div');
     playlistElement.className = 'playlist-item';
+    
+    // Artwork URL'ini oluştur
+    const artworkUrl = lastPlaylist.artwork ? 
+      (lastPlaylist.artwork.startsWith('http') ? lastPlaylist.artwork : `http://localhost:5000${lastPlaylist.artwork}`) : 
+      null;
+    
+    console.log('Artwork URL:', artworkUrl);
+    
     playlistElement.innerHTML = `
       <div class="playlist-info">
-        ${lastPlaylist.artwork ? 
-          `<img src="${lastPlaylist.artwork}" alt="${lastPlaylist.name}" class="playlist-artwork"/>` :
+        ${artworkUrl ? 
+          `<img src="${artworkUrl}" alt="${lastPlaylist.name}" class="playlist-artwork"/>` :
           '<div class="playlist-artwork-placeholder"></div>'
         }
         <div class="playlist-details">
