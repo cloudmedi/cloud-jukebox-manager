@@ -254,7 +254,8 @@ ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
       console.error('4. Playback error:', err);
     });
     
-    // UI'ı güncelle
+    // UI'ı güncelle - PlayerUIManager'ı doğrudan çağır
+    const PlayerUIManager = require('./services/ui/PlayerUIManager');
     PlayerUIManager.updateCurrentSong(currentSong);
     
     // Tray menüsünü güncelle
