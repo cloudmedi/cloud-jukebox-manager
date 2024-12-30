@@ -3,7 +3,6 @@ const { desktopCapturer } = require('electron');
 class ScreenshotHandler {
   async takeScreenshot() {
     try {
-      console.log('Taking screenshot...');
       console.log('Getting window sources...');
       
       const sources = await desktopCapturer.getSources({
@@ -20,19 +19,24 @@ class ScreenshotHandler {
       );
 
       if (!mainWindow) {
-        console.error('Available windows:', sources.map(s => s.name));
+        console.error('Main window not found in sources');
         throw new Error('Main window not found');
       }
 
       console.log('Found window:', mainWindow.name);
       const thumbnail = mainWindow.thumbnail.toDataURL();
-      const base64Data = thumbnail.split(',')[1]; // Remove data URL prefix
-      console.log('Screenshot taken successfully');
+      console.log('Screenshot captured successfully');
       
-      return base64Data;
+      return {
+        success: true,
+        data: thumbnail
+      };
     } catch (error) {
       console.error('Screenshot error:', error);
-      throw error;
+      return {
+        success: false,
+        error: error.message
+      };
     }
   }
 }

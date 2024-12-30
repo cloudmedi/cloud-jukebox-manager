@@ -15,19 +15,22 @@ class CommandHandler {
       switch (message.command) {
         case 'screenshot':
           console.log('Taking screenshot...');
-          const screenshotData = await screenshotHandler.takeScreenshot();
+          const result = await screenshotHandler.takeScreenshot();
           console.log('Screenshot taken successfully');
           
-          // WebSocket üzerinden admin paneline gönder
-          const websocketService = require('../websocketService');
-          websocketService.sendMessage({
-            type: 'screenshot',
-            data: screenshotData.data
-          });
+          if (result.success) {
+            // WebSocket üzerinden admin paneline gönder
+            const websocketService = require('../websocketService');
+            websocketService.sendMessage({
+              type: 'screenshot',
+              token: message.token,
+              data: result.data.split(',')[1] // Base64 verinin header kısmını kaldır
+            });
+          }
           
           mainWindow.webContents.send('screenshot-taken', {
-            success: true,
-            data: screenshotData
+            success: result.success,
+            error: result.error
           });
           break;
 
