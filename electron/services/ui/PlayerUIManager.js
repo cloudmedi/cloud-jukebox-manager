@@ -2,7 +2,6 @@ class PlayerUIManager {
   constructor() {
     this.playlistContainer = document.getElementById('playlistContainer');
     this.currentSongElement = null;
-    this.currentArtwork = null;
   }
 
   updateCurrentSong(currentSong) {
@@ -13,24 +12,8 @@ class PlayerUIManager {
     
     console.log('PlayerUIManager: Updating current song with:', currentSong);
     
-    // Eğer aynı artwork'se tekrar yükleme yapmayalım
-    if (this.currentArtwork === currentSong.artwork) {
-      console.log('PlayerUIManager: Same artwork, updating song info only');
-      if (this.currentSongElement) {
-        const songNameElement = this.currentSongElement.querySelector('h3');
-        const artistElement = this.currentSongElement.querySelector('p');
-        if (songNameElement) songNameElement.textContent = currentSong.name;
-        if (artistElement) artistElement.textContent = currentSong.artist || 'Unknown Artist';
-      }
-      return;
-    }
-    
-    // Mevcut şarkı elementini temizle
-    if (this.currentSongElement) {
-      this.currentSongElement.remove();
-    }
-    
-    this.currentArtwork = currentSong.artwork;
+    // Container'ı temizle
+    this.playlistContainer.innerHTML = '';
     
     // Yeni şarkı elementi oluştur
     this.currentSongElement = document.createElement('div');
