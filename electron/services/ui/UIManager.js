@@ -2,7 +2,7 @@ class UIManager {
     constructor() {
         this.deviceInfoElement = document.getElementById('deviceInfo');
         this.tokenDisplay = this.deviceInfoElement?.querySelector('.token-display');
-        this.connectionStatus = this.deviceInfoElement?.querySelector('.connection-status');
+        this.connectionStatus = document.querySelector('.connection-status');
         this.downloadProgress = document.querySelector('.download-progress');
         this.downloadProgressBar = document.querySelector('.download-progress-bar');
         this.downloadProgressText = document.querySelector('.download-progress-text');
@@ -34,6 +34,9 @@ class UIManager {
         if (this.tokenDisplay) {
             this.tokenDisplay.textContent = `Token: ${token}`;
             this.tokenDisplay.style.display = 'block';
+        }
+        if (this.connectionStatus) {
+            this.connectionStatus.style.display = 'none';
         }
     }
 
