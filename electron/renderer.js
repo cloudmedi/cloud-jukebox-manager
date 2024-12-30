@@ -8,14 +8,16 @@ const UIManager = require('./services/ui/UIManager');
 const AnnouncementAudioService = require('./services/audio/AnnouncementAudioService');
 const PlaylistInitializer = require('./services/playlist/PlaylistInitializer');
 const PlayerUIManager = require('./services/ui/PlayerUIManager');
+const VolumeManager = require('./services/audio/VolumeManager');
 
 const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
 
-// Initialize volume
-playlistAudio.volume = 0.7; // 70%
+// Başlangıçta store'dan volume değerini al ve ayarla
+const initialVolume = VolumeManager.getStoredVolume();
+playlistAudio.volume = VolumeManager.normalizeVolume(initialVolume);
+console.log('Initial volume set from store:', initialVolume);
 
-// Emergency stop handler
 ipcRenderer.on('emergency-stop', () => {
   console.log('Emergency stop received');
   
@@ -140,10 +142,19 @@ ipcRenderer.on('error', (event, message) => {
 });
 
 // Volume control from WebSocket
+
+// Volume control from WebSocket
 ipcRenderer.on('set-volume', (event, volume) => {
     console.log('Setting volume to:', volume);
-    audioHandler.setVolume(volume);
-    ipcRenderer.send('volume-changed', volume);
+    // Volume değerini kaydet ve normalize et
+    const savedVolume = VolumeManager.saveVolume(volume);
+    const normalizedVolume = VolumeManager.normalizeVolume(savedVolume);
+    
+    // Audio player'a uygula
+    playlistAudio.volume = normalizedVolume;
+    
+    // Volume değişikliğini bildir
+    ipcRenderer.send('volume-changed', savedVolume);
 });
 
 // Restart playback from WebSocket
