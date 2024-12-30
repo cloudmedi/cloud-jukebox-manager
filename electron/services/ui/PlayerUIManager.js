@@ -13,21 +13,20 @@ class PlayerUIManager {
     
     console.log('PlayerUIManager: Updating current song with:', currentSong);
     
-    // Eğer aynı artwork'se tekrar yükleme yapmayalım
-    if (this.currentArtwork === currentSong.artwork) {
-      console.log('PlayerUIManager: Same artwork, updating song info only');
-      if (this.currentSongElement) {
-        const songNameElement = this.currentSongElement.querySelector('h3');
-        const artistElement = this.currentSongElement.querySelector('p');
-        if (songNameElement) songNameElement.textContent = currentSong.name;
-        if (artistElement) artistElement.textContent = currentSong.artist || 'Unknown Artist';
-      }
-      return;
+    // Önce tüm mevcut şarkı elementlerini temizle
+    while (this.playlistContainer.firstChild) {
+      this.playlistContainer.removeChild(this.playlistContainer.firstChild);
     }
     
-    // Mevcut şarkı elementini temizle
-    if (this.currentSongElement) {
-      this.currentSongElement.remove();
+    // Eğer aynı artwork'se ve element varsa sadece bilgileri güncelle
+    if (this.currentArtwork === currentSong.artwork && this.currentSongElement) {
+      console.log('PlayerUIManager: Same artwork, updating song info only');
+      const songNameElement = this.currentSongElement.querySelector('h3');
+      const artistElement = this.currentSongElement.querySelector('p');
+      if (songNameElement) songNameElement.textContent = currentSong.name;
+      if (artistElement) artistElement.textContent = currentSong.artist || 'Unknown Artist';
+      this.playlistContainer.appendChild(this.currentSongElement);
+      return;
     }
     
     this.currentArtwork = currentSong.artwork;
