@@ -68,6 +68,14 @@ class WebSocketServer {
         });
         break;
 
+      case 'screenshot':
+        this.broadcastToAdmins({
+          type: 'screenshot',
+          token: token,
+          data: message.data
+        });
+        break;
+
       case 'volume':
         const device = await Device.findOne({ token });
         if (!device) return;
