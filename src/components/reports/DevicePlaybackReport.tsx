@@ -35,24 +35,25 @@ export default function DevicePlaybackReport() {
     endTime: "23:59"
   });
 
-  // Fetch devices with proper error handling
-  const { data: devices = [], isLoading: devicesLoading, error: devicesError } = useQuery<Device[]>({
+  // Cihazları getir
+  const { data: devices = [], isLoading: devicesLoading } = useQuery<Device[]>({
     queryKey: ["devices"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/devices");
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Cihazlar yüklenemedi");
+        throw new Error("Cihazlar yüklenemedi");
       }
       return response.json();
     }
   });
 
-  // Fetch playback data with proper error handling
-  const { data: playbackData, isLoading: playbackLoading } = useQuery<PlaybackData[]>({
+  // Çalma verilerini getir
+  const { data: playbackData = [], isLoading: playbackLoading } = useQuery<PlaybackData[]>({
     queryKey: ["device-playback", selectedDevice, dateRange, timeRange],
     queryFn: async () => {
-      if (!selectedDevice || !dateRange?.from || !dateRange?.to) return null;
+      if (!selectedDevice || !dateRange?.from || !dateRange?.to) {
+        return [];
+      }
 
       const params = new URLSearchParams({
         deviceId: selectedDevice,
@@ -67,18 +68,12 @@ export default function DevicePlaybackReport() {
       );
 
       if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Çalma verileri yüklenemedi");
+        throw new Error("Çalma verileri yüklenemedi");
       }
       return response.json();
     },
     enabled: Boolean(selectedDevice && dateRange?.from && dateRange?.to)
   });
-
-  if (devicesError) {
-    toast.error("Cihazlar yüklenirken bir hata oluştu");
-    return null;
-  }
 
   const generatePDF = () => {
     if (!dateRange?.from || !dateRange?.to || !playbackData) return;
@@ -139,7 +134,7 @@ export default function DevicePlaybackReport() {
         />
 
         <PlaybackTable
-          data={playbackData || []}
+          data={playbackData}
           isLoading={playbackLoading}
         />
       </CardContent>

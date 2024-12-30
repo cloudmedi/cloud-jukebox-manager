@@ -37,10 +37,15 @@ export function DeviceSearch({
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
+  // Filtreleme işlemini manuel olarak yapalım
   const filteredDevices = devices.filter(device => 
     device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     device.location?.toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  const selectedDeviceName = devices.find(
+    (device) => device._id === selectedDevice
+  )?.name;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -52,9 +57,7 @@ export function DeviceSearch({
           className="w-full justify-between"
           disabled={isLoading}
         >
-          {selectedDevice
-            ? devices.find((device) => device._id === selectedDevice)?.name || "Cihaz seçin..."
-            : "Cihaz seçin..."}
+          {selectedDeviceName || "Cihaz seçin..."}
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -71,8 +74,8 @@ export function DeviceSearch({
               <CommandItem
                 key={device._id}
                 value={device._id}
-                onSelect={(currentValue) => {
-                  onDeviceSelect(currentValue === selectedDevice ? "" : currentValue);
+                onSelect={() => {
+                  onDeviceSelect(device._id === selectedDevice ? "" : device._id);
                   setOpen(false);
                 }}
               >
@@ -82,12 +85,14 @@ export function DeviceSearch({
                     selectedDevice === device._id ? "opacity-100" : "opacity-0"
                   )}
                 />
-                <span>{device.name}</span>
-                {device.location && (
-                  <span className="ml-2 text-muted-foreground">
-                    ({device.location})
-                  </span>
-                )}
+                <div className="flex flex-col">
+                  <span>{device.name}</span>
+                  {device.location && (
+                    <span className="text-sm text-muted-foreground">
+                      {device.location}
+                    </span>
+                  )}
+                </div>
               </CommandItem>
             ))}
           </CommandGroup>
