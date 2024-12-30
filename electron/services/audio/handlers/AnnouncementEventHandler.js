@@ -5,7 +5,7 @@ class AnnouncementEventHandler {
     this.isAnnouncementPlaying = false;
     this.wasPlaylistPlaying = false;
     this.lastAnnouncementTime = 0;
-    this.lastPlaylistIndex = 0; // Yeni: Son çalan şarkının indeksini tutacak
+    this.lastPlaylistIndex = 0;
     this.setupEventListeners();
   }
 
@@ -80,9 +80,8 @@ class AnnouncementEventHandler {
     if (this.wasPlaylistPlaying) {
       console.log('Playlist kaldığı yerden devam ediyor, indeks:', this.lastPlaylistIndex);
       setTimeout(() => {
-        // Bir sonraki şarkıya geç
-        ipcRenderer.send('play-next-song', {
-          startFromIndex: this.lastPlaylistIndex + 1
+        this.playlistAudio.play().catch(err => {
+          console.error('Playlist devam ettirme hatası:', err);
         });
       }, 500);
     }
