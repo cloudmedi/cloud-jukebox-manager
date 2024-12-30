@@ -9,6 +9,7 @@ const AnnouncementAudioService = require('./services/audio/AnnouncementAudioServ
 const PlaylistInitializer = require('./services/playlist/PlaylistInitializer');
 const PlayerUIManager = require('./services/ui/PlayerUIManager');
 const VolumeManager = require('./services/audio/VolumeManager');
+const ArtworkManager = require('./services/ui/ArtworkManager');
 
 const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
@@ -237,15 +238,13 @@ function displayPlaylists() {
     console.log('5. Artwork details:', {
       hasArtwork: !!lastPlaylist.artwork,
       artworkPath: lastPlaylist.artwork,
-      fullArtworkUrl: lastPlaylist.artwork ? `http://localhost:5000${lastPlaylist.artwork}` : null
+      fullArtworkUrl: ArtworkManager.getArtworkUrl(lastPlaylist.artwork)
     });
 
     const playlistElement = document.createElement('div');
     playlistElement.className = 'playlist-item';
     
-    const artworkHtml = lastPlaylist.artwork 
-      ? `<img src="${lastPlaylist.artwork}" alt="${lastPlaylist.name}" class="playlist-artwork" onerror="console.error('Artwork yükleme hatası:', this.src)"/>`
-      : '<div class="playlist-artwork-placeholder"></div>';
+    const artworkHtml = ArtworkManager.createArtworkHtml(lastPlaylist.artwork, lastPlaylist.name);
     
     console.log('6. Generated artwork HTML:', artworkHtml);
     
