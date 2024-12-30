@@ -4,47 +4,41 @@ import { Button } from "@/components/ui/button";
 
 const TopNavigation = () => {
   return (
-    <header className="fixed top-0 left-0 right-0 z-50 bg-white border-b">
+    <header className="fixed top-0 left-0 right-0 z-50 bg-white">
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold">Cloud Media</h1>
+            <h1 className="text-2xl font-bold">veeq</h1>
           </div>
           
-          <nav className="hidden md:flex items-center gap-6">
-            <Link to="/" className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
-              <Home className="h-4 w-4" />
-              <span>Ana Sayfa</span>
+          <nav className="hidden md:flex items-center gap-8">
+            <Link to="/" className="text-[#333333] hover:text-black font-medium">
+              Home
             </Link>
-            <Link to="/devices" className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
-              <Speaker className="h-4 w-4" />
-              <span>Cihaz Yönetimi</span>
+            <Link to="/devices" className="text-[#333333] hover:text-black font-medium">
+              Devices
             </Link>
-            <Link to="/playlists" className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
-              <List className="h-4 w-4" />
-              <span>Playlist Yönetimi</span>
+            <Link to="/playlists" className="text-[#333333] hover:text-black font-medium">
+              Playlists
             </Link>
-            <Link to="/schedule" className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
-              <Calendar className="h-4 w-4" />
-              <span>Zamanlama</span>
+            <Link to="/schedule" className="text-[#333333] hover:text-black font-medium">
+              Calendar
             </Link>
-            <Link to="/announcements" className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
-              <Volume2 className="h-4 w-4" />
-              <span>Anons Yönetimi</span>
+            <Link to="/announcements" className="text-[#333333] hover:text-black font-medium">
+              Announcements
             </Link>
-            <Link to="/upload" className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
-              <Upload className="h-4 w-4" />
-              <span>Music Upload</span>
+            <Link to="/upload" className="text-[#333333] hover:text-black font-medium">
+              Upload
             </Link>
-            <Link to="/reports" className="flex items-center gap-2 text-gray-600 hover:text-gray-900">
-              <BarChart2 className="h-4 w-4" />
-              <span>Raporlama</span>
+            <Link to="/reports" className="text-[#333333] hover:text-black font-medium">
+              Reports
             </Link>
           </nav>
 
           <div className="flex items-center gap-4">
-            <Button variant="outline">Giriş Yap</Button>
-            <Button className="bg-[#FFD60A] text-black hover:bg-[#FFD60A]/90">Yeni Yıldır</Button>
+            <Button className="bg-[#FFD60A] text-black hover:bg-[#FFD60A]/90 font-medium px-6">
+              Yeni Yıldır
+            </Button>
           </div>
         </div>
       </div>

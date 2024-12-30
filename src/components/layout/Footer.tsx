@@ -4,15 +4,15 @@ import { Button } from "@/components/ui/button";
 const Footer = () => {
   return (
     <footer className="bg-white border-t mt-auto">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-4 py-12">
         <div className="grid grid-cols-1 md:grid-cols-4 gap-8">
           <div className="space-y-4">
-            <h2 className="text-2xl font-bold">Cloud Media</h2>
+            <h2 className="text-2xl font-bold">veeq</h2>
             <p className="text-gray-600">Müzik yönetim sisteminiz</p>
           </div>
           
           <div className="space-y-4">
-            <h3 className="font-semibold">Help & Support</h3>
+            <h3 className="font-semibold text-gray-900">Help & Support</h3>
             <ul className="space-y-2">
               <li><a href="#" className="text-gray-600 hover:text-gray-900">SSS</a></li>
               <li><a href="#" className="text-gray-600 hover:text-gray-900">İletişim</a></li>
@@ -21,7 +21,7 @@ const Footer = () => {
           </div>
           
           <div className="space-y-4">
-            <h3 className="font-semibold">Legal & Cookies</h3>
+            <h3 className="font-semibold text-gray-900">Legal & Cookies</h3>
             <ul className="space-y-2">
               <li><a href="#" className="text-gray-600 hover:text-gray-900">Gizlilik Politikası</a></li>
               <li><a href="#" className="text-gray-600 hover:text-gray-900">Kullanım Şartları</a></li>
@@ -30,7 +30,9 @@ const Footer = () => {
           </div>
           
           <div className="space-y-4">
-            <Button className="w-full">Download App</Button>
+            <Button className="w-full bg-[#FFD60A] text-black hover:bg-[#FFD60A]/90">
+              Download App
+            </Button>
             <p className="text-sm text-gray-600 flex items-center justify-center gap-1">
               Made with <Heart className="h-4 w-4 text-red-500" /> in Istanbul
             </p>

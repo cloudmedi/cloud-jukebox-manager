@@ -7,7 +7,7 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { SendPlaylistDialog } from "./SendPlaylistDialog";
 import { useState } from "react";
@@ -33,27 +33,39 @@ export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: Playli
 
   return (
     <>
-      <Card className="group overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 w-[200px]">
-        <CardHeader className="relative aspect-square p-0">
+      <Card className="group overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1">
+        <div className="relative aspect-square">
           {playlist.artwork ? (
             <img
               src={`http://localhost:5000${playlist.artwork}`}
               alt={playlist.name}
-              className="h-[200px] w-[200px] object-cover transition-transform duration-300 group-hover:scale-105"
+              className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-105"
               loading="lazy"
             />
           ) : (
-            <div className="flex h-[200px] w-[200px] items-center justify-center bg-gradient-to-br from-sidebar-primary/20 to-sidebar-accent/20">
-              <Music2 className="h-24 w-24 text-muted-foreground/40" />
+            <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-gray-100 to-gray-200">
+              <Music2 className="h-24 w-24 text-gray-400" />
             </div>
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-        </CardHeader>
+          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100">
+            <div className="absolute bottom-4 left-4 right-4">
+              <Button
+                variant="secondary"
+                size="sm"
+                className="w-full bg-white/90 hover:bg-white"
+                onClick={() => onPlay?.(playlist._id)}
+              >
+                <Play className="h-4 w-4 mr-2" />
+                Oynat
+              </Button>
+            </div>
+          </div>
+        </div>
         
         <CardContent className="space-y-2 p-4">
           <div className="flex items-start justify-between">
             <div className="space-y-1 flex-1">
-              <h3 className="line-clamp-1 text-base font-semibold tracking-tight">
+              <h3 className="font-semibold text-gray-900 line-clamp-1">
                 {playlist.name}
               </h3>
               {playlist.genre && (
@@ -67,18 +79,12 @@ export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: Playli
                 <Button
                   variant="ghost"
                   size="icon"
-                  className="h-8 w-8 text-muted-foreground/60 hover:text-primary"
+                  className="h-8 w-8 text-gray-500 hover:text-gray-900"
                 >
                   <MoreVertical className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="w-40">
-                {onPlay && (
-                  <DropdownMenuItem onClick={() => onPlay(playlist._id)} className="gap-2">
-                    <Play className="h-4 w-4" />
-                    Oynat
-                  </DropdownMenuItem>
-                )}
                 {onEdit && (
                   <DropdownMenuItem onClick={() => onEdit(playlist._id)} className="gap-2">
                     <Pencil className="h-4 w-4" />
@@ -91,7 +97,7 @@ export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: Playli
                 </DropdownMenuItem>
                 <DropdownMenuItem 
                   onClick={() => onDelete(playlist._id)} 
-                  className="gap-2 text-destructive focus:text-destructive"
+                  className="gap-2 text-red-600 focus:text-red-600"
                 >
                   <Trash2 className="h-4 w-4" />
                   Sil
@@ -100,7 +106,7 @@ export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: Playli
             </DropdownMenu>
           </div>
 
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <div className="flex items-center justify-between text-xs text-gray-500">
             <div className="flex items-center gap-1">
               <Music2 className="h-3 w-3" />
               <span>{playlist.songs?.length || 0} şarkı</span>

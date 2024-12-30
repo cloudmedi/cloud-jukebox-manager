@@ -36,22 +36,22 @@ const Index = () => {
         <div className="container mx-auto px-4 py-16">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
             <div className="space-y-6">
-              <h1 className="text-5xl font-bold">Chill Beats</h1>
-              <p className="text-lg opacity-90 max-w-xl">
+              <h1 className="text-6xl font-bold leading-tight">Chill Beats</h1>
+              <p className="text-xl opacity-90 max-w-xl">
                 Playlistlerinizi yönetin ve cihazlara gönderin. Müzik koleksiyonunuzu organize edin ve kontrol edin.
               </p>
               <Button 
                 onClick={() => navigate("/playlists/new")} 
                 size="lg" 
-                className="bg-[#FFD60A] text-black hover:bg-[#FFD60A]/90"
+                className="bg-[#FFD60A] text-black hover:bg-[#FFD60A]/90 px-8 py-6 text-lg"
               >
                 <Plus className="mr-2 h-5 w-5" />
                 Yeni Playlist
               </Button>
             </div>
             <div className="relative">
-              <div className="aspect-square rounded-lg overflow-hidden bg-black/20 backdrop-blur">
-                <Music2 className="w-full h-full p-12 opacity-50" />
+              <div className="aspect-square rounded-2xl overflow-hidden bg-black/20 backdrop-blur-lg p-8">
+                <Music2 className="w-full h-full opacity-50" />
               </div>
             </div>
           </div>
@@ -67,25 +67,21 @@ const Index = () => {
         {/* Search Bar */}
         <div className="max-w-xl mx-auto">
           <div className="relative">
-            <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
             <Input 
               type="search" 
               placeholder="Playlist ara..." 
-              className="pl-10 h-12 rounded-full"
+              className="pl-12 h-14 rounded-full border-gray-200 focus:border-gray-300 focus:ring-0"
             />
           </div>
         </div>
 
         {/* Playlists Section */}
         {!playlists?.length ? (
-          <div 
-            className="flex flex-col items-center justify-center rounded-lg border bg-card p-8 text-center"
-            role="alert"
-            aria-label="Boş playlist listesi"
-          >
-            <Music2 className="h-12 w-12 text-muted-foreground mb-4" />
+          <div className="flex flex-col items-center justify-center rounded-lg border bg-white p-8 text-center">
+            <Music2 className="h-12 w-12 text-gray-400 mb-4" />
             <h3 className="text-lg font-medium mb-2">Henüz playlist oluşturulmamış</h3>
-            <p className="text-sm text-muted-foreground mb-4">
+            <p className="text-sm text-gray-500 mb-4">
               Yeni bir playlist oluşturmak için "Yeni Playlist" butonunu kullanın.
             </p>
             <Button onClick={() => navigate("/playlists/new")}>
@@ -99,10 +95,10 @@ const Index = () => {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold">Popular Today</h2>
-                  <p className="text-gray-600">En çok dinlenen playlistler</p>
+                  <h2 className="text-2xl font-bold text-gray-900">Popular Today</h2>
+                  <p className="text-gray-500">En çok dinlenen playlistler</p>
                 </div>
-                <Button variant="ghost" onClick={() => navigate("/playlists")}>
+                <Button variant="ghost" onClick={() => navigate("/playlists")} className="text-gray-600">
                   Tümünü Gör
                 </Button>
               </div>
@@ -134,10 +130,10 @@ const Index = () => {
             <div className="space-y-6">
               <div className="flex items-center justify-between">
                 <div>
-                  <h2 className="text-2xl font-bold">Cafe Channel</h2>
-                  <p className="text-gray-600">Kafeler için özel seçilmiş playlistler</p>
+                  <h2 className="text-2xl font-bold text-gray-900">Cafe Channel</h2>
+                  <p className="text-gray-500">Kafeler için özel seçilmiş playlistler</p>
                 </div>
-                <Button variant="ghost" onClick={() => navigate("/playlists")}>
+                <Button variant="ghost" onClick={() => navigate("/playlists")} className="text-gray-600">
                   Tümünü Gör
                 </Button>
               </div>
