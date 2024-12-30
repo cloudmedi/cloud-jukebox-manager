@@ -118,7 +118,7 @@ export default function DevicePlaybackReport() {
     });
 
     doc.save(`${deviceName}-calma-raporu-${format(new Date(), "yyyy-MM-dd")}.pdf`);
-    toast.success("PDF başarıyla oluşturuldu");
+    toast("PDF oluşturuldu");
   };
 
   return (

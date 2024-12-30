@@ -37,11 +37,6 @@ export function DeviceSearch({
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  const filteredDevices = devices.filter(device => 
-    device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    device.location?.toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   const selectedDeviceName = devices.find(
     (device) => device._id === selectedDevice
   )?.name;
@@ -61,7 +56,7 @@ export function DeviceSearch({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0">
-        <Command shouldFilter={false}>
+        <Command>
           <CommandInput 
             placeholder="Cihaz ara..." 
             value={searchQuery}
@@ -69,31 +64,36 @@ export function DeviceSearch({
           />
           <CommandEmpty>Cihaz bulunamadı.</CommandEmpty>
           <CommandGroup>
-            {filteredDevices.map((device) => (
-              <CommandItem
-                key={device._id}
-                value={device._id}
-                onSelect={() => {
-                  onDeviceSelect(device._id === selectedDevice ? "" : device._id);
-                  setOpen(false);
-                }}
-              >
-                <Check
-                  className={cn(
-                    "mr-2 h-4 w-4",
-                    selectedDevice === device._id ? "opacity-100" : "opacity-0"
-                  )}
-                />
-                <div className="flex flex-col">
-                  <span>{device.name}</span>
-                  {device.location && (
-                    <span className="text-sm text-muted-foreground">
-                      {device.location}
-                    </span>
-                  )}
-                </div>
-              </CommandItem>
-            ))}
+            {devices
+              .filter(device => 
+                device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                device.location?.toLowerCase().includes(searchQuery.toLowerCase())
+              )
+              .map((device) => (
+                <CommandItem
+                  key={device._id}
+                  value={device._id}
+                  onSelect={() => {
+                    onDeviceSelect(device._id === selectedDevice ? "" : device._id);
+                    setOpen(false);
+                  }}
+                >
+                  <Check
+                    className={cn(
+                      "mr-2 h-4 w-4",
+                      selectedDevice === device._id ? "opacity-100" : "opacity-0"
+                    )}
+                  />
+                  <div className="flex flex-col">
+                    <span>{device.name}</span>
+                    {device.location && (
+                      <span className="text-sm text-muted-foreground">
+                        {device.location}
+                      </span>
+                    )}
+                  </div>
+                </CommandItem>
+              ))}
           </CommandGroup>
         </Command>
       </PopoverContent>
