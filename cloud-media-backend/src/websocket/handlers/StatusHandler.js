@@ -7,9 +7,7 @@ class StatusHandler {
 
   async handlePlaylistStatus(token, message) {
     try {
-      const device = await Device.findOne({ token })
-        .populate('activePlaylist'); // Playlist detaylarını populate ediyoruz
-      
+      const device = await Device.findOne({ token });
       if (!device) {
         console.error('Device not found for token:', token);
         return;
@@ -20,13 +18,12 @@ class StatusHandler {
         playlistStatus: message.status
       });
 
-      // Admin paneline bildir - şimdi playlist detaylarını da içeriyor
+      // Admin paneline bildir
       this.wss.broadcastToAdmins({
         type: 'deviceStatus',
         token: token,
         playlistStatus: message.status,
-        playlistId: message.playlistId,
-        activePlaylist: device.activePlaylist // Playlist detaylarını da gönderiyoruz
+        playlistId: message.playlistId
       });
 
       console.log(`Updated playlist status for device ${token} to ${message.status}`);
