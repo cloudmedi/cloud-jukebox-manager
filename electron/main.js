@@ -67,7 +67,7 @@ function updateTrayMenu(song = currentSong) {
   const deviceInfo = store.get('deviceInfo');
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: 'Cloud Media Player',
+      label: '▶️ Cloud Media Player',
       click: function() {
         mainWindow.show();
         mainWindow.focus();
@@ -75,7 +75,7 @@ function updateTrayMenu(song = currentSong) {
     },
     { type: 'separator' },
     {
-      label: 'Şu an çalıyor:',
+      label: '🎵 Şu an çalıyor',
       enabled: false,
       id: 'now-playing-label'
     },
@@ -91,25 +91,30 @@ function updateTrayMenu(song = currentSong) {
     },
     { type: 'separator' },
     {
-      label: isPlaying ? 'Duraklat' : 'Çal',
+      label: isPlaying ? '⏸️ Duraklat' : '▶️ Çal',
       click: function() {
         mainWindow.webContents.send('toggle-playback');
       }
     },
     {
-      label: 'Sonraki Şarkı',
+      label: '⏭️ Sonraki Şarkı',
       click: function() {
         mainWindow.webContents.send('next-song');
       }
     },
     { type: 'separator' },
     {
-      label: `Token: ${deviceInfo?.token || 'Yok'}`,
-      enabled: false
+      label: `📱 Cihaz Bilgisi`,
+      submenu: [
+        {
+          label: `Token: ${deviceInfo?.token || 'Yok'}`,
+          enabled: false
+        }
+      ]
     },
     { type: 'separator' },
     {
-      label: 'Çıkış',
+      label: '❌ Çıkış',
       click: function() {
         app.isQuitting = true;
         app.quit();
