@@ -5,6 +5,7 @@ import websocketService from "@/services/websocketService";
 import { toast } from "sonner";
 import { DeviceActionMenu } from "./actions/DeviceActionMenu";
 import { DeviceActionDialogs } from "./actions/DeviceActionDialogs";
+import { ScreenshotDialog } from "./actions/ScreenshotDialog";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface DeviceActionsProps {
@@ -17,6 +18,7 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
   const [isDetailsDialogOpen, setIsDetailsDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isRestartDialogOpen, setIsRestartDialogOpen] = useState(false);
+  const [isScreenshotDialogOpen, setIsScreenshotDialogOpen] = useState(false);
   const [isEmergencyActive, setIsEmergencyActive] = useState(false);
   const queryClient = useQueryClient();
 
@@ -130,6 +132,7 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
         onRestartClick={() => setIsRestartDialogOpen(true)}
         onDeleteClick={() => setIsDeleteDialogOpen(true)}
         onEmergencyClick={handleEmergencyAction}
+        onScreenshotClick={() => setIsScreenshotDialogOpen(true)}
       />
 
       <DeviceActionDialogs
@@ -148,6 +151,12 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
         onGroupChange={handleGroupChange}
         onDelete={handleDelete}
         onRestart={handleRestart}
+      />
+
+      <ScreenshotDialog
+        isOpen={isScreenshotDialogOpen}
+        onClose={() => setIsScreenshotDialogOpen(false)}
+        deviceName={device.name}
       />
     </>
   );
