@@ -36,7 +36,7 @@ class CommandHandler {
         break;
 
       default:
-        console.log('Forwarding command to renderer:', message.command);
+        console.log('Unknown command:', message.command);
         mainWindow.webContents.send(message.command, message.data);
         break;
     }
