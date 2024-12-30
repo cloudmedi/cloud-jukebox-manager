@@ -15,11 +15,19 @@ const ScreenshotEventHandler = require('./services/screenshot/ScreenshotEventHan
 const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
 
-// Başlangıçta store'dan volume değerini al ve ayarla
-const initialVolume = VolumeManager.getStoredVolume();
-playlistAudio.volume = VolumeManager.normalizeVolume(initialVolume);
-console.log('Initial volume set from store:', initialVolume);
+// Başlangıçta emergency state kontrolü
+const emergencyState = store.get('emergencyState');
+if (emergencyState && emergencyState.isActive) {
+  console.log('Emergency state is active on startup');
+  if (playlistAudio) {
+    playlistAudio.pause();
+    playlistAudio.currentTime = 0;
+    playlistAudio.volume = 0;
+  }
+  showEmergencyMessage();
+}
 
+// Emergency stop handler
 ipcRenderer.on('emergency-stop', () => {
   console.log('Emergency stop received');
   
@@ -39,7 +47,6 @@ ipcRenderer.on('emergency-stop', () => {
   }
 
   // Store'u güncelle
-  const store = new Store();
   store.set('playbackState', {
     isPlaying: false,
     emergencyStopped: true
@@ -60,7 +67,7 @@ ipcRenderer.on('emergency-reset', () => {
     console.log('Resuming playback after emergency reset');
     const playlistAudio = document.getElementById('audioPlayer');
     if (playlistAudio) {
-      playlistAudio.volume = playbackState.volume || 0.7; // Restore previous volume or default
+      playlistAudio.volume = playbackState.volume || 0.7;
       playlistAudio.play().catch(err => console.error('Resume playback error:', err));
     }
   }
