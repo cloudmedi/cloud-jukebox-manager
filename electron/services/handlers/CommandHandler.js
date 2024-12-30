@@ -1,6 +1,5 @@
 const { BrowserWindow } = require('electron');
 const screenshotHandler = require('../screenshot/ScreenshotHandler');
-const EmergencyStateManager = require('../emergency/EmergencyStateManager');
 
 class CommandHandler {
   static async handleCommand(message) {
@@ -14,18 +13,6 @@ class CommandHandler {
 
     try {
       switch (message.command) {
-        case 'emergency-stop':
-          console.log('Processing emergency stop command');
-          EmergencyStateManager.setEmergencyState(true);
-          mainWindow.webContents.send('emergency-stop');
-          break;
-
-        case 'emergency-reset':
-          console.log('Processing emergency reset command');
-          EmergencyStateManager.setEmergencyState(false);
-          mainWindow.webContents.send('emergency-reset');
-          break;
-
         case 'screenshot':
           console.log('Taking screenshot...');
           const result = await screenshotHandler.takeScreenshot();
@@ -53,8 +40,8 @@ class CommandHandler {
       }
     } catch (error) {
       console.error('Command handling error:', error);
-      mainWindow.webContents.send('command-error', {
-        command: message.command,
+      mainWindow.webContents.send('screenshot-taken', {
+        success: false,
         error: error.message
       });
     }
