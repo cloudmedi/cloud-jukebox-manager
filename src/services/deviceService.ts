@@ -13,11 +13,17 @@ export interface Device {
   activePlaylist?: {
     _id: string;
     name: string;
+    songs?: Array<{
+      _id: string;
+      name: string;
+      artist: string;
+    }>;
   };
   currentSong?: {
     name: string;
     artist: string;
   };
+  currentSongIndex?: number;
   playlistStatus?: string;
   deviceInfo?: {
     hostname: string;
