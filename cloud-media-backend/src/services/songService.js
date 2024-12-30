@@ -26,6 +26,25 @@ const handleFileUpload = async (file) => {
     // Süreyi saniye cinsinden al ve yuvarla
     const duration = Math.round(metadata.format.duration || 0);
 
+    // Artwork'ü kaydet
+    let artworkPath = null;
+    if (metadata.common.picture && metadata.common.picture[0]) {
+      const picture = metadata.common.picture[0];
+      const artworkDir = path.join('uploads', 'artworks');
+      
+      // Artwork klasörünü oluştur
+      if (!fs.existsSync(artworkDir)) {
+        fs.mkdirSync(artworkDir, { recursive: true });
+      }
+      
+      const artworkFileName = `artwork-${Date.now()}.${picture.format.split('/')[1]}`;
+      const artworkFullPath = path.join(artworkDir, artworkFileName);
+      
+      fs.writeFileSync(artworkFullPath, picture.data);
+      artworkPath = `/uploads/artworks/${artworkFileName}`;
+      logger.info(`Artwork saved: ${artworkPath}`);
+    }
+
     const song = new Song({
       name: title,
       artist: artist,
@@ -33,6 +52,7 @@ const handleFileUpload = async (file) => {
       album: album,
       year: year,
       filePath: file.path,
+      artwork: artworkPath,
       duration: duration,
       createdBy: 'system'
     });
