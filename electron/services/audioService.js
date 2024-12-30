@@ -200,17 +200,6 @@ class AudioService {
       this.currentIndex = (this.currentIndex + 1) % this.queue.length;
       const nextSong = this.queue[this.currentIndex];
       
-      // WebSocket'e çalan şarkı bilgisini gönder
-      websocketService.sendMessage({
-        type: 'playbackStatus',
-        status: 'playing',
-        currentSong: {
-          name: nextSong.name,
-          artist: nextSong.artist
-        },
-        currentSongIndex: this.currentIndex
-      });
-
       event.sender.send('update-player', {
         playlist: this.playlist,
         currentSong: nextSong,

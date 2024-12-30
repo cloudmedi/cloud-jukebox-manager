@@ -42,10 +42,6 @@ const deviceSchema = new mongoose.Schema({
     ref: 'Playlist',
     default: null
   },
-  currentSongIndex: {
-    type: Number,
-    default: 0
-  },
   playlistStatus: {
     type: String,
     enum: ['loaded', 'loading', 'error', 'emergency-stopped', null],
@@ -63,10 +59,6 @@ const deviceSchema = new mongoose.Schema({
   emergencyStopped: {
     type: Boolean,
     default: false
-  },
-  currentSong: {
-    type: Object,
-    default: null
   }
 }, {
   timestamps: true
@@ -102,4 +94,3 @@ deviceSchema.methods.setVolume = function(volume) {
 const Device = mongoose.model('Device', deviceSchema);
 
 module.exports = Device;
-
