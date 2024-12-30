@@ -1,14 +1,12 @@
-const { app, BrowserWindow, ipcMain, Tray, Menu } = require('electron');
-const path = require('path');
+const { app, BrowserWindow, ipcMain } = require('electron');
 const Store = require('electron-store');
 const store = new Store();
 const websocketService = require('./services/websocketService');
+const TrayService = require('./services/tray/TrayService');
 require('./services/audioService');
 
 let mainWindow;
-let tray = null;
-let isPlaying = false;
-let currentSong = null;
+let trayService;
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -39,8 +37,9 @@ function createWindow() {
     if (!app.isQuitting) {
       event.preventDefault();
       mainWindow.hide();
-      if (tray === null) {
-        createTray();
+      if (!trayService) {
+        trayService = new TrayService(mainWindow);
+        trayService.createTray();
       }
     }
     return false;
@@ -61,101 +60,10 @@ function createWindow() {
   }
 }
 
-function updateTrayMenu(song = currentSong) {
-  if (!tray) return;
-
-  const deviceInfo = store.get('deviceInfo');
-  const contextMenu = Menu.buildFromTemplate([
-    {
-      label: 'Cloud Media Player',
-      click: function() {
-        mainWindow.show();
-        mainWindow.focus();
-      }
-    },
-    { type: 'separator' },
-    {
-      label: 'Şu an çalıyor:',
-      enabled: false,
-      id: 'now-playing-label'
-    },
-    {
-      label: song?.name || 'Şarkı çalmıyor',
-      enabled: false,
-      id: 'song-name'
-    },
-    {
-      label: song?.artist || '',
-      enabled: false,
-      id: 'artist-name'
-    },
-    { type: 'separator' },
-    {
-      label: isPlaying ? 'Duraklat' : 'Çal',
-      click: function() {
-        mainWindow.webContents.send('toggle-playback');
-      }
-    },
-    {
-      label: 'Sonraki Şarkı',
-      click: function() {
-        mainWindow.webContents.send('next-song');
-      }
-    },
-    { type: 'separator' },
-    {
-      label: `Token: ${deviceInfo?.token || 'Yok'}`,
-      enabled: false
-    },
-    { type: 'separator' },
-    {
-      label: 'Çıkış',
-      click: function() {
-        app.isQuitting = true;
-        app.quit();
-      }
-    }
-  ]);
-
-  tray.setContextMenu(contextMenu);
-}
-
-function createTray() {
-  try {
-    const iconPath = path.join(__dirname, 'icon.png');
-    console.log('Tray icon path:', iconPath);
-    
-    tray = new Tray(iconPath);
-    
-    updateTrayMenu();
-    
-    tray.setToolTip('Cloud Media Player');
-    
-    tray.on('double-click', () => {
-      mainWindow.show();
-      mainWindow.focus();
-    });
-    
-    tray.on('click', () => {
-      mainWindow.show();
-      mainWindow.focus();
-    });
-
-    tray.on('right-click', (event, bounds) => {
-      const { x, y } = bounds;
-      const contextMenu = tray.getContextMenu();
-      contextMenu.popup({ x: x - 100, y: y });
-    });
-    
-    console.log('Tray created successfully');
-  } catch (error) {
-    console.error('Error creating tray:', error);
-  }
-}
-
 app.whenReady().then(() => {
   createWindow();
-  createTray();
+  trayService = new TrayService(mainWindow);
+  trayService.createTray();
 });
 
 app.on('window-all-closed', () => {
@@ -175,13 +83,12 @@ app.on('before-quit', () => {
   app.isQuitting = true;
 });
 
+// IPC Event Handlers
 ipcMain.handle('save-device-info', async (event, deviceInfo) => {
   store.set('deviceInfo', deviceInfo);
-  
   if (deviceInfo.token) {
     websocketService.connect(deviceInfo.token);
   }
-  
   return deviceInfo;
 });
 
@@ -189,16 +96,34 @@ ipcMain.handle('get-device-info', async () => {
   return store.get('deviceInfo');
 });
 
-// Şarkı değiştiğinde tray menüsünü güncelle
-ipcMain.on('song-changed', (event, song) => {
-  console.log('Updating tray menu with song:', song);
-  currentSong = song;
-  updateTrayMenu(song);
+// Anons durumu güncellemeleri
+ipcMain.on('announcement-started', (event, duration) => {
+  if (trayService) {
+    trayService.setAnnouncementState(true, duration);
+  }
 });
 
-// Update playback state when it changes
+ipcMain.on('announcement-ended', () => {
+  if (trayService) {
+    trayService.setAnnouncementState(false);
+  }
+});
+
+ipcMain.on('announcement-time-update', (event, remainingTime) => {
+  if (trayService) {
+    trayService.setAnnouncementState(true, remainingTime);
+  }
+});
+
+// Şarkı ve playback durumu güncellemeleri
+ipcMain.on('song-changed', (event, song) => {
+  if (trayService) {
+    trayService.updateCurrentSong(song);
+  }
+});
+
 ipcMain.on('playback-status-changed', (event, playing) => {
-  console.log('Playback status changed:', playing);
-  isPlaying = playing;
-  updateTrayMenu(currentSong);
+  if (trayService) {
+    trayService.updatePlaybackState(playing);
+  }
 });
