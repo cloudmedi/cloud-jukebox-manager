@@ -7,6 +7,7 @@ const playbackStateManager = require('./services/audio/PlaybackStateManager');
 const UIManager = require('./services/ui/UIManager');
 const AnnouncementAudioService = require('./services/audio/AnnouncementAudioService');
 const PlaylistInitializer = require('./services/playlist/PlaylistInitializer');
+const PlayerUIManager = require('./services/ui/PlayerUIManager');
 
 const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
@@ -418,12 +419,10 @@ ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
       console.error('4. Playback error:', err);
     });
     
-    // Şarkı değiştiğinde görsel bilgileri güncelle
-    console.log('5. Calling displayPlaylists() to update UI');
-    displayPlaylists();
+    // UI'ı güncelle
+    PlayerUIManager.updateCurrentSong(currentSong);
     
     // Tray menüsünü güncelle
-    console.log('6. Sending song-changed event to main process');
     ipcRenderer.send('song-changed', {
       name: currentSong.name,
       artist: currentSong.artist
