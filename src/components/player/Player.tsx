@@ -3,6 +3,7 @@ import { Music, Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from "luc
 import { Slider } from "@/components/ui/slider";
 import { formatDuration } from "@/lib/utils";
 import { usePlayerStore } from "@/store/playerStore";
+import { getArtworkUrl, handleArtworkError } from "@/utils/artworkUtils";
 
 const Player = () => {
   const audioRef = useRef<HTMLAudioElement>(null);
@@ -72,9 +73,10 @@ const Player = () => {
               <div className="relative w-12 h-12 bg-muted rounded-md flex items-center justify-center overflow-hidden">
                 {currentSong.artwork ? (
                   <img
-                    src={`http://localhost:5000${currentSong.artwork}`}
+                    src={getArtworkUrl(currentSong.artwork)}
                     alt={`${currentSong.name} artwork`}
                     className="w-full h-full object-cover"
+                    onError={handleArtworkError}
                   />
                 ) : (
                   <Music className="h-6 w-6 text-muted-foreground" />
