@@ -11,19 +11,22 @@ const bulkAssignPlaylist = async (req, res) => {
       { 
         $set: { 
           activePlaylist: playlistId,
-          playlistStatus: 'loading'
+          playlistStatus: 'loading',
+          currentSongIndex: 0 // Reset current song index
         } 
       }
     );
 
     // Send playlist to each device via WebSocket
-    const devices = await Device.find({ _id: { $in: deviceIds } });
+    const devices = await Device.find({ _id: { $in: deviceIds } })
+      .populate('activePlaylist');
     
     for (const device of devices) {
       const sent = req.wss.sendToDevice(device.token, {
         type: 'command',
         command: 'loadPlaylist',
-        playlistId: playlistId
+        playlistId: playlistId,
+        currentSong: device.activePlaylist?.songs[0] || null
       });
 
       if (!sent) {
