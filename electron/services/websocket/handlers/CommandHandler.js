@@ -25,11 +25,6 @@ class CommandHandler {
         mainWindow.webContents.send('emergency-reset');
         break;
 
-      case 'screenshot':
-        console.log('Processing screenshot command');
-        mainWindow.webContents.send('take-screenshot');
-        break;
-
       case 'songRemoved':
         console.log('Handling songRemoved command:', message.data);
         mainWindow.webContents.send('songRemoved', {
