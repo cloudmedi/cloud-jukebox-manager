@@ -36,7 +36,7 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
         command: 'take-screenshot'
       });
 
-      if (response.type === 'screenshot') {
+      if (response?.type === 'screenshot') {
         setScreenshotData(response.data);
       } else {
         toast.error('Ekran görüntüsü alınamadı');
@@ -99,11 +99,9 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
     try {
       console.log('Volume change requested:', { deviceId: device._id, volume });
       
-      // Backend'e gönder
       await deviceService.updateDevice(device._id, { volume });
       console.log('Volume updated in backend');
       
-      // WebSocket üzerinden cihaza gönder
       websocketService.sendMessage({
         type: 'command',
         token: device.token,
@@ -115,7 +113,6 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
       setIsVolumeDialogOpen(false);
       toast.success('Ses seviyesi değiştirme komutu gönderildi');
       
-      // Query'yi invalidate et
       queryClient.invalidateQueries({ queryKey: ['devices'] });
       console.log('Devices query invalidated');
     } catch (error) {
