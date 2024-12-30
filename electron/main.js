@@ -216,3 +216,28 @@ ipcMain.on('playback-status-changed', (event, playing) => {
   isPlaying = playing;
   updateTrayMenu(currentSong);
 });
+
+// Song ended handler
+ipcMain.handle('song-ended', async (event) => {
+  console.log('Song ended, handling next song');
+  const audioService = require('./services/audioService');
+  
+  // Sonraki şarkıya geç
+  audioService.handleNextSong(event);
+  
+  // Yeni şarkı bilgisini al
+  const currentSong = audioService.getCurrentSong();
+  console.log('New current song:', currentSong);
+  
+  // Ana pencereye yeni şarkı bilgisini gönder
+  event.sender.send('update-player', {
+    playlist: audioService.playlist,
+    currentSong: currentSong
+  });
+  
+  return {
+    currentSong,
+    currentIndex: audioService.currentIndex,
+    isPlaying: audioService.isPlaying
+  };
+});

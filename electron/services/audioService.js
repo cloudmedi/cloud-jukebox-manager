@@ -20,9 +20,15 @@ class AudioService {
   }
 
 getCurrentSong() {
+  console.log('Getting current song, queue:', this.queue);
+  console.log('Current index:', this.currentIndex);
+  
   if (this.queue && this.currentIndex >= 0 && this.currentIndex < this.queue.length) {
-    return this.queue[this.currentIndex];
+    const currentSong = this.queue[this.currentIndex];
+    console.log('Current song found:', currentSong);
+    return currentSong;
   }
+  console.log('No current song available');
   return null;
 }
 

@@ -294,6 +294,8 @@ ipcRenderer.on('next-song', async () => {
         songNameElement.textContent = currentPlaylist.currentSong.name;
         artistElement.textContent = currentPlaylist.currentSong.artist;
         console.log('UI updated successfully');
+      } else {
+        console.error('UI elements not found!');
       }
       
       // Tray menüsünü güncelle
@@ -302,6 +304,13 @@ ipcRenderer.on('next-song', async () => {
         artist: currentPlaylist.currentSong.artist
       });
       console.log('Tray menu updated');
+
+      // Şarkı değişikliğini bildir
+      ipcRenderer.send('update-player', {
+        playlist: currentPlaylist,
+        currentSong: currentPlaylist.currentSong
+      });
+      console.log('Player update sent');
     }
   } catch (error) {
     console.error('Error during song change:', error);
