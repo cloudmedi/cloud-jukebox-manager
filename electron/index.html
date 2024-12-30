@@ -11,30 +11,31 @@
         <button class="titlebar-button close" id="closeButton">✕</button>
     </div>
     <div class="container">
-        <!-- Token ve Bağlantı Durumu (Başlangıçta gösterilir, bağlantı sonrası gizlenir) -->
+        <!-- Token ve Bağlantı Durumu -->
         <div id="deviceInfo" class="device-info">
             <div class="token-display"></div>
-            <div class="connection-status"></div>
+            <div class="connection-status disconnected">Bağlantı Bekleniyor...</div>
         </div>
 
         <!-- Playlist Container -->
         <div id="playlistContainer" class="playlist-container">
-            <!-- Playlistler buraya eklenecek -->
+            <div class="empty-state">
+                <p>Henüz playlist yüklenmedi</p>
+                <p class="text-sm text-muted">Token ile bağlantı kurulduğunda playlist otomatik olarak yüklenecektir.</p>
+            </div>
         </div>
         
-        <!-- Ana playlist için audio element -->
+        <!-- Audio Elements -->
         <audio id="audioPlayer"></audio>
-        
-        <!-- Kampanyalar için ikinci audio element -->
         <audio id="campaignPlayer"></audio>
         
-        <!-- İndirme Progress Bar -->
+        <!-- Progress Bar -->
         <div class="download-progress" style="display: none;">
             <div class="download-progress-bar"></div>
             <div class="download-progress-text"></div>
         </div>
 
-        <!-- Hata Mesajları -->
+        <!-- Error Container -->
         <div id="errorContainer" class="error-container"></div>
     </div>
     <script src="renderer.js"></script>
