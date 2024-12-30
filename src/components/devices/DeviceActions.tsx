@@ -50,15 +50,13 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
 
       <DeviceActionDialogs
         device={device}
-        showVolumeDialog={showVolumeDialog}
-        showGroupDialog={showGroupDialog}
-        showDetailsDialog={showDetailsDialog}
         onVolumeClose={() => setShowVolumeDialog(false)}
         onGroupClose={() => setShowGroupDialog(false)}
         onDetailsClose={() => setShowDetailsDialog(false)}
       />
 
       <ScreenshotDialog
+        deviceId={device.id}
         deviceName={device.name}
         isOpen={showScreenshotDialog}
         onClose={() => setShowScreenshotDialog(false)}

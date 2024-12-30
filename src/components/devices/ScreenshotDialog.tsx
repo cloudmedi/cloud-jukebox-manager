@@ -7,25 +7,29 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Camera, X } from "lucide-react";
+import { toast } from "sonner";
 
 interface ScreenshotDialogProps {
+  deviceId: string;
   deviceName: string;
   isOpen: boolean;
   onClose: () => void;
 }
 
-const ScreenshotDialog = ({ deviceName, isOpen, onClose }: ScreenshotDialogProps) => {
+const ScreenshotDialog = ({ deviceId, deviceName, isOpen, onClose }: ScreenshotDialogProps) => {
   const [screenshot, setScreenshot] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
 
   const captureScreen = async () => {
     try {
       setIsLoading(true);
-      // Electron IPC üzerinden ekran görüntüsü alma isteği gönder
+      console.log('Capturing screenshot for device:', deviceId);
       const screenshotData = await window.electron.captureScreen();
       setScreenshot(screenshotData);
+      toast.success('Ekran görüntüsü başarıyla alındı');
     } catch (error) {
       console.error('Screenshot error:', error);
+      toast.error('Ekran görüntüsü alınamadı');
     } finally {
       setIsLoading(false);
     }
