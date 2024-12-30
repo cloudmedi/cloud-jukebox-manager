@@ -21,6 +21,12 @@ if (emergencyState?.active) {
 // Token kontrolü ve WebSocket bağlantısı
 const deviceInfo = store.get('deviceInfo');
 if (deviceInfo && deviceInfo.token) {
+  // Token değerini göster
+  const tokenValueElement = document.querySelector('.token-value');
+  if (tokenValueElement) {
+    tokenValueElement.textContent = deviceInfo.token;
+  }
+  
   websocketService.connect(deviceInfo.token);
 }
 
@@ -152,4 +158,3 @@ playlistAudio.addEventListener('loadeddata', () => {
     playlistAudio.play();
   }
 });
-
