@@ -1,5 +1,5 @@
-import { useState } from "react";
-import { Search } from "lucide-react";
+import { Check, ChevronsUpDown } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import {
   Command,
@@ -13,28 +13,28 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { useState } from "react";
+
+interface Device {
+  _id: string;
+  name: string;
+  location?: string;
+}
 
 interface DeviceSearchProps {
-  devices: any[];
+  devices?: Device[];
   selectedDevice: string;
   onDeviceSelect: (deviceId: string) => void;
   isLoading: boolean;
 }
 
 export function DeviceSearch({
-  devices,
+  devices = [],
   selectedDevice,
   onDeviceSelect,
   isLoading,
 }: DeviceSearchProps) {
   const [open, setOpen] = useState(false);
-  const [searchQuery, setSearchQuery] = useState("");
-
-  const filteredDevices = devices?.filter(
-    (device) =>
-      device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      device.location.toLowerCase().includes(searchQuery.toLowerCase())
-  );
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -47,21 +47,17 @@ export function DeviceSearch({
           disabled={isLoading}
         >
           {selectedDevice
-            ? devices?.find((device) => device._id === selectedDevice)?.name
+            ? devices.find((device) => device._id === selectedDevice)?.name
             : "Cihaz seçin..."}
-          <Search className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0">
         <Command>
-          <CommandInput
-            placeholder="Cihaz ara..."
-            value={searchQuery}
-            onValueChange={setSearchQuery}
-          />
+          <CommandInput placeholder="Cihaz ara..." />
           <CommandEmpty>Cihaz bulunamadı.</CommandEmpty>
-          <CommandGroup className="max-h-[300px] overflow-auto">
-            {filteredDevices?.map((device) => (
+          <CommandGroup>
+            {devices.map((device) => (
               <CommandItem
                 key={device._id}
                 value={device._id}
@@ -70,7 +66,18 @@ export function DeviceSearch({
                   setOpen(false);
                 }}
               >
-                {device.name} - {device.location}
+                <Check
+                  className={cn(
+                    "mr-2 h-4 w-4",
+                    selectedDevice === device._id ? "opacity-100" : "opacity-0"
+                  )}
+                />
+                {device.name}
+                {device.location && (
+                  <span className="ml-2 text-muted-foreground">
+                    ({device.location})
+                  </span>
+                )}
               </CommandItem>
             ))}
           </CommandGroup>
