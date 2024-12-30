@@ -1,34 +1,27 @@
-const { desktopCapturer } = require('electron');
+const { BrowserWindow } = require('electron');
 
 class ScreenshotHandler {
   async takeScreenshot() {
     try {
-      console.log('Getting window sources...');
+      console.log('Taking screenshot...');
       
-      const sources = await desktopCapturer.getSources({
-        types: ['window'],
-        thumbnailSize: { width: 1920, height: 1080 }
-      });
-
-      console.log('Available sources:', sources.map(s => s.name));
-
-      // Cloud Media Player penceresini bul
-      const mainWindow = sources.find(source => 
-        source.name === 'Cloud Media Player'
-      );
-
-      if (!mainWindow) {
-        console.error('Main window not found in sources');
+      // Global mainWindow referansını al
+      const mainWindow = global.mainWindow;
+      
+      if (!mainWindow || !(mainWindow instanceof BrowserWindow)) {
+        console.error('Main window not found or invalid');
         throw new Error('Main window not found');
       }
 
-      console.log('Found window:', mainWindow.name);
-      const thumbnail = mainWindow.thumbnail.toDataURL();
+      // webContents.capturePage() kullanarak doğrudan pencere görüntüsünü al
+      const image = await mainWindow.webContents.capturePage();
+      const screenshot = image.toDataURL();
+      
       console.log('Screenshot captured successfully');
       
       return {
         success: true,
-        data: thumbnail
+        data: screenshot
       };
     } catch (error) {
       console.error('Screenshot error:', error);
