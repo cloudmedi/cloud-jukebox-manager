@@ -4,16 +4,14 @@
     <meta charset="UTF-8">
     <title>Cloud Media Player</title>
     <link rel="stylesheet" href="styles.css">
-    <link rel="stylesheet" href="styles/status-badge.css">
 </head>
 <body>
     <div class="titlebar">
         <div class="version-info">CloudMedia V2.1</div>
         <button class="titlebar-button close" id="closeButton">✕</button>
     </div>
-    <div id="statusBadge" class="status-badge disconnected"></div>
     <div class="container">
-        <!-- Token ve Bağlantı Durumu -->
+        <!-- Token ve Bağlantı Durumu (Başlangıçta gösterilir, bağlantı sonrası gizlenir) -->
         <div id="deviceInfo" class="device-info">
             <div class="token-display"></div>
             <div class="connection-status"></div>

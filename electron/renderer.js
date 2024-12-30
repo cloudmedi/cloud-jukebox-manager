@@ -137,24 +137,7 @@ ipcRenderer.on('resume-playback', () => {
 
 // WebSocket bağlantı durumu
 ipcRenderer.on('websocket-status', (event, isConnected) => {
-    const statusBadge = document.getElementById('statusBadge');
-    if (isConnected) {
-        statusBadge.className = 'status-badge connected';
-        console.log('WebSocket bağlantısı aktif');
-    } else {
-        statusBadge.className = 'status-badge disconnected';
-        console.log('WebSocket bağlantısı kesildi');
-    }
     UIManager.updateConnectionStatus(isConnected);
-});
-
-// Yükleme durumu için
-ipcRenderer.on('loading-status', (event, isLoading) => {
-    const statusBadge = document.getElementById('statusBadge');
-    if (isLoading) {
-        statusBadge.className = 'status-badge loading';
-        console.log('Yükleniyor...');
-    }
 });
 
 // İndirme progress
