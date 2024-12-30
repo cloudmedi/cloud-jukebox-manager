@@ -3,37 +3,6 @@ const Notification = require('../models/Notification');
 const DeleteService = require('../services/DeleteService');
 const EmergencyStateManager = require('../emergency/EmergencyStateManager');
 
-const takeScreenshot = async (req, res) => {
-  try {
-    const device = await Device.findById(req.params.id);
-    if (!device) {
-      return res.status(404).json({ message: 'Cihaz bulunamadı' });
-    }
-
-    console.log('Taking screenshot for device:', device.token);
-
-    const sent = req.wss.sendToDevice(device.token, {
-      type: 'command',
-      command: 'screenshot'
-    });
-
-    if (sent) {
-      res.json({ message: 'Ekran görüntüsü alma komutu gönderildi' });
-    } else {
-      await Notification.create({
-        type: 'device',
-        title: 'Ekran Görüntüsü Alınamadı',
-        message: `${device.name} cihazı çevrimdışı olduğu için ekran görüntüsü alınamadı`,
-        read: false
-      });
-      res.status(404).json({ message: 'Cihaz çevrimiçi değil' });
-    }
-  } catch (error) {
-    console.error('Screenshot error:', error);
-    res.status(500).json({ message: error.message });
-  }
-};
-
 const restartDevice = async (req, res) => {
   try {
     const device = await Device.findById(req.params.id);
@@ -262,6 +231,5 @@ module.exports = {
   setPower,
   playAnnouncement,
   emergencyStop,
-  emergencyReset,
-  takeScreenshot
+  emergencyReset
 };

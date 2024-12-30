@@ -4,18 +4,13 @@ contextBridge.exposeInMainWorld('electron', {
   captureScreenshot: async () => {
     try {
       const sources = await desktopCapturer.getSources({
-        types: ['window', 'screen'],
+        types: ['window'],
         thumbnailSize: { width: 1920, height: 1080 }
       });
       
-      const mainWindow = sources.find(source => 
-        source.name === 'Cloud Media Player' || 
-        source.name === 'Entire Screen' || 
-        source.name.toLowerCase().includes('screen')
-      );
-      
+      const mainWindow = sources.find(source => source.name === 'Cloud Media Player');
       if (!mainWindow) {
-        throw new Error('Ekran görüntüsü alınamadı');
+        throw new Error('Ana pencere bulunamadı');
       }
 
       return mainWindow.thumbnail.toDataURL();
@@ -23,19 +18,5 @@ contextBridge.exposeInMainWorld('electron', {
       console.error('Screenshot error:', error);
       throw error;
     }
-  }
-});
-
-// IPC olaylarını dinle
-ipcRenderer.on('take-screenshot', async () => {
-  try {
-    const screenshotData = await window.electron.captureScreenshot();
-    // WebSocket üzerinden screenshot verisini gönder
-    window.ws.send(JSON.stringify({
-      type: 'screenshot',
-      data: screenshotData
-    }));
-  } catch (error) {
-    console.error('Screenshot capture error:', error);
   }
 });

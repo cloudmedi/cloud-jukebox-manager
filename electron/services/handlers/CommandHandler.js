@@ -11,11 +11,6 @@ class CommandHandler {
     }
 
     switch (message.command) {
-      case 'screenshot':
-        console.log('Taking screenshot...');
-        mainWindow.webContents.send('take-screenshot');
-        break;
-
       case 'songRemoved':
         console.log('Handling songRemoved command:', message.data);
         mainWindow.webContents.send('songRemoved', {
@@ -36,7 +31,7 @@ class CommandHandler {
         break;
 
       default:
-        console.log('Unknown command:', message.command);
+        console.log('Forwarding command to renderer:', message.command);
         mainWindow.webContents.send(message.command, message.data);
         break;
     }
