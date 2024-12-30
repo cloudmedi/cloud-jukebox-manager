@@ -63,6 +63,10 @@ const deviceSchema = new mongoose.Schema({
   emergencyStopped: {
     type: Boolean,
     default: false
+  },
+  currentSong: {
+    type: Object,
+    default: null
   }
 }, {
   timestamps: true
@@ -98,3 +102,4 @@ deviceSchema.methods.setVolume = function(volume) {
 const Device = mongoose.model('Device', deviceSchema);
 
 module.exports = Device;
+

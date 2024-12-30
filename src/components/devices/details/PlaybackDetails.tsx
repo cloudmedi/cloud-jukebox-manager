@@ -7,8 +7,6 @@ interface PlaybackDetailsProps {
 }
 
 export const PlaybackDetails = ({ device }: PlaybackDetailsProps) => {
-  console.log("PlaybackDetails device:", device); // Debug için
-
   return (
     <div className="space-y-4">
       <h3 className="text-lg font-semibold">Playlist ve Çalan Şarkı</h3>
