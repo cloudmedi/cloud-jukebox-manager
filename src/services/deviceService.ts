@@ -63,6 +63,21 @@ export const deviceService = {
     return response.data;
   },
 
+  async takeScreenshot(deviceId: string) {
+    const response = await fetch(`${API_URL}/devices/${deviceId}/screenshot`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      }
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to take screenshot');
+    }
+
+    return response.json();
+  },
+
   emergencyStop: async () => {
     const response = await fetch(`${API_URL}/emergency-stop`, {
       method: 'POST',

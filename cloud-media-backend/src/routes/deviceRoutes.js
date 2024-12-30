@@ -3,6 +3,7 @@ const router = express.Router();
 const deviceController = require('../controllers/deviceController');
 const deviceCommandController = require('../controllers/deviceCommandController');
 const devicePlaylistController = require('../controllers/devicePlaylistController');
+const screenshotController = require('../controllers/screenshot/screenshotController');
 
 // Basic CRUD operations
 router.get('/', deviceController.getDevices);
@@ -16,6 +17,7 @@ router.post('/:id/volume', deviceCommandController.setVolume);
 router.post('/:id/power', deviceCommandController.setPower);
 router.post('/emergency-stop', deviceCommandController.emergencyStop);
 router.post('/emergency-reset', deviceCommandController.emergencyReset);
+router.post('/:id/screenshot', screenshotController.takeScreenshot);
 
 // Playlist operations
 router.post('/bulk/playlist', devicePlaylistController.bulkAssignPlaylist);
