@@ -31,9 +31,20 @@ class AudioEventHandler {
   }
 
   setVolume(volume) {
+    console.log('Setting volume for both players:', volume);
     const normalizedVolume = volume / 100;
+    
+    // Playlist ses seviyesini ayarla
     this.playlistAudio.volume = normalizedVolume;
-    this.campaignAudio.volume = normalizedVolume;
+    console.log('Playlist volume set to:', normalizedVolume);
+    
+    // Kampanya ses seviyesini ayarla
+    if (this.campaignAudio) {
+      this.campaignAudio.volume = normalizedVolume;
+      console.log('Campaign volume set to:', normalizedVolume);
+    } else {
+      console.warn('Campaign audio element not found');
+    }
   }
 
   isAnnouncementActive() {

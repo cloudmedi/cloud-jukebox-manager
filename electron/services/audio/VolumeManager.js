@@ -17,6 +17,21 @@ class VolumeManager {
     const normalizedVolume = Math.max(0, Math.min(100, volume));
     store.set('volume', normalizedVolume);
     console.log('Volume saved to store:', normalizedVolume);
+    
+    // Her iki player için de volume değerini güncelle
+    const audioPlayer = document.getElementById('audioPlayer');
+    const campaignPlayer = document.getElementById('campaignPlayer');
+    
+    if (audioPlayer) {
+      audioPlayer.volume = this.normalizeVolume(normalizedVolume);
+      console.log('Audio player volume updated:', audioPlayer.volume);
+    }
+    
+    if (campaignPlayer) {
+      campaignPlayer.volume = this.normalizeVolume(normalizedVolume);
+      console.log('Campaign player volume updated:', campaignPlayer.volume);
+    }
+    
     return normalizedVolume;
   }
 
