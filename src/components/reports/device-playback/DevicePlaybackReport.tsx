@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { addDays } from "date-fns";
+import { addDays, format } from "date-fns";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { useToast } from "@/hooks/use-toast";
@@ -37,10 +37,26 @@ export default function DevicePlaybackReport() {
     queryKey: ["device-playback", selectedDevice, dateRange, timeRange],
     queryFn: async () => {
       if (!selectedDevice || !dateRange?.from || !dateRange?.to) return null;
+
+      // Tarihleri ISO string formatına çevir
+      const fromDate = format(dateRange.from, "yyyy-MM-dd");
+      const toDate = format(dateRange.to, "yyyy-MM-dd");
+
       const response = await fetch(
-        `http://localhost:5000/api/stats/device-playback?deviceId=${selectedDevice}&from=${dateRange.from.toISOString()}&to=${dateRange.to.toISOString()}&startTime=${timeRange.startTime}&endTime=${timeRange.endTime}`
+        `http://localhost:5000/api/stats/device-playback?` + 
+        new URLSearchParams({
+          deviceId: selectedDevice,
+          from: fromDate,
+          to: toDate,
+          startTime: timeRange.startTime,
+          endTime: timeRange.endTime
+        })
       );
-      if (!response.ok) throw new Error("Çalma verileri yüklenemedi");
+
+      if (!response.ok) {
+        const error = await response.json();
+        throw new Error(error.message || "Çalma verileri yüklenemedi");
+      }
       return response.json();
     },
     enabled: !!selectedDevice && !!dateRange?.from && !!dateRange?.to,
@@ -56,7 +72,7 @@ export default function DevicePlaybackReport() {
     doc.text(`${deviceName} - Çalma Raporu`, 14, 15);
     doc.setFontSize(11);
     doc.text(
-      `Tarih: ${dateRange.from.toLocaleDateString()} ${timeRange.startTime} - ${dateRange.to.toLocaleDateString()} ${timeRange.endTime}`,
+      `Tarih: ${format(dateRange.from, "dd/MM/yyyy")} ${timeRange.startTime} - ${format(dateRange.to, "dd/MM/yyyy")} ${timeRange.endTime}`,
       14,
       25
     );
@@ -75,7 +91,7 @@ export default function DevicePlaybackReport() {
       startY: 35,
     });
 
-    doc.save(`${deviceName}-calma-raporu-${new Date().toISOString().split('T')[0]}.pdf`);
+    doc.save(`${deviceName}-calma-raporu-${format(new Date(), "yyyy-MM-dd")}.pdf`);
     toast({
       title: "PDF oluşturuldu",
       description: "Rapor başarıyla indirildi.",
