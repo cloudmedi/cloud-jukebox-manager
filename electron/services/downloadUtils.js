@@ -58,8 +58,40 @@ const downloadFile = async (url, filePath, onProgress) => {
   }
 };
 
+// Yeni: Artwork indirme fonksiyonu
+const downloadArtwork = async (artworkUrl, playlistId) => {
+  try {
+    if (!artworkUrl) {
+      console.log('No artwork URL provided');
+      return null;
+    }
+
+    const downloadPath = getDownloadPath();
+    const artworkDir = path.join(downloadPath, 'artworks');
+    ensureDirectoryExists(artworkDir);
+
+    const artworkPath = path.join(artworkDir, `${playlistId}_artwork.jpg`);
+    
+    // Eğer artwork zaten indirilmişse, cached versiyonu kullan
+    if (fs.existsSync(artworkPath)) {
+      console.log('Using cached artwork:', artworkPath);
+      return artworkPath;
+    }
+
+    console.log('Downloading artwork:', artworkUrl);
+    await downloadFile(artworkUrl, artworkPath);
+    console.log('Artwork downloaded successfully:', artworkPath);
+    
+    return artworkPath;
+  } catch (error) {
+    console.error('Artwork download failed:', error);
+    return null;
+  }
+};
+
 module.exports = {
   downloadFile,
   getDownloadPath,
-  ensureDirectoryExists
+  ensureDirectoryExists,
+  downloadArtwork
 };
