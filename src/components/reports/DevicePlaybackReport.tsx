@@ -1,17 +1,30 @@
 import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { addDays } from "date-fns";
+import { addDays, format } from "date-fns";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { DeviceSearch } from "./device-playback/DeviceSearch";
 import { DateTimeRangePicker } from "./device-playback/DateTimeRangePicker";
 import { PlaybackTable } from "./device-playback/PlaybackTable";
 import { DateRange } from "react-day-picker";
 
+interface Device {
+  _id: string;
+  name: string;
+  location?: string;
+}
+
+interface PlaybackData {
+  songName: string;
+  artist: string;
+  playCount: number;
+  totalDuration: number;
+  lastPlayed: string;
+}
+
 export default function DevicePlaybackReport() {
-  const { toast } = useToast();
   const [selectedDevice, setSelectedDevice] = useState<string>("");
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: new Date(),
@@ -22,50 +35,67 @@ export default function DevicePlaybackReport() {
     endTime: "23:59"
   });
 
-  // Fetch devices
-  const { data: devices, isLoading: devicesLoading } = useQuery({
+  // Fetch devices with proper error handling
+  const { data: devices = [], isLoading: devicesLoading, error: devicesError } = useQuery<Device[]>({
     queryKey: ["devices"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/devices");
-      if (!response.ok) throw new Error("Cihazlar yüklenemedi");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Cihazlar yüklenemedi");
+      }
       return response.json();
-    },
+    }
   });
 
-  // Fetch playback data for selected device
-  const { data: playbackData, isLoading: playbackLoading } = useQuery({
+  // Fetch playback data with proper error handling
+  const { data: playbackData, isLoading: playbackLoading } = useQuery<PlaybackData[]>({
     queryKey: ["device-playback", selectedDevice, dateRange, timeRange],
     queryFn: async () => {
       if (!selectedDevice || !dateRange?.from || !dateRange?.to) return null;
+
+      const params = new URLSearchParams({
+        deviceId: selectedDevice,
+        from: format(dateRange.from, "yyyy-MM-dd"),
+        to: format(dateRange.to, "yyyy-MM-dd"),
+        startTime: timeRange.startTime,
+        endTime: timeRange.endTime
+      });
+
       const response = await fetch(
-        `http://localhost:5000/api/stats/device-playback?deviceId=${selectedDevice}&from=${dateRange.from.toISOString()}&to=${dateRange.to.toISOString()}&startTime=${timeRange.startTime}&endTime=${timeRange.endTime}`
+        `http://localhost:5000/api/stats/device-playback?${params}`
       );
-      if (!response.ok) throw new Error("Çalma verileri yüklenemedi");
+
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Çalma verileri yüklenemedi");
+      }
       return response.json();
     },
-    enabled: !!selectedDevice && !!dateRange?.from && !!dateRange?.to,
+    enabled: Boolean(selectedDevice && dateRange?.from && dateRange?.to)
   });
 
-  const handleDateRangeChange = (range: DateRange | undefined) => {
-    setDateRange(range);
-  };
+  if (devicesError) {
+    toast.error("Cihazlar yüklenirken bir hata oluştu");
+    return null;
+  }
 
   const generatePDF = () => {
-    if (!dateRange?.from || !dateRange?.to) return;
+    if (!dateRange?.from || !dateRange?.to || !playbackData) return;
     
     const doc = new jsPDF();
-    const deviceName = devices?.find((d) => d._id === selectedDevice)?.name || "Cihaz";
+    const deviceName = devices.find((d) => d._id === selectedDevice)?.name || "Cihaz";
     
     doc.setFontSize(16);
     doc.text(`${deviceName} - Çalma Raporu`, 14, 15);
     doc.setFontSize(11);
     doc.text(
-      `Tarih: ${dateRange.from.toLocaleDateString()} ${timeRange.startTime} - ${dateRange.to.toLocaleDateString()} ${timeRange.endTime}`,
+      `Tarih: ${format(dateRange.from, "dd/MM/yyyy")} ${timeRange.startTime} - ${format(dateRange.to, "dd/MM/yyyy")} ${timeRange.endTime}`,
       14,
       25
     );
 
-    const tableData = playbackData?.map((item: any) => [
+    const tableData = playbackData.map((item) => [
       item.songName,
       item.artist,
       item.playCount.toString(),
@@ -75,15 +105,12 @@ export default function DevicePlaybackReport() {
 
     autoTable(doc, {
       head: [["Şarkı", "Sanatçı", "Çalınma Sayısı", "Toplam Süre", "Son Çalınma"]],
-      body: tableData || [],
+      body: tableData,
       startY: 35,
     });
 
-    doc.save(`${deviceName}-calma-raporu-${new Date().toISOString().split('T')[0]}.pdf`);
-    toast({
-      title: "PDF oluşturuldu",
-      description: "Rapor başarıyla indirildi.",
-    });
+    doc.save(`${deviceName}-calma-raporu-${format(new Date(), "yyyy-MM-dd")}.pdf`);
+    toast.success("PDF başarıyla oluşturuldu");
   };
 
   return (
@@ -102,7 +129,7 @@ export default function DevicePlaybackReport() {
         <DateTimeRangePicker
           dateRange={dateRange}
           timeRange={timeRange}
-          onDateRangeChange={handleDateRangeChange}
+          onDateRangeChange={setDateRange}
           onTimeRangeChange={(type, value) =>
             setTimeRange(prev => ({ ...prev, [type]: value }))
           }
@@ -112,7 +139,7 @@ export default function DevicePlaybackReport() {
         />
 
         <PlaybackTable
-          data={playbackData}
+          data={playbackData || []}
           isLoading={playbackLoading}
         />
       </CardContent>

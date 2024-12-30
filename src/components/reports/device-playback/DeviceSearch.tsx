@@ -35,6 +35,12 @@ export function DeviceSearch({
   isLoading,
 }: DeviceSearchProps) {
   const [open, setOpen] = useState(false);
+  const [searchQuery, setSearchQuery] = useState("");
+
+  const filteredDevices = devices.filter(device => 
+    device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    device.location?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -53,11 +59,15 @@ export function DeviceSearch({
         </Button>
       </PopoverTrigger>
       <PopoverContent className="w-full p-0">
-        <Command>
-          <CommandInput placeholder="Cihaz ara..." />
+        <Command shouldFilter={false}>
+          <CommandInput 
+            placeholder="Cihaz ara..." 
+            value={searchQuery}
+            onValueChange={setSearchQuery}
+          />
           <CommandEmpty>Cihaz bulunamadı.</CommandEmpty>
           <CommandGroup>
-            {devices.map((device) => (
+            {filteredDevices.map((device) => (
               <CommandItem
                 key={device._id}
                 value={device._id}
