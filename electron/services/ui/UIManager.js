@@ -1,8 +1,11 @@
+const { ipcRenderer } = require('electron');
+const deviceService = require('../deviceService');
+
 class UIManager {
     constructor() {
         this.deviceInfoElement = document.getElementById('deviceInfo');
-        this.tokenDisplay = this.deviceInfoElement?.querySelector('.token-display');
-        this.connectionStatus = document.querySelector('.connection-status');
+        this.tokenDisplay = this.deviceInfoElement.querySelector('.token-display');
+        this.connectionStatus = this.deviceInfoElement.querySelector('.connection-status');
         this.downloadProgress = document.querySelector('.download-progress');
         this.downloadProgressBar = document.querySelector('.download-progress-bar');
         this.downloadProgressText = document.querySelector('.download-progress-text');
@@ -12,12 +15,12 @@ class UIManager {
     }
 
     async initializeUI() {
-        const deviceInfo = await window.electron.ipcRenderer.invoke('get-device-info');
+        const deviceInfo = await ipcRenderer.invoke('get-device-info');
         
         if (!deviceInfo || !deviceInfo.token) {
             try {
                 const newToken = await deviceService.registerDeviceToken();
-                await window.electron.ipcRenderer.invoke('save-device-info', {
+                await ipcRenderer.invoke('save-device-info', {
                     token: newToken
                 });
                 
@@ -31,38 +34,46 @@ class UIManager {
     }
 
     updateDeviceInfo(token) {
-        if (this.tokenDisplay) {
-            this.tokenDisplay.textContent = `Token: ${token}`;
-            this.tokenDisplay.style.display = 'block';
-        }
-        if (this.connectionStatus) {
-            this.connectionStatus.style.display = 'none';
-        }
+        this.tokenDisplay.textContent = `Token: ${token}`;
     }
 
     updateConnectionStatus(isConnected) {
-        if (this.deviceInfoElement && this.connectionStatus) {
-            if (isConnected) {
-                // Token bilgilerini gizle
-                this.deviceInfoElement.style.display = 'none';
-                
-                // Eşleşme mesajını göster
-                this.connectionStatus.className = 'connection-status connected';
-                this.connectionStatus.textContent = 'Cihaz başarıyla eşleştirildi. Şimdi bir çalma listesi ekleyebilirsiniz.';
-                this.connectionStatus.style.display = 'block';
-            } else {
-                // Token bilgilerini göster
-                this.deviceInfoElement.style.display = 'block';
-                
-                // Eşleşme mesajını gizle
-                this.connectionStatus.style.display = 'none';
-            }
+        if (isConnected) {
+            // Bağlantı başarılı olduğunda token bilgilerini gizle
+            this.deviceInfoElement.style.display = 'none';
+        } else {
+            // Bağlantı koptuğunda token bilgilerini göster
+            this.deviceInfoElement.style.display = 'block';
         }
+        
+        this.connectionStatus.className = `connection-status ${isConnected ? 'connected' : 'disconnected'}`;
+        this.connectionStatus.textContent = isConnected ? 'Bağlı' : 'Bağlantı Kesildi';
     }
 
-    hideConnectionStatus() {
-        if (this.connectionStatus) {
-            this.connectionStatus.style.display = 'none';
+    displayPlaylists(playlist) {
+        const playlistContainer = document.getElementById('playlistContainer');
+        if (!playlistContainer) return;
+
+        playlistContainer.innerHTML = '';
+
+        if (playlist) {
+            const playlistElement = document.createElement('div');
+            playlistElement.className = 'playlist-item';
+            playlistElement.innerHTML = `
+                <div class="playlist-info">
+                    ${playlist.artwork ? 
+                        `<img src="${playlist.artwork}" alt="${playlist.name}" class="playlist-artwork"/>` :
+                        '<div class="playlist-artwork-placeholder"></div>'
+                    }
+                    <div class="playlist-details">
+                        <h3>${playlist.name}</h3>
+                        <p>${playlist.songs[0]?.artist || 'Unknown Artist'}</p>
+                        <p>${playlist.songs[0]?.name || 'No songs'}</p>
+                    </div>
+                </div>
+            `;
+            
+            playlistContainer.appendChild(playlistElement);
         }
     }
 

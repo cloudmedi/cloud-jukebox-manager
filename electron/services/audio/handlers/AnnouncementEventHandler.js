@@ -1,10 +1,7 @@
-const VolumeManager = require('../VolumeManager');
-
 class AnnouncementEventHandler {
   constructor(playlistAudio, campaignAudio) {
     this.playlistAudio = playlistAudio;
     this.campaignAudio = campaignAudio;
-    this.volumeManager = VolumeManager;
     this.isAnnouncementPlaying = false;
     this.wasPlaylistPlaying = false;
     this.lastAnnouncementTime = 0;
@@ -26,10 +23,6 @@ class AnnouncementEventHandler {
         this.lastPlaylistIndex = currentPlaylist.currentIndex;
         console.log('Kaydedilen playlist indeksi:', this.lastPlaylistIndex);
       }
-
-      // Kayıtlı ses seviyesini ayarla
-      const savedVolume = this.volumeManager.getStoredVolume();
-      this.campaignAudio.volume = this.volumeManager.normalizeVolume(savedVolume);
 
       if (this.wasPlaylistPlaying) {
         console.log('Playlist duraklatılıyor');
@@ -103,8 +96,18 @@ class AnnouncementEventHandler {
       return false;
     }
 
+    // Minimum bekleme süresi kontrolü (5 saniye)
+    const now = Date.now();
+    const timeSinceLastAnnouncement = now - this.lastAnnouncementTime;
+    
+    if (timeSinceLastAnnouncement < 5000) {
+      console.log('Son anonstan bu yana 5 saniye geçmedi, anons atlanıyor');
+      return false;
+    }
+
     try {
       console.log('Kampanya başlatılıyor:', audioPath);
+      console.log('Mevcut playlist durumu:', this.playlistAudio.paused ? 'duraklatılmış' : 'çalıyor');
       
       // Önce playlist'i duraklat
       if (!this.playlistAudio.paused) {
@@ -119,11 +122,6 @@ class AnnouncementEventHandler {
       // Ses dosyasını yükle ve çal
       await this.campaignAudio.load();
       this.campaignAudio.currentTime = 0;
-
-      // Kayıtlı ses seviyesini ayarla
-      const savedVolume = this.volumeManager.getStoredVolume();
-      this.campaignAudio.volume = this.volumeManager.normalizeVolume(savedVolume);
-      
       await this.campaignAudio.play();
       
       return true;
