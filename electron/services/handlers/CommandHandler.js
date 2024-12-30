@@ -1,7 +1,7 @@
 const { BrowserWindow } = require('electron');
 const screenshotHandler = require('../screenshot/ScreenshotHandler');
-const EmergencyStateManager = require('../../emergency/EmergencyStateManager');
-const audioPlayer = require('../../audio/AudioPlayer');
+const EmergencyStateManager = require('../emergency/EmergencyStateManager');
+const audioPlayer = require('../audio/AudioPlayer');
 
 class CommandHandler {
   static async handleCommand(message) {
@@ -57,7 +57,7 @@ class CommandHandler {
           break;
 
         default:
-          console.log('Forwarding command to renderer:', message.command);
+          console.log('Unknown command:', message.command);
           mainWindow.webContents.send(message.command, message.data);
           break;
       }
