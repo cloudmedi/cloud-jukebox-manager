@@ -1,7 +1,10 @@
 class ArtworkManager {
   static getArtworkUrl(artwork) {
     if (!artwork) return null;
-    return `http://localhost:5000${artwork}`;
+    
+    // URL'i düzelt: /uploads/playlist-xxx -> /uploads/playlists/playlist-xxx
+    const correctedPath = artwork.replace('/uploads/playlist-', '/uploads/playlists/playlist-');
+    return `http://localhost:5000${correctedPath}`;
   }
 
   static createArtworkHtml(artwork, name) {
