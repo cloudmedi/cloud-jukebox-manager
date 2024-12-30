@@ -5,6 +5,7 @@ import websocketService from "@/services/websocketService";
 import { toast } from "sonner";
 import { DeviceActionMenu } from "./actions/DeviceActionMenu";
 import { DeviceActionDialogs } from "./actions/DeviceActionDialogs";
+import { ScreenshotDialog } from "./actions/ScreenshotDialog";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface DeviceActionsProps {
@@ -18,7 +19,38 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isRestartDialogOpen, setIsRestartDialogOpen] = useState(false);
   const [isEmergencyActive, setIsEmergencyActive] = useState(false);
+  const [isScreenshotDialogOpen, setIsScreenshotDialogOpen] = useState(false);
+  const [screenshotData, setScreenshotData] = useState<string>();
   const queryClient = useQueryClient();
+
+  const handleScreenshot = () => {
+    setIsScreenshotDialogOpen(true);
+    setScreenshotData(undefined);
+    
+    websocketService.sendMessage({
+      type: 'command',
+      token: device.token,
+      command: 'screenshot'
+    });
+
+    // Listen for screenshot response
+    const handleScreenshotResponse = (message: any) => {
+      if (message.type === 'screenshot' && message.token === device.token) {
+        setScreenshotData(message.data);
+        websocketService.removeMessageHandler('screenshot', handleScreenshotResponse);
+      }
+    };
+
+    websocketService.addMessageHandler('screenshot', handleScreenshotResponse);
+  };
+
+  // Clear screenshot data when dialog closes
+  const handleScreenshotDialogChange = (open: boolean) => {
+    setIsScreenshotDialogOpen(open);
+    if (!open) {
+      setScreenshotData(undefined);
+    }
+  };
 
   const handleEmergencyAction = async () => {
     try {
@@ -130,6 +162,7 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
         onRestartClick={() => setIsRestartDialogOpen(true)}
         onDeleteClick={() => setIsDeleteDialogOpen(true)}
         onEmergencyClick={handleEmergencyAction}
+        onScreenshotClick={handleScreenshot}
       />
 
       <DeviceActionDialogs
@@ -148,6 +181,13 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
         onGroupChange={handleGroupChange}
         onDelete={handleDelete}
         onRestart={handleRestart}
+      />
+
+      <ScreenshotDialog
+        isOpen={isScreenshotDialogOpen}
+        onOpenChange={handleScreenshotDialogChange}
+        deviceName={device.name}
+        screenshotData={screenshotData}
       />
     </>
   );
