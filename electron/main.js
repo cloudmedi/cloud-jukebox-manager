@@ -217,7 +217,7 @@ ipcMain.on('playback-status-changed', (event, playing) => {
   updateTrayMenu(currentSong);
 });
 
-// Song ended handler
+// Song ended handler - TEK BİR YERDE TANIMLANMIŞ
 ipcMain.handle('song-ended', async (event) => {
   console.log('Song ended, handling next song');
   const audioService = require('./services/audioService');
