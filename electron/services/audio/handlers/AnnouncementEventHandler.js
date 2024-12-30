@@ -4,15 +4,14 @@ class AnnouncementEventHandler {
     this.campaignAudio = campaignAudio;
     this.isAnnouncementPlaying = false;
     this.wasPlaylistPlaying = false;
-    this.lastAnnouncementTime = 0;
-    this.lastPlaylistIndex = 0; // Yeni: Son çalan şarkının indeksini tutacak
+    this.lastPlaylistIndex = 0;
     this.setupEventListeners();
   }
 
   setupEventListeners() {
     // Kampanya yüklendiğinde
     this.campaignAudio.addEventListener('loadeddata', () => {
-      console.log('Kampanya yüklendi, playlist durumu kontrol ediliyor');
+      console.log('Anons yüklendi, playlist durumu kontrol ediliyor');
       
       // Playlist durumunu ve mevcut şarkı indeksini kaydet
       this.wasPlaylistPlaying = !this.playlistAudio.paused;
@@ -32,7 +31,7 @@ class AnnouncementEventHandler {
 
     // Kampanya başladığında
     this.campaignAudio.addEventListener('play', () => {
-      console.log('Kampanya başladı');
+      console.log('Anons başladı');
       this.isAnnouncementPlaying = true;
       
       // Eğer playlist hala çalıyorsa, duraklat
@@ -44,31 +43,29 @@ class AnnouncementEventHandler {
 
     // Kampanya bittiğinde
     this.campaignAudio.addEventListener('ended', () => {
-      console.log('Kampanya bitti, temizleme başlıyor');
+      console.log('Anons bitti, temizleme başlıyor');
       this.resetAnnouncementState();
     });
 
     // Kampanya hata durumunda
     this.campaignAudio.addEventListener('error', (error) => {
-      console.error('Kampanya oynatma hatası:', error);
+      console.error('Anons oynatma hatası:', error);
       this.resetAnnouncementState();
     });
   }
 
   resetAnnouncementState() {
-    console.log('Kampanya durumu sıfırlanıyor');
+    console.log('Anons durumu sıfırlanıyor');
     console.log('Önceki playlist durumu:', this.wasPlaylistPlaying);
     console.log('Son playlist indeksi:', this.lastPlaylistIndex);
     
     // Kampanyayı duraklat ve zamanı sıfırla
     this.campaignAudio.pause();
     this.campaignAudio.currentTime = 0;
+    this.campaignAudio.src = '';
     
     // Flag'leri sıfırla
     this.isAnnouncementPlaying = false;
-    
-    // Son anons zamanını kaydet
-    this.lastAnnouncementTime = Date.now();
     
     // Anonsun bittiğini bildir
     const ipcRenderer = require('electron').ipcRenderer;
@@ -78,11 +75,10 @@ class AnnouncementEventHandler {
     
     // Playlist'i devam ettir
     if (this.wasPlaylistPlaying) {
-      console.log('Playlist kaldığı yerden devam ediyor, indeks:', this.lastPlaylistIndex);
+      console.log('Playlist kaldığı yerden devam ediyor');
       setTimeout(() => {
-        // Bir sonraki şarkıya geç
-        ipcRenderer.send('play-next-song', {
-          startFromIndex: this.lastPlaylistIndex + 1
+        this.playlistAudio.play().catch(err => {
+          console.error('Playlist devam ettirme hatası:', err);
         });
       }, 500);
     }
@@ -93,21 +89,12 @@ class AnnouncementEventHandler {
 
   async playAnnouncement(audioPath) {
     if (!audioPath) {
-      console.error('Kampanya için ses dosyası yolu bulunamadı');
-      return false;
-    }
-
-    // Minimum bekleme süresi kontrolü (5 saniye)
-    const now = Date.now();
-    const timeSinceLastAnnouncement = now - this.lastAnnouncementTime;
-    
-    if (timeSinceLastAnnouncement < 5000) {
-      console.log('Son anonstan bu yana 5 saniye geçmedi, anons atlanıyor');
+      console.error('Anons için ses dosyası yolu bulunamadı');
       return false;
     }
 
     try {
-      console.log('Kampanya başlatılıyor:', audioPath);
+      console.log('Anons başlatılıyor:', audioPath);
       console.log('Mevcut playlist durumu:', this.playlistAudio.paused ? 'duraklatılmış' : 'çalıyor');
       
       // Önce playlist'i duraklat
@@ -127,7 +114,7 @@ class AnnouncementEventHandler {
       
       return true;
     } catch (err) {
-      console.error('Kampanya başlatma hatası:', err);
+      console.error('Anons başlatma hatası:', err);
       this.resetAnnouncementState();
       return false;
     }
