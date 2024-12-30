@@ -2,7 +2,6 @@ const { ipcRenderer } = require('electron');
 const Store = require('electron-store');
 const fs = require('fs');
 const store = new Store();
-const AudioEventManager = require('./services/audio/AudioEventManager');
 const AudioEventHandler = require('./services/audio/AudioEventHandler');
 const playbackStateManager = require('./services/audio/PlaybackStateManager');
 const UIManager = require('./services/ui/UIManager');
@@ -13,35 +12,13 @@ const VolumeManager = require('./services/audio/VolumeManager');
 const ArtworkManager = require('./services/ui/ArtworkManager');
 const ScreenshotEventHandler = require('./services/screenshot/ScreenshotEventHandler');
 
-// Başlangıç ayarları
 const playlistAudio = document.getElementById('audioPlayer');
-const audioEventManager = new AudioEventManager(playlistAudio);
-const playbackStatus = audioEventManager.getPlaybackStatusElement();
+const audioHandler = new AudioEventHandler(playlistAudio);
 
-// Titlebar'a playback status ekle
-const titlebarControls = document.createElement('div');
-titlebarControls.className = 'titlebar-controls';
-titlebarControls.appendChild(playbackStatus);
-titlebarControls.appendChild(document.getElementById('closeButton'));
-
-const titlebar = document.querySelector('.titlebar');
-titlebar.appendChild(titlebarControls);
-
-playlistAudio.addEventListener('play', () => {
-    playbackStatus.className = 'playback-status playing';
-});
-
-playlistAudio.addEventListener('pause', () => {
-    playbackStatus.className = 'playback-status paused';
-});
-
-playlistAudio.addEventListener('waiting', () => {
-    playbackStatus.className = 'playback-status loading';
-});
-
-playlistAudio.addEventListener('ended', () => {
-    playbackStatus.className = 'playback-status stopped';
-});
+// Başlangıçta store'dan volume değerini al ve ayarla
+const initialVolume = VolumeManager.getStoredVolume();
+playlistAudio.volume = VolumeManager.normalizeVolume(initialVolume);
+console.log('Initial volume set from store:', initialVolume);
 
 ipcRenderer.on('emergency-stop', () => {
   console.log('Emergency stop received');
