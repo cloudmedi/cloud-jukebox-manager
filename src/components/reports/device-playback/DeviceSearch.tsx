@@ -25,19 +25,18 @@ interface DeviceSearchProps {
   devices: Device[];
   selectedDevice: string;
   onDeviceSelect: (deviceId: string) => void;
-  isLoading: boolean;
+  isLoading?: boolean;
 }
 
 export function DeviceSearch({
   devices = [],
   selectedDevice,
   onDeviceSelect,
-  isLoading,
+  isLoading = false,
 }: DeviceSearchProps) {
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
-  // Filtreleme işlemini manuel olarak yapalım
   const filteredDevices = devices.filter(device => 
     device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
     device.location?.toLowerCase().includes(searchQuery.toLowerCase())

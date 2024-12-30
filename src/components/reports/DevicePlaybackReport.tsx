@@ -35,19 +35,24 @@ export default function DevicePlaybackReport() {
     endTime: "23:59"
   });
 
-  // Cihazları getir
   const { data: devices = [], isLoading: devicesLoading } = useQuery<Device[]>({
     queryKey: ["devices"],
     queryFn: async () => {
-      const response = await fetch("http://localhost:5000/api/devices");
-      if (!response.ok) {
-        throw new Error("Cihazlar yüklenemedi");
+      try {
+        const response = await fetch("http://localhost:5000/api/devices");
+        if (!response.ok) {
+          throw new Error("Cihazlar yüklenemedi");
+        }
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        console.error("Cihazlar yüklenirken hata:", error);
+        return [];
       }
-      return response.json();
-    }
+    },
+    initialData: []
   });
 
-  // Çalma verilerini getir
   const { data: playbackData = [], isLoading: playbackLoading } = useQuery<PlaybackData[]>({
     queryKey: ["device-playback", selectedDevice, dateRange, timeRange],
     queryFn: async () => {
@@ -55,28 +60,36 @@ export default function DevicePlaybackReport() {
         return [];
       }
 
-      const params = new URLSearchParams({
-        deviceId: selectedDevice,
-        from: format(dateRange.from, "yyyy-MM-dd"),
-        to: format(dateRange.to, "yyyy-MM-dd"),
-        startTime: timeRange.startTime,
-        endTime: timeRange.endTime
-      });
+      try {
+        const params = new URLSearchParams({
+          deviceId: selectedDevice,
+          from: format(dateRange.from, "yyyy-MM-dd"),
+          to: format(dateRange.to, "yyyy-MM-dd"),
+          startTime: timeRange.startTime,
+          endTime: timeRange.endTime
+        });
 
-      const response = await fetch(
-        `http://localhost:5000/api/stats/device-playback?${params}`
-      );
+        const response = await fetch(
+          `http://localhost:5000/api/stats/device-playback?${params}`
+        );
 
-      if (!response.ok) {
-        throw new Error("Çalma verileri yüklenemedi");
+        if (!response.ok) {
+          throw new Error("Çalma verileri yüklenemedi");
+        }
+        
+        const data = await response.json();
+        return Array.isArray(data) ? data : [];
+      } catch (error) {
+        console.error("Çalma verileri yüklenirken hata:", error);
+        return [];
       }
-      return response.json();
     },
-    enabled: Boolean(selectedDevice && dateRange?.from && dateRange?.to)
+    enabled: Boolean(selectedDevice && dateRange?.from && dateRange?.to),
+    initialData: []
   });
 
   const generatePDF = () => {
-    if (!dateRange?.from || !dateRange?.to || !playbackData) return;
+    if (!dateRange?.from || !dateRange?.to) return;
     
     const doc = new jsPDF();
     const deviceName = devices.find((d) => d._id === selectedDevice)?.name || "Cihaz";
