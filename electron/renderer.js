@@ -200,19 +200,23 @@ ipcRenderer.on('auto-play-playlist', (event, playlist) => {
 });
 
 function displayPlaylists() {
+  console.log('8. Starting displayPlaylists()');
   const playlists = store.get('playlists', []);
   const playlistContainer = document.getElementById('playlistContainer');
   
   if (!playlistContainer) {
-    console.error('Playlist container not found');
+    console.error('9. Playlist container not found');
     return;
   }
+  
+  console.log('10. Current playlists:', playlists);
   
   playlistContainer.innerHTML = '';
   
   // Son playlist'i göster
   const lastPlaylist = playlists[playlists.length - 1];
   if (lastPlaylist) {
+    console.log('11. Displaying last playlist:', lastPlaylist);
     const playlistElement = document.createElement('div');
     playlistElement.className = 'playlist-item';
     playlistElement.innerHTML = `
@@ -230,7 +234,9 @@ function displayPlaylists() {
     `;
     
     playlistContainer.appendChild(playlistElement);
-    console.log('Displayed playlist:', lastPlaylist.name);
+    console.log('12. Playlist element added to DOM');
+  } else {
+    console.warn('13. No playlist available to display');
   }
 }
 
@@ -309,8 +315,6 @@ ipcRenderer.on('playlist-received', (event, playlist) => {
   });
 });
 
-// Şarkı silme mesajını dinle
-
 // Update the delete message handler
 ipcRenderer.on('device-deleted', (event, id) => {
   console.log('Device deleted, cleaning up...');
@@ -375,30 +379,57 @@ ipcRenderer.on('songRemoved', (event, { songId, playlistId }) => {
 
 // Audio event listeners
 playlistAudio.addEventListener('ended', () => {
-  console.log('Song ended, playing next');
+  console.log('14. Song ended, playing next');
   ipcRenderer.invoke('song-ended');
 });
 
+playlistAudio.addEventListener('play', () => {
+  console.log('15. Audio started playing');
+});
+
+playlistAudio.addEventListener('pause', () => {
+  console.log('16. Audio paused');
+});
+
+playlistAudio.addEventListener('loadeddata', () => {
+  console.log('17. Audio data loaded successfully');
+});
+
+playlistAudio.addEventListener('error', (e) => {
+  console.error('18. Audio error:', e);
+});
+
 ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
-  console.log('Updating player with song:', currentSong);
+  console.log('1. Update Player Event Received:', { playlist, currentSong });
+  
   if (currentSong && currentSong.localPath) {
+    console.log('2. Current Song Data:', {
+      name: currentSong.name,
+      artist: currentSong.artist,
+      localPath: currentSong.localPath
+    });
+
     const normalizedPath = currentSong.localPath.replace(/\\/g, '/');
     playlistAudio.src = normalizedPath;
-    playlistAudio.play().catch(err => console.error('Playback error:', err));
+    
+    console.log('3. Setting audio source to:', normalizedPath);
+    
+    playlistAudio.play().catch(err => {
+      console.error('4. Playback error:', err);
+    });
     
     // Şarkı değiştiğinde görsel bilgileri güncelle
+    console.log('5. Calling displayPlaylists() to update UI');
     displayPlaylists();
     
     // Tray menüsünü güncelle
+    console.log('6. Sending song-changed event to main process');
     ipcRenderer.send('song-changed', {
       name: currentSong.name,
       artist: currentSong.artist
     });
-    
-    console.log('Sent song update to main process:', {
-      name: currentSong.name,
-      artist: currentSong.artist
-    });
+  } else {
+    console.warn('7. Invalid song data received:', currentSong);
   }
 });
 
