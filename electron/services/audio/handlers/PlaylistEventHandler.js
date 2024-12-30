@@ -13,12 +13,14 @@ class PlaylistEventHandler {
       }
     });
 
-    this.playlistAudio.addEventListener('loadeddata', () => {
-      console.log('Audio data loaded successfully');
+    this.playlistAudio.addEventListener('play', () => {
+      console.log('Playlist started playing');
+      require('electron').ipcRenderer.send('playback-status-changed', true);
     });
 
-    this.playlistAudio.addEventListener('error', (error) => {
-      console.error('Playlist playback error:', error);
+    this.playlistAudio.addEventListener('pause', () => {
+      console.log('Playlist paused');
+      require('electron').ipcRenderer.send('playback-status-changed', false);
     });
   }
 
@@ -29,7 +31,6 @@ class PlaylistEventHandler {
     }
 
     try {
-      console.log('Playing song:', songPath);
       this.playlistAudio.src = songPath;
       await this.playlistAudio.play();
       return true;

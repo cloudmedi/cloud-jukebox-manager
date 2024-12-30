@@ -13,12 +13,12 @@ let currentSong = null;
 function createWindow() {
   mainWindow = new BrowserWindow({
     width: 400,
-    height: 600, // Yüksekliği artırdık
+    height: 300,
     minWidth: 400,
-    minHeight: 400, // Minimum yüksekliği artırdık
+    minHeight: 300,
     maxWidth: 400,
-    maxHeight: 800, // Maximum yüksekliği artırdık
-    resizable: true, // Yeniden boyutlandırmaya izin verdik
+    maxHeight: 300,
+    resizable: false,
     backgroundColor: '#1a1b1e',
     frame: true,
     title: 'Cloud Media Player',
@@ -39,25 +39,6 @@ function createWindow() {
     mainWindow.webContents.openDevTools();
   }
 
-  // Device info kontrolü ve WebSocket bağlantısı
-  const deviceInfo = store.get('deviceInfo');
-  if (deviceInfo && deviceInfo.token) {
-    console.log('Device token found:', deviceInfo.token);
-    websocketService.connect(deviceInfo.token);
-    
-    // Playlist kontrolü
-    const playlists = store.get('playlists', []);
-    if (playlists.length > 0) {
-      const lastPlaylist = playlists[playlists.length - 1];
-      console.log('Starting last saved playlist:', lastPlaylist.name);
-      mainWindow.webContents.on('did-finish-load', () => {
-        mainWindow.webContents.send('auto-play-playlist', lastPlaylist);
-      });
-    }
-  } else {
-    console.log('No device token found');
-  }
-
   mainWindow.on('close', function (event) {
     if (!app.isQuitting) {
       event.preventDefault();
@@ -68,6 +49,20 @@ function createWindow() {
     }
     return false;
   });
+
+  const deviceInfo = store.get('deviceInfo');
+  if (deviceInfo && deviceInfo.token) {
+    websocketService.connect(deviceInfo.token);
+    
+    const playlists = store.get('playlists', []);
+    if (playlists.length > 0) {
+      const lastPlaylist = playlists[playlists.length - 1];
+      console.log('Starting last saved playlist:', lastPlaylist.name);
+      mainWindow.webContents.on('did-finish-load', () => {
+        mainWindow.webContents.send('auto-play-playlist', lastPlaylist);
+      });
+    }
+  }
 }
 
 function updateTrayMenu(song = currentSong) {
