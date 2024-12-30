@@ -1,7 +1,7 @@
 const Announcement = require('../models/Announcement');
 const DeleteMessage = require('../websocket/messages/DeleteMessage');
 const { createLogger } = require('../utils/logger');
-const fs = require('fs').promises;
+const fs = require('fs');
 const path = require('path');
 const DeleteService = require('../services/DeleteService');
 
@@ -63,17 +63,16 @@ const deleteAnnouncement = async (req, res) => {
 
     const deleteService = new DeleteService(req.wss);
     await deleteService.handleDelete('announcement', announcement._id, async () => {
-      // Önce ses dosyasını sil
+      // Ses dosyasını sil
       if (announcement.audioFile) {
         const audioPath = path.join('uploads', 'announcements', announcement.audioFile);
         try {
-          await fs.access(audioPath, fs.constants.F_OK);
-          await fs.unlink(audioPath);
-          logger.info(`Deleted audio file: ${audioPath}`);
-        } catch (error) {
-          if (error.code !== 'ENOENT') {
-            logger.error('Error deleting audio file:', error);
+          if (fs.existsSync(audioPath)) {
+            fs.unlinkSync(audioPath);
+            logger.info(`Deleted audio file: ${audioPath}`);
           }
+        } catch (error) {
+          logger.error('Error deleting audio file:', error);
         }
       }
 
@@ -81,24 +80,12 @@ const deleteAnnouncement = async (req, res) => {
       await Announcement.findByIdAndDelete(announcement._id);
       logger.info(`Successfully deleted announcement: ${announcement._id}`);
 
-      // Bağlı olan cihazlara bildirim gönder
-      if (announcement.targetDevices && announcement.targetDevices.length > 0) {
-        announcement.targetDevices.forEach(deviceId => {
-          try {
-            req.wss.sendToDevice(deviceId, 
-              DeleteMessage.createDeleteSuccess('announcement', announcement._id)
-            );
-            logger.info(`Delete notification sent to device: ${deviceId}`);
-          } catch (error) {
-            logger.warn(`Failed to send delete notification to device ${deviceId}:`, error);
-          }
-        });
-      }
-
-      // Admin'lere bildirim gönder
-      req.wss.broadcastToAdmins(
-        DeleteMessage.createDeleteSuccess('announcement', announcement._id)
-      );
+      // Cihazlara DeleteMessage formatında bildirim gönder
+      announcement.targetDevices.forEach(deviceId => {
+        req.wss.sendToDevice(deviceId, 
+          DeleteMessage.createDeleteSuccess('announcement', announcement._id)
+        );
+      });
     });
 
     res.json({ 

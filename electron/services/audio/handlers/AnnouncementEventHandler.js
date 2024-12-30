@@ -53,20 +53,6 @@ class AnnouncementEventHandler {
       console.error('Kampanya oynatma hatası:', error);
       this.resetAnnouncementState();
     });
-
-    // Kampanya durdurma eventi
-    require('electron').ipcRenderer.on('stop-announcement', () => {
-      console.log('Kampanya durdurma komutu alındı');
-      this.stopAnnouncement();
-    });
-  }
-
-  stopAnnouncement() {
-    if (this.isAnnouncementPlaying) {
-      this.campaignAudio.pause();
-      this.campaignAudio.currentTime = 0;
-      this.resetAnnouncementState();
-    }
   }
 
   resetAnnouncementState() {
@@ -77,7 +63,6 @@ class AnnouncementEventHandler {
     // Kampanyayı duraklat ve zamanı sıfırla
     this.campaignAudio.pause();
     this.campaignAudio.currentTime = 0;
-    this.campaignAudio.src = '';
     
     // Flag'leri sıfırla
     this.isAnnouncementPlaying = false;
