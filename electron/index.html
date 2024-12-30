@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <title>Cloud Media Player</title>
     <link rel="stylesheet" href="styles.css">
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self' http://localhost:5000; img-src 'self' http://localhost:5000 data:; media-src 'self' file:;">
 </head>
 <body>
     <div class="titlebar">
@@ -12,7 +11,7 @@
         <button class="titlebar-button close" id="closeButton">✕</button>
     </div>
     <div class="container">
-        <!-- Token ve Bağlantı Durumu -->
+        <!-- Token ve Bağlantı Durumu (Başlangıçta gösterilir, bağlantı sonrası gizlenir) -->
         <div id="deviceInfo" class="device-info">
             <div class="token-display"></div>
             <div class="connection-status"></div>
@@ -20,20 +19,13 @@
 
         <!-- Playlist Container -->
         <div id="playlistContainer" class="playlist-container">
-            <!-- Şarkı Bilgileri -->
-            <div id="currentSongInfo" class="current-song-info">
-                <div class="artwork-container">
-                    <img id="songArtwork" class="song-artwork" src="/placeholder.svg" alt="Song Artwork">
-                </div>
-                <div class="song-details">
-                    <h3 id="songName" class="song-name"></h3>
-                    <p id="songArtist" class="song-artist"></p>
-                </div>
-            </div>
+            <!-- Playlistler buraya eklenecek -->
         </div>
         
-        <!-- Audio Elements -->
+        <!-- Ana playlist için audio element -->
         <audio id="audioPlayer"></audio>
+        
+        <!-- Kampanyalar için ikinci audio element -->
         <audio id="campaignPlayer"></audio>
         
         <!-- İndirme Progress Bar -->
