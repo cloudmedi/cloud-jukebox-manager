@@ -15,6 +15,7 @@ class AnnouncementEventHandler {
       
       // Playlist durumunu ve mevcut şarkı indeksini kaydet
       this.wasPlaylistPlaying = !this.playlistAudio.paused;
+      console.log('Playlist durumu kaydedildi:', this.wasPlaylistPlaying);
       
       // Mevcut şarkı indeksini kaydet
       const currentPlaylist = require('electron').ipcRenderer.sendSync('get-current-playlist');
@@ -76,6 +77,8 @@ class AnnouncementEventHandler {
     // Playlist'i devam ettir
     if (this.wasPlaylistPlaying) {
       console.log('Playlist kaldığı yerden devam ediyor');
+      
+      // Küçük bir gecikme ile playlist'i başlat
       setTimeout(() => {
         this.playlistAudio.play().catch(err => {
           console.error('Playlist devam ettirme hatası:', err);
@@ -108,7 +111,7 @@ class AnnouncementEventHandler {
       await this.campaignAudio.load();
       
       // Volume'u ayarla ve çal
-      const store = new Store();
+      const store = new (require('electron-store'))();
       const volume = store.get('volume', 70);
       this.campaignAudio.volume = volume / 100;
       this.campaignAudio.currentTime = 0;
