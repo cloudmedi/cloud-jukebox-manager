@@ -16,14 +16,12 @@ class CommandHandler {
       case 'emergency-stop':
         console.log('Processing emergency stop command');
         EmergencyStateManager.setEmergencyState(true);
-        audioPlayer.handleEmergencyStop();
         mainWindow.webContents.send('emergency-stop');
         break;
 
       case 'emergency-reset':
         console.log('Processing emergency reset command');
         EmergencyStateManager.setEmergencyState(false);
-        audioPlayer.handleEmergencyReset();
         mainWindow.webContents.send('emergency-reset');
         break;
 
