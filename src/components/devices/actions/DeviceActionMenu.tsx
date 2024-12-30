@@ -16,8 +16,7 @@ import {
   MoreVertical,
   Play,
   Pause,
-  AlertOctagon,
-  Camera
+  AlertOctagon
 } from "lucide-react";
 
 interface DeviceActionMenuProps {
@@ -30,7 +29,6 @@ interface DeviceActionMenuProps {
   onRestartClick: () => void;
   onDeleteClick: () => void;
   onEmergencyClick: () => void;
-  onScreenshotClick: () => void;
 }
 
 export const DeviceActionMenu = ({
@@ -43,7 +41,6 @@ export const DeviceActionMenu = ({
   onRestartClick,
   onDeleteClick,
   onEmergencyClick,
-  onScreenshotClick,
 }: DeviceActionMenuProps) => {
   return (
     <DropdownMenu>
@@ -76,10 +73,6 @@ export const DeviceActionMenu = ({
         <DropdownMenuItem onClick={onDetailsClick}>
           <Info className="mr-2 h-4 w-4" />
           Cihaz Detayları
-        </DropdownMenuItem>
-        <DropdownMenuItem onClick={onScreenshotClick}>
-          <Camera className="mr-2 h-4 w-4" />
-          Ekran Görüntüsü
         </DropdownMenuItem>
         <DropdownMenuItem onClick={onEmergencyClick}>
           <AlertOctagon className={`mr-2 h-4 w-4 ${isEmergencyActive ? 'text-red-500' : ''}`} />
