@@ -3,38 +3,26 @@ const store = new Store();
 
 class VolumeManager {
   constructor() {
+    // Varsayılan volume değeri
     this.defaultVolume = 70;
-    this.audioElements = new Set();
   }
 
-  // Ses seviyesini store'dan al
+  // Store'dan volume değerini al
   getStoredVolume() {
     return store.get('volume', this.defaultVolume);
   }
 
-  // Audio elementi kaydet
-  registerAudioElement(audioElement) {
-    this.audioElements.add(audioElement);
-    // Mevcut volume değerini uygula
-    const volume = this.getStoredVolume();
-    audioElement.volume = volume / 100;
-  }
-
-  // Audio elementi kaldır
-  unregisterAudioElement(audioElement) {
-    this.audioElements.delete(audioElement);
-  }
-
-  // Tüm audio elementlerin ses seviyesini güncelle
-  setVolume(volume) {
+  // Volume değerini store'a kaydet
+  saveVolume(volume) {
     const normalizedVolume = Math.max(0, Math.min(100, volume));
     store.set('volume', normalizedVolume);
-    
-    this.audioElements.forEach(audio => {
-      audio.volume = normalizedVolume / 100;
-    });
-
+    console.log('Volume saved to store:', normalizedVolume);
     return normalizedVolume;
+  }
+
+  // Volume değerini 0-1 arasına normalize et
+  normalizeVolume(volume) {
+    return volume / 100;
   }
 }
 
