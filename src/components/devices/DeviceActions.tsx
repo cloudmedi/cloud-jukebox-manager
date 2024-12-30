@@ -6,6 +6,7 @@ import { toast } from "sonner";
 import { DeviceActionMenu } from "./actions/DeviceActionMenu";
 import { DeviceActionDialogs } from "./actions/DeviceActionDialogs";
 import { useQueryClient } from "@tanstack/react-query";
+import { ScreenshotDialog } from "./ScreenshotDialog";
 
 interface DeviceActionsProps {
   device: Device;
@@ -18,7 +19,35 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isRestartDialogOpen, setIsRestartDialogOpen] = useState(false);
   const [isEmergencyActive, setIsEmergencyActive] = useState(false);
+  const [isScreenshotDialogOpen, setIsScreenshotDialogOpen] = useState(false);
+  const [screenshotData, setScreenshotData] = useState<string>();
+  const [isScreenshotLoading, setIsScreenshotLoading] = useState(false);
   const queryClient = useQueryClient();
+
+  const handleTakeScreenshot = async () => {
+    try {
+      setIsScreenshotDialogOpen(true);
+      setIsScreenshotLoading(true);
+      setScreenshotData(undefined);
+
+      const response = await websocketService.sendMessage({
+        type: 'command',
+        token: device.token,
+        command: 'take-screenshot'
+      });
+
+      if (response.type === 'screenshot') {
+        setScreenshotData(response.data);
+      } else {
+        toast.error('Ekran görüntüsü alınamadı');
+      }
+    } catch (error) {
+      console.error('Screenshot error:', error);
+      toast.error('Ekran görüntüsü alınamadı');
+    } finally {
+      setIsScreenshotLoading(false);
+    }
+  };
 
   const handleEmergencyAction = async () => {
     try {
@@ -130,6 +159,7 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
         onRestartClick={() => setIsRestartDialogOpen(true)}
         onDeleteClick={() => setIsDeleteDialogOpen(true)}
         onEmergencyClick={handleEmergencyAction}
+        onScreenshotClick={handleTakeScreenshot}
       />
 
       <DeviceActionDialogs
@@ -148,6 +178,13 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
         onGroupChange={handleGroupChange}
         onDelete={handleDelete}
         onRestart={handleRestart}
+      />
+
+      <ScreenshotDialog
+        isOpen={isScreenshotDialogOpen}
+        onClose={() => setIsScreenshotDialogOpen(false)}
+        screenshotData={screenshotData}
+        isLoading={isScreenshotLoading}
       />
     </>
   );
