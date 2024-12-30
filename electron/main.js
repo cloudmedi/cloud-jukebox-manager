@@ -150,9 +150,21 @@ function createTray() {
       const { x, y } = bounds;
       const contextMenu = tray.getContextMenu();
       contextMenu.popup({ 
-        x: x - 150, // Menüyü daha geniş göstermek için x pozisyonunu ayarla
+        x: x - 200, // Menüyü daha da geniş göstermek için x pozisyonunu ayarla
         y: y,
-        width: 300 // Menü genişliğini artır
+        width: 400, // Menü genişliğini daha da artır
+        rounded: true, // Yuvarlak köşeler ekle
+        customStylesheet: `
+          .menu-item {
+            padding: 12px 16px;
+            border-radius: 8px;
+            margin: 4px;
+            font-size: 14px;
+          }
+          .separator {
+            margin: 8px 0;
+          }
+        `
       });
     });
     
