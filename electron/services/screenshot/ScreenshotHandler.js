@@ -5,16 +5,19 @@ class ScreenshotHandler {
     try {
       console.log('Getting window sources...');
       
+      // Tüm pencere tiplerini almak için types array'ini genişlettik
       const sources = await desktopCapturer.getSources({
-        types: ['window'],
-        thumbnailSize: { width: 1920, height: 1080 }
+        types: ['window', 'screen'],
+        thumbnailSize: { width: 1920, height: 1080 },
+        fetchWindowIcons: true
       });
 
       console.log('Available sources:', sources.map(s => s.name));
 
-      // Electron uygulamasını bul
+      // Cloud Media Player penceresini bul
       const mainWindow = sources.find(source => 
-        source.name === 'Cloud Media Player'
+        source.name === 'Cloud Media Player' || 
+        source.name.includes('Cloud Media Player')
       );
 
       if (!mainWindow) {

@@ -22,11 +22,12 @@ function createWindow() {
     backgroundColor: '#1a1b1e',
     titleBarStyle: 'hidden',
     frame: false,
-    title: 'Cloud Media Player', // Added title property
+    title: 'Cloud Media Player',
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
-      webSecurity: false
+      webSecurity: false,
+      enableRemoteModule: true
     }
   });
 
