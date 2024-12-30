@@ -4,8 +4,6 @@ class AnnouncementEventHandler {
     this.campaignAudio = campaignAudio;
     this.isAnnouncementPlaying = false;
     this.wasPlaylistPlaying = false;
-    this.lastPlaylistIndex = 0;
-    this.announcementEndListener = null;
     this.setupEventListeners();
   }
 
@@ -14,48 +12,38 @@ class AnnouncementEventHandler {
     this.campaignAudio.addEventListener('loadeddata', () => {
       console.log('Anons yüklendi, playlist durumu kontrol ediliyor');
       
-      // Playlist durumunu ve mevcut şarkı indeksini bir kez kaydet
+      // Playlist durumunu kaydet ve durdur
       if (!this.isAnnouncementPlaying) {
         this.wasPlaylistPlaying = !this.playlistAudio.paused;
-        
-        // Mevcut şarkı indeksini bir kez kaydet
-        const currentPlaylist = require('electron').ipcRenderer.sendSync('get-current-playlist');
-        if (currentPlaylist) {
-          this.lastPlaylistIndex = currentPlaylist.currentIndex;
-        }
-      }
-
-      if (this.wasPlaylistPlaying) {
-        this.playlistAudio.pause();
-      }
-    });
-
-    // Kampanya başladığında
-    this.campaignAudio.addEventListener('play', () => {
-      if (!this.isAnnouncementPlaying) {
-        console.log('Anons başladı');
-        this.isAnnouncementPlaying = true;
-        
-        if (!this.playlistAudio.paused) {
+        if (this.wasPlaylistPlaying) {
+          console.log('Playlist duraklatılıyor...');
           this.playlistAudio.pause();
         }
       }
     });
 
+    // Kampanya başladığında
+    this.campaignAudio.addEventListener('play', () => {
+      console.log('Anons başladı');
+      this.isAnnouncementPlaying = true;
+      
+      // Eğer playlist hala çalıyorsa, durdur
+      if (!this.playlistAudio.paused) {
+        console.log('Playlist zorla durduruluyor');
+        this.playlistAudio.pause();
+      }
+    });
+
     // Kampanya bittiğinde
     this.campaignAudio.addEventListener('ended', () => {
-      if (this.isAnnouncementPlaying) {
-        console.log('Anons bitti, temizleme başlıyor');
-        this.resetAnnouncementState();
-      }
+      console.log('Anons bitti, temizleme başlıyor');
+      this.resetAnnouncementState();
     });
 
     // Kampanya hata durumunda
     this.campaignAudio.addEventListener('error', (error) => {
-      if (this.isAnnouncementPlaying) {
-        console.error('Anons oynatma hatası:', error);
-        this.resetAnnouncementState();
-      }
+      console.error('Anons oynatma hatası:', error);
+      this.resetAnnouncementState();
     });
   }
 
@@ -64,19 +52,17 @@ class AnnouncementEventHandler {
 
     console.log('Anons durumu sıfırlanıyor');
     
-    // Kampanyayı duraklat ve zamanı sıfırla
+    // Kampanyayı duraklat ve temizle
     this.campaignAudio.pause();
     this.campaignAudio.currentTime = 0;
     this.campaignAudio.src = '';
     
-    // Flag'leri sıfırla
+    // Flag'i sıfırla
     this.isAnnouncementPlaying = false;
     
-    // Anonsun bittiğini bir kez bildir
+    // Anonsun bittiğini bildir
     const ipcRenderer = require('electron').ipcRenderer;
-    ipcRenderer.send('announcement-ended', {
-      lastPlaylistIndex: this.lastPlaylistIndex
-    });
+    ipcRenderer.send('announcement-ended');
     
     // Playlist'i devam ettir
     if (this.wasPlaylistPlaying) {
@@ -101,6 +87,7 @@ class AnnouncementEventHandler {
     }
 
     try {
+      // Eğer başka bir anons çalıyorsa, onu durdur
       if (this.isAnnouncementPlaying) {
         await this.resetAnnouncementState();
       }
@@ -113,12 +100,16 @@ class AnnouncementEventHandler {
         this.playlistAudio.pause();
       }
       
-      // Her seferinde src'yi yeniden ayarla
+      // Anons audio elementini hazırla
       this.campaignAudio.src = audioPath;
+      
+      // Volume değerini al ve uygula
+      const store = new (require('electron-store'))();
+      const volume = store.get('volume', 70);
+      this.campaignAudio.volume = volume / 100;
       
       // Ses dosyasını yükle ve çal
       await this.campaignAudio.load();
-      this.campaignAudio.currentTime = 0;
       await this.campaignAudio.play();
       
       return true;
