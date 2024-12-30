@@ -67,7 +67,7 @@ function updateTrayMenu(song = currentSong) {
   const deviceInfo = store.get('deviceInfo');
   const contextMenu = Menu.buildFromTemplate([
     {
-      label: '▶️ Cloud Media Player',
+      label: 'Cloud Media Player',
       click: function() {
         mainWindow.show();
         mainWindow.focus();
@@ -75,7 +75,7 @@ function updateTrayMenu(song = currentSong) {
     },
     { type: 'separator' },
     {
-      label: '🎵 Şu an çalıyor',
+      label: 'Şu an çalıyor',
       enabled: false,
       id: 'now-playing-label'
     },
@@ -91,20 +91,20 @@ function updateTrayMenu(song = currentSong) {
     },
     { type: 'separator' },
     {
-      label: isPlaying ? '⏸️ Duraklat' : '▶️ Çal',
+      label: isPlaying ? 'Duraklat' : 'Çal',
       click: function() {
         mainWindow.webContents.send('toggle-playback');
       }
     },
     {
-      label: '⏭️ Sonraki Şarkı',
+      label: 'Sonraki Şarkı',
       click: function() {
         mainWindow.webContents.send('next-song');
       }
     },
     { type: 'separator' },
     {
-      label: `📱 Cihaz Bilgisi`,
+      label: 'Cihaz Bilgisi',
       submenu: [
         {
           label: `Token: ${deviceInfo?.token || 'Yok'}`,
@@ -114,7 +114,7 @@ function updateTrayMenu(song = currentSong) {
     },
     { type: 'separator' },
     {
-      label: '❌ Çıkış',
+      label: 'Çıkış',
       click: function() {
         app.isQuitting = true;
         app.quit();
@@ -149,7 +149,11 @@ function createTray() {
     tray.on('right-click', (event, bounds) => {
       const { x, y } = bounds;
       const contextMenu = tray.getContextMenu();
-      contextMenu.popup({ x: x - 100, y: y });
+      contextMenu.popup({ 
+        x: x - 150, // Menüyü daha geniş göstermek için x pozisyonunu ayarla
+        y: y,
+        width: 300 // Menü genişliğini artır
+      });
     });
     
     console.log('Tray created successfully');
