@@ -8,10 +8,7 @@ const getDevices = async (req, res) => {
     const limit = parseInt(req.query.limit) || 20;
 
     const devices = await Device.find()
-      .populate({
-        path: 'activePlaylist',
-        select: 'name songs'
-      })
+      .populate('activePlaylist')
       .populate('groupId')
       .lean()
       .skip(skip)
@@ -21,22 +18,10 @@ const getDevices = async (req, res) => {
     const devicesWithInfo = await Promise.all(
       devices.map(async (device) => {
         const tokenInfo = await Token.findOne({ token: device.token }).lean();
-        
-        // Aktif playlist ve çalan şarkı bilgilerini ekle
-        let currentSong = null;
-        if (device.activePlaylist && device.activePlaylist.songs && device.activePlaylist.songs.length > 0) {
-          const currentSongIndex = device.currentSongIndex || 0;
-          currentSong = device.activePlaylist.songs[currentSongIndex];
-        }
-
         return {
           ...device,
           deviceInfo: tokenInfo?.deviceInfo || null,
-          playlistStatus: device.activePlaylist ? device.playlistStatus : null,
-          currentSong: currentSong ? {
-            name: currentSong.name,
-            artist: currentSong.artist
-          } : null
+          playlistStatus: device.activePlaylist ? device.playlistStatus : null
         };
       })
     );

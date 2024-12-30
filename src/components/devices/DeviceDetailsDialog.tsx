@@ -121,8 +121,22 @@ const DeviceDetailsDialog = ({ device, isOpen, onClose }: DeviceDetailsDialogPro
                 </div>
 
                 <Separator />
+
+                <div>
+                  <h3 className="text-lg font-semibold mb-4">Ağ Arayüzleri</h3>
+                  <div className="space-y-2">
+                    {device.deviceInfo.networkInterfaces.map((ip, index) => (
+                      <div key={index}>
+                        <span className="text-sm text-muted-foreground">IP Adresi {index + 1}</span>
+                        <p className="font-mono">{ip}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
               </>
             )}
+
+            <Separator />
 
             <div>
               <h3 className="text-lg font-semibold mb-4">Zaman Bilgileri</h3>
