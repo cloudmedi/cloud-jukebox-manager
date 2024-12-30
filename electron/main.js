@@ -3,7 +3,6 @@ const path = require('path');
 const Store = require('electron-store');
 const store = new Store();
 const websocketService = require('./services/websocketService');
-require('./services/audioService');
 
 let mainWindow;
 let tray = null;
@@ -22,7 +21,8 @@ function createWindow() {
     backgroundColor: '#1a1b1e',
     titleBarStyle: 'hidden',
     frame: false,
-    title: 'Cloud Media Player', // Added title property
+    title: 'Cloud Media Player',
+    autoHideMenuBar: true,
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
