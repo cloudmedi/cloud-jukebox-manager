@@ -1,5 +1,6 @@
 const { BrowserWindow } = require('electron');
 const EmergencyStateManager = require('../../emergency/EmergencyStateManager');
+const audioPlayer = require('../../audio/AudioPlayer');
 
 class CommandHandler {
   static handleCommand(message) {

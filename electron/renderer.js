@@ -15,19 +15,11 @@ const ScreenshotEventHandler = require('./services/screenshot/ScreenshotEventHan
 const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
 
-// Başlangıçta emergency state kontrolü
-const emergencyState = store.get('emergencyState');
-if (emergencyState && emergencyState.isActive) {
-  console.log('Emergency state is active on startup');
-  if (playlistAudio) {
-    playlistAudio.pause();
-    playlistAudio.currentTime = 0;
-    playlistAudio.volume = 0;
-  }
-  showEmergencyMessage();
-}
+// Başlangıçta store'dan volume değerini al ve ayarla
+const initialVolume = VolumeManager.getStoredVolume();
+playlistAudio.volume = VolumeManager.normalizeVolume(initialVolume);
+console.log('Initial volume set from store:', initialVolume);
 
-// Emergency stop handler
 ipcRenderer.on('emergency-stop', () => {
   console.log('Emergency stop received');
   
@@ -47,6 +39,7 @@ ipcRenderer.on('emergency-stop', () => {
   }
 
   // Store'u güncelle
+  const store = new Store();
   store.set('playbackState', {
     isPlaying: false,
     emergencyStopped: true
@@ -67,7 +60,7 @@ ipcRenderer.on('emergency-reset', () => {
     console.log('Resuming playback after emergency reset');
     const playlistAudio = document.getElementById('audioPlayer');
     if (playlistAudio) {
-      playlistAudio.volume = playbackState.volume || 0.7;
+      playlistAudio.volume = playbackState.volume || 0.7; // Restore previous volume or default
       playlistAudio.play().catch(err => console.error('Resume playback error:', err));
     }
   }
@@ -137,24 +130,7 @@ ipcRenderer.on('resume-playback', () => {
 
 // WebSocket bağlantı durumu
 ipcRenderer.on('websocket-status', (event, isConnected) => {
-    const statusBadge = document.getElementById('statusBadge');
-    if (isConnected) {
-        statusBadge.className = 'status-badge connected';
-        console.log('WebSocket bağlantısı aktif');
-    } else {
-        statusBadge.className = 'status-badge disconnected';
-        console.log('WebSocket bağlantısı kesildi');
-    }
     UIManager.updateConnectionStatus(isConnected);
-});
-
-// Yükleme durumu için
-ipcRenderer.on('loading-status', (event, isLoading) => {
-    const statusBadge = document.getElementById('statusBadge');
-    if (isLoading) {
-        statusBadge.className = 'status-badge loading';
-        console.log('Yükleniyor...');
-    }
 });
 
 // İndirme progress
