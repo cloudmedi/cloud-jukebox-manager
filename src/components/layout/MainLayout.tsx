@@ -1,7 +1,8 @@
 import { useState, createContext, useContext } from "react";
 import { Outlet } from "react-router-dom";
-import TopNavigation from "./TopNavigation";
-import Footer from "./Footer";
+import { SidebarProvider } from "@/components/ui/sidebar";
+import Sidebar from "./Sidebar";
+import Header from "./Header";
 import Player from "../player/Player";
 
 type PlayerContextType = {
@@ -21,14 +22,18 @@ export const MainLayout = () => {
   
   return (
     <PlayerContext.Provider value={{ showPlayer, setShowPlayer }}>
-      <div className="min-h-screen flex flex-col bg-white" data-player-visible={showPlayer}>
-        <TopNavigation />
-        <main className="flex-1 mt-16">
-          <Outlet />
-        </main>
-        <Footer />
-        {showPlayer && <Player />}
-      </div>
+      <SidebarProvider>
+        <div className="main-layout min-h-screen flex w-full bg-background" data-player-visible={showPlayer}>
+          <Sidebar />
+          <div className="flex-1 flex flex-col">
+            <Header />
+            <main className="flex-1 p-6 overflow-auto">
+              <Outlet />
+            </main>
+            {showPlayer && <Player />}
+          </div>
+        </div>
+      </SidebarProvider>
     </PlayerContext.Provider>
   );
 };
