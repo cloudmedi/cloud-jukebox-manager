@@ -142,8 +142,6 @@ ipcRenderer.on('error', (event, message) => {
 });
 
 // Volume control from WebSocket
-
-// Volume control from WebSocket
 ipcRenderer.on('set-volume', (event, volume) => {
     console.log('Setting volume to:', volume);
     // Volume değerini kaydet ve normalize et
@@ -212,25 +210,35 @@ ipcRenderer.on('auto-play-playlist', (event, playlist) => {
 });
 
 function displayPlaylists() {
-  console.log('8. Starting displayPlaylists()');
+  console.log('=== PLAYLIST DISPLAY DEBUG LOGS ===');
+  console.log('1. Starting displayPlaylists()');
   const playlists = store.get('playlists', []);
   const playlistContainer = document.getElementById('playlistContainer');
   
   if (!playlistContainer) {
-    console.error('9. Playlist container not found');
+    console.error('2. Playlist container not found');
     return;
   }
   
-  console.log('10. Current playlists:', playlists);
+  console.log('3. Current playlists in store:', playlists);
   
   playlistContainer.innerHTML = '';
   
   // Son playlist'i göster
   const lastPlaylist = playlists[playlists.length - 1];
   if (lastPlaylist) {
-    console.log('11. Displaying last playlist:', lastPlaylist);
+    console.log('4. Last playlist details:', {
+      id: lastPlaylist._id,
+      name: lastPlaylist.name,
+      songCount: lastPlaylist.songs.length,
+      firstSong: lastPlaylist.songs[0]
+    });
+
     const playlistElement = document.createElement('div');
     playlistElement.className = 'playlist-item';
+    
+    console.log('5. Creating playlist element with artwork:', lastPlaylist.artwork);
+    
     playlistElement.innerHTML = `
       <div class="playlist-info">
         ${lastPlaylist.artwork ? 
@@ -245,11 +253,13 @@ function displayPlaylists() {
       </div>
     `;
     
+    console.log('6. Playlist element created, adding to container');
     playlistContainer.appendChild(playlistElement);
-    console.log('12. Playlist element added to DOM');
+    console.log('7. Playlist element added to DOM');
   } else {
-    console.warn('13. No playlist available to display');
+    console.warn('8. No playlist available to display');
   }
+  console.log('=== END PLAYLIST DISPLAY DEBUG LOGS ===');
 }
 
 function deleteOldPlaylists() {
