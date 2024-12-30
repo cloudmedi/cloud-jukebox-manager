@@ -89,6 +89,32 @@ class WebSocketService {
     }
   }
 
+  public sendMessage(message: any): Promise<any> {
+    return new Promise((resolve) => {
+      if (this.ws?.readyState === WebSocket.OPEN) {
+        // Mesaj tipi için bir handler ekle
+        const messageHandler = (event: MessageEvent) => {
+          try {
+            const response = JSON.parse(event.data);
+            if (response.type === message.command) {
+              this.ws?.removeEventListener('message', messageHandler);
+              resolve(response);
+            }
+          } catch (error) {
+            console.error('Message parsing error:', error);
+          }
+        };
+
+        this.ws.addEventListener('message', messageHandler);
+        this.ws.send(JSON.stringify(message));
+      } else {
+        console.error('WebSocket bağlantısı kurulamadı');
+        this.connect();
+        resolve(null);
+      }
+    });
+  }
+
   public addMessageHandler(type: string, handler: MessageHandler) {
     if (!this.messageHandlers.has(type)) {
       this.messageHandlers.set(type, new Set());
@@ -103,15 +129,6 @@ class WebSocketService {
       if (handlers.size === 0) {
         this.messageHandlers.delete(type);
       }
-    }
-  }
-
-  public sendMessage(message: any) {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message));
-    } else {
-      console.error('WebSocket bağlantısı kurulamadı');
-      this.connect();
     }
   }
 
