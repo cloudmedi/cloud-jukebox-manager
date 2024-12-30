@@ -4,7 +4,8 @@ class AnnouncementEventHandler {
     this.campaignAudio = campaignAudio;
     this.isAnnouncementPlaying = false;
     this.wasPlaylistPlaying = false;
-    this.lastPlaylistIndex = 0;
+    this.lastAnnouncementTime = 0;
+    this.lastPlaylistIndex = 0; // Yeni: Son çalan şarkının indeksini tutacak
     this.setupEventListeners();
   }
 
@@ -15,7 +16,6 @@ class AnnouncementEventHandler {
       
       // Playlist durumunu ve mevcut şarkı indeksini kaydet
       this.wasPlaylistPlaying = !this.playlistAudio.paused;
-      console.log('Playlist durumu kaydedildi:', this.wasPlaylistPlaying);
       
       // Mevcut şarkı indeksini kaydet
       const currentPlaylist = require('electron').ipcRenderer.sendSync('get-current-playlist');
@@ -67,24 +67,27 @@ class AnnouncementEventHandler {
     // Flag'leri sıfırla
     this.isAnnouncementPlaying = false;
     
+    // Son anons zamanını kaydet
+    this.lastAnnouncementTime = Date.now();
+    
     // Anonsun bittiğini bildir
     const ipcRenderer = require('electron').ipcRenderer;
     ipcRenderer.send('announcement-ended', {
-      lastPlaylistIndex: this.lastPlaylistIndex,
-      wasPlaying: this.wasPlaylistPlaying
+      lastPlaylistIndex: this.lastPlaylistIndex
     });
     
     // Playlist'i devam ettir
     if (this.wasPlaylistPlaying) {
-      console.log('Playlist kaldığı yerden devam ediyor');
+      console.log('Playlist kaldığı yerden devam ediyor, indeks:', this.lastPlaylistIndex);
       setTimeout(() => {
-        this.playlistAudio.play().catch(err => {
-          console.error('Playlist devam ettirme hatası:', err);
+        // Bir sonraki şarkıya geç
+        ipcRenderer.send('play-next-song', {
+          startFromIndex: this.lastPlaylistIndex + 1
         });
       }, 500);
     }
     
-    // Durumları sıfırla
+    // wasPlaylistPlaying durumunu sıfırla
     this.wasPlaylistPlaying = false;
   }
 
@@ -94,14 +97,34 @@ class AnnouncementEventHandler {
       return false;
     }
 
+    // Minimum bekleme süresi kontrolü (5 saniye)
+    const now = Date.now();
+    const timeSinceLastAnnouncement = now - this.lastAnnouncementTime;
+    
+    if (timeSinceLastAnnouncement < 5000) {
+      console.log('Son anonstan bu yana 5 saniye geçmedi, anons atlanıyor');
+      return false;
+    }
+
     try {
       console.log('Kampanya başlatılıyor:', audioPath);
+      console.log('Mevcut playlist durumu:', this.playlistAudio.paused ? 'duraklatılmış' : 'çalıyor');
       
-      // Kampanya audio elementini hazırla
+      // Önce playlist'i duraklat
+      if (!this.playlistAudio.paused) {
+        console.log('Playlist duraklatılıyor');
+        this.wasPlaylistPlaying = true;
+        this.playlistAudio.pause();
+      }
+      
+      // Her seferinde src'yi yeniden ayarla
       this.campaignAudio.src = audioPath;
       
-      // Kampanyayı başlat
+      // Ses dosyasını yükle ve çal
+      await this.campaignAudio.load();
+      this.campaignAudio.currentTime = 0;
       await this.campaignAudio.play();
+      
       return true;
     } catch (err) {
       console.error('Kampanya başlatma hatası:', err);
