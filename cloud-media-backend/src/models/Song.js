@@ -37,10 +37,6 @@ const songSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Dosya yolu zorunludur']
   },
-  artwork: {
-    type: String,
-    default: null
-  },
   duration: {
     type: Number,
     required: [true, 'Şarkı süresi zorunludur']
