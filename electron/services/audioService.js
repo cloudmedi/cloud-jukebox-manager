@@ -19,6 +19,13 @@ class AudioService {
     AnnouncementScheduler.initialize();
   }
 
+getCurrentSong() {
+  if (this.queue && this.currentIndex >= 0 && this.currentIndex < this.queue.length) {
+    return this.queue[this.currentIndex];
+  }
+  return null;
+}
+
   setupWebSocketHandlers() {
     websocketService.addMessageHandler('command', async (message) => {
       console.log('Received command:', message);
@@ -259,3 +266,4 @@ class AudioService {
 }
 
 module.exports = new AudioService();
+

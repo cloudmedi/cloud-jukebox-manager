@@ -202,3 +202,12 @@ ipcMain.on('playback-status-changed', (event, playing) => {
   isPlaying = playing;
   updateTrayMenu(currentSong);
 });
+
+// Playlist durumunu sorgulama
+ipcMain.handle('get-current-playlist', (event) => {
+  return {
+    currentSong: audioService.getCurrentSong(),
+    currentIndex: audioService.currentIndex,
+    isPlaying: audioService.isPlaying
+  };
+});
