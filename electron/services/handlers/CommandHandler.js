@@ -1,6 +1,4 @@
 const { BrowserWindow } = require('electron');
-const EmergencyStateManager = require('../emergency/EmergencyStateManager');
-const audioPlayer = require('../audio/AudioPlayer');
 
 class CommandHandler {
   static handleCommand(message) {
@@ -16,18 +14,6 @@ class CommandHandler {
       case 'screenshot':
         console.log('Taking screenshot...');
         mainWindow.webContents.send('take-screenshot');
-        break;
-
-      case 'emergency-stop':
-        console.log('Processing emergency stop command');
-        EmergencyStateManager.setEmergencyState(true);
-        mainWindow.webContents.send('emergency-stop');
-        break;
-
-      case 'emergency-reset':
-        console.log('Processing emergency reset command');
-        EmergencyStateManager.setEmergencyState(false);
-        mainWindow.webContents.send('emergency-reset');
         break;
 
       case 'songRemoved':
