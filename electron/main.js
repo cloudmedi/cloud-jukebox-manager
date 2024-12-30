@@ -22,6 +22,7 @@ function createWindow() {
     backgroundColor: '#1a1b1e',
     titleBarStyle: 'hidden',
     frame: false,
+    title: 'Cloud Media Player', // Added title property
     webPreferences: {
       nodeIntegration: true,
       contextIsolation: false,
