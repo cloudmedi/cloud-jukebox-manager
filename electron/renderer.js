@@ -269,12 +269,20 @@ ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
 });
 
 // Sonraki şarkı için event listener
-ipcRenderer.on('next-song', () => {
+
+// Sonraki şarkı için event listener
+ipcRenderer.on('next-song', async () => {
   console.log('Next song requested from tray menu');
-  // Önce sonraki şarkıya geç
-  ipcRenderer.invoke('song-ended').then(() => {
-    // Şarkı değiştiğinde UI'ı güncelle
-    const currentPlaylist = ipcRenderer.sendSync('get-current-playlist');
+  
+  try {
+    // Önce şarkıyı değiştir ve değişimin tamamlanmasını bekle
+    await ipcRenderer.invoke('song-ended');
+    console.log('Song change completed');
+    
+    // Şarkı değiştikten sonra yeni şarkı bilgisini al
+    const currentPlaylist = await ipcRenderer.invoke('get-current-playlist');
+    console.log('Got new playlist info:', currentPlaylist);
+    
     if (currentPlaylist && currentPlaylist.currentSong) {
       console.log('Updating UI with new song:', currentPlaylist.currentSong);
       
@@ -285,15 +293,19 @@ ipcRenderer.on('next-song', () => {
       if (songNameElement && artistElement) {
         songNameElement.textContent = currentPlaylist.currentSong.name;
         artistElement.textContent = currentPlaylist.currentSong.artist;
+        console.log('UI updated successfully');
       }
       
-      // Tray menüsünü de güncelle
+      // Tray menüsünü güncelle
       ipcRenderer.send('song-changed', {
         name: currentPlaylist.currentSong.name,
         artist: currentPlaylist.currentSong.artist
       });
+      console.log('Tray menu updated');
     }
-  });
+  } catch (error) {
+    console.error('Error during song change:', error);
+  }
 });
 
 // İlk yüklemede playlistleri göster
@@ -322,3 +334,4 @@ ipcRenderer.on('show-toast', (event, toast) => {
       break;
   }
 });
+

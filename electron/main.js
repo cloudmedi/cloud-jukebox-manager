@@ -190,11 +190,14 @@ ipcMain.handle('get-device-info', async () => {
   return store.get('deviceInfo');
 });
 
-// Playlist durumunu sorgulama
-ipcMain.on('get-current-playlist', (event) => {
+// Playlist durumunu sorgulama - artık asenkron
+ipcMain.handle('get-current-playlist', async (event) => {
   const audioService = require('./services/audioService');
-  event.returnValue = {
-    currentSong: audioService.getCurrentSong(),
+  const currentSong = audioService.getCurrentSong();
+  console.log('Sending current song info:', currentSong);
+  
+  return {
+    currentSong: currentSong,
     currentIndex: audioService.currentIndex,
     isPlaying: audioService.isPlaying
   };
