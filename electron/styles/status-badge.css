@@ -1,11 +1,11 @@
 .status-badge {
-  position: fixed;
-  top: 40px;
-  right: 16px;
-  width: 12px;
-  height: 12px;
+  display: inline-block;
+  width: 8px;
+  height: 8px;
   border-radius: 50%;
+  margin-left: 8px;
   transition: all 0.3s ease;
+  vertical-align: middle;
 }
 
 .status-badge.connected {
