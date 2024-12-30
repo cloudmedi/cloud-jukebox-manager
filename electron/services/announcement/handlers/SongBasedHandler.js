@@ -8,44 +8,50 @@ class SongBasedHandler {
     this.isProcessingAnnouncement = false;
     this.lastAnnouncementTime = 0;
     this.lastSongEndTime = 0;
+    this.announcementEndListener = null;
     this.setupEventListeners();
   }
 
   setupEventListeners() {
-    require('electron').ipcMain.on('announcement-ended', () => {
-      console.log('Anons bitti sinyali alındı, flag sıfırlanıyor');
-      this.isProcessingAnnouncement = false;
-      // Anons bittiğinde sayacı artırmıyoruz ve son anons zamanını kaydediyoruz
-      this.lastAnnouncementTime = Date.now();
-    });
+    // Önce varsa eski listener'ı temizle
+    if (this.announcementEndListener) {
+      require('electron').ipcMain.removeListener('announcement-ended', this.announcementEndListener);
+    }
+
+    // Yeni listener'ı oluştur ve sakla
+    this.announcementEndListener = () => {
+      if (this.isProcessingAnnouncement) {
+        console.log('Anons bitti sinyali alındı, flag sıfırlanıyor');
+        this.isProcessingAnnouncement = false;
+        this.lastAnnouncementTime = Date.now();
+      }
+    };
+
+    // Yeni listener'ı ekle
+    require('electron').ipcMain.on('announcement-ended', this.announcementEndListener);
   }
 
   onSongEnd() {
     console.log('\n=== ŞARKI BAZLI ANONS KONTROLÜ ===');
     console.log('İşlem durumu:', this.isProcessingAnnouncement);
     
-    // Eğer anons işleniyorsa sayacı artırma
     if (this.isProcessingAnnouncement) {
       console.log('Anons işleniyor, sayaç artırılmıyor');
       return;
     }
 
-    // Minimum süre kontrolü
     const now = Date.now();
     
-    // Son anonstan bu yana geçen süreyi kontrol et
     if (now - this.lastAnnouncementTime < 5000) {
       console.log('Son anonstan bu yana 5 saniye geçmedi, sayaç artırılmıyor');
       return;
     }
 
-    // Son şarkı bitişinden bu yana geçen süreyi kontrol et
     if (now - this.lastSongEndTime < 2000) {
       console.log('Son şarkı bitişinden bu yana 2 saniye geçmedi, sayaç artırılmıyor');
       return;
     }
 
-    // Sadece normal şarkı bittiğinde sayacı artır
     this.songCounter++;
     this.lastSongEndTime = now;
     console.log(`Şarkı sayacı artırıldı: ${this.songCounter}`);
@@ -87,6 +93,13 @@ class SongBasedHandler {
 
     console.log('Anons çalma isteği gönderiliyor...');
     mainWindow.webContents.send('play-announcement', announcement);
+  }
+
+  cleanup() {
+    if (this.announcementEndListener) {
+      require('electron').ipcMain.removeListener('announcement-ended', this.announcementEndListener);
+      this.announcementEndListener = null;
+    }
   }
 }
 
