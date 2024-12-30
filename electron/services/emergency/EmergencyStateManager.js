@@ -7,21 +7,24 @@ class EmergencyStateManager {
     this.isEmergencyActive = this.store.get('emergencyState.isActive', false);
   }
 
-  setEmergencyState(isActive) {
-    this.isEmergencyActive = isActive;
-    this.store.set('emergencyState', {
+  static setEmergencyState(isActive) {
+    const instance = new EmergencyStateManager();
+    instance.isEmergencyActive = isActive;
+    instance.store.set('emergencyState', {
       isActive,
       timestamp: new Date().toISOString()
     });
   }
 
-  isActive() {
-    return this.isEmergencyActive;
+  static isActive() {
+    const instance = new EmergencyStateManager();
+    return instance.isEmergencyActive;
   }
 
-  getState() {
-    return this.store.get('emergencyState');
+  static getState() {
+    const instance = new EmergencyStateManager();
+    return instance.store.get('emergencyState');
   }
 }
 
-module.exports = new EmergencyStateManager();
+module.exports = EmergencyStateManager;
