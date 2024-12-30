@@ -12,13 +12,37 @@ const VolumeManager = require('./services/audio/VolumeManager');
 const ArtworkManager = require('./services/ui/ArtworkManager');
 const ScreenshotEventHandler = require('./services/screenshot/ScreenshotEventHandler');
 
+// Başlangıç ayarları
 const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
+const playbackStatus = document.createElement('div');
+playbackStatus.className = 'playback-status stopped';
 
-// Başlangıçta store'dan volume değerini al ve ayarla
-const initialVolume = VolumeManager.getStoredVolume();
-playlistAudio.volume = VolumeManager.normalizeVolume(initialVolume);
-console.log('Initial volume set from store:', initialVolume);
+// Titlebar'a playback status ekle
+const titlebarControls = document.createElement('div');
+titlebarControls.className = 'titlebar-controls';
+titlebarControls.appendChild(playbackStatus);
+titlebarControls.appendChild(document.getElementById('closeButton'));
+
+const titlebar = document.querySelector('.titlebar');
+titlebar.appendChild(titlebarControls);
+
+// Playback durumu değişikliklerini dinle
+playlistAudio.addEventListener('play', () => {
+    playbackStatus.className = 'playback-status playing';
+});
+
+playlistAudio.addEventListener('pause', () => {
+    playbackStatus.className = 'playback-status paused';
+});
+
+playlistAudio.addEventListener('waiting', () => {
+    playbackStatus.className = 'playback-status loading';
+});
+
+playlistAudio.addEventListener('ended', () => {
+    playbackStatus.className = 'playback-status stopped';
+});
 
 ipcRenderer.on('emergency-stop', () => {
   console.log('Emergency stop received');
