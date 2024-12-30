@@ -9,6 +9,7 @@ const AnnouncementAudioService = require('./services/audio/AnnouncementAudioServ
 const PlaylistInitializer = require('./services/playlist/PlaylistInitializer');
 const PlayerUIManager = require('./services/ui/PlayerUIManager');
 const VolumeManager = require('./services/audio/VolumeManager');
+const ArtworkManager = require('./services/ui/ArtworkManager');
 
 const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
@@ -142,8 +143,6 @@ ipcRenderer.on('error', (event, message) => {
 });
 
 // Volume control from WebSocket
-
-// Volume control from WebSocket
 ipcRenderer.on('set-volume', (event, volume) => {
     console.log('Setting volume to:', volume);
     // Volume değerini kaydet ve normalize et
@@ -212,31 +211,46 @@ ipcRenderer.on('auto-play-playlist', (event, playlist) => {
 });
 
 function displayPlaylists() {
-  console.log('8. Starting displayPlaylists()');
+  console.log('=== PLAYLIST DISPLAY DEBUG LOGS ===');
+  console.log('1. Starting displayPlaylists()');
   const playlists = store.get('playlists', []);
   const playlistContainer = document.getElementById('playlistContainer');
   
   if (!playlistContainer) {
-    console.error('9. Playlist container not found');
+    console.error('2. Playlist container not found');
     return;
   }
   
-  console.log('10. Current playlists:', playlists);
+  console.log('3. Current playlists in store:', playlists);
   
   playlistContainer.innerHTML = '';
   
   // Son playlist'i göster
   const lastPlaylist = playlists[playlists.length - 1];
   if (lastPlaylist) {
-    console.log('11. Displaying last playlist:', lastPlaylist);
+    console.log('4. Last playlist details:', {
+      id: lastPlaylist._id,
+      name: lastPlaylist.name,
+      songCount: lastPlaylist.songs.length,
+      firstSong: lastPlaylist.songs[0]
+    });
+
+    console.log('5. Artwork details:', {
+      hasArtwork: !!lastPlaylist.artwork,
+      artworkPath: lastPlaylist.artwork,
+      fullArtworkUrl: ArtworkManager.getArtworkUrl(lastPlaylist.artwork)
+    });
+
     const playlistElement = document.createElement('div');
     playlistElement.className = 'playlist-item';
+    
+    const artworkHtml = ArtworkManager.createArtworkHtml(lastPlaylist.artwork, lastPlaylist.name);
+    
+    console.log('6. Generated artwork HTML:', artworkHtml);
+    
     playlistElement.innerHTML = `
       <div class="playlist-info">
-        ${lastPlaylist.artwork ? 
-          `<img src="${lastPlaylist.artwork}" alt="${lastPlaylist.name}" class="playlist-artwork"/>` :
-          '<div class="playlist-artwork-placeholder"></div>'
-        }
+        ${artworkHtml}
         <div class="playlist-details">
           <h3>${lastPlaylist.name}</h3>
           <p>${lastPlaylist.songs[0]?.artist || 'Unknown Artist'}</p>
@@ -245,11 +259,28 @@ function displayPlaylists() {
       </div>
     `;
     
+    console.log('7. Playlist element created with artwork');
     playlistContainer.appendChild(playlistElement);
-    console.log('12. Playlist element added to DOM');
+    console.log('8. Playlist element added to DOM');
+
+    // Artwork yükleme durumunu kontrol et
+    const artworkImg = playlistElement.querySelector('img');
+    if (artworkImg) {
+      artworkImg.addEventListener('load', () => {
+        console.log('9. Artwork başarıyla yüklendi:', artworkImg.src);
+      });
+      
+      artworkImg.addEventListener('error', (error) => {
+        console.error('10. Artwork yükleme hatası:', {
+          src: artworkImg.src,
+          error: error
+        });
+      });
+    }
   } else {
-    console.warn('13. No playlist available to display');
+    console.warn('11. No playlist available to display');
   }
+  console.log('=== END PLAYLIST DISPLAY DEBUG LOGS ===');
 }
 
 function deleteOldPlaylists() {

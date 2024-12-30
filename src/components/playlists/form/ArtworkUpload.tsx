@@ -28,15 +28,23 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
   }, [artwork]);
 
   const handleUploadClick = () => {
-    fileInputRef.current?.click();
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+      console.log("Upload button clicked, triggering file input");
+    }
   };
 
-  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    console.log("File selection started");
     const file = e.target.files?.[0];
-    if (!file) return;
+    if (!file) {
+      console.log("No file selected");
+      return;
+    }
 
     // Check file type
     if (!['image/jpeg', 'image/jpg', 'image/png', 'image/webp'].includes(file.type)) {
+      console.log("Invalid file type:", file.type);
       toast({
         variant: "destructive",
         title: "Hata",
@@ -47,6 +55,7 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
 
     // Check file size (5MB)
     if (file.size > 5 * 1024 * 1024) {
+      console.log("File too large:", file.size);
       toast({
         variant: "destructive",
         title: "Hata",
@@ -56,6 +65,7 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
     }
 
     try {
+      console.log("Setting form value for artwork");
       form.setValue("artwork", e.target.files as FileList, {
         shouldValidate: true,
         shouldDirty: true,
@@ -66,13 +76,15 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
         title: "Başarılı",
         description: "Kapak resmi başarıyla yüklendi.",
       });
+      
+      console.log("Artwork upload successful");
     } catch (error) {
+      console.error('Artwork upload error:', error);
       toast({
         variant: "destructive",
         title: "Hata",
         description: "Kapak resmi yüklenirken bir hata oluştu.",
       });
-      console.error('Artwork upload error:', error);
     }
   };
 
@@ -86,7 +98,7 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
       <FormField
         control={form.control}
         name="artwork"
-        render={({ field: { value, onChange, ...field } }) => (
+        render={() => (
           <FormItem>
             <FormControl>
               <div className="space-y-4">
@@ -125,13 +137,12 @@ export const ArtworkUpload = ({ form }: ArtworkUploadProps) => {
                   </div>
                 </div>
                 
-                <Input
+                <input
                   ref={fileInputRef}
                   type="file"
                   accept="image/jpeg,image/jpg,image/png,image/webp"
                   className="hidden"
                   onChange={handleFileChange}
-                  {...field}
                 />
               </div>
             </FormControl>
