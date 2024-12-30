@@ -1,8 +1,6 @@
 class PlayerUIManager {
   constructor() {
     this.playlistContainer = document.getElementById('playlistContainer');
-    this.currentSongElement = null;
-    this.currentArtwork = null;
   }
 
   updateCurrentSong(currentSong) {
@@ -47,11 +45,19 @@ class PlayerUIManager {
       // Şarkı bilgilerini güncelle
       const details = item.querySelector('.playlist-details');
       if (details) {
-        const songName = details.querySelector('h3');
-        const artistName = details.querySelector('p');
+        // h3 elementini güncelleme (playlist ismi sabit kalacak)
+        // Sadece paragraf elementlerini al
+        const paragraphs = details.querySelectorAll('p');
         
-        if (songName) songName.textContent = currentSong.name;
-        if (artistName) artistName.textContent = currentSong.artist;
+        // İlk p elementi artist için
+        if (paragraphs[0]) {
+          paragraphs[0].textContent = currentSong.artist || 'Unknown Artist';
+        }
+        
+        // İkinci p elementi şarkı ismi için
+        if (paragraphs[1]) {
+          paragraphs[1].textContent = currentSong.name;
+        }
       }
     });
 
