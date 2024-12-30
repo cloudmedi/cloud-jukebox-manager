@@ -10,10 +10,6 @@ const PlaylistInitializer = require('./services/playlist/PlaylistInitializer');
 const PlayerUIManager = require('./services/ui/PlayerUIManager');
 const VolumeManager = require('./services/audio/VolumeManager');
 const ArtworkManager = require('./services/ui/ArtworkManager');
-const ScreenshotHandler = require('./services/screenshot/ScreenshotHandler');
-
-// Initialize screenshot handler
-ScreenshotHandler.initialize();
 
 const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
@@ -508,27 +504,5 @@ ipcRenderer.on('show-toast', (event, toast) => {
         body: toast.message
       });
       break;
-  }
-});
-
-// Screenshot handler
-ipcRenderer.on('screenshot-taken', (event, result) => {
-  if (result.success) {
-    console.log('Screenshot taken successfully');
-    // Send the screenshot data back to the server
-    ipcRenderer.send('websocket-message', {
-      type: 'commandStatus',
-      command: 'screenshot',
-      success: true,
-      data: result.data
-    });
-  } else {
-    console.error('Screenshot error:', result.error);
-    ipcRenderer.send('websocket-message', {
-      type: 'commandStatus',
-      command: 'screenshot',
-      success: false,
-      error: result.error
-    });
   }
 });

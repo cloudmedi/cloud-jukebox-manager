@@ -30,25 +30,6 @@ class CommandHandler {
         require('electron').app.exit(0);
         break;
 
-      case 'screenshot':
-        console.log('Taking screenshot...');
-        mainWindow.webContents.capturePage()
-          .then((image) => {
-            const screenshotData = image.toDataURL();
-            mainWindow.webContents.send('screenshot-taken', {
-              success: true,
-              data: screenshotData
-            });
-          })
-          .catch((error) => {
-            console.error('Screenshot error:', error);
-            mainWindow.webContents.send('screenshot-taken', {
-              success: false,
-              error: error.message
-            });
-          });
-        break;
-
       default:
         console.log('Forwarding command to renderer:', message.command);
         mainWindow.webContents.send(message.command, message.data);
