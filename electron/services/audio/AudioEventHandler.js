@@ -23,6 +23,18 @@ class AudioEventHandler {
         }
       }
     );
+
+    // Anons bittiğinde playlist'i devam ettir
+    require('electron').ipcRenderer.on('announcement-ended', (event, { lastPlaylistIndex, wasPlaying }) => {
+      console.log('Anons bitti sinyali alındı:', { lastPlaylistIndex, wasPlaying });
+      if (wasPlaying) {
+        setTimeout(() => {
+          this.playlistAudio.play().catch(err => {
+            console.error('Playlist devam ettirme hatası:', err);
+          });
+        }, 500);
+      }
+    });
   }
 
   async playCampaign(audioUrl) {
