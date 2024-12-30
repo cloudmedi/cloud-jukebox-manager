@@ -7,6 +7,34 @@ class UIManager {
         this.downloadProgressBar = document.querySelector('.download-progress-bar');
         this.downloadProgressText = document.querySelector('.download-progress-text');
         this.errorContainer = document.getElementById('errorContainer');
+        
+        this.initializeUI();
+    }
+
+    async initializeUI() {
+        const deviceInfo = await window.electron.ipcRenderer.invoke('get-device-info');
+        
+        if (!deviceInfo || !deviceInfo.token) {
+            try {
+                const newToken = await deviceService.registerDeviceToken();
+                await window.electron.ipcRenderer.invoke('save-device-info', {
+                    token: newToken
+                });
+                
+                this.updateDeviceInfo(newToken);
+            } catch (error) {
+                this.showError('Token oluşturma hatası: ' + error.message);
+            }
+        } else {
+            this.updateDeviceInfo(deviceInfo.token);
+        }
+    }
+
+    updateDeviceInfo(token) {
+        if (this.tokenDisplay) {
+            this.tokenDisplay.textContent = `Token: ${token}`;
+            this.tokenDisplay.style.display = 'block';
+        }
     }
 
     updateConnectionStatus(isConnected) {
