@@ -55,10 +55,44 @@ class AudioService {
   }
 
   handleVolumeChange(volume) {
-    console.log('Setting volume to:', volume);
-    const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
-    if (mainWindow) {
-      mainWindow.webContents.send('set-volume', volume);
+    console.log('1. Volume change received in Electron:', {
+      volume,
+      currentVolume: this.currentSound?.volume() || 0
+    });
+
+    try {
+      console.log('2. Setting volume on audio element');
+      const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
+      
+      if (mainWindow) {
+        console.log('3. Main window found, sending volume change');
+        mainWindow.webContents.send('set-volume', volume);
+        
+        console.log('4. Volume change sent to renderer');
+        // WebSocket üzerinden durumu bildir
+        websocketService.sendMessage({
+          type: 'commandStatus',
+          command: 'setVolume',
+          status: 'success',
+          volume: volume
+        });
+        
+        console.log('5. Command status sent via WebSocket');
+      } else {
+        console.error('6. Main window not found');
+      }
+    } catch (error) {
+      console.error('7. Volume change error:', {
+        error: error.message,
+        stack: error.stack
+      });
+      
+      websocketService.sendMessage({
+        type: 'commandStatus',
+        command: 'setVolume',
+        status: 'error',
+        error: error.message
+      });
     }
   }
 

@@ -59,17 +59,33 @@ class WebSocketService {
   }
 
   private handleMessage(message: any) {
+    console.log('1. WebSocket message received:', {
+      type: message.type,
+      payload: message,
+      timestamp: new Date().toISOString()
+    });
+
     const handlers = this.messageHandlers.get(message.type);
     if (handlers) {
+      console.log('2. Handlers found for message type:', message.type);
       handlers.forEach(handler => {
         try {
+          console.log('3. Executing handler for:', message.type);
           handler(message);
+          console.log('4. Handler executed successfully');
         } catch (error) {
-          console.error(`Handler error for message type ${message.type}:`, error);
+          console.error('5. Handler error:', {
+            type: message.type,
+            error: error.message,
+            stack: error.stack
+          });
         }
       });
     } else {
-      console.warn('Unhandled message type:', message.type);
+      console.warn('6. Unhandled message type:', {
+        type: message.type,
+        payload: message
+      });
     }
   }
 
