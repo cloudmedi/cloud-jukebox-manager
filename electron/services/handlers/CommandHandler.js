@@ -1,37 +1,60 @@
+const { BrowserWindow } = require('electron');
 const screenshotHandler = require('../screenshot/ScreenshotHandler');
-const { ipcRenderer } = require('electron');
 
 class CommandHandler {
-  async handleCommand(message) {
+  static async handleCommand(message) {
     console.log('Processing command:', message);
+    const mainWindow = BrowserWindow.getAllWindows()[0];
+    
+    if (!mainWindow) {
+      console.log('No main window found');
+      return;
+    }
 
     try {
       switch (message.command) {
         case 'screenshot':
           console.log('Taking screenshot...');
           const screenshotData = await screenshotHandler.takeScreenshot();
-          
-          // WebSocket üzerinden ekran görüntüsünü gönder
-          ipcRenderer.send('screenshot-taken', {
+          console.log('Screenshot taken successfully');
+          mainWindow.webContents.send('screenshot-taken', {
             success: true,
-            data: screenshotData,
-            token: message.token
+            data: screenshotData
           });
           break;
 
+        case 'songRemoved':
+          console.log('Handling songRemoved command:', message.data);
+          mainWindow.webContents.send('songRemoved', {
+            songId: message.data.songId,
+            playlistId: message.data.playlistId
+          });
+          break;
+
+        case 'deleteAnnouncement':
+          console.log('Processing deleteAnnouncement command:', message);
+          mainWindow.webContents.send('deleteAnnouncement', message.data);
+          break;
+          
+        case 'restart':
+          console.log('Restarting application...');
+          require('electron').app.relaunch();
+          require('electron').app.exit(0);
+          break;
+
         default:
-          console.log('Unknown command:', message.command);
+          console.log('Forwarding command to renderer:', message.command);
+          mainWindow.webContents.send(message.command, message.data);
           break;
       }
     } catch (error) {
       console.error('Command handling error:', error);
-      ipcRenderer.send('screenshot-taken', {
+      mainWindow.webContents.send('screenshot-taken', {
         success: false,
-        error: error.message,
-        token: message.token
+        error: error.message
       });
     }
   }
 }
 
-module.exports = new CommandHandler();
+module.exports = CommandHandler;
