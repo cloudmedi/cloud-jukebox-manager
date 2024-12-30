@@ -11,7 +11,7 @@
         <button class="titlebar-button close" id="closeButton">✕</button>
     </div>
     <div class="container">
-        <!-- Token ve Bağlantı Durumu (Başlangıçta gösterilir, bağlantı sonrası gizlenir) -->
+        <!-- Token ve Bağlantı Durumu -->
         <div id="deviceInfo" class="device-info">
             <div class="token-display"></div>
             <div class="connection-status"></div>
@@ -19,7 +19,11 @@
 
         <!-- Playlist Container -->
         <div id="playlistContainer" class="playlist-container">
-            <!-- Playlistler buraya eklenecek -->
+            <!-- Çalan şarkı bilgileri -->
+            <div class="current-song-info">
+                <h3 class="song-name"></h3>
+                <p class="artist-name"></p>
+            </div>
         </div>
         
         <!-- Ana playlist için audio element -->
