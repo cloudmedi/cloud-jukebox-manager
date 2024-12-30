@@ -209,3 +209,23 @@ body {
   color: rgba(255, 255, 255, 0.9);
   margin: 0;
 }
+
+.current-song-info {
+  background: rgba(255, 255, 255, 0.05);
+  padding: 15px;
+  border-radius: 8px;
+  margin: 10px 0;
+}
+
+.current-song-info .song-name {
+  font-size: 16px;
+  font-weight: bold;
+  margin: 0 0 5px 0;
+  color: #fff;
+}
+
+.current-song-info .artist-name {
+  font-size: 14px;
+  color: rgba(255, 255, 255, 0.7);
+  margin: 0;
+}
