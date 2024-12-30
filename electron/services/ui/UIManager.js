@@ -1,6 +1,3 @@
-const { ipcRenderer } = require('electron');
-const deviceService = require('../deviceService');
-
 class UIManager {
     constructor() {
         this.deviceInfoElement = document.getElementById('deviceInfo');
@@ -49,6 +46,17 @@ class UIManager {
                 this.connectionStatus.className = 'connection-status connected';
                 this.connectionStatus.textContent = 'Cihaz başarıyla eşleştirildi. Şimdi bir çalma listesi ekleyebilirsiniz.';
                 this.connectionStatus.style.display = 'block';
+                
+                // Eşleşme mesajı için stil ekle
+                this.connectionStatus.style.position = 'absolute';
+                this.connectionStatus.style.top = '50%';
+                this.connectionStatus.style.left = '50%';
+                this.connectionStatus.style.transform = 'translate(-50%, -50%)';
+                this.connectionStatus.style.textAlign = 'center';
+                this.connectionStatus.style.color = '#ffffff';
+                this.connectionStatus.style.fontSize = '16px';
+                this.connectionStatus.style.padding = '20px';
+                this.connectionStatus.style.width = '100%';
             } else {
                 // Token bilgilerini göster
                 this.deviceInfoElement.style.display = 'block';
@@ -59,7 +67,6 @@ class UIManager {
         }
     }
 
-    // Playlist yüklendiğinde çağrılacak method
     hideConnectionStatus() {
         if (this.connectionStatus) {
             this.connectionStatus.style.display = 'none';
