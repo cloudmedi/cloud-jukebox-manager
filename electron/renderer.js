@@ -11,9 +11,11 @@ const PlayerUIManager = require('./services/ui/PlayerUIManager');
 const VolumeManager = require('./services/audio/VolumeManager');
 const ArtworkManager = require('./services/ui/ArtworkManager');
 const ScreenshotEventHandler = require('./services/screenshot/ScreenshotEventHandler');
+const FadeAudioPlayer = require('./services/audio/FadeAudioPlayer');
 
 const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
+const fadePlayer = new FadeAudioPlayer();
 
 // Başlangıçta emergency state kontrolü
 const emergencyState = store.get('emergencyState');
@@ -352,6 +354,10 @@ ipcRenderer.on('playlist-received', (event, playlist) => {
   const shouldAutoPlay = playbackStateManager.getPlaybackState();
   if (shouldAutoPlay) {
     console.log('Auto-playing new playlist:', playlist);
+    // FadeAudioPlayer için playlist'i hazırla
+    if (playlist.songs && playlist.songs.length > 0) {
+      fadePlayer.setNextSong(playlist.songs[0]);
+    }
     ipcRenderer.invoke('play-playlist', playlist);
   } else {
     console.log('Loading new playlist without auto-play');
@@ -460,14 +466,8 @@ ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
       localPath: currentSong.localPath
     });
 
-    const normalizedPath = currentSong.localPath.replace(/\\/g, '/');
-    playlistAudio.src = normalizedPath;
-    
-    console.log('3. Setting audio source to:', normalizedPath);
-    
-    playlistAudio.play().catch(err => {
-      console.error('4. Playback error:', err);
-    });
+    // FadeAudioPlayer'a şarkıyı yükle
+    fadePlayer.play(currentSong);
     
     // UI'ı güncelle
     PlayerUIManager.updateCurrentSong(currentSong);

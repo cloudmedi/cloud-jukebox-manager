@@ -10,6 +10,7 @@ class FadeAudioPlayer {
     this.currentSong = null;
     this.nextSong = null;
     this.volume = 1.0;
+    this.isFading = false;
 
     // Audio event listeners
     this.audio.addEventListener('timeupdate', () => this.handleTimeUpdate());
@@ -25,7 +26,7 @@ class FadeAudioPlayer {
     const timeRemaining = this.audio.duration - this.audio.currentTime;
     
     // Şarkı sonuna yaklaşıyorsa fade out başlat
-    if (timeRemaining <= this.fadeStartBeforeEnd && !this.isFading) {
+    if (timeRemaining <= this.fadeStartBeforeEnd && !this.isFading && this.nextSong) {
       this.startFadeTransition();
     }
   }
