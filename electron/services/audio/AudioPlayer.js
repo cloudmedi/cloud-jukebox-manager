@@ -15,7 +15,9 @@ class AudioPlayer {
     this.isPlaying = false;
     
     // Volume initialization
+    console.log('AudioPlayer: Initializing volume');
     const storedVolume = store.get('volume', 70);
+    console.log('AudioPlayer: Stored volume:', storedVolume);
     this.volume = storedVolume / 100;
     
     this.setupEventListeners();
@@ -23,9 +25,11 @@ class AudioPlayer {
   }
 
   initializeVolume() {
+    console.log('AudioPlayer: Setting up volume initialization');
+    
     // Set initial volume when audio is ready
     this.audio.addEventListener('loadeddata', () => {
-      console.log('Audio loaded, setting initial volume:', this.volume);
+      console.log('AudioPlayer: Audio loaded, applying volume:', this.volume);
       this.audio.volume = this.volume;
       
       // Notify about initial volume
@@ -35,6 +39,12 @@ class AudioPlayer {
         volume: this.volume * 100
       });
     });
+
+    // Immediate volume set attempt
+    if (this.audio) {
+      console.log('AudioPlayer: Immediate volume set:', this.volume);
+      this.audio.volume = this.volume;
+    }
   }
 
   setupEventListeners() {
@@ -62,7 +72,7 @@ class AudioPlayer {
   }
 
   setVolume(volume) {
-    console.log('Setting volume:', volume);
+    console.log('AudioPlayer: Setting volume:', volume);
     
     // Normalize and store volume
     const normalizedVolume = Math.max(0, Math.min(100, volume));
@@ -70,12 +80,12 @@ class AudioPlayer {
     
     // Save to store
     store.set('volume', normalizedVolume);
-    console.log('Volume saved to store:', normalizedVolume);
+    console.log('AudioPlayer: Volume saved to store:', normalizedVolume);
     
     // Apply to audio element if it exists
     if (this.audio) {
       this.audio.volume = this.volume;
-      console.log('Volume applied to audio element:', this.volume);
+      console.log('AudioPlayer: Volume applied to audio element:', this.volume);
     }
 
     // Notify about volume change

@@ -4,19 +4,20 @@ const store = new Store();
 class VolumeManager {
   constructor() {
     this.defaultVolume = 70;
+    console.log('VolumeManager: Initialized with default volume:', this.defaultVolume);
   }
 
   getStoredVolume() {
     const volume = store.get('volume', this.defaultVolume);
-    console.log('Retrieved stored volume:', volume);
+    console.log('VolumeManager: Retrieved stored volume:', volume);
     return volume;
   }
 
   saveVolume(volume) {
-    console.log('Saving volume:', volume);
+    console.log('VolumeManager: Saving volume:', volume);
     const normalizedVolume = Math.max(0, Math.min(100, volume));
     store.set('volume', normalizedVolume);
-    console.log('Volume saved to store:', normalizedVolume);
+    console.log('VolumeManager: Volume saved to store:', normalizedVolume);
     
     // Her iki player için de volume değerini güncelle
     const audioPlayer = document.getElementById('audioPlayer');
@@ -26,12 +27,12 @@ class VolumeManager {
     
     if (audioPlayer) {
       audioPlayer.volume = normalizedAudioVolume;
-      console.log('Audio player volume updated:', audioPlayer.volume);
+      console.log('VolumeManager: Audio player volume updated:', audioPlayer.volume);
     }
     
     if (campaignPlayer) {
       campaignPlayer.volume = normalizedAudioVolume;
-      console.log('Campaign player volume updated:', campaignPlayer.volume);
+      console.log('VolumeManager: Campaign player volume updated:', campaignPlayer.volume);
     }
     
     return normalizedVolume;
