@@ -22,7 +22,7 @@ class AnnouncementEventHandler {
       // Mevcut şarkı indeksini kaydet
       const currentPlaylist = ipcRenderer.sendSync('get-current-playlist');
       if (currentPlaylist) {
-        this.lastPlaylistIndex = currentPlaylist.currentIndex;
+        this.lastPlaylistIndex = currentPlaylist.currentIndex || 0;
         console.log('Kaydedilen playlist indeksi:', this.lastPlaylistIndex);
       }
 
@@ -92,10 +92,16 @@ class AnnouncementEventHandler {
     // Playlist'i devam ettir
     if (this.wasPlaylistPlaying) {
       console.log('Playlist kaldığı yerden devam ediyor, indeks:', this.lastPlaylistIndex);
+      
+      // Kısa bir gecikme ile playlist'i başlat
       setTimeout(() => {
-        this.playlistAudio.play().catch(err => {
-          console.error('Playlist devam ettirme hatası:', err);
-        });
+        try {
+          this.playlistAudio.play().catch(err => {
+            console.error('Playlist devam ettirme hatası:', err);
+          });
+        } catch (err) {
+          console.error('Playlist başlatma hatası:', err);
+        }
       }, 500);
     }
     
