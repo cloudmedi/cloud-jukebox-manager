@@ -1,5 +1,4 @@
 import { Link } from "react-router-dom";
-import { Home, Speaker, List, Calendar, Volume2, Upload, BarChart2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 
 const TopNavigation = () => {
@@ -8,36 +7,29 @@ const TopNavigation = () => {
       <div className="container mx-auto px-4">
         <div className="flex items-center justify-between h-16">
           <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold">veeq</h1>
+            <Link to="/" className="text-2xl font-bold text-[#FFD60A]">
+              veeq
+            </Link>
           </div>
           
           <nav className="hidden md:flex items-center gap-8">
             <Link to="/" className="text-[#333333] hover:text-black font-medium">
               Home
             </Link>
+            <Link to="/campaigns" className="text-[#333333] hover:text-black font-medium">
+              Campaigns
+            </Link>
             <Link to="/devices" className="text-[#333333] hover:text-black font-medium">
-              Devices
+              Device
             </Link>
-            <Link to="/playlists" className="text-[#333333] hover:text-black font-medium">
-              Playlists
-            </Link>
-            <Link to="/schedule" className="text-[#333333] hover:text-black font-medium">
+            <Link to="/calendar" className="text-[#333333] hover:text-black font-medium">
               Calendar
-            </Link>
-            <Link to="/announcements" className="text-[#333333] hover:text-black font-medium">
-              Announcements
-            </Link>
-            <Link to="/upload" className="text-[#333333] hover:text-black font-medium">
-              Upload
-            </Link>
-            <Link to="/reports" className="text-[#333333] hover:text-black font-medium">
-              Reports
             </Link>
           </nav>
 
           <div className="flex items-center gap-4">
             <Button className="bg-[#FFD60A] text-black hover:bg-[#FFD60A]/90 font-medium px-6">
-              Yeni Yıldır
+              New Yıldır
             </Button>
           </div>
         </div>

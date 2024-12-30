@@ -36,22 +36,19 @@ const Index = () => {
         <div className="container mx-auto px-4 py-16">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-8 items-center">
             <div className="space-y-6">
+              <h3 className="text-sm font-medium opacity-80">Sunny Chill House</h3>
               <h1 className="text-6xl font-bold leading-tight">Chill Beats</h1>
               <p className="text-xl opacity-90 max-w-xl">
-                Playlistlerinizi yönetin ve cihazlara gönderin. Müzik koleksiyonunuzu organize edin ve kontrol edin.
+                Feel the groove with tracks like "Conquer the Storm," "My Side," and "Magic Ride". Let the soothing beats from CMD Beat Zone take you on a journey through laid-back melodies and chill vibes, perfect for any relaxing moment.
               </p>
-              <Button 
-                onClick={() => navigate("/playlists/new")} 
-                size="lg" 
-                className="bg-[#FFD60A] text-black hover:bg-[#FFD60A]/90 px-8 py-6 text-lg"
-              >
-                <Plus className="mr-2 h-5 w-5" />
-                Yeni Playlist
-              </Button>
             </div>
             <div className="relative">
-              <div className="aspect-square rounded-2xl overflow-hidden bg-black/20 backdrop-blur-lg p-8">
-                <Music2 className="w-full h-full opacity-50" />
+              <div className="aspect-square rounded-2xl overflow-hidden">
+                <img 
+                  src="/lovable-uploads/fe649b94-1f05-46ff-9886-50b8a0cec0ea.png" 
+                  alt="Sunny Chill House" 
+                  className="w-full h-full object-cover"
+                />
               </div>
             </div>
           </div>
@@ -70,98 +67,101 @@ const Index = () => {
             <Search className="absolute left-4 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
             <Input 
               type="search" 
-              placeholder="Playlist ara..." 
+              placeholder="Search..." 
               className="pl-12 h-14 rounded-full border-gray-200 focus:border-gray-300 focus:ring-0"
             />
           </div>
         </div>
 
-        {/* Playlists Section */}
-        {!playlists?.length ? (
-          <div className="flex flex-col items-center justify-center rounded-lg border bg-white p-8 text-center">
-            <Music2 className="h-12 w-12 text-gray-400 mb-4" />
-            <h3 className="text-lg font-medium mb-2">Henüz playlist oluşturulmamış</h3>
-            <p className="text-sm text-gray-500 mb-4">
-              Yeni bir playlist oluşturmak için "Yeni Playlist" butonunu kullanın.
-            </p>
-            <Button onClick={() => navigate("/playlists/new")}>
-              <Plus className="mr-2 h-4 w-4" />
-              Playlist Oluştur
-            </Button>
+        {/* Cafe Channel Section */}
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Cafe Channel</h2>
+            <p className="text-gray-500">Time to get jazzy</p>
           </div>
-        ) : (
-          <>
-            {/* Popular Today Section */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Popular Today</h2>
-                  <p className="text-gray-500">En çok dinlenen playlistler</p>
-                </div>
-                <Button variant="ghost" onClick={() => navigate("/playlists")} className="text-gray-600">
-                  Tümünü Gör
-                </Button>
-              </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {playlists.slice(0, 6).map((playlist) => (
-                  <PlaylistCard
-                    key={playlist._id}
-                    playlist={playlist}
-                    onDelete={(id) => {
-                      toast({
-                        title: "Playlist silindi",
-                        description: "Playlist başarıyla silindi.",
-                      });
-                    }}
-                    onEdit={(id) => navigate(`/playlists/${id}/edit`)}
-                    onPlay={(id) => {
-                      const mainLayout = document.querySelector('.main-layout');
-                      if (mainLayout) {
-                        mainLayout.setAttribute('data-player-visible', 'true');
-                      }
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            {playlists.slice(0, 6).map((playlist) => (
+              <PlaylistCard
+                key={playlist._id}
+                playlist={playlist}
+                onDelete={(id) => {
+                  toast({
+                    title: "Playlist silindi",
+                    description: "Playlist başarıyla silindi.",
+                  });
+                }}
+                onEdit={(id) => navigate(`/playlists/${id}/edit`)}
+                onPlay={(id) => {
+                  const mainLayout = document.querySelector('.main-layout');
+                  if (mainLayout) {
+                    mainLayout.setAttribute('data-player-visible', 'true');
+                  }
+                }}
+              />
+            ))}
+          </div>
+        </div>
 
-            {/* Cafe Channel Section */}
-            <div className="space-y-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <h2 className="text-2xl font-bold text-gray-900">Cafe Channel</h2>
-                  <p className="text-gray-500">Kafeler için özel seçilmiş playlistler</p>
-                </div>
-                <Button variant="ghost" onClick={() => navigate("/playlists")} className="text-gray-600">
-                  Tümünü Gör
-                </Button>
-              </div>
+        {/* Popular Today Section */}
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Popular Today</h2>
+            <p className="text-gray-500">Most streamed in cafes</p>
+          </div>
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-                {playlists.slice(0, 3).map((playlist) => (
-                  <PlaylistCard
-                    key={playlist._id}
-                    playlist={playlist}
-                    onDelete={(id) => {
-                      toast({
-                        title: "Playlist silindi",
-                        description: "Playlist başarıyla silindi.",
-                      });
-                    }}
-                    onEdit={(id) => navigate(`/playlists/${id}/edit`)}
-                    onPlay={(id) => {
-                      const mainLayout = document.querySelector('.main-layout');
-                      if (mainLayout) {
-                        mainLayout.setAttribute('data-player-visible', 'true');
-                      }
-                    }}
-                  />
-                ))}
-              </div>
-            </div>
-          </>
-        )}
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            {playlists.slice(0, 6).map((playlist) => (
+              <PlaylistCard
+                key={playlist._id}
+                playlist={playlist}
+                onDelete={(id) => {
+                  toast({
+                    title: "Playlist silindi",
+                    description: "Playlist başarıyla silindi.",
+                  });
+                }}
+                onEdit={(id) => navigate(`/playlists/${id}/edit`)}
+                onPlay={(id) => {
+                  const mainLayout = document.querySelector('.main-layout');
+                  if (mainLayout) {
+                    mainLayout.setAttribute('data-player-visible', 'true');
+                  }
+                }}
+              />
+            ))}
+          </div>
+        </div>
+
+        {/* Second Cafe Channel Section */}
+        <div className="space-y-6">
+          <div>
+            <h2 className="text-2xl font-bold text-gray-900">Cafe Channel</h2>
+            <p className="text-gray-500">Time to get jazzy</p>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-4">
+            {playlists.slice(0, 6).map((playlist) => (
+              <PlaylistCard
+                key={playlist._id}
+                playlist={playlist}
+                onDelete={(id) => {
+                  toast({
+                    title: "Playlist silindi",
+                    description: "Playlist başarıyla silindi.",
+                  });
+                }}
+                onEdit={(id) => navigate(`/playlists/${id}/edit`)}
+                onPlay={(id) => {
+                  const mainLayout = document.querySelector('.main-layout');
+                  if (mainLayout) {
+                    mainLayout.setAttribute('data-player-visible', 'true');
+                  }
+                }}
+              />
+            ))}
+          </div>
+        </div>
       </div>
     </div>
   );
