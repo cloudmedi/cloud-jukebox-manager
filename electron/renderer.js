@@ -244,13 +244,19 @@ function displayPlaylists() {
     const playlistElement = document.createElement('div');
     playlistElement.className = 'playlist-item';
     
-    const artworkHtml = ArtworkManager.createArtworkHtml(lastPlaylist.artwork, lastPlaylist.name);
-    
-    console.log('6. Generated artwork HTML:', artworkHtml);
+    // Artwork URL'ini oluştur
+    const artworkUrl = lastPlaylist.artwork 
+      ? `http://localhost:5000${lastPlaylist.artwork}`
+      : 'https://images.unsplash.com/photo-1488590528505-98d2b5aba04b';
     
     playlistElement.innerHTML = `
       <div class="playlist-info">
-        ${artworkHtml}
+        <img 
+          src="${artworkUrl}" 
+          alt="${lastPlaylist.name}" 
+          class="playlist-artwork"
+          onerror="this.onerror=null; this.src='https://images.unsplash.com/photo-1488590528505-98d2b5aba04b';"
+        />
         <div class="playlist-details">
           <h3>${lastPlaylist.name}</h3>
           <p>${lastPlaylist.songs[0]?.artist || 'Unknown Artist'}</p>
