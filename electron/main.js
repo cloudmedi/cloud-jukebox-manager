@@ -61,6 +61,7 @@ function createWindow() {
   }
 }
 
+// Update tray menu
 function updateTrayMenu(song = currentSong) {
   if (!tray) return;
 
@@ -189,6 +190,16 @@ ipcMain.handle('get-device-info', async () => {
   return store.get('deviceInfo');
 });
 
+// Playlist durumunu sorgulama
+ipcMain.on('get-current-playlist', (event) => {
+  const audioService = require('./services/audioService');
+  event.returnValue = {
+    currentSong: audioService.getCurrentSong(),
+    currentIndex: audioService.currentIndex,
+    isPlaying: audioService.isPlaying
+  };
+});
+
 // Şarkı değiştiğinde tray menüsünü güncelle
 ipcMain.on('song-changed', (event, song) => {
   console.log('Updating tray menu with song:', song);
@@ -201,13 +212,4 @@ ipcMain.on('playback-status-changed', (event, playing) => {
   console.log('Playback status changed:', playing);
   isPlaying = playing;
   updateTrayMenu(currentSong);
-});
-
-// Playlist durumunu sorgulama
-ipcMain.handle('get-current-playlist', (event) => {
-  return {
-    currentSong: audioService.getCurrentSong(),
-    currentIndex: audioService.currentIndex,
-    isPlaying: audioService.isPlaying
-  };
 });

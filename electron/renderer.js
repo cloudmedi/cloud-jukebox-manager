@@ -274,10 +274,18 @@ ipcRenderer.on('next-song', () => {
   // Önce sonraki şarkıya geç
   ipcRenderer.invoke('song-ended').then(() => {
     // Şarkı değiştiğinde UI'ı güncelle
-    const currentPlaylist = require('electron').ipcRenderer.sendSync('get-current-playlist');
+    const currentPlaylist = ipcRenderer.sendSync('get-current-playlist');
     if (currentPlaylist && currentPlaylist.currentSong) {
       console.log('Updating UI with new song:', currentPlaylist.currentSong);
-      PlayerUIManager.updateCurrentSong(currentPlaylist.currentSong);
+      
+      // UI'ı güncelle
+      const songNameElement = document.querySelector('.song-name');
+      const artistElement = document.querySelector('.artist-name');
+      
+      if (songNameElement && artistElement) {
+        songNameElement.textContent = currentPlaylist.currentSong.name;
+        artistElement.textContent = currentPlaylist.currentSong.artist;
+      }
       
       // Tray menüsünü de güncelle
       ipcRenderer.send('song-changed', {
