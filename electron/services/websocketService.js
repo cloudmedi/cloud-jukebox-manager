@@ -99,6 +99,7 @@ class WebSocketService {
 
   sendMessage(message) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      console.log('Sending WebSocket message:', message);
       this.ws.send(JSON.stringify(message));
     } else {
       console.error('WebSocket connection not ready');
