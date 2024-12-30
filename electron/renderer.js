@@ -152,26 +152,16 @@ ipcRenderer.on('error', (event, message) => {
 
 // Volume control from WebSocket
 ipcRenderer.on('set-volume', (event, volume) => {
-    console.log('Renderer: Volume change received:', volume);
+    console.log('Setting volume to:', volume);
+    // Volume değerini kaydet ve normalize et
+    const savedVolume = VolumeManager.saveVolume(volume);
+    const normalizedVolume = VolumeManager.normalizeVolume(savedVolume);
     
-    const playlistAudio = document.getElementById('audioPlayer');
-    if (playlistAudio) {
-        const normalizedVolume = volume / 100;
-        console.log('Renderer: Normalized volume:', normalizedVolume);
-        
-        // Volume değerini ayarla
-        playlistAudio.volume = normalizedVolume;
-        console.log('Renderer: Volume set on audio element:', playlistAudio.volume);
-        
-        // Store'a kaydet
-        store.set('volume', volume);
-        console.log('Renderer: Volume saved to store:', volume);
-        
-        // Volume değişikliğini bildir
-        ipcRenderer.send('volume-changed', volume);
-    } else {
-        console.error('Renderer: Audio element not found for volume change');
-    }
+    // Audio player'a uygula
+    playlistAudio.volume = normalizedVolume;
+    
+    // Volume değişikliğini bildir
+    ipcRenderer.send('volume-changed', savedVolume);
 });
 
 // Restart playback from WebSocket
