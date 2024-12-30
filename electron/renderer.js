@@ -232,7 +232,8 @@ function displayPlaylists() {
       id: lastPlaylist._id,
       name: lastPlaylist.name,
       songCount: lastPlaylist.songs.length,
-      firstSong: lastPlaylist.songs[0]
+      firstSong: lastPlaylist.songs[0],
+      artwork: lastPlaylist.artwork
     });
 
     const playlistElement = document.createElement('div');
@@ -240,11 +241,12 @@ function displayPlaylists() {
     
     // Artwork URL'ini doğrudan kullan
     const artworkUrl = lastPlaylist.artwork ? `http://localhost:5000${lastPlaylist.artwork}` : null;
+    console.log('5. Artwork URL:', artworkUrl);
     
     playlistElement.innerHTML = `
       <div class="playlist-info">
         ${artworkUrl 
-          ? `<img src="${artworkUrl}" alt="${lastPlaylist.name}" class="playlist-artwork" />`
+          ? `<img src="${artworkUrl}" alt="${lastPlaylist.name}" class="playlist-artwork" onerror="console.error('Artwork yükleme hatası:', this.src)"/>`
           : '<div class="playlist-artwork-placeholder"></div>'
         }
         <div class="playlist-details">
@@ -255,18 +257,18 @@ function displayPlaylists() {
       </div>
     `;
     
-    console.log('5. Playlist element created with artwork URL:', artworkUrl);
+    console.log('6. Playlist element created');
     playlistContainer.appendChild(playlistElement);
 
     // Artwork yükleme durumunu kontrol et
     const artworkImg = playlistElement.querySelector('img');
     if (artworkImg) {
       artworkImg.addEventListener('load', () => {
-        console.log('6. Artwork başarıyla yüklendi:', artworkImg.src);
+        console.log('7. Artwork başarıyla yüklendi:', artworkImg.src);
       });
       
       artworkImg.addEventListener('error', (error) => {
-        console.error('7. Artwork yükleme hatası:', {
+        console.error('8. Artwork yükleme hatası:', {
           src: artworkImg.src,
           error: error
         });
