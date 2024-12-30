@@ -4,14 +4,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { addDays, format } from "date-fns";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "sonner";
 import { DeviceSearch } from "./DeviceSearch";
 import { DateTimeRangePicker } from "./DateTimeRangePicker";
 import { PlaybackTable } from "./PlaybackTable";
 import { DateRange } from "react-day-picker";
 
 export default function DevicePlaybackReport() {
-  const { toast } = useToast();
   const [selectedDevice, setSelectedDevice] = useState<string>("");
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: new Date(),
@@ -23,7 +22,7 @@ export default function DevicePlaybackReport() {
   });
 
   // Fetch devices
-  const { data: devices, isLoading: devicesLoading } = useQuery({
+  const { data: devices = [], isLoading: devicesLoading } = useQuery({
     queryKey: ["devices"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/devices");
@@ -38,7 +37,6 @@ export default function DevicePlaybackReport() {
     queryFn: async () => {
       if (!selectedDevice || !dateRange?.from || !dateRange?.to) return null;
 
-      // Tarihleri ISO string formatına çevir
       const fromDate = format(dateRange.from, "yyyy-MM-dd");
       const toDate = format(dateRange.to, "yyyy-MM-dd");
 
@@ -92,10 +90,7 @@ export default function DevicePlaybackReport() {
     });
 
     doc.save(`${deviceName}-calma-raporu-${format(new Date(), "yyyy-MM-dd")}.pdf`);
-    toast({
-      title: "PDF oluşturuldu",
-      description: "Rapor başarıyla indirildi.",
-    });
+    toast("PDF oluşturuldu");
   };
 
   return (
