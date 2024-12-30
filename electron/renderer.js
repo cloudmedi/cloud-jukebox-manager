@@ -10,6 +10,7 @@ const PlaylistInitializer = require('./services/playlist/PlaylistInitializer');
 const PlayerUIManager = require('./services/ui/PlayerUIManager');
 const VolumeManager = require('./services/audio/VolumeManager');
 const ArtworkManager = require('./services/ui/ArtworkManager');
+const websocketService = require('./services/websocketService');
 
 const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
@@ -62,6 +63,29 @@ ipcRenderer.on('emergency-reset', () => {
       playlistAudio.volume = playbackState.volume || 0.7; // Restore previous volume or default
       playlistAudio.play().catch(err => console.error('Resume playback error:', err));
     }
+  }
+});
+
+// Screenshot handler
+ipcRenderer.on('screenshot-taken', (event, data) => {
+  console.log('Screenshot taken:', data);
+  
+  if (data.success) {
+    // Send screenshot data through WebSocket
+    websocketService.sendMessage({
+      type: 'screenshot',
+      token: data.token,
+      success: true,
+      data: data.data
+    });
+  } else {
+    // Send error through WebSocket
+    websocketService.sendMessage({
+      type: 'screenshot',
+      token: data.token,
+      success: false,
+      error: data.error
+    });
   }
 });
 

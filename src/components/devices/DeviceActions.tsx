@@ -5,6 +5,7 @@ import websocketService from "@/services/websocketService";
 import { toast } from "sonner";
 import { DeviceActionMenu } from "./actions/DeviceActionMenu";
 import { DeviceActionDialogs } from "./actions/DeviceActionDialogs";
+import { ScreenshotDialog } from "./actions/ScreenshotDialog";
 import { useQueryClient } from "@tanstack/react-query";
 
 interface DeviceActionsProps {
@@ -18,7 +19,22 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isRestartDialogOpen, setIsRestartDialogOpen] = useState(false);
   const [isEmergencyActive, setIsEmergencyActive] = useState(false);
+  const [isScreenshotDialogOpen, setIsScreenshotDialogOpen] = useState(false);
   const queryClient = useQueryClient();
+
+  const handleScreenshot = () => {
+    if (!device.isOnline) {
+      toast.error('Cihaz çevrimdışı');
+      return;
+    }
+
+    websocketService.sendMessage({
+      type: 'command',
+      token: device.token,
+      command: 'screenshot'
+    });
+    setIsScreenshotDialogOpen(true);
+  };
 
   const handleEmergencyAction = async () => {
     try {
@@ -130,6 +146,7 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
         onRestartClick={() => setIsRestartDialogOpen(true)}
         onDeleteClick={() => setIsDeleteDialogOpen(true)}
         onEmergencyClick={handleEmergencyAction}
+        onScreenshotClick={handleScreenshot}
       />
 
       <DeviceActionDialogs
@@ -148,6 +165,12 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
         onGroupChange={handleGroupChange}
         onDelete={handleDelete}
         onRestart={handleRestart}
+      />
+
+      <ScreenshotDialog
+        isOpen={isScreenshotDialogOpen}
+        onClose={() => setIsScreenshotDialogOpen(false)}
+        deviceToken={device.token}
       />
     </>
   );
