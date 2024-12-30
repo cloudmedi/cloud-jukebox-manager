@@ -33,6 +33,8 @@ export const DeviceList = () => {
 
   useEffect(() => {
     const handleDeviceStatus = (data: any) => {
+      console.log('Device status update received:', data); // Debug log
+
       const currentDevices = queryClient.getQueryData<Device[]>(['devices']);
       
       if (!currentDevices) return;
@@ -50,12 +52,18 @@ export const DeviceList = () => {
           if (data.playlistStatus === 'error') {
             showPlaylistError(device.name, 'Playlist yüklenemedi');
           }
-          
-          return { 
-            ...device, 
+
+          // Playlist detaylarını güncelliyoruz
+          const updatedDevice = {
+            ...device,
             ...data,
-            playlistStatus: data.playlistStatus || device.playlistStatus
+            playlistStatus: data.playlistStatus || device.playlistStatus,
+            // Eğer activePlaylist varsa onu kullan, yoksa mevcut playlist'i koru
+            activePlaylist: data.activePlaylist || device.activePlaylist
           };
+
+          console.log('Updated device:', updatedDevice); // Debug log
+          return updatedDevice;
         }
         return device;
       });
