@@ -4,8 +4,8 @@ const deviceService = require('../deviceService');
 class UIManager {
     constructor() {
         this.deviceInfoElement = document.getElementById('deviceInfo');
-        this.tokenDisplay = this.deviceInfoElement.querySelector('.token-display');
-        this.connectionStatus = this.deviceInfoElement.querySelector('.connection-status');
+        this.tokenDisplay = this.deviceInfoElement?.querySelector('.token-display');
+        this.connectionStatus = this.deviceInfoElement?.querySelector('.connection-status');
         this.downloadProgress = document.querySelector('.download-progress');
         this.downloadProgressBar = document.querySelector('.download-progress-bar');
         this.downloadProgressText = document.querySelector('.download-progress-text');
@@ -34,46 +34,33 @@ class UIManager {
     }
 
     updateDeviceInfo(token) {
-        this.tokenDisplay.textContent = `Token: ${token}`;
+        if (this.tokenDisplay) {
+            this.tokenDisplay.textContent = `Token: ${token}`;
+        }
     }
 
     updateConnectionStatus(isConnected) {
         if (isConnected) {
             // Bağlantı başarılı olduğunda token bilgilerini gizle
-            this.deviceInfoElement.style.display = 'none';
+            if (this.deviceInfoElement) {
+                this.deviceInfoElement.style.display = 'none';
+            }
+            
+            // Yeni mesajı göster
+            if (this.connectionStatus) {
+                this.connectionStatus.className = 'connection-status connected';
+                this.connectionStatus.textContent = 'Cihaz başarıyla eşleştirildi. Şimdi bir çalma listesi ekleyebilirsiniz.';
+            }
         } else {
             // Bağlantı koptuğunda token bilgilerini göster
-            this.deviceInfoElement.style.display = 'block';
-        }
-        
-        this.connectionStatus.className = `connection-status ${isConnected ? 'connected' : 'disconnected'}`;
-        this.connectionStatus.textContent = isConnected ? 'Bağlı' : 'Bağlantı Kesildi';
-    }
-
-    displayPlaylists(playlist) {
-        const playlistContainer = document.getElementById('playlistContainer');
-        if (!playlistContainer) return;
-
-        playlistContainer.innerHTML = '';
-
-        if (playlist) {
-            const playlistElement = document.createElement('div');
-            playlistElement.className = 'playlist-item';
-            playlistElement.innerHTML = `
-                <div class="playlist-info">
-                    ${playlist.artwork ? 
-                        `<img src="${playlist.artwork}" alt="${playlist.name}" class="playlist-artwork"/>` :
-                        '<div class="playlist-artwork-placeholder"></div>'
-                    }
-                    <div class="playlist-details">
-                        <h3>${playlist.name}</h3>
-                        <p>${playlist.songs[0]?.artist || 'Unknown Artist'}</p>
-                        <p>${playlist.songs[0]?.name || 'No songs'}</p>
-                    </div>
-                </div>
-            `;
+            if (this.deviceInfoElement) {
+                this.deviceInfoElement.style.display = 'block';
+            }
             
-            playlistContainer.appendChild(playlistElement);
+            if (this.connectionStatus) {
+                this.connectionStatus.className = 'connection-status disconnected';
+                this.connectionStatus.textContent = 'Cihaz başarıyla eşleştirildi. Şimdi bir çalma listesi ekleyebilirsiniz.';
+            }
         }
     }
 
