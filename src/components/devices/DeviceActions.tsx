@@ -72,11 +72,9 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
     try {
       console.log('Volume change requested:', { deviceId: device._id, volume });
       
-      // Backend'e gönder
       await deviceService.updateDevice(device._id, { volume });
       console.log('Volume updated in backend');
       
-      // WebSocket üzerinden cihaza gönder
       websocketService.sendMessage({
         type: 'command',
         token: device.token,
@@ -88,7 +86,6 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
       setIsVolumeDialogOpen(false);
       toast.success('Ses seviyesi değiştirme komutu gönderildi');
       
-      // Query'yi invalidate et
       queryClient.invalidateQueries({ queryKey: ['devices'] });
       console.log('Devices query invalidated');
     } catch (error) {
@@ -120,6 +117,22 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
     }
   };
 
+  const handleScreenshot = () => {
+    try {
+      console.log('Sending screenshot command for device:', device.token);
+      websocketService.sendMessage({
+        type: 'command',
+        token: device.token,
+        command: 'screenshot'
+      });
+      toast.success('Ekran görüntüsü alma komutu gönderildi');
+      setIsScreenshotDialogOpen(true);
+    } catch (error) {
+      console.error('Screenshot error:', error);
+      toast.error('Ekran görüntüsü alma komutu gönderilemedi');
+    }
+  };
+
   return (
     <>
       <DeviceActionMenu
@@ -132,7 +145,7 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
         onRestartClick={() => setIsRestartDialogOpen(true)}
         onDeleteClick={() => setIsDeleteDialogOpen(true)}
         onEmergencyClick={handleEmergencyAction}
-        onScreenshotClick={() => setIsScreenshotDialogOpen(true)}
+        onScreenshotClick={handleScreenshot}
       />
 
       <DeviceActionDialogs
