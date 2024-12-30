@@ -160,6 +160,7 @@ class TrayService {
   }
 
   setAnnouncementState(isPlaying, remainingTime = 0) {
+    console.log('Setting announcement state:', { isPlaying, remainingTime });
     this.isAnnouncementPlaying = isPlaying;
     this.announcementRemainingTime = remainingTime;
     this.updateTrayMenu();
