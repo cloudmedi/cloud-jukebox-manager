@@ -7,6 +7,10 @@ class AnnouncementPlayer {
     this.currentAnnouncement = null;
   }
 
+  getCurrentAnnouncement() {
+    return this.currentAnnouncement;
+  }
+
   async playAnnouncement(announcement) {
     try {
       console.log('Playing announcement:', announcement);
@@ -33,6 +37,16 @@ class AnnouncementPlayer {
       console.error('Error playing announcement:', error);
       throw error;
     }
+  }
+
+  async stopAnnouncement() {
+    console.log('Stopping announcement');
+    
+    const mainWindow = BrowserWindow.getAllWindows()[0];
+    if (!mainWindow) return;
+
+    mainWindow.webContents.send('stop-announcement');
+    this.onAnnouncementEnd();
   }
 
   onAnnouncementEnd() {

@@ -3,6 +3,7 @@ const Store = require('electron-store');
 const fs = require('fs');
 const path = require('path');
 const { app } = require('electron');
+const AnnouncementPlayer = require('../../announcement/AnnouncementPlayer');
 
 class AnnouncementDeleteHandler extends BaseDeleteHandler {
   constructor() {
@@ -13,10 +14,20 @@ class AnnouncementDeleteHandler extends BaseDeleteHandler {
   async preDelete(id, data) {
     this.logger.info(`Starting pre-delete phase for announcement ${id}`);
     
-    // Çalan anons varsa durdur
-    const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
-    if (mainWindow) {
-      mainWindow.webContents.send('stop-announcement');
+    try {
+      // Önce çalan anonsu durdur
+      const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
+      if (mainWindow) {
+        // Çalan anons kontrolü
+        const currentAnnouncement = AnnouncementPlayer.getCurrentAnnouncement();
+        if (currentAnnouncement && currentAnnouncement._id === id) {
+          this.logger.info('Stopping currently playing announcement before deletion');
+          await AnnouncementPlayer.stopAnnouncement();
+        }
+      }
+    } catch (error) {
+      this.logger.error('Error in pre-delete phase:', error);
+      throw error;
     }
   }
 
@@ -24,7 +35,7 @@ class AnnouncementDeleteHandler extends BaseDeleteHandler {
     this.logger.info(`Executing delete for announcement ${id}`);
     
     try {
-      // Store'dan anonsu bul ve sil
+      // Store'dan anonsu bul
       const announcements = this.store.get('announcements', []);
       const announcement = announcements.find(a => a._id === id);
       
@@ -32,9 +43,24 @@ class AnnouncementDeleteHandler extends BaseDeleteHandler {
         // Ses dosyasını sil
         if (announcement.audioFile) {
           const audioPath = path.join(app.getPath('userData'), 'announcements', announcement.audioFile);
-          if (fs.existsSync(audioPath)) {
-            fs.unlinkSync(audioPath);
-            this.logger.info(`Deleted audio file: ${audioPath}`);
+          
+          // Dosya erişilebilirlik kontrolü
+          try {
+            await fs.promises.access(audioPath, fs.constants.F_OK | fs.constants.W_OK);
+            
+            // Dosyayı sil
+            await fs.promises.unlink(audioPath);
+            this.logger.info(`Successfully deleted audio file: ${audioPath}`);
+          } catch (error) {
+            if (error.code === 'EBUSY') {
+              // Dosya kullanımda ise biraz bekle ve tekrar dene
+              await new Promise(resolve => setTimeout(resolve, 1000));
+              await fs.promises.unlink(audioPath);
+              this.logger.info(`Successfully deleted audio file after retry: ${audioPath}`);
+            } else {
+              this.logger.error(`Error deleting audio file: ${error.message}`);
+              throw error;
+            }
           }
         }
 
@@ -42,6 +68,8 @@ class AnnouncementDeleteHandler extends BaseDeleteHandler {
         this.store.set('announcements', 
           announcements.filter(a => a._id !== id)
         );
+        
+        this.logger.info(`Announcement removed from store: ${id}`);
       }
 
       // UI'ı güncelle
@@ -66,7 +94,13 @@ class AnnouncementDeleteHandler extends BaseDeleteHandler {
         const files = fs.readdirSync(announcementDir);
         for (const file of files) {
           if (file.startsWith(id)) {
-            fs.unlinkSync(path.join(announcementDir, file));
+            const filePath = path.join(announcementDir, file);
+            try {
+              await fs.promises.unlink(filePath);
+              this.logger.info(`Cleaned up related file: ${filePath}`);
+            } catch (error) {
+              this.logger.warn(`Failed to clean up file ${filePath}: ${error.message}`);
+            }
           }
         }
       }
