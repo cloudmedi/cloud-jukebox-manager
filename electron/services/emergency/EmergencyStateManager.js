@@ -5,13 +5,9 @@ const store = new Store();
 class EmergencyStateManager {
   constructor() {
     this.store = new Store();
-    this.isEmergencyActive = this.store.get('emergencyState.isActive', false);
   }
 
   setEmergencyState(isActive) {
-    console.log('Setting emergency state:', isActive);
-    
-    this.isEmergencyActive = isActive;
     this.store.set('emergencyState', {
       isActive,
       timestamp: new Date().toISOString()
@@ -31,7 +27,8 @@ class EmergencyStateManager {
   }
 
   isEmergencyActive() {
-    return this.isEmergencyActive;
+    const state = this.store.get('emergencyState');
+    return state ? state.isActive : false;
   }
 
   getEmergencyState() {
