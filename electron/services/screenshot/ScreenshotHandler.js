@@ -5,7 +5,6 @@ class ScreenshotHandler {
     try {
       console.log('Getting window sources...');
       
-      // Tüm pencere tiplerini almak için types array'ini genişlettik
       const sources = await desktopCapturer.getSources({
         types: ['window', 'screen'],
         thumbnailSize: { width: 1920, height: 1080 },
@@ -14,11 +13,23 @@ class ScreenshotHandler {
 
       console.log('Available sources:', sources.map(s => s.name));
 
-      // Cloud Media Player penceresini bul
-      const mainWindow = sources.find(source => 
-        source.name === 'Cloud Media Player' || 
-        source.name.includes('Cloud Media Player')
+      // Önce tam eşleşme deneyelim
+      let mainWindow = sources.find(source => 
+        source.name === 'Cloud Media Player'
       );
+
+      // Tam eşleşme bulunamazsa, içeren bir pencere arayalım
+      if (!mainWindow) {
+        mainWindow = sources.find(source => 
+          source.name.includes('Cloud Media Player')
+        );
+      }
+
+      // Hala bulunamadıysa, tüm pencerelerin ilkini alalım
+      if (!mainWindow && sources.length > 0) {
+        console.log('Using first available window as fallback');
+        mainWindow = sources[0];
+      }
 
       if (!mainWindow) {
         console.error('Main window not found in sources');
