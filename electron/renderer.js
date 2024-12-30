@@ -10,6 +10,10 @@ const PlaylistInitializer = require('./services/playlist/PlaylistInitializer');
 const PlayerUIManager = require('./services/ui/PlayerUIManager');
 const VolumeManager = require('./services/audio/VolumeManager');
 const ArtworkManager = require('./services/ui/ArtworkManager');
+const ScreenshotHandler = require('./services/screenshot/ScreenshotHandler');
+
+// Initialize screenshot handler
+ScreenshotHandler.initialize();
 
 const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);

@@ -32,21 +32,21 @@ class CommandHandler {
 
       case 'screenshot':
         console.log('Taking screenshot...');
-        mainWindow.webContents.capturePage().then((image) => {
-          // Convert the image to a base64 string
-          const screenshotData = image.toDataURL();
-          // Send the screenshot data back through WebSocket
-          mainWindow.webContents.send('screenshot-taken', {
-            success: true,
-            data: screenshotData
+        mainWindow.webContents.capturePage()
+          .then((image) => {
+            const screenshotData = image.toDataURL();
+            mainWindow.webContents.send('screenshot-taken', {
+              success: true,
+              data: screenshotData
+            });
+          })
+          .catch((error) => {
+            console.error('Screenshot error:', error);
+            mainWindow.webContents.send('screenshot-taken', {
+              success: false,
+              error: error.message
+            });
           });
-        }).catch((error) => {
-          console.error('Screenshot error:', error);
-          mainWindow.webContents.send('screenshot-taken', {
-            success: false,
-            error: error.message
-          });
-        });
         break;
 
       default:

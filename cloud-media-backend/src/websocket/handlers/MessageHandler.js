@@ -27,16 +27,19 @@ class MessageHandler {
         break;
 
       case 'command':
-        // token değerini kullanarak komutu gönder
+        // Handle command messages including screenshot
         const success = await this.commandHandler.handleCommand({
           ...data,
-          token: data.token // deviceId yerine token kullanıyoruz
+          token: data.token
         });
+        
+        // Send command status back to admin client
         ws.send(JSON.stringify({
           type: 'commandStatus',
           token: data.token,
           command: data.command,
-          success
+          success,
+          data: data.data // Include any additional data like screenshot
         }));
         break;
 
