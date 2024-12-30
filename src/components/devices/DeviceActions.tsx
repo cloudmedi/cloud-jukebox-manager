@@ -68,14 +68,22 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
 
   const handleVolumeChange = async (volume: number) => {
     try {
+      // Önce backend'e gönder
+      await deviceService.updateDevice(device._id, { volume });
+      
+      // Sonra WebSocket üzerinden cihaza gönder
       websocketService.sendMessage({
         type: 'command',
         token: device.token,
         command: 'setVolume',
         volume: volume
       });
+      
       setIsVolumeDialogOpen(false);
       toast.success('Ses seviyesi değiştirme komutu gönderildi');
+      
+      // Query'yi invalidate et ki yeni değeri alalım
+      queryClient.invalidateQueries({ queryKey: ['devices'] });
     } catch (error) {
       console.error('Volume control error:', error);
       toast.error('Ses seviyesi değiştirme komutu gönderilemedi');

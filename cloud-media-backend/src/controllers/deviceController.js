@@ -59,11 +59,27 @@ const updateDevice = async (req, res) => {
       return res.status(404).json({ message: 'Cihaz bulunamadı' });
     }
 
+    // Volume değerini kontrol et
+    if (req.body.volume !== undefined) {
+      // Volume değerinin 0-100 arasında olduğundan emin ol
+      req.body.volume = Math.max(0, Math.min(100, parseInt(req.body.volume)));
+    }
+
     Object.keys(req.body).forEach(key => {
       device[key] = req.body[key];
     });
 
     const updatedDevice = await device.save();
+    
+    // WebSocket üzerinden diğer admin'lere bildir
+    if (req.wss) {
+      req.wss.broadcastToAdmins({
+        type: 'deviceUpdate',
+        deviceId: device._id,
+        updates: req.body
+      });
+    }
+
     res.json(updatedDevice);
   } catch (error) {
     res.status(400).json({ message: error.message });

@@ -118,8 +118,23 @@ class AudioPlayer {
   }
 
   setVolume(volume) {
-    this.volume = volume / 100;
+    // Volume değerini 0-100 arasında tut
+    const normalizedVolume = Math.max(0, Math.min(100, volume));
+    
+    // 0-100 arasındaki değeri 0-1 arasına dönüştür
+    this.volume = normalizedVolume / 100;
     this.audio.volume = this.volume;
+
+    // Store'a kaydet
+    const store = new Store();
+    store.set('volume', normalizedVolume);
+
+    // Başarılı volume değişikliğini bildir
+    websocketService.sendMessage({
+      type: 'volumeUpdate',
+      status: 'success',
+      volume: normalizedVolume
+    });
   }
 
   updatePlaybackState(state) {
