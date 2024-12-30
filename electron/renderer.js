@@ -271,7 +271,21 @@ ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
 // Sonraki şarkı için event listener
 ipcRenderer.on('next-song', () => {
   console.log('Next song requested from tray menu');
-  ipcRenderer.invoke('song-ended');
+  // Önce sonraki şarkıya geç
+  ipcRenderer.invoke('song-ended').then(() => {
+    // Şarkı değiştiğinde UI'ı güncelle
+    const currentPlaylist = require('electron').ipcRenderer.sendSync('get-current-playlist');
+    if (currentPlaylist && currentPlaylist.currentSong) {
+      console.log('Updating UI with new song:', currentPlaylist.currentSong);
+      PlayerUIManager.updateCurrentSong(currentPlaylist.currentSong);
+      
+      // Tray menüsünü de güncelle
+      ipcRenderer.send('song-changed', {
+        name: currentPlaylist.currentSong.name,
+        artist: currentPlaylist.currentSong.artist
+      });
+    }
+  });
 });
 
 // İlk yüklemede playlistleri göster
