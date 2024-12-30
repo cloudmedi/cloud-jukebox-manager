@@ -1,11 +1,13 @@
 const AnnouncementEventHandler = require('./handlers/AnnouncementEventHandler');
 const PlaylistEventHandler = require('./handlers/PlaylistEventHandler');
 const playbackStateManager = require('./PlaybackStateManager');
+const FadeAudioPlayer = require('./FadeAudioPlayer');
 
 class AudioEventHandler {
   constructor(playlistAudio) {
     this.playlistAudio = playlistAudio;
     this.campaignAudio = document.getElementById('campaignPlayer');
+    this.fadePlayer = new FadeAudioPlayer();
     
     // Handler'ları başlat
     this.announcementHandler = new AnnouncementEventHandler(
@@ -23,6 +25,18 @@ class AudioEventHandler {
         }
       }
     );
+
+    // Fade geçişleri için event listener'lar
+    this.playlistAudio.addEventListener('timeupdate', () => {
+      const timeRemaining = this.playlistAudio.duration - this.playlistAudio.currentTime;
+      if (timeRemaining <= 5 && !this.fadePlayer.isFading) {
+        // Sonraki şarkıyı hazırla
+        const nextSong = playbackStateManager.getNextSong();
+        if (nextSong) {
+          this.fadePlayer.prepareNextSong(nextSong);
+        }
+      }
+    });
   }
 
   async playCampaign(audioUrl) {
@@ -45,6 +59,9 @@ class AudioEventHandler {
     } else {
       console.warn('Campaign audio element not found');
     }
+
+    // Fade player ses seviyesini ayarla
+    this.fadePlayer.setVolume(normalizedVolume);
   }
 
   isAnnouncementActive() {
