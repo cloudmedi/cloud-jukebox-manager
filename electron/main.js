@@ -61,7 +61,6 @@ function createWindow() {
   }
 }
 
-// Update tray menu
 function updateTrayMenu(song = currentSong) {
   if (!tray) return;
 
@@ -190,48 +189,16 @@ ipcMain.handle('get-device-info', async () => {
   return store.get('deviceInfo');
 });
 
-// Playlist durumunu sorgulama - artık asenkron
-ipcMain.handle('get-current-playlist', async (event) => {
-  const audioService = require('./services/audioService');
-  const currentSong = audioService.getCurrentSong();
-  console.log('Sending current song info:', currentSong);
-  
-  return {
-    currentSong: currentSong,
-    currentIndex: audioService.currentIndex,
-    isPlaying: audioService.isPlaying
-  };
+// Şarkı değiştiğinde tray menüsünü güncelle
+ipcMain.on('song-changed', (event, song) => {
+  console.log('Updating tray menu with song:', song);
+  currentSong = song;
+  updateTrayMenu(song);
 });
 
-// Song ended handler - TEK BİR YERDE TANIMLANMIŞ
-ipcMain.handle('song-ended', async (event) => {
-  console.log('Song ended, handling next song');
-  const audioService = require('./services/audioService');
-  
-  // Sonraki şarkıya geç
-  const nextSong = audioService.handleNextSong();
-  console.log('Next song:', nextSong);
-  
-  if (nextSong) {
-    // Ana pencereye yeni şarkı bilgisini gönder
-    event.sender.send('update-player', {
-      playlist: audioService.playlist,
-      currentSong: nextSong
-    });
-    
-    // Tray menüsünü güncelle
-    currentSong = {
-      name: nextSong.name,
-      artist: nextSong.artist
-    };
-    updateTrayMenu(currentSong);
-    
-    console.log('Player and tray menu updated with new song');
-  }
-  
-  return {
-    currentSong: nextSong,
-    currentIndex: audioService.currentIndex,
-    isPlaying: audioService.isPlaying
-  };
+// Update playback state when it changes
+ipcMain.on('playback-status-changed', (event, playing) => {
+  console.log('Playback status changed:', playing);
+  isPlaying = playing;
+  updateTrayMenu(currentSong);
 });

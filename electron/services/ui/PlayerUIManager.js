@@ -1,78 +1,71 @@
 class PlayerUIManager {
-  static updateCurrentSong(currentSong) {
-    console.log('Updating UI with song:', currentSong);
-    
-    if (!currentSong) {
-      console.warn('No song data provided for UI update');
-      return;
-    }
-
-    const container = document.getElementById('currentSongInfo');
-    if (!container) {
-      console.error('Current song info container not found! Creating container...');
-      this.createContainer();
-      return this.updateCurrentSong(currentSong); // Recursive call after creating container
-    }
-
-    let songNameElement = container.querySelector('.song-name');
-    let artistElement = container.querySelector('.artist-name');
-
-    if (!songNameElement || !artistElement) {
-      console.log('Creating new song info elements...');
-      
-      // Varolan içeriği temizle
-      container.innerHTML = '';
-      
-      // Yeni elementleri oluştur
-      songNameElement = document.createElement('h3');
-      songNameElement.className = 'song-name';
-      
-      artistElement = document.createElement('p');
-      artistElement.className = 'artist-name';
-      
-      // Elementleri container'a ekle
-      container.appendChild(songNameElement);
-      container.appendChild(artistElement);
-    }
-
-    // Elementleri güncelle
-    songNameElement.textContent = currentSong.name || 'Unknown Song';
-    artistElement.textContent = currentSong.artist || 'Unknown Artist';
-    console.log('Song info updated successfully');
-
-    // Tray menüsünü güncelle
-    const { ipcRenderer } = require('electron');
-    ipcRenderer.send('song-changed', {
-      name: currentSong.name,
-      artist: currentSong.artist
-    });
+  constructor() {
+    this.playlistContainer = document.getElementById('playlistContainer');
+    this.currentSongElement = null;
+    this.currentArtwork = null;
   }
 
-  static createContainer() {
-    console.log('Creating current song info container...');
-    const container = document.createElement('div');
-    container.id = 'currentSongInfo';
-    container.className = 'current-song-info';
+  updateCurrentSong(currentSong) {
+    if (!this.playlistContainer) {
+      console.log('PlayerUIManager: Playlist container not found');
+      return;
+    }
+    
+    console.log('PlayerUIManager: Updating current song with:', currentSong);
+    
+    // Önce tüm mevcut şarkı elementlerini temizle
+    while (this.playlistContainer.firstChild) {
+      this.playlistContainer.removeChild(this.playlistContainer.firstChild);
+    }
+    
+    // Eğer aynı artwork'se ve element varsa sadece bilgileri güncelle
+    if (this.currentArtwork === currentSong.artwork && this.currentSongElement) {
+      console.log('PlayerUIManager: Same artwork, updating song info only');
+      const songNameElement = this.currentSongElement.querySelector('h3');
+      const artistElement = this.currentSongElement.querySelector('p');
+      if (songNameElement) songNameElement.textContent = currentSong.name;
+      if (artistElement) artistElement.textContent = currentSong.artist || 'Unknown Artist';
+      this.playlistContainer.appendChild(this.currentSongElement);
+      return;
+    }
+    
+    this.currentArtwork = currentSong.artwork;
+    
+    // Yeni şarkı elementi oluştur
+    this.currentSongElement = document.createElement('div');
+    this.currentSongElement.className = 'playlist-item';
+    
+    // ArtworkManager'ı kullan
+    const artworkHtml = require('./ArtworkManager').createArtworkHtml(currentSong.artwork, currentSong.name);
+    
+    this.currentSongElement.innerHTML = `
+      <div class="playlist-info">
+        ${artworkHtml}
+        <div class="playlist-details">
+          <h3>${currentSong.name}</h3>
+          <p>${currentSong.artist || 'Unknown Artist'}</p>
+        </div>
+      </div>
+    `;
+    
+    console.log('PlayerUIManager: Created new song element with artwork');
+    this.playlistContainer.appendChild(this.currentSongElement);
 
-    // Boş elementleri oluştur
-    const songName = document.createElement('h3');
-    songName.className = 'song-name';
-    const artistName = document.createElement('p');
-    artistName.className = 'artist-name';
-
-    container.appendChild(songName);
-    container.appendChild(artistName);
-
-    // Container'ı playlist container'dan önce ekle
-    const playlistContainer = document.getElementById('playlistContainer');
-    if (playlistContainer) {
-      playlistContainer.parentNode.insertBefore(container, playlistContainer);
-      console.log('Container created and inserted successfully');
-    } else {
-      document.querySelector('.container').appendChild(container);
-      console.log('Container created and appended to main container');
+    // Artwork yükleme durumunu kontrol et
+    const artworkImg = this.currentSongElement.querySelector('img');
+    if (artworkImg) {
+      artworkImg.addEventListener('load', () => {
+        console.log('PlayerUIManager: Artwork loaded successfully:', artworkImg.src);
+      });
+      
+      artworkImg.addEventListener('error', (error) => {
+        console.error('PlayerUIManager: Artwork loading error:', {
+          src: artworkImg.src,
+          error: error
+        });
+      });
     }
   }
 }
 
-module.exports = PlayerUIManager;
+module.exports = new PlayerUIManager();
