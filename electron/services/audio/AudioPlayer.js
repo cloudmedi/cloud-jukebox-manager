@@ -10,44 +10,41 @@ class AudioPlayer {
   constructor() {
     this.queueManager = new QueueManager();
     this.playbackState = new PlaybackState();
-    this.audio = new Audio();
+    this.audio = null; // Audio element'i başlangıçta null olarak ayarla
     this.playlist = null;
     this.isPlaying = false;
     
     // Volume initialization
-    console.log('AudioPlayer: Initializing volume');
     const storedVolume = store.get('volume', 70);
-    console.log('AudioPlayer: Stored volume:', storedVolume);
+    console.log('AudioPlayer: Initial stored volume:', storedVolume);
     this.volume = storedVolume / 100;
-    
-    this.setupEventListeners();
-    this.initializeVolume();
+
+    // Audio element'i oluştur ve initialize et
+    this.initializeAudio();
   }
 
-  initializeVolume() {
-    console.log('AudioPlayer: Setting up volume initialization');
+  initializeAudio() {
+    console.log('AudioPlayer: Initializing audio element');
+    this.audio = new Audio();
     
-    // Set initial volume when audio is ready
+    // Volume ayarını hemen uygula
+    this.audio.volume = this.volume;
+    console.log('AudioPlayer: Initial volume set:', this.volume);
+
+    // Event listeners
     this.audio.addEventListener('loadeddata', () => {
-      console.log('AudioPlayer: Audio loaded, applying volume:', this.volume);
+      console.log('AudioPlayer: Audio loaded, current volume:', this.audio.volume);
+      // Volume'u tekrar kontrol et ve uygula
       this.audio.volume = this.volume;
-      
-      // Notify about initial volume
-      websocketService.sendMessage({
-        type: 'volumeUpdate',
-        status: 'success',
-        volume: this.volume * 100
-      });
+      console.log('AudioPlayer: Volume reapplied after load:', this.volume);
     });
 
-    // Immediate volume set attempt
-    if (this.audio) {
-      console.log('AudioPlayer: Immediate volume set:', this.volume);
-      this.audio.volume = this.volume;
-    }
+    this.setupEventListeners();
   }
 
   setupEventListeners() {
+    if (!this.audio) return;
+
     this.audio.addEventListener('ended', () => {
       console.log('Song ended, playing next');
       this.playNext();
@@ -59,7 +56,7 @@ class AudioPlayer {
     });
 
     this.audio.addEventListener('play', () => {
-      console.log('Audio started playing');
+      console.log('Audio started playing, volume:', this.audio.volume);
       this.isPlaying = true;
       this.updatePlaybackState('playing');
     });
@@ -69,26 +66,33 @@ class AudioPlayer {
       this.isPlaying = false;
       this.updatePlaybackState('paused');
     });
+
+    // Volume değişikliklerini dinle
+    this.audio.addEventListener('volumechange', () => {
+      console.log('AudioPlayer: Volume changed:', this.audio.volume);
+    });
   }
 
   setVolume(volume) {
     console.log('AudioPlayer: Setting volume:', volume);
     
-    // Normalize and store volume
+    // Normalize volume
     const normalizedVolume = Math.max(0, Math.min(100, volume));
     this.volume = normalizedVolume / 100;
     
-    // Save to store
+    // Store'a kaydet
     store.set('volume', normalizedVolume);
     console.log('AudioPlayer: Volume saved to store:', normalizedVolume);
     
-    // Apply to audio element if it exists
+    // Audio element'e uygula
     if (this.audio) {
       this.audio.volume = this.volume;
-      console.log('AudioPlayer: Volume applied to audio element:', this.volume);
+      console.log('AudioPlayer: Volume applied to audio:', this.audio.volume);
+    } else {
+      console.warn('AudioPlayer: No audio element available');
     }
 
-    // Notify about volume change
+    // WebSocket bildirimi
     websocketService.sendMessage({
       type: 'volumeUpdate',
       status: 'success',

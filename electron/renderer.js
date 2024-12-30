@@ -154,26 +154,23 @@ ipcRenderer.on('error', (event, message) => {
 ipcRenderer.on('set-volume', (event, volume) => {
     console.log('Renderer: Volume change received:', volume);
     
+    const playlistAudio = document.getElementById('audioPlayer');
     if (playlistAudio) {
         const normalizedVolume = volume / 100;
         console.log('Renderer: Normalized volume:', normalizedVolume);
         
-        // Önce volume değerini ayarla
+        // Volume değerini ayarla
         playlistAudio.volume = normalizedVolume;
+        console.log('Renderer: Volume set on audio element:', playlistAudio.volume);
         
-        // Sonra store'a kaydet
+        // Store'a kaydet
         store.set('volume', volume);
-        
-        console.log('Renderer: Volume applied:', {
-            rawVolume: volume,
-            normalizedVolume: normalizedVolume,
-            audioVolume: playlistAudio.volume
-        });
+        console.log('Renderer: Volume saved to store:', volume);
         
         // Volume değişikliğini bildir
         ipcRenderer.send('volume-changed', volume);
     } else {
-        console.warn('Renderer: Audio element not found for volume change');
+        console.error('Renderer: Audio element not found for volume change');
     }
 });
 
