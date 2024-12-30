@@ -1,54 +1,69 @@
-const QueueManager = require('./QueueManager');
-const PlaybackState = require('./PlaybackState');
+const QueueManager = require('./audio/QueueManager');
+const PlaybackState = require('./audio/PlaybackState');
 const path = require('path');
-const { BrowserWindow } = require('electron');
+const EmergencyStateManager = require('../emergency/EmergencyStateManager');
+const Store = require('electron-store');
+const store = new Store();
 
 class AudioPlayer {
   constructor() {
     this.queueManager = new QueueManager();
     this.playbackState = new PlaybackState();
+    this.audio = new Audio();
     this.playlist = null;
     this.isPlaying = false;
-    this.volume = 100;
+    this.volume = 1.0;
     
     this.setupEventListeners();
   }
 
   setupEventListeners() {
-    const mainWindow = BrowserWindow.getAllWindows()[0];
-    if (mainWindow) {
-      mainWindow.webContents.on('ipc-message', (event, channel, ...args) => {
-        switch (channel) {
-          case 'audio-ended':
-            console.log('Audio ended, playing next');
-            this.playNext();
-            break;
-          case 'audio-error':
-            console.error('Audio error:', args[0]);
-            this.playNext();
-            break;
-          case 'playback-status-update':
-            this.isPlaying = args[0].isPlaying;
-            break;
-        }
+    this.audio.addEventListener('ended', () => {
+      console.log('Song ended, playing next');
+      this.playNext();
+    });
+
+    this.audio.addEventListener('error', (e) => {
+      console.error('Audio error:', e);
+      this.playNext();
+    });
+
+    this.audio.addEventListener('play', () => {
+      console.log('Audio started playing');
+      this.isPlaying = true;
+      this.updatePlaybackState('playing');
+    });
+
+    this.audio.addEventListener('pause', () => {
+      console.log('Audio paused');
+      this.isPlaying = false;
+      this.updatePlaybackState('paused');
+    });
+  }
+
+  play() {
+    if (EmergencyStateManager.isEmergencyActive()) {
+      console.log('Playback blocked: Emergency mode is active');
+      return false;
+    }
+
+    console.log('Play requested');
+    if (this.audio.src) {
+      this.audio.play().catch(error => {
+        console.error('Error playing audio:', error);
+        this.playNext();
       });
-    }
-  }
-
-  loadPlaylist(playlist) {
-    console.log('Loading playlist:', playlist);
-    this.playlist = playlist;
-    this.queueManager.setQueue(playlist.songs);
-    
-    if (this.queueManager.getCurrentSong()) {
-      this.loadCurrentSong();
+      this.isPlaying = true;
     } else {
-      console.log('No playable songs in playlist');
+      console.log('No audio source loaded');
+      const currentSong = this.queueManager.getCurrentSong();
+      if (currentSong) {
+        this.loadSong(currentSong);
+      }
     }
   }
 
-  loadCurrentSong() {
-    const song = this.queueManager.getCurrentSong();
+  loadSong(song) {
     if (!song) {
       console.log('No song to load');
       return;
@@ -66,12 +81,16 @@ class AudioPlayer {
       const normalizedPath = path.normalize(song.localPath);
       console.log('Playing file from:', normalizedPath);
       
-      const mainWindow = BrowserWindow.getAllWindows()[0];
-      if (mainWindow) {
-        mainWindow.webContents.send('load-audio', {
-          path: normalizedPath,
-          volume: this.volume,
-          autoplay: this.isPlaying
+      this.audio.pause();
+      this.audio.currentTime = 0;
+      
+      this.audio.src = normalizedPath;
+      this.audio.volume = this.volume;
+      
+      if (this.isPlaying) {
+        this.audio.play().catch(error => {
+          console.error('Error playing audio:', error);
+          this.playNext();
         });
       }
     } catch (error) {
@@ -80,49 +99,60 @@ class AudioPlayer {
     }
   }
 
-  play() {
-    console.log('Play requested');
-    const mainWindow = BrowserWindow.getAllWindows()[0];
-    if (mainWindow) {
-      mainWindow.webContents.send('audio-play');
-      this.isPlaying = true;
-    }
-  }
-
-  pause() {
-    const mainWindow = BrowserWindow.getAllWindows()[0];
-    if (mainWindow) {
-      mainWindow.webContents.send('audio-pause');
-      this.isPlaying = false;
-    }
-  }
-
-  stop() {
-    const mainWindow = BrowserWindow.getAllWindows()[0];
-    if (mainWindow) {
-      mainWindow.webContents.send('audio-stop');
-      this.isPlaying = false;
-    }
-  }
-
   playNext() {
     console.log('Playing next song');
     const nextSong = this.queueManager.next();
     if (nextSong) {
       console.log('Next song found:', nextSong.name);
-      this.loadCurrentSong();
+      this.loadSong(nextSong);
     } else {
       console.log('No more songs in queue');
       this.stop();
     }
   }
 
+  stop() {
+    this.audio.pause();
+    this.audio.currentTime = 0;
+    this.isPlaying = false;
+  }
+
   setVolume(volume) {
-    this.volume = Math.max(0, Math.min(100, volume));
-    const mainWindow = BrowserWindow.getAllWindows()[0];
-    if (mainWindow) {
-      mainWindow.webContents.send('set-volume', this.volume);
-    }
+    console.log('AudioPlayer setVolume called:', { 
+      rawVolume: volume,
+      normalizedVolume: volume / 100 
+    });
+    
+    // Volume değerini 0-100 arasında tut
+    const normalizedVolume = Math.max(0, Math.min(100, volume));
+    console.log('Volume normalized:', normalizedVolume);
+    
+    // 0-100 arasındaki değeri 0-1 arasına dönüştür
+    this.volume = normalizedVolume / 100;
+    this.audio.volume = this.volume;
+    console.log('Audio element volume set:', this.audio.volume);
+
+    // Store'a kaydet
+    const store = new Store();
+    store.set('volume', normalizedVolume);
+    console.log('Volume saved to store:', normalizedVolume);
+
+    // Başarılı volume değişikliğini bildir
+    websocketService.sendMessage({
+      type: 'volumeUpdate',
+      status: 'success',
+      volume: normalizedVolume
+    });
+    console.log('Volume update success message sent');
+  }
+
+  updatePlaybackState(state) {
+    this.playbackState.update(
+      state,
+      this.queueManager.getCurrentSong(),
+      this.playlist,
+      this.volume * 100
+    );
   }
 
   getCurrentState() {
@@ -130,8 +160,36 @@ class AudioPlayer {
       isPlaying: this.isPlaying,
       currentSong: this.queueManager.getCurrentSong(),
       playlist: this.playlist,
-      volume: this.volume
+      volume: this.volume * 100
     };
+  }
+
+  handleEmergencyStop() {
+    // Save current state before stopping
+    const currentState = {
+      wasPlaying: this.isPlaying,
+      volume: this.volume,
+      currentTime: this.audio.currentTime
+    };
+    store.set('playbackState', currentState);
+    
+    // Stop playback
+    this.stop();
+    this.audio.volume = 0;
+  }
+
+  handleEmergencyReset() {
+    const savedState = store.get('playbackState');
+    if (savedState) {
+      this.volume = savedState.volume;
+      this.audio.volume = this.volume;
+      
+      if (savedState.wasPlaying) {
+        console.log('Restoring playback state after emergency');
+        this.audio.currentTime = savedState.currentTime;
+        this.play();
+      }
+    }
   }
 }
 

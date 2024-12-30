@@ -1,12 +1,42 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <meta charset="UTF-8">
-  <title>Cloud Media Player</title>
-  <link rel="stylesheet" href="styles.css">
+    <meta charset="UTF-8">
+    <title>Cloud Media Player</title>
+    <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-  <div id="app"></div>
-  <script src="renderer.js"></script>
+    <div class="titlebar">
+        <div class="version-info">CloudMedia V2.1</div>
+        <button class="titlebar-button close" id="closeButton">✕</button>
+    </div>
+    <div class="container">
+        <!-- Token ve Bağlantı Durumu (Başlangıçta gösterilir, bağlantı sonrası gizlenir) -->
+        <div id="deviceInfo" class="device-info">
+            <div class="token-display"></div>
+            <div class="connection-status"></div>
+        </div>
+
+        <!-- Playlist Container -->
+        <div id="playlistContainer" class="playlist-container">
+            <!-- Playlistler buraya eklenecek -->
+        </div>
+        
+        <!-- Ana playlist için audio element -->
+        <audio id="audioPlayer"></audio>
+        
+        <!-- Kampanyalar için ikinci audio element -->
+        <audio id="campaignPlayer"></audio>
+        
+        <!-- İndirme Progress Bar -->
+        <div class="download-progress" style="display: none;">
+            <div class="download-progress-bar"></div>
+            <div class="download-progress-text"></div>
+        </div>
+
+        <!-- Hata Mesajları -->
+        <div id="errorContainer" class="error-container"></div>
+    </div>
+    <script src="renderer.js"></script>
 </body>
 </html>

@@ -18,20 +18,15 @@ class WebSocketServer {
   initialize() {
     this.wss.on('connection', async (ws, req) => {
       console.log('New WebSocket connection attempt');
-      
-      // Heartbeat mekanizması
+
       ws.isAlive = true;
       ws.on('pong', () => {
         ws.isAlive = true;
-        console.log('Heartbeat received from client');
       });
 
-      // Admin veya device bağlantısı
       if (req.url === '/admin') {
-        console.log('Admin connection attempt');
         await this.adminHandler.handleConnection(ws);
       } else {
-        console.log('Device connection attempt');
         await this.deviceHandler.handleConnection(ws);
       }
     });
@@ -40,10 +35,10 @@ class WebSocketServer {
   }
 
   startHeartbeat() {
-    const interval = setInterval(() => {
+    setInterval(() => {
       this.wss.clients.forEach(ws => {
         if (ws.isAlive === false) {
-          console.log('Terminating inactive client');
+          console.log('Client terminated due to heartbeat failure');
           return ws.terminate();
         }
         
@@ -51,22 +46,60 @@ class WebSocketServer {
         ws.ping(() => {});
       });
     }, 30000);
+  }
 
-    this.wss.on('close', () => {
-      clearInterval(interval);
-    });
+  async handleDeviceMessage(token, message) {
+    console.log(`Handling device message from ${token}:`, message);
+    
+    switch (message.type) {
+      case 'status':
+        await this.statusHandler.handleOnlineStatus(token, message.isOnline);
+        break;
+
+      case 'playlistStatus':
+        await this.statusHandler.handlePlaylistStatus(token, message);
+        break;
+
+      case 'playbackStatus':
+        this.broadcastToAdmins({
+          type: 'deviceStatus',
+          token: token,
+          isPlaying: message.status === 'playing'
+        });
+        break;
+
+      case 'volume':
+        const device = await Device.findOne({ token });
+        if (!device) return;
+
+        await device.setVolume(message.volume);
+        this.broadcastToAdmins({
+          type: 'deviceStatus',
+          token: token,
+          volume: message.volume
+        });
+        break;
+
+      case 'error':
+        this.broadcastToAdmins({
+          type: 'deviceError',
+          token: token,
+          error: message.error
+        });
+        break;
+
+      default:
+        console.log('Unknown message type:', message.type);
+        break;
+    }
   }
 
   broadcastToAdmins(message) {
     console.log('Broadcasting to admins:', message);
     this.wss.clients.forEach(client => {
       if (client.readyState === WebSocket.OPEN && client.isAdmin) {
-        try {
-          client.send(JSON.stringify(message));
-          console.log('Message sent to admin client');
-        } catch (error) {
-          console.error('Error sending message to admin:', error);
-        }
+        client.send(JSON.stringify(message));
+        console.log('Message sent to admin client');
       }
     });
   }
@@ -74,7 +107,6 @@ class WebSocketServer {
   sendToDevice(token, message) {
     console.log(`Sending message to device ${token}:`, message);
     let sent = false;
-    
     this.wss.clients.forEach(client => {
       if (client.deviceToken === token && client.readyState === WebSocket.OPEN) {
         try {
@@ -88,10 +120,20 @@ class WebSocketServer {
     });
     
     if (!sent) {
-      console.log(`Device ${token} not found or not connected`);
+      console.log(`Message could not be sent - Device ${token} not found or not connected`);
     }
     
     return sent;
+  }
+
+  findDeviceWebSocket(token) {
+    let targetWs = null;
+    this.wss.clients.forEach(client => {
+      if (client.deviceToken === token) {
+        targetWs = client;
+      }
+    });
+    return targetWs;
   }
 }
 

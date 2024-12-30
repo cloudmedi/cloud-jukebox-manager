@@ -1,10 +1,9 @@
 const { BrowserWindow } = require('electron');
 const EmergencyStateManager = require('../../emergency/EmergencyStateManager');
 const audioPlayer = require('../../audio/AudioPlayer');
-const screenshotService = require('../../screenshot/ScreenshotService');
 
 class CommandHandler {
-  static async handleCommand(message) {
+  static handleCommand(message) {
     console.log('Processing command:', message);
     const mainWindow = BrowserWindow.getAllWindows()[0];
     
@@ -24,22 +23,6 @@ class CommandHandler {
         console.log('Processing emergency reset command');
         EmergencyStateManager.setEmergencyState(false);
         mainWindow.webContents.send('emergency-reset');
-        break;
-
-      case 'take-screenshot':
-        try {
-          const screenshot = await screenshotService.captureMainWindow();
-          return {
-            type: 'screenshot',
-            data: screenshot
-          };
-        } catch (error) {
-          console.error('Screenshot error:', error);
-          return {
-            type: 'error',
-            message: 'Screenshot failed'
-          };
-        }
         break;
 
       case 'songRemoved':
