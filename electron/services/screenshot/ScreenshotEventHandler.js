@@ -8,7 +8,10 @@ class ScreenshotEventHandler {
 
   initialize() {
     ipcRenderer.on('screenshot-taken', (event, result) => {
-      if (result.success) {
+      console.log('Screenshot event received:', result);
+      
+      if (result.success && result.data) {
+        console.log('Sending screenshot via WebSocket');
         this.ws.send(JSON.stringify({
           type: 'screenshot',
           data: result.data
@@ -17,7 +20,7 @@ class ScreenshotEventHandler {
         console.error('Screenshot error:', result.error);
         this.ws.send(JSON.stringify({
           type: 'error',
-          error: 'Screenshot failed: ' + result.error
+          error: 'Screenshot failed: ' + (result.error || 'Unknown error')
         }));
       }
     });
