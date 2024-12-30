@@ -40,27 +40,29 @@ class UIManager {
     }
 
     updateConnectionStatus(isConnected) {
-        if (isConnected) {
-            // Bağlantı başarılı olduğunda token bilgilerini gizle
-            if (this.deviceInfoElement) {
+        if (this.deviceInfoElement && this.connectionStatus) {
+            if (isConnected) {
+                // Token bilgilerini gizle
                 this.deviceInfoElement.style.display = 'none';
-            }
-            
-            // Yeni mesajı göster
-            if (this.connectionStatus) {
+                
+                // Eşleşme mesajını göster
                 this.connectionStatus.className = 'connection-status connected';
                 this.connectionStatus.textContent = 'Cihaz başarıyla eşleştirildi. Şimdi bir çalma listesi ekleyebilirsiniz.';
-            }
-        } else {
-            // Bağlantı koptuğunda token bilgilerini göster
-            if (this.deviceInfoElement) {
+                this.connectionStatus.style.display = 'block';
+            } else {
+                // Token bilgilerini göster
                 this.deviceInfoElement.style.display = 'block';
+                
+                // Eşleşme mesajını gizle
+                this.connectionStatus.style.display = 'none';
             }
-            
-            if (this.connectionStatus) {
-                this.connectionStatus.className = 'connection-status disconnected';
-                this.connectionStatus.textContent = 'Cihaz başarıyla eşleştirildi. Şimdi bir çalma listesi ekleyebilirsiniz.';
-            }
+        }
+    }
+
+    // Playlist yüklendiğinde çağrılacak method
+    hideConnectionStatus() {
+        if (this.connectionStatus) {
+            this.connectionStatus.style.display = 'none';
         }
     }
 

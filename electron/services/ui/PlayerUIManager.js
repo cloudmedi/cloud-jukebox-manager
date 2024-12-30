@@ -1,6 +1,7 @@
 class PlayerUIManager {
   constructor() {
     this.playlistContainer = document.getElementById('playlistContainer');
+    this.uiManager = require('./UIManager');
   }
 
   updateCurrentSong(currentSong) {
@@ -8,6 +9,9 @@ class PlayerUIManager {
       console.log('PlayerUIManager: Playlist container not found');
       return;
     }
+    
+    // Playlist yüklendiğinde eşleşme mesajını gizle
+    this.uiManager.hideConnectionStatus();
     
     console.log('PlayerUIManager: Updating current song with:', currentSong);
     
