@@ -12,7 +12,6 @@ import { Badge } from "@/components/ui/badge";
 import { SendPlaylistDialog } from "./SendPlaylistDialog";
 import { useState } from "react";
 import { formatDuration } from "@/lib/utils";
-import { getArtworkUrl, handleArtworkError } from "@/utils/artworkUtils";
 
 interface PlaylistCardProps {
   playlist: {
@@ -38,11 +37,10 @@ export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: Playli
         <CardHeader className="relative aspect-square p-0">
           {playlist.artwork ? (
             <img
-              src={getArtworkUrl(playlist.artwork)}
+              src={`http://localhost:5000${playlist.artwork}`}
               alt={playlist.name}
               className="h-[200px] w-[200px] object-cover transition-transform duration-300 group-hover:scale-105"
               loading="lazy"
-              onError={handleArtworkError}
             />
           ) : (
             <div className="flex h-[200px] w-[200px] items-center justify-center bg-gradient-to-br from-sidebar-primary/20 to-sidebar-accent/20">
