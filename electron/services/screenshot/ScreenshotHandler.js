@@ -12,10 +12,10 @@ class ScreenshotHandler {
 
       console.log('Available sources:', sources.map(s => s.name));
 
+      // Electron uygulamasını bul (cloud-jukebox-player)
       const mainWindow = sources.find(source => 
-        source.name.toLowerCase().includes('cloud') || 
-        source.name.toLowerCase().includes('media') ||
-        source.name.toLowerCase().includes('player')
+        source.name === 'Cloud Media Player' || 
+        source.name.includes('cloud-jukebox-player')
       );
 
       if (!mainWindow) {
