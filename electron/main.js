@@ -3,6 +3,7 @@ const path = require('path');
 const Store = require('electron-store');
 const store = new Store();
 const websocketService = require('./services/websocketService');
+const EmergencyStateManager = require('./services/emergency/EmergencyStateManager');
 require('./services/audioService');
 
 let mainWindow;
@@ -160,6 +161,8 @@ function createTray() {
 app.whenReady().then(() => {
   createWindow();
   createTray();
+  // EmergencyStateManager otomatik olarak başlatılacak ve durumu kontrol edecek
+  global.emergencyStateManager = new EmergencyStateManager();
 });
 
 app.on('window-all-closed', () => {
