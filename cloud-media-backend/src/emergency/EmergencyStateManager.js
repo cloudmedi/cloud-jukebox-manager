@@ -19,7 +19,7 @@ class EmergencyStateManager {
 
       // Sistem bildirimi oluştur
       await Notification.create({
-        type: 'emergency',
+        type: 'system',  // emergency yerine system kullanıyoruz
         title: 'Acil Durum Aktifleştirildi',
         message: 'Tüm cihazlar acil durum nedeniyle durduruldu',
         read: false
@@ -45,7 +45,7 @@ class EmergencyStateManager {
 
       // Sistem bildirimi oluştur
       await Notification.create({
-        type: 'emergency',
+        type: 'system',  // emergency yerine system kullanıyoruz
         title: 'Acil Durum Devre Dışı',
         message: 'Acil durum durumu kaldırıldı, cihazlar normal çalışmaya devam ediyor',
         read: false
