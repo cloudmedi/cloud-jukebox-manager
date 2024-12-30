@@ -1,10 +1,12 @@
 const AnnouncementLogger = require('../logging/AnnouncementLogger');
 const AnnouncementEventHandler = require('./handlers/AnnouncementEventHandler');
+const VolumeManager = require('./VolumeManager');
 
 class AnnouncementAudioService {
   constructor() {
     this.playlistAudio = document.getElementById('audioPlayer');
     this.campaignAudio = document.getElementById('campaignPlayer');
+    this.volumeManager = VolumeManager;
     
     if (!this.campaignAudio || !this.playlistAudio) {
       console.error('Audio elementler bulunamadı!');
@@ -15,6 +17,12 @@ class AnnouncementAudioService {
       this.playlistAudio,
       this.campaignAudio
     );
+
+    // Başlangıçta kayıtlı ses seviyesini ayarla
+    const savedVolume = this.volumeManager.getStoredVolume();
+    if (this.campaignAudio) {
+      this.campaignAudio.volume = this.volumeManager.normalizeVolume(savedVolume);
+    }
   }
 
   async playAnnouncement(announcement) {
