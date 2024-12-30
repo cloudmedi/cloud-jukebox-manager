@@ -3,17 +3,17 @@ const store = new Store();
 
 class VolumeManager {
   constructor() {
-    // Varsayılan volume değeri
     this.defaultVolume = 70;
   }
 
-  // Store'dan volume değerini al
   getStoredVolume() {
-    return store.get('volume', this.defaultVolume);
+    const volume = store.get('volume', this.defaultVolume);
+    console.log('Retrieved stored volume:', volume);
+    return volume;
   }
 
-  // Volume değerini store'a kaydet
   saveVolume(volume) {
+    console.log('Saving volume:', volume);
     const normalizedVolume = Math.max(0, Math.min(100, volume));
     store.set('volume', normalizedVolume);
     console.log('Volume saved to store:', normalizedVolume);
@@ -22,20 +22,21 @@ class VolumeManager {
     const audioPlayer = document.getElementById('audioPlayer');
     const campaignPlayer = document.getElementById('campaignPlayer');
     
+    const normalizedAudioVolume = this.normalizeVolume(normalizedVolume);
+    
     if (audioPlayer) {
-      audioPlayer.volume = this.normalizeVolume(normalizedVolume);
+      audioPlayer.volume = normalizedAudioVolume;
       console.log('Audio player volume updated:', audioPlayer.volume);
     }
     
     if (campaignPlayer) {
-      campaignPlayer.volume = this.normalizeVolume(normalizedVolume);
+      campaignPlayer.volume = normalizedAudioVolume;
       console.log('Campaign player volume updated:', campaignPlayer.volume);
     }
     
     return normalizedVolume;
   }
 
-  // Volume değerini 0-1 arasına normalize et
   normalizeVolume(volume) {
     return volume / 100;
   }
