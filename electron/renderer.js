@@ -1,7 +1,7 @@
 const { ipcRenderer } = require('electron');
 const Store = require('electron-store');
 const fs = require('fs');
-const store = new Store();
+const { createArtworkUrl } = require('./utils/artworkUtils');
 const AudioEventHandler = require('./services/audio/AudioEventHandler');
 const playbackStateManager = require('./services/audio/PlaybackStateManager');
 const UIManager = require('./services/ui/UIManager');
@@ -142,8 +142,6 @@ ipcRenderer.on('error', (event, message) => {
 });
 
 // Volume control from WebSocket
-
-// Volume control from WebSocket
 ipcRenderer.on('set-volume', (event, volume) => {
     console.log('Setting volume to:', volume);
     // Volume değerini kaydet ve normalize et
@@ -231,10 +229,14 @@ function displayPlaylists() {
     console.log('11. Displaying last playlist:', lastPlaylist);
     const playlistElement = document.createElement('div');
     playlistElement.className = 'playlist-item';
+    
+    // Artwork URL'sini createArtworkUrl ile oluştur
+    const artworkUrl = createArtworkUrl(lastPlaylist.artwork);
+    
     playlistElement.innerHTML = `
       <div class="playlist-info">
-        ${lastPlaylist.artwork ? 
-          `<img src="${lastPlaylist.artwork}" alt="${lastPlaylist.name}" class="playlist-artwork"/>` :
+        ${artworkUrl ? 
+          `<img src="${artworkUrl}" alt="${lastPlaylist.name}" class="playlist-artwork" onerror="this.src='/placeholder.svg'"/>` :
           '<div class="playlist-artwork-placeholder"></div>'
         }
         <div class="playlist-details">
