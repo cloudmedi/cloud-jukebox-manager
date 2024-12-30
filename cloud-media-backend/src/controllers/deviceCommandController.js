@@ -2,6 +2,7 @@ const Device = require('../models/Device');
 const Notification = require('../models/Notification');
 const DeleteService = require('../services/DeleteService');
 const EmergencyStateManager = require('../emergency/EmergencyStateManager');
+const VolumeService = require('../services/VolumeService');
 
 const restartDevice = async (req, res) => {
   try {
@@ -53,6 +54,9 @@ const setVolume = async (req, res) => {
       newVolume: volume,
       token: device.token
     });
+
+    // Volume değerini kaydet
+    await VolumeService.saveVolume(device._id, volume);
 
     console.log('4. Sending volume command to device:', {
       token: device.token,

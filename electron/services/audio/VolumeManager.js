@@ -5,6 +5,10 @@ class VolumeManager {
   constructor() {
     // Varsayılan volume değeri
     this.defaultVolume = 70;
+    
+    // Store'dan kayıtlı volume değerini al veya varsayılanı kullan
+    const savedVolume = this.getStoredVolume();
+    this.setInitialVolume(savedVolume);
   }
 
   // Store'dan volume değerini al
@@ -33,6 +37,22 @@ class VolumeManager {
     }
     
     return normalizedVolume;
+  }
+
+  // Başlangıç volume değerini ayarla
+  setInitialVolume(volume) {
+    const audioPlayer = document.getElementById('audioPlayer');
+    const campaignPlayer = document.getElementById('campaignPlayer');
+    
+    const normalizedVolume = this.normalizeVolume(volume);
+    
+    if (audioPlayer) {
+      audioPlayer.volume = normalizedVolume;
+    }
+    
+    if (campaignPlayer) {
+      campaignPlayer.volume = normalizedVolume;
+    }
   }
 
   // Volume değerini 0-1 arasına normalize et
