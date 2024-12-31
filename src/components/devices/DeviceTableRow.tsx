@@ -5,7 +5,17 @@ import { tr } from "date-fns/locale";
 import { Device } from "@/services/deviceService";
 import DeviceActions from "./DeviceActions";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Volume2, Play, Pause, X, MapPin, CheckCircle2, XCircle } from "lucide-react";
+import { 
+  Volume2, 
+  Play, 
+  Pause, 
+  X, 
+  MapPin, 
+  CheckCircle2, 
+  XCircle,
+  Loader2,
+  AlertCircle 
+} from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 

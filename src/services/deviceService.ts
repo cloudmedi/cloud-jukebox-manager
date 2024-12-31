@@ -14,6 +14,28 @@ export interface Device {
   playlistStatus?: 'loaded' | 'loading' | 'error';
   downloadProgress?: number;
   playbackStatus?: 'playing' | 'paused' | 'no-playlist';
+  isPlaying?: boolean;
+  deviceInfo?: {
+    hostname: string;
+    platform: string;
+    arch: string;
+    cpus: string;
+    totalMemory: string;
+    freeMemory: string;
+    networkInterfaces: string[];
+    osVersion: string;
+  };
+  activePlaylist?: {
+    _id: string;
+    name: string;
+  };
+  currentSong?: {
+    _id: string;
+    name: string;
+    artist: string;
+  };
+  createdAt?: string;
+  updatedAt?: string;
 }
 
 class DeviceService {
@@ -65,6 +87,22 @@ class DeviceService {
     if (!response.ok) {
       throw new Error('Failed to delete device');
     }
+  }
+
+  async updateGroup(deviceId: string, groupId: string | null): Promise<Device> {
+    const response = await fetch(`http://localhost:5000/api/devices/${deviceId}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ groupId }),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update device group');
+    }
+
+    return response.json();
   }
 
   async setVolume(token: string, volume: number): Promise<void> {
