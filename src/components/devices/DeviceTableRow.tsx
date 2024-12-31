@@ -5,7 +5,7 @@ import { tr } from "date-fns/locale";
 import { Device } from "@/services/deviceService";
 import DeviceActions from "./DeviceActions";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Volume2, Play, Loader2, AlertCircle, MapPin, CheckCircle2, XCircle } from "lucide-react";
+import { Volume2, Play, Pause, X, MapPin, CheckCircle2, XCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
@@ -16,8 +16,37 @@ interface DeviceTableRowProps {
 }
 
 export const DeviceTableRow = ({ device, isSelected, onSelect }: DeviceTableRowProps) => {
+  const renderPlaybackStatus = () => {
+    if (!device.playbackStatus) return null;
 
-const renderPlaylistStatus = () => {
+    switch (device.playbackStatus) {
+      case "playing":
+        return (
+          <Badge className="bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25">
+            <Play className="h-3 w-3 mr-1" />
+            Çalıyor
+          </Badge>
+        );
+      case "paused":
+        return (
+          <Badge className="bg-yellow-500/15 text-yellow-500 hover:bg-yellow-500/25">
+            <Pause className="h-3 w-3 mr-1" />
+            Duraklatıldı
+          </Badge>
+        );
+      case "no-playlist":
+        return (
+          <Badge className="bg-red-500/15 text-red-500 hover:bg-red-500/25">
+            <X className="h-3 w-3 mr-1" />
+            Playlist Yok
+          </Badge>
+        );
+      default:
+        return null;
+    }
+  };
+
+  const renderPlaylistStatus = () => {
     if (!device.playlistStatus) return "-";
 
     switch (device.playlistStatus) {
@@ -86,17 +115,20 @@ const renderPlaylistStatus = () => {
       </TableCell>
       <TableCell>{device.ipAddress || "-"}</TableCell>
       <TableCell>
-        {device.isOnline ? (
-          <Badge className="bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25">
-            <CheckCircle2 className="h-3 w-3 mr-1" />
-            Çevrimiçi
-          </Badge>
-        ) : (
-          <Badge variant="destructive" className="bg-red-500/15 text-red-500 hover:bg-red-500/25">
-            <XCircle className="h-3 w-3 mr-1" />
-            Çevrimdışı
-          </Badge>
-        )}
+        <div className="flex flex-col gap-2">
+          {device.isOnline ? (
+            <Badge className="bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25">
+              <CheckCircle2 className="h-3 w-3 mr-1" />
+              Çevrimiçi
+            </Badge>
+          ) : (
+            <Badge variant="destructive" className="bg-red-500/15 text-red-500 hover:bg-red-500/25">
+              <XCircle className="h-3 w-3 mr-1" />
+              Çevrimdışı
+            </Badge>
+          )}
+          {renderPlaybackStatus()}
+        </div>
       </TableCell>
       <TableCell>
         {renderPlaylistStatus()}

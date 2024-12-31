@@ -1,89 +1,126 @@
-import axios from 'axios';
+Here's the complete code for src/services/deviceService.ts:
+
+```typescript
+import { toast } from "sonner";
+import websocketService from "./websocketService";
 
 export interface Device {
   _id: string;
   name: string;
   token: string;
-  location: string;
+  location?: string;
   ipAddress?: string;
   isOnline: boolean;
-  volume: number;
-  isPlaying?: boolean;
-  downloadProgress?: number;
-  activePlaylist?: {
-    _id: string;
-    name: string;
-  };
-  currentSong?: {
-    name: string;
-    artist: string;
-  };
-  playlistStatus?: string;
-  deviceInfo?: {
-    hostname: string;
-    platform: string;
-    arch: string;
-    cpus: string;
-    totalMemory: string;
-    freeMemory: string;
-    networkInterfaces: string[];
-    osVersion: string;
-  };
-  groupId?: string;
   lastSeen: string;
-  createdAt?: string;
-  updatedAt?: string;
+  volume: number;
+  groupId?: string;
+  playlistStatus?: 'loaded' | 'loading' | 'error';
+  downloadProgress?: number;
+  playbackStatus?: 'playing' | 'paused' | 'no-playlist';
 }
 
-const API_URL = 'http://localhost:5000/api/devices';
-
-export const deviceService = {
-  getDevices: async () => {
-    const response = await axios.get(API_URL);
-    return response.data;
-  },
-
-  createDevice: async (deviceData: Partial<Device>) => {
-    const response = await axios.post(API_URL, deviceData);
-    return response.data;
-  },
-
-  updateDevice: async (id: string, deviceData: Partial<Device>) => {
-    const response = await axios.patch(`${API_URL}/${id}`, deviceData);
-    return response.data;
-  },
-
-  deleteDevice: async (id: string) => {
-    const response = await axios.delete(`${API_URL}/${id}`);
-    return response.data;
-  },
-
-  updateGroup: async (deviceId: string, groupId: string | null) => {
-    const response = await axios.patch(`${API_URL}/${deviceId}`, { groupId });
-    return response.data;
-  },
-
-  emergencyStop: async () => {
-    const response = await fetch(`${API_URL}/emergency-stop`, {
-      method: 'POST',
-    });
-    
+class DeviceService {
+  async getDevices(): Promise<Device[]> {
+    const response = await fetch('http://localhost:5000/api/devices');
     if (!response.ok) {
-      throw new Error('Emergency stop failed');
+      throw new Error('Failed to fetch devices');
     }
-    
-    return response.json();
-  },
-
-  emergencyReset: async () => {
-    const response = await fetch(`${API_URL}/emergency-reset`, {
-      method: 'POST',
-    });
-    
-    if (!response.ok) {
-      throw new Error('Emergency reset failed');
-    }
-    
     return response.json();
   }
-};
+
+  async createDevice(deviceData: Partial<Device>): Promise<Device> {
+    const response = await fetch('http://localhost:5000/api/devices', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(deviceData),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to create device');
+    }
+
+    return response.json();
+  }
+
+  async updateDevice(id: string, deviceData: Partial<Device>): Promise<Device> {
+    const response = await fetch(`http://localhost:5000/api/devices/${id}`, {
+      method: 'PUT',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(deviceData),
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to update device');
+    }
+
+    return response.json();
+  }
+
+  async deleteDevice(id: string): Promise<void> {
+    const response = await fetch(`http://localhost:5000/api/devices/${id}`, {
+      method: 'DELETE',
+    });
+
+    if (!response.ok) {
+      throw new Error('Failed to delete device');
+    }
+  }
+
+  async setVolume(token: string, volume: number): Promise<void> {
+    websocketService.sendMessage({
+      type: 'command',
+      command: 'setVolume',
+      token,
+      volume
+    });
+  }
+
+  async restart(token: string): Promise<void> {
+    websocketService.sendMessage({
+      type: 'command',
+      command: 'restart',
+      token
+    });
+  }
+
+  async emergencyStop(): Promise<void> {
+    try {
+      websocketService.sendMessage({
+        type: 'command',
+        command: 'emergency-stop'
+      });
+    } catch (error) {
+      console.error('Emergency stop error:', error);
+      toast.error('Acil durum komutu gönderilemedi');
+      throw error;
+    }
+  }
+
+  async emergencyReset(): Promise<void> {
+    try {
+      websocketService.sendMessage({
+        type: 'command',
+        command: 'emergency-reset'
+      });
+    } catch (error) {
+      console.error('Emergency reset error:', error);
+      toast.error('Acil durum sıfırlama komutu gönderilemedi');
+      throw error;
+    }
+  }
+
+  async getDeviceStats(): Promise<any> {
+    const response = await fetch('http://localhost:5000/api/stats/devices');
+    if (!response.ok) {
+      throw new Error('Failed to fetch device stats');
+    }
+    return response.json();
+  }
+}
+
+export const deviceService = new DeviceService();
+```

@@ -104,6 +104,19 @@ class AudioService {
     }, 1000);
   }
 
+  sendPlaybackStatus() {
+    let status = 'no-playlist';
+    
+    if (this.playlist) {
+      status = this.isPlaying ? 'playing' : 'paused';
+    }
+
+    websocketService.sendMessage({
+      type: 'playbackStatus',
+      status: status
+    });
+  }
+
   handlePlay() {
     console.log('Play command received, current state:', this.isPlaying);
     if (!this.isPlaying) {
@@ -132,13 +145,6 @@ class AudioService {
       console.log('Already paused, ignoring pause command');
       this.sendPlaybackStatus();
     }
-  }
-
-  sendPlaybackStatus() {
-    websocketService.sendMessage({
-      type: 'playbackStatus',
-      status: this.isPlaying ? 'playing' : 'paused'
-    });
   }
 
   setupIpcHandlers() {
