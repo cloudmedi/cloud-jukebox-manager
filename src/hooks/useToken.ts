@@ -1,35 +1,48 @@
 import { useState, useEffect } from 'react';
+import { tokenService } from '../services/tokenService';
 
-interface UseTokenReturn {
-  token: string | null;
-  isLoading: boolean;
-  error: Error | null;
-}
-
-export const useToken = (): UseTokenReturn => {
+export const useToken = () => {
   const [token, setToken] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<Error | null>(null);
 
   useEffect(() => {
-    const initToken = async () => {
+    const initializeToken = async () => {
       try {
-        // For now, just simulate token fetch
-        const response = await fetch('http://localhost:5000/api/token');
-        if (!response.ok) {
-          throw new Error('Failed to fetch token');
+        console.log('Starting token initialization...');
+        let currentToken = tokenService.getToken();
+        
+        if (!currentToken) {
+          console.log('No token found, generating new token...');
+          currentToken = await tokenService.generateToken();
+          console.log('New token generated:', currentToken);
+        } else {
+          console.log('Existing token found, validating:', currentToken);
+          const isValid = await tokenService.validateToken(currentToken);
+          if (!isValid) {
+            console.log('Token invalid, refreshing...');
+            currentToken = await tokenService.refreshToken();
+            console.log('Token refreshed:', currentToken);
+          }
         }
-        const data = await response.json();
-        setToken(data.token);
+        
+        setToken(currentToken);
+        console.log('Token set in state:', currentToken);
       } catch (err) {
-        setError(err instanceof Error ? err : new Error('Failed to initialize token'));
+        console.error('Token initialization error:', err);
+        setError(err instanceof Error ? err : new Error('Token initialization failed'));
       } finally {
         setIsLoading(false);
+        console.log('Token initialization complete');
       }
     };
 
-    initToken();
+    initializeToken();
   }, []);
 
-  return { token, isLoading, error };
+  return {
+    token,
+    isLoading,
+    error,
+  };
 };

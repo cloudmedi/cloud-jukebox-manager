@@ -13,9 +13,11 @@ export const TokenInitializer = ({ children }: TokenInitializerProps) => {
 
   useEffect(() => {
     if (token) {
-      console.log('Token initialized:', token);
+      console.log('TokenInitializer: Token received:', token);
     }
   }, [token]);
+
+  console.log('TokenInitializer render state:', { token, isLoading, error });
 
   if (isLoading) {
     return (
@@ -30,7 +32,7 @@ export const TokenInitializer = ({ children }: TokenInitializerProps) => {
 
   if (error) {
     return (
-      <div className="p-4">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white p-6">
         <Alert variant="destructive">
           <AlertTitle>Hata</AlertTitle>
           <AlertDescription>
@@ -43,7 +45,7 @@ export const TokenInitializer = ({ children }: TokenInitializerProps) => {
 
   if (!token) {
     return (
-      <div className="p-4">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white p-6">
         <Alert variant="warning">
           <AlertTitle>Token Bulunamadı</AlertTitle>
           <AlertDescription>
