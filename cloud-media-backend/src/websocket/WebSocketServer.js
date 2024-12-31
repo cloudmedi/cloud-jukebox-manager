@@ -61,7 +61,11 @@ class WebSocketServer {
         break;
 
       case 'playbackStatus':
-        await this.statusHandler.handlePlaybackStatus(token, message.status);
+        this.broadcastToAdmins({
+          type: 'deviceStatus',
+          token: token,
+          isPlaying: message.status === 'playing'
+        });
         break;
 
       case 'volume':

@@ -5,17 +5,7 @@ import { tr } from "date-fns/locale";
 import { Device } from "@/services/deviceService";
 import DeviceActions from "./DeviceActions";
 import { Checkbox } from "@/components/ui/checkbox";
-import { 
-  Volume2, 
-  Play, 
-  Pause, 
-  X, 
-  MapPin, 
-  CheckCircle2, 
-  XCircle,
-  Loader2,
-  AlertCircle 
-} from "lucide-react";
+import { Volume2, Play, Loader2, AlertCircle, MapPin, CheckCircle2, XCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 
@@ -26,37 +16,8 @@ interface DeviceTableRowProps {
 }
 
 export const DeviceTableRow = ({ device, isSelected, onSelect }: DeviceTableRowProps) => {
-  const renderPlaybackStatus = () => {
-    if (!device.playbackStatus) return null;
 
-    switch (device.playbackStatus) {
-      case "playing":
-        return (
-          <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600 flex items-center gap-1">
-            <Play className="h-3 w-3" />
-            Çalıyor
-          </Badge>
-        );
-      case "paused":
-        return (
-          <Badge variant="default" className="bg-yellow-500 hover:bg-yellow-600 flex items-center gap-1">
-            <Pause className="h-3 w-3" />
-            Duraklatıldı
-          </Badge>
-        );
-      case "no-playlist":
-        return (
-          <Badge variant="default" className="bg-red-500 hover:bg-red-600 flex items-center gap-1">
-            <X className="h-3 w-3" />
-            Playlist Yok
-          </Badge>
-        );
-      default:
-        return null;
-    }
-  };
-
-  const renderPlaylistStatus = () => {
+const renderPlaylistStatus = () => {
     if (!device.playlistStatus) return "-";
 
     switch (device.playlistStatus) {
@@ -89,25 +50,30 @@ export const DeviceTableRow = ({ device, isSelected, onSelect }: DeviceTableRowP
     }
   };
 
+  const getGroupColor = (groupId?: string) => {
+    if (!groupId) return "";
+    
+    const hash = groupId.split('').reduce((acc, char) => char.charCodeAt(0) + acc, 0);
+    const colors = [
+      "hover:bg-blue-50/50", "hover:bg-green-50/50", "hover:bg-purple-50/50",
+      "hover:bg-pink-50/50", "hover:bg-yellow-50/50", "hover:bg-orange-50/50"
+    ];
+    return colors[hash % colors.length];
+  };
+
   return (
     <TableRow className={cn(
       "transition-colors group",
-      device.groupId && "hover:bg-muted/50"
+      getGroupColor(device.groupId)
     )}>
       <TableCell>
         <Checkbox checked={isSelected} onCheckedChange={onSelect} />
       </TableCell>
       <TableCell>
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-2">
-            <div className={cn(
-              "w-2 h-2 rounded-full",
-              device.isOnline ? "bg-emerald-500" : "bg-red-500"
-            )} />
-            <div>
-              <p className="font-medium">{device.name}</p>
-              <p className="text-sm text-muted-foreground">{device.location}</p>
-            </div>
+          <div>
+            <p className="font-medium">{device.name}</p>
+            <p className="text-sm text-muted-foreground">{device.location}</p>
           </div>
         </div>
       </TableCell>
@@ -120,20 +86,17 @@ export const DeviceTableRow = ({ device, isSelected, onSelect }: DeviceTableRowP
       </TableCell>
       <TableCell>{device.ipAddress || "-"}</TableCell>
       <TableCell>
-        <div className="flex flex-col gap-2">
-          {device.isOnline ? (
-            <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600 flex items-center gap-1">
-              <CheckCircle2 className="h-3 w-3" />
-              Çevrimiçi
-            </Badge>
-          ) : (
-            <Badge variant="default" className="bg-red-500 hover:bg-red-600 flex items-center gap-1">
-              <XCircle className="h-3 w-3" />
-              Çevrimdışı
-            </Badge>
-          )}
-          {renderPlaybackStatus()}
-        </div>
+        {device.isOnline ? (
+          <Badge className="bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25">
+            <CheckCircle2 className="h-3 w-3 mr-1" />
+            Çevrimiçi
+          </Badge>
+        ) : (
+          <Badge variant="destructive" className="bg-red-500/15 text-red-500 hover:bg-red-500/25">
+            <XCircle className="h-3 w-3 mr-1" />
+            Çevrimdışı
+          </Badge>
+        )}
       </TableCell>
       <TableCell>
         {renderPlaylistStatus()}

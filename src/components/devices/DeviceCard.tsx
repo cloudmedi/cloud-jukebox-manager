@@ -4,7 +4,7 @@ import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card"
 import { Checkbox } from "@/components/ui/checkbox";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
-import { Volume2, Play, Pause, X, MapPin, CheckCircle2, XCircle, Loader2, AlertCircle } from "lucide-react";
+import { Volume2, Play, Loader2, AlertCircle, MapPin, CheckCircle2, XCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import DeviceActions from "./DeviceActions";
 import { cn } from "@/lib/utils";
@@ -16,37 +16,8 @@ interface DeviceCardProps {
 }
 
 export const DeviceCard = ({ device, isSelected, onSelect }: DeviceCardProps) => {
-  const renderPlaybackStatus = () => {
-    if (!device.playbackStatus) return null;
 
-    switch (device.playbackStatus) {
-      case "playing":
-        return (
-          <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600 flex items-center gap-1">
-            <Play className="h-3 w-3" />
-            Çalıyor
-          </Badge>
-        );
-      case "paused":
-        return (
-          <Badge variant="default" className="bg-yellow-500 hover:bg-yellow-600 flex items-center gap-1">
-            <Pause className="h-3 w-3" />
-            Duraklatıldı
-          </Badge>
-        );
-      case "no-playlist":
-        return (
-          <Badge variant="default" className="bg-red-500 hover:bg-red-600 flex items-center gap-1">
-            <X className="h-3 w-3" />
-            Playlist Yok
-          </Badge>
-        );
-      default:
-        return null;
-    }
-  };
-
-  const renderPlaylistStatus = () => {
+const renderPlaylistStatus = () => {
     if (!device.playlistStatus) return "-";
 
     switch (device.playlistStatus) {
@@ -79,40 +50,43 @@ export const DeviceCard = ({ device, isSelected, onSelect }: DeviceCardProps) =>
     }
   };
 
+  const getGroupColor = (groupId?: string) => {
+    if (!groupId) return "bg-gray-100";
+    
+    // Hash the groupId to generate a consistent color
+    const hash = groupId.split('').reduce((acc, char) => char.charCodeAt(0) + acc, 0);
+    const colors = [
+      "bg-blue-100", "bg-green-100", "bg-purple-100", 
+      "bg-pink-100", "bg-yellow-100", "bg-orange-100"
+    ];
+    return colors[hash % colors.length];
+  };
+
   return (
     <Card className={cn(
       "transition-all duration-200 hover:shadow-lg",
-      device.groupId ? "bg-muted/50" : ""
+      getGroupColor(device.groupId)
     )}>
       <CardHeader className="pb-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Checkbox checked={isSelected} onCheckedChange={onSelect} />
-            <div className="flex items-center gap-2">
-              <div className={cn(
-                "w-2 h-2 rounded-full",
-                device.isOnline ? "bg-emerald-500" : "bg-red-500"
-              )} />
-              <div>
-                <h3 className="font-medium">{device.name}</h3>
-                <p className="text-sm text-muted-foreground font-mono">{device.token}</p>
-              </div>
+            <div>
+              <h3 className="font-medium">{device.name}</h3>
+              <p className="text-sm text-muted-foreground font-mono">{device.token}</p>
             </div>
           </div>
-          <div className="flex flex-col gap-2">
-            {device.isOnline ? (
-              <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600 flex items-center gap-1">
-                <CheckCircle2 className="h-3 w-3" />
-                Çevrimiçi
-              </Badge>
-            ) : (
-              <Badge variant="default" className="bg-red-500 hover:bg-red-600 flex items-center gap-1">
-                <XCircle className="h-3 w-3" />
-                Çevrimdışı
-              </Badge>
-            )}
-            {renderPlaybackStatus()}
-          </div>
+          {device.isOnline ? (
+            <Badge className="bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25">
+              <CheckCircle2 className="h-3 w-3 mr-1" />
+              Çevrimiçi
+            </Badge>
+          ) : (
+            <Badge variant="destructive" className="bg-red-500/15 text-red-500 hover:bg-red-500/25">
+              <XCircle className="h-3 w-3 mr-1" />
+              Çevrimdışı
+            </Badge>
+          )}
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
