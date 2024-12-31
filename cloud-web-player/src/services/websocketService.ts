@@ -2,6 +2,7 @@ import { handleDeviceStatusMessage } from './websocket/handlers/DeviceStatusHand
 import { handleInitialStateMessage } from './websocket/handlers/InitialStateHandler';
 import { handleDeviceDelete } from './websocket/handlers/DeviceDeleteHandler';
 import { MessageHandler } from './websocket/WebSocketConfig';
+import { playlistDownloadService } from './playlistDownloadService';
 import { toast } from "sonner";
 
 class WebSocketService {
@@ -52,6 +53,7 @@ class WebSocketService {
           token: this.token
         });
       }
+      toast.success('WebSocket bağlantısı kuruldu');
     };
 
     this.ws.onmessage = (event) => {
@@ -70,6 +72,7 @@ class WebSocketService {
 
     this.ws.onclose = () => {
       console.log('WebSocket disconnected, attempting to reconnect...');
+      toast.error('WebSocket bağlantısı kesildi, yeniden bağlanılıyor...');
       setTimeout(() => this.connect(), 5000);
     };
 
@@ -79,38 +82,54 @@ class WebSocketService {
     };
   }
 
-  private handlePlaylistMessage(message: any) {
+  private async handlePlaylistMessage(message: any) {
     console.log('Handling playlist message:', message);
     
-    switch (message.action) {
-      case 'send':
-        toast.success(`Playlist "${message.playlist.name}" alındı`);
-        // Trigger playlist download
-        this.sendMessage({
-          type: 'playlistStatus',
-          status: 'loading',
-          playlistId: message.playlist._id
-        });
-        break;
-        
-      case 'downloaded':
-        toast.success(`Playlist "${message.playlist.name}" başarıyla indirildi`);
-        this.sendMessage({
-          type: 'playlistStatus',
-          status: 'loaded',
-          playlistId: message.playlist._id
-        });
-        break;
-        
-      case 'error':
-        toast.error(`Playlist indirme hatası: ${message.error}`);
-        this.sendMessage({
-          type: 'playlistStatus',
-          status: 'error',
-          playlistId: message.playlist._id,
-          error: message.error
-        });
-        break;
+    if (!message.data) {
+      console.error('Invalid playlist message:', message);
+      toast.error('Geçersiz playlist mesajı');
+      return;
+    }
+
+    const playlist = message.data;
+    
+    try {
+      // Playlist indirme başladı bildirimi
+      toast.info(`"${playlist.name}" playlist'i indiriliyor...`);
+      
+      // Playlist durumunu güncelle
+      this.sendMessage({
+        type: 'playlistStatus',
+        status: 'loading',
+        playlistId: playlist._id
+      });
+
+      // Playlist'teki tüm şarkıları indir
+      for (const song of playlist.songs) {
+        await playlistDownloadService.downloadAndStoreSong(song, playlist.baseUrl);
+      }
+
+      // Başarılı indirme bildirimi
+      toast.success(`"${playlist.name}" playlist'i başarıyla indirildi`);
+      
+      // Playlist durumunu güncelle
+      this.sendMessage({
+        type: 'playlistStatus',
+        status: 'loaded',
+        playlistId: playlist._id
+      });
+
+    } catch (error) {
+      console.error('Error handling playlist:', error);
+      toast.error(`Playlist indirme hatası: ${error.message}`);
+      
+      // Hata durumunu bildir
+      this.sendMessage({
+        type: 'playlistStatus',
+        status: 'error',
+        playlistId: playlist._id,
+        error: error.message
+      });
     }
   }
 
