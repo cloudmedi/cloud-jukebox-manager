@@ -40,38 +40,6 @@ class TokenService {
     }
   }
 
-  async validateToken(token: string): Promise<boolean> {
-    try {
-      console.log('Validating token:', token);
-      const response = await fetch(`${this.API_URL}/tokens/validate/${token}`);
-      const isValid = response.ok;
-      console.log('Token validation result:', isValid);
-      return isValid;
-    } catch (error) {
-      console.error('Token validation error:', error);
-      return false;
-    }
-  }
-
-  async refreshToken(): Promise<string> {
-    console.log('Refreshing token...');
-    const currentToken = this.getToken();
-    if (!currentToken) {
-      return this.generateToken();
-    }
-
-    try {
-      await fetch(`${this.API_URL}/tokens/${currentToken}/release`, {
-        method: 'PATCH'
-      });
-      
-      return this.generateToken();
-    } catch (error) {
-      console.error('Token refresh error:', error);
-      throw error;
-    }
-  }
-
   private async getDeviceInfo(): Promise<DeviceInfo> {
     return {
       hostname: navigator.userAgent,
