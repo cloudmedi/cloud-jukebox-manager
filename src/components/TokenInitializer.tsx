@@ -13,31 +13,24 @@ export const TokenInitializer = ({ children }: TokenInitializerProps) => {
 
   useEffect(() => {
     if (token) {
-      console.log('TokenInitializer: Token received:', token);
+      console.log('Token initialized:', token);
     }
   }, [token]);
 
-  console.log('TokenInitializer render state:', { token, isLoading, error });
-
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-purple-50 to-white">
-        <div className="text-center space-y-4">
-          <Loader2 className="h-8 w-8 animate-spin text-purple-600 mx-auto" />
-          <p className="text-purple-600">Token oluşturuluyor...</p>
-        </div>
+      <div className="flex items-center justify-center min-h-screen bg-gray-50">
+        <Loader2 className="h-8 w-8 animate-spin text-purple-600" />
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white p-6">
+      <div className="p-4">
         <Alert variant="destructive">
           <AlertTitle>Hata</AlertTitle>
-          <AlertDescription>
-            Token oluşturulurken bir hata oluştu: {error.message}
-          </AlertDescription>
+          <AlertDescription>{error.message}</AlertDescription>
         </Alert>
       </div>
     );
@@ -45,11 +38,11 @@ export const TokenInitializer = ({ children }: TokenInitializerProps) => {
 
   if (!token) {
     return (
-      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white p-6">
+      <div className="p-4">
         <Alert variant="warning">
           <AlertTitle>Token Bulunamadı</AlertTitle>
           <AlertDescription>
-            Cihaz tokeni bulunamadı. Lütfen sayfayı yenileyin veya destek ekibi ile iletişime geçin.
+            Cihaz tokeni bulunamadı. Lütfen sayfayı yenileyin.
           </AlertDescription>
         </Alert>
       </div>
@@ -57,7 +50,7 @@ export const TokenInitializer = ({ children }: TokenInitializerProps) => {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white p-6">
+    <div className="min-h-screen bg-gray-50 p-6">
       <TokenDisplay token={token} />
       {children}
     </div>
