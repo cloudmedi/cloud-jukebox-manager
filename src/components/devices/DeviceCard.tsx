@@ -88,9 +88,18 @@ export const DeviceCard = ({ device, isSelected, onSelect }: DeviceCardProps) =>
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3">
             <Checkbox checked={isSelected} onCheckedChange={onSelect} />
-            <div>
-              <h3 className="font-medium">{device.name}</h3>
-              <p className="text-sm text-muted-foreground font-mono">{device.token}</p>
+            <div className="flex items-center gap-2">
+              <div className={cn(
+                "w-2 h-2 rounded-full",
+                device.isOnline ? "bg-emerald-500" : "bg-red-500",
+                device.playbackStatus === "playing" && "bg-emerald-500",
+                device.playbackStatus === "paused" && "bg-yellow-500",
+                device.playbackStatus === "no-playlist" && "bg-red-500"
+              )} />
+              <div>
+                <h3 className="font-medium">{device.name}</h3>
+                <p className="text-sm text-muted-foreground font-mono">{device.token}</p>
+              </div>
             </div>
           </div>
           <div className="flex flex-col gap-2">
