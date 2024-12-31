@@ -1,87 +1,72 @@
-import { toast } from "@/hooks/use-toast";
-import { playlistDownloadService } from "./playlistDownloadService";
+import { playlistDownloadService } from './playlistDownloadService';
+import { toast } from '@/hooks/use-toast';
 
 class AudioPlayerService {
-  private audioElement: HTMLAudioElement;
+  private audio: HTMLAudioElement;
   private currentPlaylist: any = null;
   private currentSongIndex: number = 0;
+  private autoPlayRequested: boolean = false;
 
   constructor() {
-    console.log('AudioPlayerService: Initializing...');
-    this.audioElement = new Audio();
+    this.audio = new Audio();
     this.setupAudioListeners();
   }
 
   private setupAudioListeners() {
-    console.log('AudioPlayerService: Setting up audio listeners');
-    
-    this.audioElement.addEventListener('loadstart', () => {
-      console.log('Audio Event: loadstart - Started loading audio');
-    });
-
-    this.audioElement.addEventListener('canplay', () => {
-      console.log('Audio Event: canplay - Audio can start playing');
-    });
-
-    this.audioElement.addEventListener('playing', () => {
-      console.log('Audio Event: playing - Audio playback started');
-      const currentSong = this.getCurrentSong();
-      console.log('Current song playing:', currentSong);
-    });
-
-    this.audioElement.addEventListener('pause', () => {
-      console.log('Audio Event: pause - Audio playback paused');
-    });
-
-    this.audioElement.addEventListener('ended', () => {
-      console.log('Audio Event: ended - Audio playback ended');
+    this.audio.addEventListener('ended', () => {
       this.playNext();
     });
 
-    this.audioElement.addEventListener('error', (error) => {
-      console.error('Audio Event: error - Playback error:', error);
-      console.error('Audio error details:', {
-        error: this.audioElement.error,
-        networkState: this.audioElement.networkState,
-        readyState: this.audioElement.readyState
-      });
-      
+    this.audio.addEventListener('error', (error) => {
+      console.error('Audio playback error:', error);
       toast({
         variant: "destructive",
         title: "Oynatma Hatası",
         description: "Şarkı oynatılırken bir hata oluştu."
       });
     });
+
+    this.audio.addEventListener('play', () => {
+      const currentSong = this.getCurrentSong();
+      if (currentSong) {
+        toast({
+          title: "Oynatılıyor",
+          description: currentSong.name
+        });
+      }
+    });
   }
 
   async loadPlaylist(playlist: any) {
     try {
-      console.log('AudioPlayerService: Loading playlist:', {
-        playlistId: playlist._id,
-        playlistName: playlist.name,
-        songCount: playlist.songs?.length
-      });
+      console.log('Loading playlist:', playlist.name);
       
+      // Önce playlist'i local storage'dan kontrol et
       const localPlaylist = await playlistDownloadService.getPlaylist(playlist._id);
       
       if (localPlaylist) {
-        console.log('AudioPlayerService: Found local playlist:', {
-          playlistId: localPlaylist._id,
-          songCount: localPlaylist.songs?.length
-        });
-        
+        console.log('Loading local playlist:', localPlaylist.name);
         this.currentPlaylist = localPlaylist;
         this.currentSongIndex = 0;
         await this.loadCurrentSong();
+        
+        // Otomatik oynatma isteğini işaretle ama hemen oynatma
+        this.autoPlayRequested = true;
+        
+        toast({
+          title: "Playlist Hazır",
+          description: `${localPlaylist.name} yerel depodan yüklendi. Oynatmak için tıklayın.`
+        });
       } else {
-        console.log('AudioPlayerService: No local playlist found, storing new playlist');
+        console.log('Loading remote playlist:', playlist.name);
         await playlistDownloadService.storePlaylist(playlist);
         this.currentPlaylist = playlist;
         this.currentSongIndex = 0;
         await this.loadCurrentSong();
+        this.autoPlayRequested = true;
       }
     } catch (error) {
-      console.error('AudioPlayerService: Error loading playlist:', error);
+      console.error('Error loading playlist:', error);
       toast({
         variant: "destructive",
         title: "Hata",
@@ -91,60 +76,58 @@ class AudioPlayerService {
   }
 
   private async loadCurrentSong() {
-    if (!this.currentPlaylist?.songs?.length) {
-      console.warn('AudioPlayerService: No songs in playlist');
+    if (!this.currentPlaylist || !this.currentPlaylist.songs.length) {
+      console.warn('No playlist or songs available');
       return;
     }
 
-    const song = this.currentPlaylist.songs[this.currentSongIndex];
-    console.log('AudioPlayerService: Loading song:', {
-      songId: song._id,
-      songName: song.name,
-      filePath: song.filePath
-    });
-
+    const currentSong = this.currentPlaylist.songs[this.currentSongIndex];
     try {
-      if (song.filePath.startsWith('indexeddb://')) {
-        const songId = song.filePath.replace('indexeddb://', '');
-        console.log('AudioPlayerService: Loading song from IndexedDB:', songId);
-        
-        const songBlob = await playlistDownloadService.getSong(songId);
-        if (songBlob) {
-          const url = URL.createObjectURL(new Blob([songBlob]));
-          console.log('AudioPlayerService: Created blob URL for song:', url);
-          this.audioElement.src = url;
-        } else {
-          throw new Error('Song not found in IndexedDB');
-        }
-      } else {
-        const url = `http://localhost:5000/${song.filePath}`;
-        console.log('AudioPlayerService: Loading song from server:', url);
-        this.audioElement.src = url;
-      }
+      console.log('Loading song:', currentSong.name);
+      
+      const songId = currentSong.filePath.replace('indexeddb://', '');
+      const songBlob = await playlistDownloadService.getSong(songId);
 
-      console.log('AudioPlayerService: Audio source set, attempting to play');
-      await this.play();
+      if (songBlob) {
+        const url = URL.createObjectURL(new Blob([songBlob]));
+        this.audio.src = url;
+        console.log(`Loaded song from local storage: ${currentSong.name}`);
+        
+        // Eğer otomatik oynatma isteği varsa ve kullanıcı etkileşimi olmuşsa oynat
+        if (this.autoPlayRequested && document.hasFocus()) {
+          try {
+            await this.play();
+          } catch (error) {
+            console.log('Autoplay prevented, waiting for user interaction');
+          }
+        }
+        
+        toast({
+          title: "Şarkı Yüklendi",
+          description: currentSong.name
+        });
+      } else {
+        throw new Error('Song not found in storage');
+      }
     } catch (error) {
-      console.error('AudioPlayerService: Error loading song:', error);
+      console.error('Error loading song:', error);
       toast({
         variant: "destructive",
         title: "Hata",
-        description: `${song.name} yüklenirken bir hata oluştu`
+        description: `${currentSong.name} yüklenirken bir hata oluştu`
       });
     }
   }
 
   async play() {
     try {
-      console.log('AudioPlayerService: Attempting to play');
-      await this.audioElement.play();
-      console.log('AudioPlayerService: Playback started successfully');
+      await this.audio.play();
+      this.autoPlayRequested = false; // Başarılı oynatmadan sonra isteği sıfırla
     } catch (error) {
-      console.error('AudioPlayerService: Play error:', error);
-      if (error instanceof DOMException && error.name === 'NotAllowedError') {
-        console.log('AudioPlayerService: User interaction required');
+      console.error('Error playing audio:', error);
+      if (error.name === 'NotAllowedError') {
         toast({
-          title: "Kullanıcı Etkileşimi Gerekli",
+          title: "Oynatma Beklemede",
           description: "Oynatmak için sayfaya tıklayın",
           duration: 5000,
         });
@@ -152,47 +135,48 @@ class AudioPlayerService {
         toast({
           variant: "destructive",
           title: "Hata",
-          description: "Şarkı oynatılırken bir hata oluştu"
+          description: "Şarkı başlatılırken bir hata oluştu"
         });
       }
+      throw error;
     }
   }
 
   pause() {
-    console.log('AudioPlayerService: Pausing playback');
-    this.audioElement.pause();
+    this.audio.pause();
+    toast({
+      title: "Duraklatıldı",
+      description: this.getCurrentSong()?.name
+    });
   }
 
   async playNext() {
-    console.log('AudioPlayerService: Playing next song');
-    if (!this.currentPlaylist?.songs?.length) return;
-    
+    if (!this.currentPlaylist) return;
+
     this.currentSongIndex = (this.currentSongIndex + 1) % this.currentPlaylist.songs.length;
-    console.log('AudioPlayerService: New song index:', this.currentSongIndex);
     await this.loadCurrentSong();
+    if (this.audio.played.length > 0) { // Sadece daha önce oynatılmışsa otomatik devam et
+      await this.play();
+    }
   }
 
   async playPrevious() {
-    console.log('AudioPlayerService: Playing previous song');
-    if (!this.currentPlaylist?.songs?.length) return;
-    
+    if (!this.currentPlaylist) return;
+
     this.currentSongIndex = (this.currentSongIndex - 1 + this.currentPlaylist.songs.length) % this.currentPlaylist.songs.length;
-    console.log('AudioPlayerService: New song index:', this.currentSongIndex);
     await this.loadCurrentSong();
+    if (this.audio.played.length > 0) { // Sadece daha önce oynatılmışsa otomatik devam et
+      await this.play();
+    }
   }
 
   setVolume(volume: number) {
-    console.log('AudioPlayerService: Setting volume:', volume);
-    this.audioElement.volume = Math.max(0, Math.min(1, volume));
+    this.audio.volume = Math.max(0, Math.min(1, volume));
   }
 
   getCurrentSong() {
-    if (!this.currentPlaylist?.songs?.length) return null;
+    if (!this.currentPlaylist) return null;
     return this.currentPlaylist.songs[this.currentSongIndex];
-  }
-
-  get audio() {
-    return this.audioElement;
   }
 }
 
