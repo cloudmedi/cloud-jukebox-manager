@@ -2,21 +2,18 @@ import { handleDeleteMessage } from './websocket/handlers/DeleteMessageHandler';
 import { handleDeviceStatusMessage } from './websocket/handlers/DeviceStatusHandler';
 import { handleInitialStateMessage } from './websocket/handlers/InitialStateHandler';
 import { handleDeviceDelete } from './websocket/handlers/DeviceDeleteHandler';
-import { WebSocketConnection } from './websocket/WebSocketConnection';
 import { MessageHandler } from './websocket/WebSocketConfig';
+import { toast } from "sonner";
 
 class WebSocketService {
   private static instance: WebSocketService;
   private messageHandlers: Map<string, Set<MessageHandler>>;
-  private connection: WebSocketConnection;
+  private ws: WebSocket | null = null;
+  private token: string | null = null;
 
   private constructor() {
     this.messageHandlers = new Map();
     this.setupMessageHandlers();
-    this.connection = new WebSocketConnection(
-      this.handleMessage.bind(this),
-      this.handleConnectionChange.bind(this)
-    );
   }
 
   private setupMessageHandlers() {
@@ -24,6 +21,7 @@ class WebSocketService {
     this.addMessageHandler('delete', handleDeviceDelete);
     this.addMessageHandler('deviceStatus', handleDeviceStatusMessage);
     this.addMessageHandler('initialState', handleInitialStateMessage);
+    this.addMessageHandler('playlist', this.handlePlaylistMessage.bind(this));
   }
 
   public static getInstance(): WebSocketService {
@@ -34,16 +32,99 @@ class WebSocketService {
   }
 
   public setToken(token: string) {
-    this.connection.setToken(token);
+    console.log('Setting token:', token);
+    this.token = token;
+    this.connect();
+  }
+
+  private connect() {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      console.log('WebSocket already connected');
+      return;
+    }
+
+    console.log('Connecting to WebSocket...');
+    this.ws = new WebSocket('ws://localhost:5000');
+
+    this.ws.onopen = () => {
+      console.log('WebSocket connected, sending auth message');
+      if (this.token) {
+        this.sendMessage({
+          type: 'auth',
+          token: this.token
+        });
+      }
+    };
+
+    this.ws.onmessage = (event) => {
+      try {
+        const message = JSON.parse(event.data);
+        console.log('WebSocket message received:', {
+          type: message.type,
+          payload: message,
+          timestamp: new Date().toISOString()
+        });
+        this.handleMessage(message);
+      } catch (error) {
+        console.error('Error handling message:', error);
+      }
+    };
+
+    this.ws.onclose = () => {
+      console.log('WebSocket disconnected, attempting to reconnect...');
+      setTimeout(() => this.connect(), 5000);
+    };
+
+    this.ws.onerror = (error) => {
+      console.error('WebSocket error:', error);
+    };
+  }
+
+  private handlePlaylistMessage(message: any) {
+    console.log('Handling playlist message:', message);
+    
+    switch (message.action) {
+      case 'send':
+        toast.success(`Playlist "${message.playlist.name}" alındı`);
+        // Trigger playlist download
+        this.sendMessage({
+          type: 'playlistStatus',
+          status: 'loading',
+          playlistId: message.playlist._id
+        });
+        break;
+        
+      case 'downloaded':
+        toast.success(`Playlist "${message.playlist.name}" başarıyla indirildi`);
+        this.sendMessage({
+          type: 'playlistStatus',
+          status: 'loaded',
+          playlistId: message.playlist._id
+        });
+        break;
+        
+      case 'error':
+        toast.error(`Playlist indirme hatası: ${message.error}`);
+        this.sendMessage({
+          type: 'playlistStatus',
+          status: 'error',
+          playlistId: message.playlist._id,
+          error: message.error
+        });
+        break;
+    }
+  }
+
+  public sendMessage(message: any) {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      console.log('Sending message:', message);
+      this.ws.send(JSON.stringify(message));
+    } else {
+      console.error('WebSocket not connected');
+    }
   }
 
   private handleMessage(message: any) {
-    console.log('WebSocket message received:', {
-      type: message.type,
-      payload: message,
-      timestamp: new Date().toISOString()
-    });
-
     const handlers = this.messageHandlers.get(message.type);
     if (handlers) {
       handlers.forEach(handler => {
@@ -56,10 +137,6 @@ class WebSocketService {
     } else {
       console.warn('Unhandled message type:', message.type);
     }
-  }
-
-  private handleConnectionChange(isConnected: boolean) {
-    console.log('WebSocket connection status:', isConnected);
   }
 
   public addMessageHandler(type: string, handler: MessageHandler) {
@@ -79,12 +156,11 @@ class WebSocketService {
     }
   }
 
-  public sendMessage(message: any) {
-    this.connection.sendMessage(message);
-  }
-
   public cleanup() {
-    this.connection.cleanup();
+    if (this.ws) {
+      this.ws.close();
+      this.ws = null;
+    }
   }
 }
 
