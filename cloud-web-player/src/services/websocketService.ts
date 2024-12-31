@@ -1,4 +1,3 @@
-import { handleDeleteMessage } from './websocket/handlers/DeleteMessageHandler';
 import { handleDeviceStatusMessage } from './websocket/handlers/DeviceStatusHandler';
 import { handleInitialStateMessage } from './websocket/handlers/InitialStateHandler';
 import { handleDeviceDelete } from './websocket/handlers/DeviceDeleteHandler';
@@ -17,7 +16,6 @@ class WebSocketService {
   }
 
   private setupMessageHandlers() {
-    this.addMessageHandler('delete', handleDeleteMessage);
     this.addMessageHandler('delete', handleDeviceDelete);
     this.addMessageHandler('deviceStatus', handleDeviceStatusMessage);
     this.addMessageHandler('initialState', handleInitialStateMessage);
@@ -44,7 +42,7 @@ class WebSocketService {
     }
 
     console.log('Connecting to WebSocket...');
-    this.ws = new WebSocket('ws://localhost:5000');
+    this.ws = new WebSocket('ws://localhost:5000/device');
 
     this.ws.onopen = () => {
       console.log('WebSocket connected, sending auth message');
@@ -77,6 +75,7 @@ class WebSocketService {
 
     this.ws.onerror = (error) => {
       console.error('WebSocket error:', error);
+      toast.error('WebSocket bağlantı hatası');
     };
   }
 
@@ -121,6 +120,7 @@ class WebSocketService {
       this.ws.send(JSON.stringify(message));
     } else {
       console.error('WebSocket not connected');
+      toast.error('WebSocket bağlantısı kurulamadı');
     }
   }
 
@@ -164,4 +164,4 @@ class WebSocketService {
   }
 }
 
-export const websocketService = WebSocketService.getInstance();
+export default WebSocketService.getInstance();
