@@ -1,12 +1,12 @@
 import { TokenInitializer } from './components/TokenInitializer';
 import { Router } from './Router';
 
-function App() {
+const App = () => {
   return (
     <TokenInitializer>
       <Router />
     </TokenInitializer>
   );
-}
+};
 
 export default App;

@@ -12,7 +12,6 @@ export const TokenInitializer = ({ children }: TokenInitializerProps) => {
 
   useEffect(() => {
     if (token) {
-      // Token initialization logic here if needed
       console.log('Token initialized:', token);
     }
   }, [token]);
