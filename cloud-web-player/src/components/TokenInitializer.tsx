@@ -1,6 +1,6 @@
 import { useEffect } from 'react';
 import { useToken } from '../hooks/useToken';
-import { websocketService } from '../services/websocketService';
+import websocketService from '../services/websocketService';
 
 export const TokenInitializer = () => {
   const { token, isLoading } = useToken();
