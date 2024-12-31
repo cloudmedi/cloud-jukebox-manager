@@ -4,6 +4,7 @@ const store = new Store();
 const websocketService = require('./websocketService');
 const AnnouncementManager = require('./announcement/AnnouncementManager');
 const AnnouncementScheduler = require('./announcement/AnnouncementScheduler');
+const PlaybackManager = require('./audio/PlaybackManager');
 
 class AudioService {
   constructor() {
@@ -15,7 +16,6 @@ class AudioService {
     this.setupIpcHandlers();
     this.setupWebSocketHandlers();
     
-    // AnnouncementScheduler'ı başlat
     AnnouncementScheduler.initialize();
   }
 
@@ -30,10 +30,10 @@ class AudioService {
           this.handleRestart();
           break;
         case 'play':
-          this.handlePlay();
+          PlaybackManager.handlePlay();
           break;
         case 'pause':
-          this.handlePause();
+          PlaybackManager.handlePause();
           break;
         case 'playAnnouncement':
           await this.handleAnnouncement(message.announcement);
@@ -104,65 +104,19 @@ class AudioService {
     }, 1000);
   }
 
-  sendPlaybackStatus() {
-    let status = 'no-playlist';
-    
-    if (this.playlist) {
-      status = this.isPlaying ? 'playing' : 'paused';
-    }
-
-    websocketService.sendMessage({
-      type: 'playbackStatus',
-      status: status
-    });
-  }
-
-  handlePlay() {
-    console.log('Play command received, current state:', this.isPlaying);
-    if (!this.isPlaying) {
-      const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
-      if (mainWindow) {
-        mainWindow.webContents.send('toggle-playback');
-        this.isPlaying = true;
-        this.sendPlaybackStatus();
-      }
-    } else {
-      console.log('Already playing, ignoring play command');
-      this.sendPlaybackStatus();
-    }
-  }
-
-  handlePause() {
-    console.log('Pause command received, current state:', this.isPlaying);
-    if (this.isPlaying) {
-      const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
-      if (mainWindow) {
-        mainWindow.webContents.send('toggle-playback');
-        this.isPlaying = false;
-        this.sendPlaybackStatus();
-      }
-    } else {
-      console.log('Already paused, ignoring pause command');
-      this.sendPlaybackStatus();
-    }
-  }
-
   setupIpcHandlers() {
     ipcMain.handle('play-playlist', async (event, playlist) => {
       console.log('Playing playlist:', playlist);
       
-      // Mevcut çalan playlist'i durdur
       if (this.isPlaying) {
         event.sender.send('toggle-playback');
       }
       
-      // Yeni playlist'i ayarla
       this.queue = [...playlist.songs];
       this.playlist = playlist;
       this.currentIndex = 0;
       this.isPlaying = true;
       
-      // İlk şarkıyı çal
       const firstSong = this.queue[this.currentIndex];
       if (firstSong) {
         event.sender.send('update-player', {
@@ -171,12 +125,13 @@ class AudioService {
           isPlaying: true
         });
 
-        // Playlist durumunu güncelle
         websocketService.sendMessage({
           type: 'playlistStatus',
           status: 'loaded',
           playlistId: playlist._id
         });
+
+        PlaybackManager.sendPlaybackStatus('playing');
       }
     });
 
@@ -200,6 +155,8 @@ class AudioService {
           status: 'loaded',
           playlistId: playlist._id
         });
+
+        PlaybackManager.sendPlaybackStatus('paused');
       }
     });
 
@@ -226,12 +183,9 @@ class AudioService {
       }
     });
 
-    // Playlist durumunu sorgulama
-    ipcMain.on('get-current-playlist', (event) => {
-      event.returnValue = {
-        currentIndex: this.currentIndex,
-        isPlaying: this.isPlaying
-      };
+    ipcMain.on('playback-toggled', (event, isPlaying) => {
+      this.isPlaying = isPlaying;
+      PlaybackManager.sendPlaybackStatus(isPlaying ? 'playing' : 'paused');
     });
   }
 
