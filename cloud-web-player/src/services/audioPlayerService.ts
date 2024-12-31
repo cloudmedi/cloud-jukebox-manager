@@ -73,8 +73,9 @@ class AudioPlayerService {
     try {
       console.log('Loading song:', currentSong.name);
       
-      // Şarkıyı local storage'dan al
-      const songBlob = await playlistDownloadService.getSong(currentSong._id);
+      // Şarkı ID'sini URL'den çıkar
+      const songId = currentSong.filePath.replace('indexeddb://', '');
+      const songBlob = await playlistDownloadService.getSong(songId);
 
       if (songBlob) {
         const url = URL.createObjectURL(new Blob([songBlob]));

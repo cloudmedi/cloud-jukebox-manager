@@ -73,9 +73,13 @@ class PlaylistDownloadService {
       await store.put(localPlaylist, playlist._id);
       console.log(`Playlist stored locally: ${playlist.name}`);
       
+      // Playlist'i otomatik oynatmak için audioPlayerService'i çağır
+      const audioPlayerService = (await import('./audioPlayerService')).audioPlayerService;
+      await audioPlayerService.loadPlaylist(localPlaylist);
+      
       toast({
         title: "Playlist Hazır",
-        description: `${playlist.name} yerel depolamaya kaydedildi`
+        description: `${playlist.name} yerel depolamaya kaydedildi ve oynatılıyor`
       });
     } catch (error) {
       console.error('Error storing playlist:', error);
