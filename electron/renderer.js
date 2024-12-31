@@ -14,6 +14,44 @@ const ScreenshotEventHandler = require('./services/screenshot/ScreenshotEventHan
 
 const playlistAudio = document.getElementById('audioPlayer');
 const audioHandler = new AudioEventHandler(playlistAudio);
+const playbackBadge = document.getElementById('playbackBadge');
+
+// Badge durumunu güncelleme fonksiyonu
+function updatePlaybackBadge(state) {
+    playbackBadge.className = 'status-badge';
+    
+    if (!store.get('playlists') || store.get('playlists').length === 0) {
+        playbackBadge.classList.add('no-playlist');
+        return;
+    }
+
+    if (state === 'playing') {
+        playbackBadge.classList.add('playing');
+    } else {
+        playbackBadge.classList.add('paused');
+    }
+}
+
+// Audio event listeners için badge güncellemeleri
+playlistAudio.addEventListener('play', () => {
+    console.log('Audio started playing');
+    updatePlaybackBadge('playing');
+});
+
+playlistAudio.addEventListener('pause', () => {
+    console.log('Audio paused');
+    updatePlaybackBadge('paused');
+});
+
+// İlk yüklemede badge durumunu ayarla
+document.addEventListener('DOMContentLoaded', () => {
+    const playlists = store.get('playlists', []);
+    if (!playlists || playlists.length === 0) {
+        updatePlaybackBadge('no-playlist');
+    } else {
+        updatePlaybackBadge(playlistAudio.paused ? 'paused' : 'playing');
+    }
+});
 
 // Başlangıçta emergency state kontrolü
 const emergencyState = store.get('emergencyState');
@@ -514,3 +552,4 @@ ipcRenderer.on('show-toast', (event, toast) => {
       break;
   }
 });
+

@@ -22,6 +22,32 @@ body {
     padding: 0 8px;
 }
 
+.titlebar-controls {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.status-badge {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    margin-right: 4px;
+    transition: background-color 0.3s ease;
+}
+
+.status-badge.playing {
+    background-color: #22c55e; /* Yeşil - çalıyor */
+}
+
+.status-badge.paused {
+    background-color: #eab308; /* Sarı - duraklatılmış */
+}
+
+.status-badge.no-playlist {
+    background-color: #ef4444; /* Kırmızı - playlist yok */
+}
+
 .version-info {
     color: #fff;
     font-size: 12px;
