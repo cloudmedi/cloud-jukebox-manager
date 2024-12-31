@@ -17,11 +17,13 @@ class StatusHandler {
         playlistStatus: message.status
       });
 
+      // Badge durumu için ek bilgi ekleyelim
       this.wss.broadcastToAdmins({
         type: 'deviceStatus',
         token: token,
         playlistStatus: message.status,
-        playlistId: message.playlistId
+        playlistId: message.playlistId,
+        badgeStatus: message.status === 'error' ? 'error' : 'success'
       });
 
       console.log(`Updated playlist status for device ${token} to ${message.status}`);
@@ -42,10 +44,12 @@ class StatusHandler {
         playbackStatus: status
       });
 
+      // Badge durumu için detaylı bilgi
       this.wss.broadcastToAdmins({
         type: 'deviceStatus',
         token: token,
-        playbackStatus: status
+        playbackStatus: status,
+        badgeStatus: this.getBadgeStatus(status)
       });
 
       console.log(`Updated playback status for device ${token} to ${status}`);
@@ -61,13 +65,28 @@ class StatusHandler {
 
       await device.updateStatus(isOnline);
       
+      // Badge durumu için online/offline bilgisi
       this.wss.broadcastToAdmins({
         type: 'deviceStatus',
         token: token,
-        isOnline: isOnline
+        isOnline: isOnline,
+        badgeStatus: isOnline ? 'online' : 'offline'
       });
     } catch (error) {
       console.error('Error handling online status:', error);
+    }
+  }
+
+  getBadgeStatus(status) {
+    switch (status) {
+      case 'playing':
+        return 'playing';
+      case 'paused':
+        return 'paused';
+      case 'error':
+        return 'error';
+      default:
+        return 'offline';
     }
   }
 }
