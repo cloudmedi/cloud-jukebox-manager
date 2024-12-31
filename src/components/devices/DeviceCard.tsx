@@ -22,21 +22,21 @@ export const DeviceCard = ({ device, isSelected, onSelect }: DeviceCardProps) =>
     switch (device.playbackStatus) {
       case "playing":
         return (
-          <Badge variant="playing" className="status-badge flex items-center gap-1">
+          <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600 flex items-center gap-1">
             <Play className="h-3 w-3" />
             Çalıyor
           </Badge>
         );
       case "paused":
         return (
-          <Badge variant="paused" className="status-badge flex items-center gap-1">
+          <Badge variant="default" className="bg-yellow-500 hover:bg-yellow-600 flex items-center gap-1">
             <Pause className="h-3 w-3" />
             Duraklatıldı
           </Badge>
         );
       case "no-playlist":
         return (
-          <Badge variant="no-playlist" className="status-badge flex items-center gap-1">
+          <Badge variant="default" className="bg-red-500 hover:bg-red-600 flex items-center gap-1">
             <X className="h-3 w-3" />
             Playlist Yok
           </Badge>
@@ -91,10 +91,7 @@ export const DeviceCard = ({ device, isSelected, onSelect }: DeviceCardProps) =>
             <div className="flex items-center gap-2">
               <div className={cn(
                 "w-2 h-2 rounded-full",
-                device.isOnline ? "bg-emerald-500" : "bg-red-500",
-                device.playbackStatus === "playing" && "bg-emerald-500",
-                device.playbackStatus === "paused" && "bg-yellow-500",
-                device.playbackStatus === "no-playlist" && "bg-red-500"
+                device.isOnline ? "bg-emerald-500" : "bg-red-500"
               )} />
               <div>
                 <h3 className="font-medium">{device.name}</h3>
@@ -104,12 +101,12 @@ export const DeviceCard = ({ device, isSelected, onSelect }: DeviceCardProps) =>
           </div>
           <div className="flex flex-col gap-2">
             {device.isOnline ? (
-              <Badge variant="success" className="status-badge flex items-center gap-1">
+              <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600 flex items-center gap-1">
                 <CheckCircle2 className="h-3 w-3" />
                 Çevrimiçi
               </Badge>
             ) : (
-              <Badge variant="destructive" className="status-badge flex items-center gap-1">
+              <Badge variant="default" className="bg-red-500 hover:bg-red-600 flex items-center gap-1">
                 <XCircle className="h-3 w-3" />
                 Çevrimdışı
               </Badge>
