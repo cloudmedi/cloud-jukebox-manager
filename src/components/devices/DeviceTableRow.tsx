@@ -32,22 +32,22 @@ export const DeviceTableRow = ({ device, isSelected, onSelect }: DeviceTableRowP
     switch (device.playbackStatus) {
       case "playing":
         return (
-          <Badge className="bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25">
-            <Play className="h-3 w-3 mr-1" />
+          <Badge variant="success" className="flex items-center gap-1">
+            <Play className="h-3 w-3" />
             Çalıyor
           </Badge>
         );
       case "paused":
         return (
-          <Badge className="bg-yellow-500/15 text-yellow-500 hover:bg-yellow-500/25">
-            <Pause className="h-3 w-3 mr-1" />
+          <Badge variant="warning" className="flex items-center gap-1">
+            <Pause className="h-3 w-3" />
             Duraklatıldı
           </Badge>
         );
       case "no-playlist":
         return (
-          <Badge className="bg-red-500/15 text-red-500 hover:bg-red-500/25">
-            <X className="h-3 w-3 mr-1" />
+          <Badge variant="destructive" className="flex items-center gap-1">
+            <X className="h-3 w-3" />
             Playlist Yok
           </Badge>
         );
@@ -89,21 +89,10 @@ export const DeviceTableRow = ({ device, isSelected, onSelect }: DeviceTableRowP
     }
   };
 
-  const getGroupColor = (groupId?: string) => {
-    if (!groupId) return "";
-    
-    const hash = groupId.split('').reduce((acc, char) => char.charCodeAt(0) + acc, 0);
-    const colors = [
-      "hover:bg-blue-50/50", "hover:bg-green-50/50", "hover:bg-purple-50/50",
-      "hover:bg-pink-50/50", "hover:bg-yellow-50/50", "hover:bg-orange-50/50"
-    ];
-    return colors[hash % colors.length];
-  };
-
   return (
     <TableRow className={cn(
       "transition-colors group",
-      getGroupColor(device.groupId)
+      device.groupId && "hover:bg-muted/50"
     )}>
       <TableCell>
         <Checkbox checked={isSelected} onCheckedChange={onSelect} />
@@ -127,13 +116,13 @@ export const DeviceTableRow = ({ device, isSelected, onSelect }: DeviceTableRowP
       <TableCell>
         <div className="flex flex-col gap-2">
           {device.isOnline ? (
-            <Badge className="bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25">
-              <CheckCircle2 className="h-3 w-3 mr-1" />
+            <Badge variant="success" className="flex items-center gap-1">
+              <CheckCircle2 className="h-3 w-3" />
               Çevrimiçi
             </Badge>
           ) : (
-            <Badge variant="destructive" className="bg-red-500/15 text-red-500 hover:bg-red-500/25">
-              <XCircle className="h-3 w-3 mr-1" />
+            <Badge variant="destructive" className="flex items-center gap-1">
+              <XCircle className="h-3 w-3" />
               Çevrimdışı
             </Badge>
           )}
