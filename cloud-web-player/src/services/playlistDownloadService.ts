@@ -1,7 +1,7 @@
-import { Song } from "@/types/song";
 import { toast } from "@/hooks/use-toast";
 import { storageService } from "./storage/StorageService";
 import { audioPlayerService } from "./audioPlayerService";
+import { Song } from "@/types/song";
 
 class PlaylistDownloadService {
   async downloadAndStoreSong(song: Song, baseUrl: string): Promise<void> {
@@ -17,6 +17,8 @@ class PlaylistDownloadService {
       
       const buffer = await response.arrayBuffer();
       await storageService.storeSong(song._id, buffer);
+      
+      console.log(`Song downloaded and stored: ${song.name}`);
       
       toast({
         title: "Başarılı",
@@ -61,7 +63,7 @@ class PlaylistDownloadService {
         description: `${playlist.name} başarıyla indirildi`
       });
 
-      // Playlist'i otomatik olarak yükle ve çal
+      // Playlist'i otomatik olarak yükle
       await audioPlayerService.loadPlaylist(playlist);
 
     } catch (error) {
@@ -76,11 +78,19 @@ class PlaylistDownloadService {
   }
 
   async getPlaylist(playlistId: string): Promise<any> {
-    return await storageService.getPlaylist(playlistId);
+    const playlist = await storageService.getPlaylist(playlistId);
+    if (playlist) {
+      console.log(`Retrieved playlist from storage: ${playlist.name}`);
+    }
+    return playlist;
   }
 
   async getSong(songId: string): Promise<ArrayBuffer | null> {
-    return await storageService.getSong(songId);
+    const songData = await storageService.getSong(songId);
+    if (songData) {
+      console.log(`Retrieved song data from storage: ${songId}`);
+    }
+    return songData;
   }
 }
 
