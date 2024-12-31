@@ -1,56 +1,39 @@
-import { handleDeleteMessage } from './websocket/handlers/DeleteMessageHandler';
-import { handleDeviceStatusMessage } from './websocket/handlers/DeviceStatusHandler';
-import { handleInitialStateMessage } from './websocket/handlers/InitialStateHandler';
-import { handleDeviceDelete } from './websocket/handlers/DeviceDeleteHandler';
-
-type MessageHandler = (data: any) => void;
+import { playlistDownloadService } from './playlistDownloadService';
 
 class WebSocketService {
-  private static instance: WebSocketService;
   private ws: WebSocket | null = null;
-  private messageHandlers: Map<string, Set<MessageHandler>>;
+  private token: string | null = null;
+  private reconnectAttempts = 0;
+  private readonly MAX_RECONNECT_ATTEMPTS = 5;
 
-  private constructor() {
-    this.messageHandlers = new Map();
-    this.setupMessageHandlers();
-    this.connect();
+  setToken(token: string) {
+    this.token = token;
+    this.setupWebSocket();
   }
 
-  private setupMessageHandlers() {
-    this.addMessageHandler('delete', handleDeleteMessage);
-    this.addMessageHandler('delete', handleDeviceDelete);
-    this.addMessageHandler('deviceStatus', handleDeviceStatusMessage);
-    this.addMessageHandler('initialState', handleInitialStateMessage);
-  }
+  private setupWebSocket() {
+    if (!this.token) return;
 
-  public static getInstance(): WebSocketService {
-    if (!WebSocketService.instance) {
-      WebSocketService.instance = new WebSocketService();
-    }
-    return WebSocketService.instance;
-  }
-
-  private connect() {
-    if (this.ws?.readyState === WebSocket.OPEN) return;
-
-    this.ws = new WebSocket('ws://localhost:5000/admin');
+    this.ws = new WebSocket('ws://localhost:5000/device');
 
     this.ws.onopen = () => {
-      console.log('WebSocket bağlantısı kuruldu');
+      console.log('WebSocket connected');
+      this.reconnectAttempts = 0;
+      this.authenticate();
     };
 
-    this.ws.onmessage = (event) => {
+    this.ws.onmessage = async (event) => {
       try {
         const message = JSON.parse(event.data);
-        this.handleMessage(message);
+        await this.handleMessage(message);
       } catch (error) {
-        console.error('Message parsing error:', error);
+        console.error('Error handling message:', error);
       }
     };
 
     this.ws.onclose = () => {
-      console.log('WebSocket bağlantısı kapandı, yeniden bağlanılıyor...');
-      setTimeout(() => this.connect(), 5000);
+      console.log('WebSocket disconnected');
+      this.handleReconnect();
     };
 
     this.ws.onerror = (error) => {
@@ -58,69 +41,81 @@ class WebSocketService {
     };
   }
 
-  private handleMessage(message: any) {
-    console.log('1. WebSocket message received:', {
-      type: message.type,
-      payload: message,
-      timestamp: new Date().toISOString()
-    });
-
-    const handlers = this.messageHandlers.get(message.type);
-    if (handlers) {
-      console.log('2. Handlers found for message type:', message.type);
-      handlers.forEach(handler => {
-        try {
-          console.log('3. Executing handler for:', message.type);
-          handler(message);
-          console.log('4. Handler executed successfully');
-        } catch (error) {
-          console.error('5. Handler error:', {
-            type: message.type,
-            error: error.message,
-            stack: error.stack
-          });
-        }
-      });
-    } else {
-      console.warn('6. Unhandled message type:', {
-        type: message.type,
-        payload: message
-      });
+  private authenticate() {
+    if (this.ws && this.token) {
+      this.ws.send(JSON.stringify({
+        type: 'authenticate',
+        token: this.token
+      }));
     }
   }
 
-  public addMessageHandler(type: string, handler: MessageHandler) {
-    if (!this.messageHandlers.has(type)) {
-      this.messageHandlers.set(type, new Set());
+  private async handleMessage(message: any) {
+    console.log('Received message:', message);
+
+    switch (message.type) {
+      case 'playlist':
+        await this.handlePlaylistMessage(message.data);
+        break;
+      // Handle other message types...
     }
-    this.messageHandlers.get(type)?.add(handler);
   }
 
-  public removeMessageHandler(type: string, handler: MessageHandler) {
-    const handlers = this.messageHandlers.get(type);
-    if (handlers) {
-      handlers.delete(handler);
-      if (handlers.size === 0) {
-        this.messageHandlers.delete(type);
+  private async handlePlaylistMessage(playlist: any) {
+    try {
+      console.log('Handling playlist:', playlist);
+      
+      // Download and store each song
+      for (const song of playlist.songs) {
+        await playlistDownloadService.downloadAndStoreSong(song, playlist.baseUrl);
       }
+
+      // Store playlist metadata in localStorage
+      const playlists = JSON.parse(localStorage.getItem('playlists') || '[]');
+      const existingIndex = playlists.findIndex((p: any) => p._id === playlist._id);
+      
+      if (existingIndex !== -1) {
+        playlists[existingIndex] = playlist;
+      } else {
+        playlists.push(playlist);
+      }
+      
+      localStorage.setItem('playlists', JSON.stringify(playlists));
+
+      // Notify about successful playlist download
+      this.sendPlaylistStatus(playlist._id, 'loaded');
+      
+      console.log('Playlist processed successfully');
+    } catch (error) {
+      console.error('Error handling playlist:', error);
+      this.sendPlaylistStatus(playlist._id, 'error');
     }
   }
 
-  public sendMessage(message: any) {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message));
-    } else {
-      console.error('WebSocket bağlantısı kurulamadı');
-      this.connect();
-    }
-  }
-
-  public cleanup() {
+  private sendPlaylistStatus(playlistId: string, status: 'loading' | 'loaded' | 'error') {
     if (this.ws) {
-      this.ws.close();
-      this.ws = null;
+      this.ws.send(JSON.stringify({
+        type: 'playlistStatus',
+        playlistId,
+        status
+      }));
+    }
+  }
+
+  private handleReconnect() {
+    if (this.reconnectAttempts < this.MAX_RECONNECT_ATTEMPTS) {
+      this.reconnectAttempts++;
+      const delay = Math.min(1000 * Math.pow(2, this.reconnectAttempts), 30000);
+      
+      console.log(`Attempting to reconnect in ${delay}ms (attempt ${this.reconnectAttempts})`);
+      
+      setTimeout(() => {
+        this.setupWebSocket();
+      }, delay);
+    } else {
+      console.error('Max reconnection attempts reached');
     }
   }
 }
 
-export default WebSocketService.getInstance();
+export const websocketService = new WebSocketService();
