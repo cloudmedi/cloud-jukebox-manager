@@ -6,6 +6,7 @@ class WebSocketService {
   constructor() {
     this.ws = null;
     this.token = null;
+    this.messageHandlers = new Map();
     this.connect();
   }
 
@@ -28,6 +29,12 @@ class WebSocketService {
       try {
         const message = JSON.parse(data);
         console.log('Received message:', message);
+        
+        // Mesaj tipine göre handler'ları çalıştır
+        if (message.type && this.messageHandlers.has(message.type)) {
+          const handlers = this.messageHandlers.get(message.type);
+          handlers.forEach(handler => handler(message));
+        }
       } catch (error) {
         console.error('Error parsing message:', error);
       }
@@ -41,6 +48,23 @@ class WebSocketService {
     this.ws.on('error', (error) => {
       console.error('WebSocket error:', error);
     });
+  }
+
+  // Yeni eklenen message handler fonksiyonu
+  addMessageHandler(messageType, handler) {
+    if (!this.messageHandlers.has(messageType)) {
+      this.messageHandlers.set(messageType, new Set());
+    }
+    this.messageHandlers.get(messageType).add(handler);
+    console.log(`Added message handler for type: ${messageType}`);
+  }
+
+  // Handler'ı kaldırmak için yeni fonksiyon
+  removeMessageHandler(messageType, handler) {
+    if (this.messageHandlers.has(messageType)) {
+      this.messageHandlers.get(messageType).delete(handler);
+      console.log(`Removed message handler for type: ${messageType}`);
+    }
   }
 
   sendMessage(message) {
