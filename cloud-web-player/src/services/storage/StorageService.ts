@@ -5,7 +5,7 @@ class StorageService {
   private dbName = 'playlist_db';
   private dbVersion = 2; // Versiyonu artırıyoruz ki yeni schema uygulansın
 
-  async openDatabase(): Promise<IDBDatabase> {
+  private async openDatabase(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
       console.log('Opening database...');
       const request = indexedDB.open(this.dbName, this.dbVersion);
