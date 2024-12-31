@@ -61,7 +61,6 @@ class WebSocketService {
       case 'playlist':
         await this.handlePlaylistMessage(message.data);
         break;
-      // Handle other message types...
     }
   }
 

@@ -1,25 +1,16 @@
 import { useEffect } from 'react';
-import { useToken } from '@/hooks/useToken';
-import { TokenDisplay } from './token/TokenDisplay';
-import websocketService from '@/services/websocketService';
+import { useToken } from '../hooks/useToken';
+import { websocketService } from '../services/websocketService';
 
 export const TokenInitializer = () => {
-  const { token, isLoading, error } = useToken();
+  const { token, isLoading } = useToken();
 
   useEffect(() => {
-    // This will trigger the WebSocket connection when token is available
-    if (token) {
-      websocketService;
+    if (token && !isLoading) {
+      console.log('Setting up WebSocket with token:', token);
+      websocketService.setToken(token);
     }
-  }, [token]);
+  }, [token, isLoading]);
 
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
-
-  if (error) {
-    return <div>Error: {error.message}</div>;
-  }
-
-  return token ? <TokenDisplay token={token} /> : null;
+  return null;
 };
