@@ -1,9 +1,10 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useEffect } from "react";
 import { Music, Play, Pause, SkipBack, SkipForward, Volume2, VolumeX } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Slider } from "@/components/ui/slider";
 import { audioPlayerService } from "@/services/audioPlayerService";
 import { formatDuration } from "@/lib/utils";
+import { toast } from "@/hooks/use-toast";
 
 const Player = () => {
   const [isPlaying, setIsPlaying] = useState(false);
@@ -21,19 +22,41 @@ const Player = () => {
       setDuration(audio.duration);
     };
 
-    const handlePlay = () => setIsPlaying(true);
-    const handlePause = () => setIsPlaying(false);
-    const handleEnded = () => setIsPlaying(false);
+    const handlePlay = () => {
+      setIsPlaying(true);
+      console.log('Playback started');
+    };
+
+    const handlePause = () => {
+      setIsPlaying(false);
+      console.log('Playback paused');
+    };
+
+    const handleEnded = () => {
+      setIsPlaying(false);
+      console.log('Playback ended');
+    };
     
     const handleSongChange = () => {
       const song = audioPlayerService.getCurrentSong();
       setCurrentSong(song);
+      console.log('Current song changed:', song?.name);
+    };
+
+    const handleError = (error: any) => {
+      console.error('Audio error:', error);
+      toast({
+        variant: "destructive",
+        title: "Oynatma Hatası",
+        description: "Şarkı oynatılırken bir hata oluştu"
+      });
     };
 
     audio.addEventListener('timeupdate', handleTimeUpdate);
     audio.addEventListener('play', handlePlay);
     audio.addEventListener('pause', handlePause);
     audio.addEventListener('ended', handleEnded);
+    audio.addEventListener('error', handleError);
     
     handleSongChange();
 
@@ -42,6 +65,7 @@ const Player = () => {
       audio.removeEventListener('play', handlePlay);
       audio.removeEventListener('pause', handlePause);
       audio.removeEventListener('ended', handleEnded);
+      audio.removeEventListener('error', handleError);
     };
   }, []);
 
@@ -58,9 +82,11 @@ const Player = () => {
   };
 
   const handleSeek = (value: number[]) => {
-    if (audioPlayerService['audio']) {
-      audioPlayerService['audio'].currentTime = value[0];
+    const audio = audioPlayerService['audio'];
+    if (audio) {
+      audio.currentTime = value[0];
       setCurrentTime(value[0]);
+      console.log('Seeked to:', value[0]);
     }
   };
 
@@ -69,6 +95,7 @@ const Player = () => {
     audioPlayerService.setVolume(newVolume);
     setVolume(newVolume);
     setIsMuted(newVolume === 0);
+    console.log('Volume changed to:', newVolume);
   };
 
   const toggleMute = () => {
@@ -78,6 +105,7 @@ const Player = () => {
       handleVolumeChange([0]);
     }
     setIsMuted(!isMuted);
+    console.log('Mute toggled:', !isMuted);
   };
 
   return (

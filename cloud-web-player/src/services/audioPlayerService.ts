@@ -1,3 +1,6 @@
+import { toast } from "@/hooks/use-toast";
+import { playlistDownloadService } from "./playlistDownloadService";
+
 class AudioPlayerService {
   private audio: HTMLAudioElement;
   private currentPlaylist: any = null;
@@ -47,12 +50,9 @@ class AudioPlayerService {
         this.currentSongIndex = 0;
         await this.loadCurrentSong();
         
-        // Otomatik oynatma isteğini işaretle ama hemen oynatma
-        this.autoPlayRequested = true;
-        
         toast({
           title: "Playlist Hazır",
-          description: `${localPlaylist.name} yerel depodan yüklendi. Oynatmak için tıklayın.`
+          description: `${localPlaylist.name} yerel depodan yüklendi.`
         });
       } else {
         console.log('Loading remote playlist:', playlist.name);
@@ -60,7 +60,6 @@ class AudioPlayerService {
         this.currentPlaylist = playlist;
         this.currentSongIndex = 0;
         await this.loadCurrentSong();
-        this.autoPlayRequested = true;
       }
     } catch (error) {
       console.error('Error loading playlist:', error);
@@ -90,15 +89,6 @@ class AudioPlayerService {
         this.audio.src = url;
         console.log(`Loaded song from local storage: ${currentSong.name}`);
         
-        // Eğer otomatik oynatma isteği varsa ve kullanıcı etkileşimi olmuşsa oynat
-        if (this.autoPlayRequested && document.hasFocus()) {
-          try {
-            await this.play();
-          } catch (error) {
-            console.log('Autoplay prevented, waiting for user interaction');
-          }
-        }
-        
         toast({
           title: "Şarkı Yüklendi",
           description: currentSong.name
@@ -118,8 +108,18 @@ class AudioPlayerService {
 
   async play() {
     try {
+      if (!this.audio.src) {
+        console.warn('No audio source set');
+        toast({
+          variant: "destructive",
+          title: "Hata",
+          description: "Çalınacak şarkı bulunamadı"
+        });
+        return;
+      }
+      
       await this.audio.play();
-      this.autoPlayRequested = false; // Başarılı oynatmadan sonra isteği sıfırla
+      console.log('Playback started');
     } catch (error) {
       console.error('Error playing audio:', error);
       if (error.name === 'NotAllowedError') {
@@ -141,6 +141,7 @@ class AudioPlayerService {
 
   pause() {
     this.audio.pause();
+    console.log('Playback paused');
     toast({
       title: "Duraklatıldı",
       description: this.getCurrentSong()?.name
@@ -152,7 +153,7 @@ class AudioPlayerService {
 
     this.currentSongIndex = (this.currentSongIndex + 1) % this.currentPlaylist.songs.length;
     await this.loadCurrentSong();
-    if (this.audio.played.length > 0) { // Sadece daha önce oynatılmışsa otomatik devam et
+    if (this.audio.played.length > 0) {
       await this.play();
     }
   }
@@ -162,18 +163,23 @@ class AudioPlayerService {
 
     this.currentSongIndex = (this.currentSongIndex - 1 + this.currentPlaylist.songs.length) % this.currentPlaylist.songs.length;
     await this.loadCurrentSong();
-    if (this.audio.played.length > 0) { // Sadece daha önce oynatılmışsa otomatik devam et
+    if (this.audio.played.length > 0) {
       await this.play();
     }
   }
 
   setVolume(volume: number) {
     this.audio.volume = Math.max(0, Math.min(1, volume));
+    console.log('Volume set to:', volume);
   }
 
   getCurrentSong() {
     if (!this.currentPlaylist) return null;
     return this.currentPlaylist.songs[this.currentSongIndex];
+  }
+
+  get audio() {
+    return this.audio;
   }
 }
 
