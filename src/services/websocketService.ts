@@ -2,17 +2,13 @@ import { handleDeleteMessage } from './websocket/handlers/DeleteMessageHandler';
 import { handleDeviceStatusMessage } from './websocket/handlers/DeviceStatusHandler';
 import { handleInitialStateMessage } from './websocket/handlers/InitialStateHandler';
 import { handleDeviceDelete } from './websocket/handlers/DeviceDeleteHandler';
-import { playlistDownloadService } from './playlistDownloadService';
 
 type MessageHandler = (data: any) => void;
 
 class WebSocketService {
   private static instance: WebSocketService;
   private ws: WebSocket | null = null;
-  private token: string | null = null;
   private messageHandlers: Map<string, Set<MessageHandler>>;
-  private reconnectAttempts = 0;
-  private readonly MAX_RECONNECT_ATTEMPTS = 5;
 
   private constructor() {
     this.messageHandlers = new Map();
@@ -124,6 +120,7 @@ class WebSocketService {
       this.ws.close();
       this.ws = null;
     }
+  }
 }
 
 export default WebSocketService.getInstance();

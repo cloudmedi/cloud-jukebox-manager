@@ -1,5 +1,22 @@
+import { toast } from "sonner";
+
 export const handleDeviceStatusMessage = (message: any) => {
-  console.log('Device status message received:', message);
-  // Device status mesajları React Query ile yönetiliyor
-  // Bu handler şu an sadece loglama yapıyor
+  // Handle online/offline status changes
+  if (message.isOnline !== undefined) {
+    if (!message.isOnline) {
+      toast.warning(`${message.deviceName || 'Cihaz'} çevrimdışı oldu`);
+    }
+  }
+
+  // Handle playlist status changes
+  if (message.playlistStatus === 'error') {
+    toast.error(`Playlist yükleme hatası: ${message.deviceName || 'Cihaz'}`);
+  } else if (message.playlistStatus === 'loaded') {
+    toast.success(`Playlist başarıyla yüklendi: ${message.deviceName || 'Cihaz'}`);
+  }
+
+  // Handle volume warnings (if volume is too high)
+  if (message.volume && message.volume > 80) {
+    toast.warning(`Yüksek ses seviyesi uyarısı: ${message.deviceName || 'Cihaz'} - %${message.volume}`);
+  }
 };
