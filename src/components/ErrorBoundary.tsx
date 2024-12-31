@@ -1,53 +1,42 @@
-import React from "react";
-import { AlertCircle } from "lucide-react";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { Button } from "@/components/ui/button";
+import React from 'react';
+import { toast } from '@/hooks/use-toast';
 
-interface ErrorBoundaryProps {
+interface Props {
   children: React.ReactNode;
 }
 
-interface ErrorBoundaryState {
+interface State {
   hasError: boolean;
-  error: Error | null;
 }
 
-export class ErrorBoundary extends React.Component<
-  ErrorBoundaryProps,
-  ErrorBoundaryState
-> {
-  constructor(props: ErrorBoundaryProps) {
-    super(props);
-    this.state = { hasError: false, error: null };
+class ErrorBoundary extends React.Component<Props, State> {
+  public state: State = {
+    hasError: false
+  };
+
+  public static getDerivedStateFromError(_: Error): State {
+    return { hasError: true };
   }
 
-  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
-    return { hasError: true, error };
+  public componentDidCatch(error: Error) {
+    console.error('Error caught by boundary:', error);
+    toast({
+      variant: "destructive",
+      title: "Uygulama Hatası",
+      description: "Beklenmeyen bir hata oluştu"
+    });
   }
 
-  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
-    console.error("Error caught by boundary:", error, errorInfo);
-  }
-
-  render() {
+  public render() {
     if (this.state.hasError) {
       return (
-        <div className="container mx-auto p-4">
-          <Alert variant="destructive">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>Bir Hata Oluştu</AlertTitle>
-            <AlertDescription className="space-y-4">
-              <p>
-                {this.state.error?.message || "Beklenmeyen bir hata oluştu"}
-              </p>
-              <Button
-                variant="outline"
-                onClick={() => window.location.reload()}
-              >
-                Sayfayı Yenile
-              </Button>
-            </AlertDescription>
-          </Alert>
+        <div className="flex items-center justify-center h-screen">
+          <div className="text-center">
+            <h2 className="text-2xl font-bold mb-4">Bir Hata Oluştu</h2>
+            <p className="text-muted-foreground">
+              Lütfen sayfayı yenileyin veya daha sonra tekrar deneyin
+            </p>
+          </div>
         </div>
       );
     }
@@ -55,3 +44,5 @@ export class ErrorBoundary extends React.Component<
     return this.props.children;
   }
 }
+
+export default ErrorBoundary;
