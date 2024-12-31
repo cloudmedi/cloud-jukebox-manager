@@ -5,6 +5,36 @@ class StatusHandler {
     this.wss = wss;
   }
 
+  async handlePlaybackStatus(token, status) {
+    try {
+      console.log(`Handling playback status for device ${token}:`, status);
+      
+      const device = await Device.findOne({ token });
+      if (!device) {
+        console.error('Device not found for token:', token);
+        return;
+      }
+
+      await Device.findByIdAndUpdate(device._id, {
+        playbackStatus: status,
+        isPlaying: status === 'playing'
+      });
+
+      // Badge durumu için detaylı bilgi
+      this.wss.broadcastToAdmins({
+        type: 'deviceStatus',
+        token: token,
+        playbackStatus: status,
+        isPlaying: status === 'playing',
+        badgeStatus: this.getBadgeStatus(status)
+      });
+
+      console.log(`Updated playback status for device ${token} to ${status}`);
+    } catch (error) {
+      console.error('Error handling playback status:', error);
+    }
+  }
+
   async handlePlaylistStatus(token, message) {
     try {
       const device = await Device.findOne({ token });
@@ -29,34 +59,6 @@ class StatusHandler {
       console.log(`Updated playlist status for device ${token} to ${message.status}`);
     } catch (error) {
       console.error('Error handling playlist status:', error);
-    }
-  }
-
-  async handlePlaybackStatus(token, status) {
-    try {
-      const device = await Device.findOne({ token });
-      if (!device) {
-        console.error('Device not found for token:', token);
-        return;
-      }
-
-      await Device.findByIdAndUpdate(device._id, {
-        playbackStatus: status,
-        isPlaying: status === 'playing'  // isPlaying field'ını da güncelle
-      });
-
-      // Badge durumu için detaylı bilgi
-      this.wss.broadcastToAdmins({
-        type: 'deviceStatus',
-        token: token,
-        playbackStatus: status,
-        isPlaying: status === 'playing',
-        badgeStatus: this.getBadgeStatus(status)
-      });
-
-      console.log(`Updated playback status for device ${token} to ${status}`);
-    } catch (error) {
-      console.error('Error handling playback status:', error);
     }
   }
 
