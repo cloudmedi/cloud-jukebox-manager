@@ -41,7 +41,8 @@ class StatusHandler {
       }
 
       await Device.findByIdAndUpdate(device._id, {
-        playbackStatus: status
+        playbackStatus: status,
+        isPlaying: status === 'playing'  // isPlaying field'ını da güncelle
       });
 
       // Badge durumu için detaylı bilgi
@@ -49,6 +50,7 @@ class StatusHandler {
         type: 'deviceStatus',
         token: token,
         playbackStatus: status,
+        isPlaying: status === 'playing',
         badgeStatus: this.getBadgeStatus(status)
       });
 
