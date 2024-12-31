@@ -62,13 +62,6 @@ class WebSocketServer {
 
       case 'playbackStatus':
         await this.statusHandler.handlePlaybackStatus(token, message.status);
-        // Badge durumu için ek broadcast
-        this.broadcastToAdmins({
-          type: 'badgeStatus',
-          token: token,
-          status: message.status,
-          isPlaying: message.status === 'playing'
-        });
         break;
 
       case 'volume':
@@ -83,13 +76,20 @@ class WebSocketServer {
         });
         break;
 
+      case 'screenshot':
+        console.log('Screenshot received from device:', token);
+        this.broadcastToAdmins({
+          type: 'screenshot',
+          token: token,
+          data: message.data
+        });
+        break;
+
       case 'error':
         this.broadcastToAdmins({
           type: 'deviceError',
           token: token,
-          error: message.error,
-          // Badge durumu için ek bilgi
-          badgeStatus: 'error'
+          error: message.error
         });
         break;
 
@@ -107,6 +107,38 @@ class WebSocketServer {
         console.log('Message sent to admin client');
       }
     });
+  }
+
+  sendToDevice(token, message) {
+    console.log(`Sending message to device ${token}:`, message);
+    let sent = false;
+    this.wss.clients.forEach(client => {
+      if (client.deviceToken === token && client.readyState === WebSocket.OPEN) {
+        try {
+          client.send(JSON.stringify(message));
+          sent = true;
+          console.log(`Message successfully sent to device ${token}`);
+        } catch (error) {
+          console.error(`Error sending message to device ${token}:`, error);
+        }
+      }
+    });
+    
+    if (!sent) {
+      console.log(`Message could not be sent - Device ${token} not found or not connected`);
+    }
+    
+    return sent;
+  }
+
+  findDeviceWebSocket(token) {
+    let targetWs = null;
+    this.wss.clients.forEach(client => {
+      if (client.deviceToken === token) {
+        targetWs = client;
+      }
+    });
+    return targetWs;
   }
 }
 

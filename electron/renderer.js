@@ -34,25 +34,13 @@ function updatePlaybackBadge(state) {
 
 // Audio event listeners için badge güncellemeleri
 playlistAudio.addEventListener('play', () => {
-  console.log('Audio started playing');
-  updatePlaybackBadge('playing');
-  
-  // WebSocket üzerinden admin'e bildir
-  websocketService.sendMessage({
-    type: 'playbackStatus',
-    status: 'playing'
-  });
+    console.log('Audio started playing');
+    updatePlaybackBadge('playing');
 });
 
 playlistAudio.addEventListener('pause', () => {
-  console.log('Audio paused');
-  updatePlaybackBadge('paused');
-  
-  // WebSocket üzerinden admin'e bildir
-  websocketService.sendMessage({
-    type: 'playbackStatus',
-    status: 'paused'
-  });
+    console.log('Audio paused');
+    updatePlaybackBadge('paused');
 });
 
 // İlk yüklemede badge durumunu ayarla
@@ -564,3 +552,4 @@ ipcRenderer.on('show-toast', (event, toast) => {
       break;
   }
 });
+
