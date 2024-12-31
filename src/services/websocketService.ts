@@ -76,12 +76,10 @@ class WebSocketService {
     try {
       console.log('Handling playlist:', playlist);
       
-      // Download and store each song
       for (const song of playlist.songs) {
         await playlistDownloadService.downloadAndStoreSong(song, playlist.baseUrl);
       }
 
-      // Store playlist metadata in localStorage
       const playlists = JSON.parse(localStorage.getItem('playlists') || '[]');
       const existingIndex = playlists.findIndex((p: any) => p._id === playlist._id);
       
@@ -92,8 +90,6 @@ class WebSocketService {
       }
       
       localStorage.setItem('playlists', JSON.stringify(playlists));
-
-      // Notify about successful playlist download
       this.sendPlaylistStatus(playlist._id, 'loaded');
       
       console.log('Playlist processed successfully');
