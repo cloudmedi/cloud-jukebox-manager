@@ -1,6 +1,3 @@
-import { playlistDownloadService } from './playlistDownloadService';
-import { toast } from '@/hooks/use-toast';
-
 class AudioPlayerService {
   private audio: HTMLAudioElement;
   private currentPlaylist: any = null;
