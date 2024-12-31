@@ -2,24 +2,37 @@ import { toast } from "@/hooks/use-toast";
 import { Song } from "@/types/song";
 
 class StorageService {
+  private dbName = 'playlist_db';
+  private dbVersion = 1;
+
   private async openDatabase(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open('playlist_db', 1);
+      const request = indexedDB.open(this.dbName, this.dbVersion);
 
       request.onerror = () => {
         console.error('Database error:', request.error);
         reject(request.error);
       };
 
-      request.onsuccess = () => resolve(request.result);
+      request.onsuccess = () => {
+        console.log('Database opened successfully');
+        resolve(request.result);
+      };
 
       request.onupgradeneeded = (event) => {
+        console.log('Database upgrade needed, creating stores...');
         const db = (event.target as IDBOpenDBRequest).result;
+        
+        // Create songs store if it doesn't exist
         if (!db.objectStoreNames.contains('songs')) {
+          console.log('Creating songs store');
           db.createObjectStore('songs');
         }
+        
+        // Create playlists store if it doesn't exist
         if (!db.objectStoreNames.contains('playlists')) {
-          db.createObjectStore('playlists');
+          console.log('Creating playlists store');
+          db.createObjectStore('playlists', { keyPath: '_id' });
         }
       };
     });
@@ -28,11 +41,21 @@ class StorageService {
   async storeSong(songId: string, songData: ArrayBuffer): Promise<void> {
     try {
       const db = await this.openDatabase();
-      const transaction = db.transaction(['songs'], 'readwrite');
-      const store = transaction.objectStore('songs');
-      await store.put(songData, songId);
-      
-      console.log(`Song stored successfully: ${songId}`);
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['songs'], 'readwrite');
+        const store = transaction.objectStore('songs');
+        const request = store.put(songData, songId);
+
+        request.onerror = () => {
+          console.error('Error storing song:', request.error);
+          reject(request.error);
+        };
+
+        request.onsuccess = () => {
+          console.log(`Song stored successfully: ${songId}`);
+          resolve();
+        };
+      });
     } catch (error) {
       console.error('Error storing song:', error);
       toast({
@@ -64,11 +87,21 @@ class StorageService {
   async storePlaylist(playlist: any): Promise<void> {
     try {
       const db = await this.openDatabase();
-      const transaction = db.transaction(['playlists'], 'readwrite');
-      const store = transaction.objectStore('playlists');
-      await store.put(playlist, playlist._id);
-      
-      console.log(`Playlist stored successfully: ${playlist.name}`);
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['playlists'], 'readwrite');
+        const store = transaction.objectStore('playlists');
+        const request = store.put(playlist);
+
+        request.onerror = () => {
+          console.error('Error storing playlist:', request.error);
+          reject(request.error);
+        };
+
+        request.onsuccess = () => {
+          console.log(`Playlist stored successfully: ${playlist.name}`);
+          resolve();
+        };
+      });
     } catch (error) {
       console.error('Error storing playlist:', error);
       toast({
@@ -95,6 +128,22 @@ class StorageService {
       console.error('Error retrieving playlist:', error);
       return null;
     }
+  }
+
+  async deleteDatabase(): Promise<void> {
+    return new Promise((resolve, reject) => {
+      const request = indexedDB.deleteDatabase(this.dbName);
+      
+      request.onerror = () => {
+        console.error('Error deleting database:', request.error);
+        reject(request.error);
+      };
+      
+      request.onsuccess = () => {
+        console.log('Database deleted successfully');
+        resolve();
+      };
+    });
   }
 }
 
