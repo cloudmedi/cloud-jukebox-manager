@@ -24,6 +24,16 @@ class AudioPlayerService {
         description: "Şarkı oynatılırken bir hata oluştu."
       });
     });
+
+    this.audio.addEventListener('play', () => {
+      const currentSong = this.getCurrentSong();
+      if (currentSong) {
+        toast({
+          title: "Oynatılıyor",
+          description: currentSong.name
+        });
+      }
+    });
   }
 
   async loadPlaylist(playlist: any) {
@@ -102,10 +112,6 @@ class AudioPlayerService {
   async play() {
     try {
       await this.audio.play();
-      toast({
-        title: "Oynatılıyor",
-        description: this.getCurrentSong()?.name
-      });
     } catch (error) {
       console.error('Error playing audio:', error);
       toast({
@@ -118,6 +124,10 @@ class AudioPlayerService {
 
   pause() {
     this.audio.pause();
+    toast({
+      title: "Duraklatıldı",
+      description: this.getCurrentSong()?.name
+    });
   }
 
   async playNext() {
