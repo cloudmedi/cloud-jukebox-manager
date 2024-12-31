@@ -63,12 +63,6 @@ const Player = () => {
     }
   };
 
-  const togglePlayback = () => {
-    setIsPlaying(!isPlaying);
-    // Main process'e playback durumunun değiştiğini bildir
-    window.electron.ipcRenderer.send('playback-toggled', !isPlaying);
-  };
-
   return (
     <div className="fixed bottom-0 left-0 right-0 bg-background border-t">
       <div className="container flex items-center gap-4 py-3">
