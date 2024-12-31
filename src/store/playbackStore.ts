@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { websocketService } from '@/services/websocketService';
+import websocketService from '@/services/websocketService';
 
 interface Song {
   _id: string;
@@ -96,6 +96,7 @@ export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
     const songIndex = queue.findIndex(s => s._id === song._id);
     
     if (songIndex === -1) {
+      // Şarkı queue'da yoksa, ekleyelim
       set(state => ({ 
         queue: [...state.queue, song],
         currentSong: song,
@@ -103,6 +104,7 @@ export const usePlaybackStore = create<PlaybackStore>((set, get) => ({
         isPlaying: true
       }));
     } else {
+      // Şarkı queue'da varsa, sadece current song'u güncelleyelim
       set({ 
         currentSong: song,
         currentIndex: songIndex,
