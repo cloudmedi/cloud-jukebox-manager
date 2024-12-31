@@ -4,8 +4,14 @@ class TokenService {
   private readonly TOKEN_KEY = 'device_token';
   private readonly API_URL = 'http://localhost:5000/api';
 
+  generateRandomToken(): string {
+    return Math.floor(100000 + Math.random() * 900000).toString();
+  }
+
   async generateToken(): Promise<string> {
     const deviceInfo = await this.getDeviceInfo();
+    const token = this.generateRandomToken();
+    
     try {
       const response = await fetch(`${this.API_URL}/tokens`, {
         method: 'POST',
@@ -13,6 +19,7 @@ class TokenService {
           'Content-Type': 'application/json'
         },
         body: JSON.stringify({
+          token,
           deviceInfo
         })
       });
@@ -22,8 +29,8 @@ class TokenService {
       }
 
       const data = await response.json();
-      this.saveToken(data.token);
-      return data.token;
+      this.saveToken(token);
+      return token;
     } catch (error) {
       console.error('Token generation error:', error);
       throw error;
@@ -47,17 +54,11 @@ class TokenService {
     }
 
     try {
-      const response = await fetch(`${this.API_URL}/tokens/${currentToken}/refresh`, {
-        method: 'POST'
+      await fetch(`${this.API_URL}/tokens/${currentToken}/release`, {
+        method: 'PATCH'
       });
-
-      if (!response.ok) {
-        throw new Error('Token refresh failed');
-      }
-
-      const data = await response.json();
-      this.saveToken(data.token);
-      return data.token;
+      
+      return this.generateToken();
     } catch (error) {
       console.error('Token refresh error:', error);
       throw error;

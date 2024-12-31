@@ -12,16 +12,20 @@ export const useToken = () => {
         let currentToken = tokenService.getToken();
         
         if (!currentToken) {
+          console.log('No token found, generating new token...');
           currentToken = await tokenService.generateToken();
         } else {
+          console.log('Validating existing token...');
           const isValid = await tokenService.validateToken(currentToken);
           if (!isValid) {
+            console.log('Token invalid, refreshing...');
             currentToken = await tokenService.refreshToken();
           }
         }
         
         setToken(currentToken);
       } catch (err) {
+        console.error('Token initialization error:', err);
         setError(err instanceof Error ? err : new Error('Token initialization failed'));
       } finally {
         setIsLoading(false);
