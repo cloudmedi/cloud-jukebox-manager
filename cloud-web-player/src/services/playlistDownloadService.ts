@@ -1,29 +1,33 @@
-import { Song } from '../types/song';
+import { Song } from "@/types/song";
 
 class PlaylistDownloadService {
-  private db: IDBDatabase | null = null;
-  private readonly DB_NAME = 'cloudPlayerDB';
-  private readonly STORE_NAME = 'songs';
-
-  constructor() {
-    this.initDB();
+  private async downloadFile(url: string): Promise<ArrayBuffer> {
+    const response = await fetch(url);
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    return await response.arrayBuffer();
   }
 
-  private async initDB(): Promise<void> {
+  private async storeFile(buffer: ArrayBuffer, filename: string): Promise<void> {
+    // IndexedDB'ye kaydet
+    const db = await this.openDatabase();
+    const transaction = db.transaction(['songs'], 'readwrite');
+    const store = transaction.objectStore('songs');
+    await store.put(buffer, filename);
+  }
+
+  private async openDatabase(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
-      const request = indexedDB.open(this.DB_NAME, 1);
+      const request = indexedDB.open('playlist_db', 1);
 
       request.onerror = () => reject(request.error);
-      
-      request.onsuccess = () => {
-        this.db = request.result;
-        resolve();
-      };
+      request.onsuccess = () => resolve(request.result);
 
       request.onupgradeneeded = (event) => {
         const db = (event.target as IDBOpenDBRequest).result;
-        if (!db.objectStoreNames.contains(this.STORE_NAME)) {
-          db.createObjectStore(this.STORE_NAME, { keyPath: '_id' });
+        if (!db.objectStoreNames.contains('songs')) {
+          db.createObjectStore('songs');
         }
       };
     });
@@ -33,50 +37,31 @@ class PlaylistDownloadService {
     try {
       console.log(`Downloading song: ${song.name}`);
       
-      const response = await fetch(`${baseUrl}/${song.filePath}`);
-      const blob = await response.blob();
-
-      await this.storeSong(song._id, blob);
+      // Şarkı URL'ini oluştur
+      const songUrl = `${baseUrl}/${song.filePath}`;
       
-      console.log(`Song downloaded and stored: ${song.name}`);
+      // Şarkıyı indir
+      const buffer = await this.downloadFile(songUrl);
+      
+      // Şarkıyı lokale kaydet
+      await this.storeFile(buffer, song._id);
+      
+      console.log(`Successfully downloaded and stored song: ${song.name}`);
     } catch (error) {
       console.error(`Error downloading song ${song.name}:`, error);
       throw error;
     }
   }
 
-  private async storeSong(songId: string, blob: Blob): Promise<void> {
+  async getSong(songId: string): Promise<ArrayBuffer | null> {
+    const db = await this.openDatabase();
     return new Promise((resolve, reject) => {
-      if (!this.db) {
-        reject(new Error('Database not initialized'));
-        return;
-      }
-
-      const transaction = this.db.transaction([this.STORE_NAME], 'readwrite');
-      const store = transaction.objectStore(this.STORE_NAME);
-      const request = store.put({ _id: songId, blob });
-
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
-  }
-
-  async getSong(songId: string): Promise<Blob | null> {
-    return new Promise((resolve, reject) => {
-      if (!this.db) {
-        reject(new Error('Database not initialized'));
-        return;
-      }
-
-      const transaction = this.db.transaction([this.STORE_NAME], 'readonly');
-      const store = transaction.objectStore(this.STORE_NAME);
+      const transaction = db.transaction(['songs'], 'readonly');
+      const store = transaction.objectStore('songs');
       const request = store.get(songId);
 
-      request.onsuccess = () => {
-        const result = request.result;
-        resolve(result ? result.blob : null);
-      };
       request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
     });
   }
 }
