@@ -1,6 +1,3 @@
-Here's the complete code for src/services/deviceService.ts:
-
-```typescript
 import { toast } from "sonner";
 import websocketService from "./websocketService";
 
@@ -123,4 +120,3 @@ class DeviceService {
 }
 
 export const deviceService = new DeviceService();
-```
