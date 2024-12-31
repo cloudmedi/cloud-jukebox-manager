@@ -10,7 +10,6 @@ class PlaylistDownloadService {
   }
 
   private async storeFile(buffer: ArrayBuffer, filename: string): Promise<void> {
-    // IndexedDB'ye kaydet
     const db = await this.openDatabase();
     const transaction = db.transaction(['songs'], 'readwrite');
     const store = transaction.objectStore('songs');
@@ -29,6 +28,9 @@ class PlaylistDownloadService {
         if (!db.objectStoreNames.contains('songs')) {
           db.createObjectStore('songs');
         }
+        if (!db.objectStoreNames.contains('playlists')) {
+          db.createObjectStore('playlists');
+        }
       };
     });
   }
@@ -37,13 +39,8 @@ class PlaylistDownloadService {
     try {
       console.log(`Downloading song: ${song.name}`);
       
-      // Şarkı URL'ini oluştur
       const songUrl = `${baseUrl}/${song.filePath}`;
-      
-      // Şarkıyı indir
       const buffer = await this.downloadFile(songUrl);
-      
-      // Şarkıyı lokale kaydet
       await this.storeFile(buffer, song._id);
       
       console.log(`Successfully downloaded and stored song: ${song.name}`);
@@ -51,6 +48,41 @@ class PlaylistDownloadService {
       console.error(`Error downloading song ${song.name}:`, error);
       throw error;
     }
+  }
+
+  async storePlaylist(playlist: any): Promise<void> {
+    try {
+      const db = await this.openDatabase();
+      const transaction = db.transaction(['playlists'], 'readwrite');
+      const store = transaction.objectStore('playlists');
+      
+      // Her şarkı için local flag'i ekle
+      const localPlaylist = {
+        ...playlist,
+        songs: playlist.songs.map((song: Song) => ({
+          ...song,
+          isLocal: true
+        }))
+      };
+      
+      await store.put(localPlaylist, playlist._id);
+      console.log(`Playlist stored locally: ${playlist.name}`);
+    } catch (error) {
+      console.error('Error storing playlist:', error);
+      throw error;
+    }
+  }
+
+  async getPlaylist(playlistId: string): Promise<any> {
+    const db = await this.openDatabase();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction(['playlists'], 'readonly');
+      const store = transaction.objectStore('playlists');
+      const request = store.get(playlistId);
+
+      request.onerror = () => reject(request.error);
+      request.onsuccess = () => resolve(request.result);
+    });
   }
 
   async getSong(songId: string): Promise<ArrayBuffer | null> {

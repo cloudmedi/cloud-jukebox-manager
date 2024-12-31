@@ -1,4 +1,5 @@
 import { playlistDownloadService } from './playlistDownloadService';
+import { toast } from '@/hooks/use-toast';
 
 class AudioPlayerService {
   private audio: HTMLAudioElement;
@@ -17,13 +18,44 @@ class AudioPlayerService {
 
     this.audio.addEventListener('error', (error) => {
       console.error('Audio playback error:', error);
+      toast({
+        variant: "destructive",
+        title: "Oynatma Hatası",
+        description: "Şarkı oynatılırken bir hata oluştu."
+      });
     });
   }
 
   async loadPlaylist(playlist: any) {
-    this.currentPlaylist = playlist;
-    this.currentSongIndex = 0;
-    await this.loadCurrentSong();
+    try {
+      // Önce playlist'i local storage'dan kontrol et
+      const localPlaylist = await playlistDownloadService.getPlaylist(playlist._id);
+      
+      if (localPlaylist) {
+        console.log('Loading local playlist:', localPlaylist.name);
+        this.currentPlaylist = localPlaylist;
+      } else {
+        console.log('Loading remote playlist:', playlist.name);
+        this.currentPlaylist = playlist;
+        // Playlist'i locale kaydet
+        await playlistDownloadService.storePlaylist(playlist);
+      }
+      
+      this.currentSongIndex = 0;
+      await this.loadCurrentSong();
+      
+      toast({
+        title: "Playlist Hazır",
+        description: `${this.currentPlaylist.name} yüklendi`
+      });
+    } catch (error) {
+      console.error('Error loading playlist:', error);
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Playlist yüklenirken bir hata oluştu"
+      });
+    }
   }
 
   private async loadCurrentSong() {
@@ -33,14 +65,23 @@ class AudioPlayerService {
     }
 
     const currentSong = this.currentPlaylist.songs[this.currentSongIndex];
-    const songBlob = await playlistDownloadService.getSong(currentSong._id);
+    try {
+      const songBlob = await playlistDownloadService.getSong(currentSong._id);
 
-    if (songBlob) {
-      const url = URL.createObjectURL(songBlob);
-      this.audio.src = url;
-      console.log(`Loaded song: ${currentSong.name}`);
-    } else {
-      console.error('Song not found in storage');
+      if (songBlob) {
+        const url = URL.createObjectURL(new Blob([songBlob]));
+        this.audio.src = url;
+        console.log(`Loaded song: ${currentSong.name}`);
+      } else {
+        throw new Error('Song not found in storage');
+      }
+    } catch (error) {
+      console.error('Error loading song:', error);
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: `${currentSong.name} yüklenirken bir hata oluştu`
+      });
     }
   }
 
@@ -49,6 +90,11 @@ class AudioPlayerService {
       await this.audio.play();
     } catch (error) {
       console.error('Error playing audio:', error);
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Şarkı başlatılırken bir hata oluştu"
+      });
     }
   }
 
