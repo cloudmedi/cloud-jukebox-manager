@@ -45,8 +45,17 @@ class PlaylistDownloadService {
       await this.storeFile(buffer, song._id);
       
       console.log(`Successfully downloaded and stored song: ${song.name}`);
+      toast({
+        title: "Şarkı İndirildi",
+        description: `${song.name} başarıyla indirildi`
+      });
     } catch (error) {
       console.error(`Error downloading song ${song.name}:`, error);
+      toast({
+        variant: "destructive",
+        title: "İndirme Hatası",
+        description: `${song.name} indirilemedi: ${error.message}`
+      });
       throw error;
     }
   }
