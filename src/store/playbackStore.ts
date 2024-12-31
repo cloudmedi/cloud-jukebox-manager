@@ -1,5 +1,5 @@
 import { create } from 'zustand';
-import { websocketService } from '@/services/websocketService';
+import websocketService from '@/services/websocketService';
 
 interface Song {
   _id: string;

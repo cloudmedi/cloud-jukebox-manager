@@ -5,7 +5,6 @@ class WebSocketService {
   private token: string | null = null;
   private reconnectAttempts = 0;
   private readonly MAX_RECONNECT_ATTEMPTS = 5;
-  private messageHandlers = new Map();
 
   constructor() {
     this.setupWebSocket();
@@ -55,40 +54,14 @@ class WebSocketService {
     }
   }
 
-  sendMessage(message: any) {
-    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message));
-    } else {
-      console.error('WebSocket is not connected');
-    }
-  }
-
-  addMessageHandler(type: string, handler: (message: any) => void) {
-    if (!this.messageHandlers.has(type)) {
-      this.messageHandlers.set(type, new Set());
-    }
-    this.messageHandlers.get(type).add(handler);
-  }
-
-  removeMessageHandler(type: string, handler: (message: any) => void) {
-    const handlers = this.messageHandlers.get(type);
-    if (handlers) {
-      handlers.delete(handler);
-    }
-  }
-
   private async handleMessage(message: any) {
     console.log('Received message:', message);
-
-    const handlers = this.messageHandlers.get(message.type);
-    if (handlers) {
-      handlers.forEach((handler: any) => handler(message));
-    }
 
     switch (message.type) {
       case 'playlist':
         await this.handlePlaylistMessage(message.data);
         break;
+      // Handle other message types...
     }
   }
 
@@ -124,11 +97,13 @@ class WebSocketService {
   }
 
   private sendPlaylistStatus(playlistId: string, status: 'loading' | 'loaded' | 'error') {
-    this.sendMessage({
-      type: 'playlistStatus',
-      playlistId,
-      status
-    });
+    if (this.ws) {
+      this.ws.send(JSON.stringify({
+        type: 'playlistStatus',
+        playlistId,
+        status
+      }));
+    }
   }
 
   private handleReconnect() {
