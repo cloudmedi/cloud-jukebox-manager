@@ -28,26 +28,31 @@ class AudioPlayerService {
 
   async loadPlaylist(playlist: any) {
     try {
+      console.log('Loading playlist:', playlist.name);
+      
       // Önce playlist'i local storage'dan kontrol et
       const localPlaylist = await playlistDownloadService.getPlaylist(playlist._id);
       
       if (localPlaylist) {
         console.log('Loading local playlist:', localPlaylist.name);
         this.currentPlaylist = localPlaylist;
+        this.currentSongIndex = 0;
+        await this.loadCurrentSong();
+        await this.play();
+        
+        toast({
+          title: "Playlist Hazır",
+          description: `${localPlaylist.name} yerel depodan yüklendi`
+        });
       } else {
         console.log('Loading remote playlist:', playlist.name);
-        this.currentPlaylist = playlist;
-        // Playlist'i locale kaydet
+        // Playlist'i locale kaydet ve şarkıları indir
         await playlistDownloadService.storePlaylist(playlist);
+        this.currentPlaylist = playlist;
+        this.currentSongIndex = 0;
+        await this.loadCurrentSong();
+        await this.play();
       }
-      
-      this.currentSongIndex = 0;
-      await this.loadCurrentSong();
-      
-      toast({
-        title: "Playlist Hazır",
-        description: `${this.currentPlaylist.name} yüklendi`
-      });
     } catch (error) {
       console.error('Error loading playlist:', error);
       toast({
@@ -66,12 +71,20 @@ class AudioPlayerService {
 
     const currentSong = this.currentPlaylist.songs[this.currentSongIndex];
     try {
+      console.log('Loading song:', currentSong.name);
+      
+      // Şarkıyı local storage'dan al
       const songBlob = await playlistDownloadService.getSong(currentSong._id);
 
       if (songBlob) {
         const url = URL.createObjectURL(new Blob([songBlob]));
         this.audio.src = url;
-        console.log(`Loaded song: ${currentSong.name}`);
+        console.log(`Loaded song from local storage: ${currentSong.name}`);
+        
+        toast({
+          title: "Şarkı Yüklendi",
+          description: currentSong.name
+        });
       } else {
         throw new Error('Song not found in storage');
       }
@@ -88,6 +101,10 @@ class AudioPlayerService {
   async play() {
     try {
       await this.audio.play();
+      toast({
+        title: "Oynatılıyor",
+        description: this.getCurrentSong()?.name
+      });
     } catch (error) {
       console.error('Error playing audio:', error);
       toast({

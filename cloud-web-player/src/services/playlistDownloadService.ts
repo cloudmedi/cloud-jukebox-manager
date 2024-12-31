@@ -1,4 +1,5 @@
 import { Song } from "@/types/song";
+import { toast } from "@/hooks/use-toast";
 
 class PlaylistDownloadService {
   private async downloadFile(url: string): Promise<ArrayBuffer> {
@@ -52,49 +53,82 @@ class PlaylistDownloadService {
 
   async storePlaylist(playlist: any): Promise<void> {
     try {
+      console.log('Storing playlist locally:', playlist.name);
+      
       const db = await this.openDatabase();
       const transaction = db.transaction(['playlists'], 'readwrite');
       const store = transaction.objectStore('playlists');
       
-      // Her şarkı için local flag'i ekle
+      // Her şarkı için local flag'i ekle ve filePath'i güncelle
       const localPlaylist = {
         ...playlist,
         songs: playlist.songs.map((song: Song) => ({
           ...song,
-          isLocal: true
+          isLocal: true,
+          originalFilePath: song.filePath,
+          filePath: `indexeddb://${song._id}` // Local referans için özel URL şeması
         }))
       };
       
       await store.put(localPlaylist, playlist._id);
       console.log(`Playlist stored locally: ${playlist.name}`);
+      
+      toast({
+        title: "Playlist Hazır",
+        description: `${playlist.name} yerel depolamaya kaydedildi`
+      });
     } catch (error) {
       console.error('Error storing playlist:', error);
+      toast({
+        variant: "destructive",
+        title: "Hata",
+        description: "Playlist kaydedilirken bir hata oluştu"
+      });
       throw error;
     }
   }
 
   async getPlaylist(playlistId: string): Promise<any> {
-    const db = await this.openDatabase();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(['playlists'], 'readonly');
-      const store = transaction.objectStore('playlists');
-      const request = store.get(playlistId);
+    try {
+      console.log('Getting playlist from local storage:', playlistId);
+      const db = await this.openDatabase();
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['playlists'], 'readonly');
+        const store = transaction.objectStore('playlists');
+        const request = store.get(playlistId);
 
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(request.result);
-    });
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          const playlist = request.result;
+          console.log('Retrieved playlist from local storage:', playlist?.name);
+          resolve(playlist);
+        };
+      });
+    } catch (error) {
+      console.error('Error getting playlist:', error);
+      return null;
+    }
   }
 
   async getSong(songId: string): Promise<ArrayBuffer | null> {
-    const db = await this.openDatabase();
-    return new Promise((resolve, reject) => {
-      const transaction = db.transaction(['songs'], 'readonly');
-      const store = transaction.objectStore('songs');
-      const request = store.get(songId);
+    try {
+      console.log('Getting song from local storage:', songId);
+      const db = await this.openDatabase();
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['songs'], 'readonly');
+        const store = transaction.objectStore('songs');
+        const request = store.get(songId);
 
-      request.onerror = () => reject(request.error);
-      request.onsuccess = () => resolve(request.result);
-    });
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          console.log('Retrieved song from local storage:', songId);
+          resolve(request.result);
+        };
+      });
+    } catch (error) {
+      console.error('Error getting song:', error);
+      return null;
+    }
   }
 }
 
