@@ -104,10 +104,8 @@ class WebSocketService {
         playlistId: playlist._id
       });
 
-      // Playlist'teki tüm şarkıları indir
-      for (const song of playlist.songs) {
-        await playlistDownloadService.downloadAndStoreSong(song, playlist.baseUrl);
-      }
+      // Playlist'i kaydet ve şarkıları indir
+      await playlistDownloadService.storePlaylist(playlist);
 
       // Başarılı indirme bildirimi
       toast.success(`"${playlist.name}" playlist'i başarıyla indirildi`);

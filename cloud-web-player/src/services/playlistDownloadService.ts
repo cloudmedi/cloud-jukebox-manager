@@ -1,10 +1,39 @@
 import { Song } from "@/types/song";
 import { toast } from "@/hooks/use-toast";
 import { storageService } from "./storage/StorageService";
-import { downloadService } from "./download/DownloadService";
 import { audioPlayerService } from "./audioPlayerService";
 
 class PlaylistDownloadService {
+  async downloadAndStoreSong(song: Song, baseUrl: string): Promise<void> {
+    try {
+      console.log(`Downloading song: ${song.name}`);
+      
+      const songUrl = `${baseUrl}/${song.filePath}`;
+      const response = await fetch(songUrl);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const buffer = await response.arrayBuffer();
+      await storageService.storeSong(song._id, buffer);
+      
+      toast({
+        title: "Başarılı",
+        description: `${song.name} başarıyla indirildi`
+      });
+
+    } catch (error) {
+      console.error(`Error downloading song ${song.name}:`, error);
+      toast({
+        variant: "destructive",
+        title: "İndirme Hatası",
+        description: `${song.name} indirilemedi: ${error.message}`
+      });
+      throw error;
+    }
+  }
+
   async storePlaylist(playlist: any): Promise<void> {
     try {
       console.log('Storing playlist locally:', playlist.name);
@@ -16,7 +45,7 @@ class PlaylistDownloadService {
 
       // Her şarkıyı indir ve kaydet
       for (const song of playlist.songs) {
-        await downloadService.downloadAndStoreSong(song, playlist.baseUrl);
+        await this.downloadAndStoreSong(song, playlist.baseUrl);
         
         // Şarkı yolunu güncelle
         song.originalFilePath = song.filePath;
