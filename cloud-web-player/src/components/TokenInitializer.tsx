@@ -1,4 +1,4 @@
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useToken } from '../hooks/useToken';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Loader2 } from 'lucide-react';
@@ -9,6 +9,13 @@ interface TokenInitializerProps {
 
 export const TokenInitializer = ({ children }: TokenInitializerProps) => {
   const { token, isLoading, error } = useToken();
+  const [initialized, setInitialized] = useState(false);
+
+  useEffect(() => {
+    if (token) {
+      setInitialized(true);
+    }
+  }, [token]);
 
   if (isLoading) {
     return (
