@@ -1,4 +1,4 @@
-import { playlistDownloadService } from './playlistDownloadService';
+import { playlistDownloadService } from '@/services/playlistDownloadService';
 
 class WebSocketService {
   private ws: WebSocket | null = null;
@@ -69,7 +69,6 @@ class WebSocketService {
       case 'playlist':
         await this.handlePlaylistMessage(message.data);
         break;
-      // Handle other message types...
     }
   }
 
