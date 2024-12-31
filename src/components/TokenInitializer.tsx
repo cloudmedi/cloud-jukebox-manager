@@ -7,7 +7,6 @@ export const TokenInitializer = () => {
   const { token, isLoading, error } = useToken();
 
   useEffect(() => {
-    // This will trigger the WebSocket connection when token is available
     if (token) {
       websocketService.setToken(token);
     }

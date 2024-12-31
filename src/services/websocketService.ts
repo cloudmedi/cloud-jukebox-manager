@@ -54,6 +54,14 @@ class WebSocketService {
     }
   }
 
+  sendMessage(message: any) {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify(message));
+    } else {
+      console.error('WebSocket is not connected');
+    }
+  }
+
   private async handleMessage(message: any) {
     console.log('Received message:', message);
 
