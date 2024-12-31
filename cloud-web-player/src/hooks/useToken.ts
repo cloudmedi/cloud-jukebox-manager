@@ -17,12 +17,14 @@ export const useToken = () => {
           currentToken = await tokenService.generateToken();
           console.log('New token generated:', currentToken);
         } else {
-          console.log('Existing token found, validating:', currentToken);
+          console.log('Existing token found:', currentToken);
           const isValid = await tokenService.validateToken(currentToken);
           if (!isValid) {
-            console.log('Token invalid, refreshing...');
-            currentToken = await tokenService.refreshToken();
-            console.log('Token refreshed:', currentToken);
+            console.log('Token invalid, generating new token...');
+            currentToken = await tokenService.generateToken();
+            console.log('New token generated:', currentToken);
+          } else {
+            console.log('Existing token is valid');
           }
         }
         
