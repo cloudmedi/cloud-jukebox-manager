@@ -2,6 +2,7 @@ import { useEffect } from 'react';
 import { useToken } from '../hooks/useToken';
 import { Alert, AlertDescription, AlertTitle } from './ui/alert';
 import { Loader2 } from 'lucide-react';
+import { TokenDisplay } from './token/TokenDisplay';
 
 interface TokenInitializerProps {
   children: React.ReactNode;
@@ -12,25 +13,30 @@ export const TokenInitializer = ({ children }: TokenInitializerProps) => {
 
   useEffect(() => {
     if (token) {
-      console.log('Token initialized:', token);
+      console.log('TokenInitializer: Token received:', token);
     }
   }, [token]);
 
+  console.log('TokenInitializer render state:', { token, isLoading, error });
+
   if (isLoading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
-        <Loader2 className="h-8 w-8 animate-spin" />
+      <div className="flex items-center justify-center min-h-screen bg-gradient-to-br from-purple-50 to-white">
+        <div className="text-center space-y-4">
+          <Loader2 className="h-8 w-8 animate-spin text-purple-600 mx-auto" />
+          <p className="text-purple-600">Token oluşturuluyor...</p>
+        </div>
       </div>
     );
   }
 
   if (error) {
     return (
-      <div className="p-4">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white p-6">
         <Alert variant="destructive">
-          <AlertTitle>Error</AlertTitle>
+          <AlertTitle>Hata</AlertTitle>
           <AlertDescription>
-            Failed to initialize device token: {error.message}
+            Token oluşturulurken bir hata oluştu: {error.message}
           </AlertDescription>
         </Alert>
       </div>
@@ -39,16 +45,21 @@ export const TokenInitializer = ({ children }: TokenInitializerProps) => {
 
   if (!token) {
     return (
-      <div className="p-4">
+      <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white p-6">
         <Alert variant="warning">
-          <AlertTitle>No Token</AlertTitle>
+          <AlertTitle>Token Bulunamadı</AlertTitle>
           <AlertDescription>
-            Device token is not available. Please refresh the page or contact support.
+            Cihaz tokeni bulunamadı. Lütfen sayfayı yenileyin veya destek ekibi ile iletişime geçin.
           </AlertDescription>
         </Alert>
       </div>
     );
   }
 
-  return <>{children}</>;
+  return (
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 to-white p-6">
+      <TokenDisplay token={token} />
+      {children}
+    </div>
+  );
 };
