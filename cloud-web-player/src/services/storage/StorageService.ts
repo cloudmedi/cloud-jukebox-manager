@@ -3,10 +3,11 @@ import { Song } from "@/types/song";
 
 class StorageService {
   private dbName = 'playlist_db';
-  private dbVersion = 1;
+  private dbVersion = 2; // Versiyonu artırıyoruz ki yeni schema uygulansın
 
   private async openDatabase(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
+      console.log('Opening database...');
       const request = indexedDB.open(this.dbName, this.dbVersion);
 
       request.onerror = () => {
@@ -23,23 +24,32 @@ class StorageService {
         console.log('Database upgrade needed, creating stores...');
         const db = (event.target as IDBOpenDBRequest).result;
         
-        // Create songs store if it doesn't exist
-        if (!db.objectStoreNames.contains('songs')) {
-          console.log('Creating songs store');
-          db.createObjectStore('songs');
+        // Eski stores'ları temizle ve yeniden oluştur
+        if (db.objectStoreNames.contains('songs')) {
+          db.deleteObjectStore('songs');
+        }
+        if (db.objectStoreNames.contains('playlists')) {
+          db.deleteObjectStore('playlists');
         }
         
-        // Create playlists store if it doesn't exist
-        if (!db.objectStoreNames.contains('playlists')) {
-          console.log('Creating playlists store');
-          db.createObjectStore('playlists', { keyPath: '_id' });
-        }
+        // Yeni stores'ları oluştur
+        console.log('Creating songs store');
+        db.createObjectStore('songs');
+        
+        console.log('Creating playlists store');
+        const playlistStore = db.createObjectStore('playlists', { keyPath: '_id' });
+        
+        // Playlists store için indexler
+        playlistStore.createIndex('name', 'name', { unique: false });
+        
+        console.log('Database schema updated successfully');
       };
     });
   }
 
   async storeSong(songId: string, songData: ArrayBuffer): Promise<void> {
     try {
+      console.log(`Storing song: ${songId}`);
       const db = await this.openDatabase();
       return new Promise((resolve, reject) => {
         const transaction = db.transaction(['songs'], 'readwrite');
@@ -55,6 +65,10 @@ class StorageService {
           console.log(`Song stored successfully: ${songId}`);
           resolve();
         };
+
+        transaction.oncomplete = () => {
+          console.log(`Transaction completed for song: ${songId}`);
+        };
       });
     } catch (error) {
       console.error('Error storing song:', error);
@@ -67,29 +81,14 @@ class StorageService {
     }
   }
 
-  async getSong(songId: string): Promise<ArrayBuffer | null> {
-    try {
-      const db = await this.openDatabase();
-      return new Promise((resolve, reject) => {
-        const transaction = db.transaction(['songs'], 'readonly');
-        const store = transaction.objectStore('songs');
-        const request = store.get(songId);
-
-        request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result);
-      });
-    } catch (error) {
-      console.error('Error retrieving song:', error);
-      return null;
-    }
-  }
-
   async storePlaylist(playlist: any): Promise<void> {
     try {
+      console.log(`Storing playlist: ${playlist.name}`);
       const db = await this.openDatabase();
       return new Promise((resolve, reject) => {
         const transaction = db.transaction(['playlists'], 'readwrite');
         const store = transaction.objectStore('playlists');
+        
         const request = store.put(playlist);
 
         request.onerror = () => {
@@ -100,6 +99,10 @@ class StorageService {
         request.onsuccess = () => {
           console.log(`Playlist stored successfully: ${playlist.name}`);
           resolve();
+        };
+
+        transaction.oncomplete = () => {
+          console.log(`Transaction completed for playlist: ${playlist.name}`);
         };
       });
     } catch (error) {
@@ -113,8 +116,30 @@ class StorageService {
     }
   }
 
+  async getSong(songId: string): Promise<ArrayBuffer | null> {
+    try {
+      console.log(`Getting song: ${songId}`);
+      const db = await this.openDatabase();
+      return new Promise((resolve, reject) => {
+        const transaction = db.transaction(['songs'], 'readonly');
+        const store = transaction.objectStore('songs');
+        const request = store.get(songId);
+
+        request.onerror = () => reject(request.error);
+        request.onsuccess = () => {
+          console.log(`Song retrieved successfully: ${songId}`);
+          resolve(request.result);
+        };
+      });
+    } catch (error) {
+      console.error('Error getting song:', error);
+      return null;
+    }
+  }
+
   async getPlaylist(playlistId: string): Promise<any> {
     try {
+      console.log(`Getting playlist: ${playlistId}`);
       const db = await this.openDatabase();
       return new Promise((resolve, reject) => {
         const transaction = db.transaction(['playlists'], 'readonly');
@@ -122,16 +147,20 @@ class StorageService {
         const request = store.get(playlistId);
 
         request.onerror = () => reject(request.error);
-        request.onsuccess = () => resolve(request.result);
+        request.onsuccess = () => {
+          console.log(`Playlist retrieved successfully: ${playlistId}`);
+          resolve(request.result);
+        };
       });
     } catch (error) {
-      console.error('Error retrieving playlist:', error);
+      console.error('Error getting playlist:', error);
       return null;
     }
   }
 
   async deleteDatabase(): Promise<void> {
     return new Promise((resolve, reject) => {
+      console.log('Deleting database...');
       const request = indexedDB.deleteDatabase(this.dbName);
       
       request.onerror = () => {
