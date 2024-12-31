@@ -22,21 +22,21 @@ export const DeviceCard = ({ device, isSelected, onSelect }: DeviceCardProps) =>
     switch (device.playbackStatus) {
       case "playing":
         return (
-          <Badge variant="success" className="flex items-center gap-1">
+          <Badge variant="playing" className="status-badge flex items-center gap-1">
             <Play className="h-3 w-3" />
             Çalıyor
           </Badge>
         );
       case "paused":
         return (
-          <Badge variant="warning" className="flex items-center gap-1">
+          <Badge variant="paused" className="status-badge flex items-center gap-1">
             <Pause className="h-3 w-3" />
             Duraklatıldı
           </Badge>
         );
       case "no-playlist":
         return (
-          <Badge variant="destructive" className="flex items-center gap-1">
+          <Badge variant="no-playlist" className="status-badge flex items-center gap-1">
             <X className="h-3 w-3" />
             Playlist Yok
           </Badge>
@@ -95,12 +95,12 @@ export const DeviceCard = ({ device, isSelected, onSelect }: DeviceCardProps) =>
           </div>
           <div className="flex flex-col gap-2">
             {device.isOnline ? (
-              <Badge variant="success" className="flex items-center gap-1">
+              <Badge variant="success" className="status-badge flex items-center gap-1">
                 <CheckCircle2 className="h-3 w-3" />
                 Çevrimiçi
               </Badge>
             ) : (
-              <Badge variant="destructive" className="flex items-center gap-1">
+              <Badge variant="destructive" className="status-badge flex items-center gap-1">
                 <XCircle className="h-3 w-3" />
                 Çevrimdışı
               </Badge>
