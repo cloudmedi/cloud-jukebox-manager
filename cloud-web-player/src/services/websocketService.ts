@@ -88,4 +88,4 @@ class WebSocketService {
   }
 }
 
-export default WebSocketService.getInstance();
+export const websocketService = WebSocketService.getInstance();
