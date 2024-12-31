@@ -28,7 +28,8 @@ class TokenService {
         throw new Error('Token generation failed');
       }
 
-      const data = await response.json();
+      // Verify the response but don't use the returned data since we already have the token
+      await response.json();
       this.saveToken(token);
       return token;
     } catch (error) {
