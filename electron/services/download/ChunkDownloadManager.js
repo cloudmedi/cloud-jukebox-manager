@@ -4,6 +4,8 @@ const fs = require('fs');
 const path = require('path');
 const retryManager = require('./RetryManager');
 const ChecksumUtils = require('./utils/checksumUtils');
+const BandwidthManager = require('./managers/BandwidthManager');
+const MemoryManager = require('./managers/MemoryManager');
 
 class ChunkDownloadManager extends EventEmitter {
   constructor() {
@@ -12,44 +14,25 @@ class ChunkDownloadManager extends EventEmitter {
     this.MAX_CHUNK_SIZE = 2 * 1024 * 1024; // 2MB
     this.DEFAULT_CHUNK_SIZE = 1024 * 1024; // 1MB
     this.CHUNK_SIZE = this.DEFAULT_CHUNK_SIZE;
-    this.MAX_CONCURRENT_DOWNLOADS = 10;
     this.BUFFER_SIZE = 5 * 1024 * 1024; // 5MB buffer
-    this.MAX_MEMORY_USAGE = 100 * 1024 * 1024; // 100MB max memory
     this.MAX_RETRY_ATTEMPTS = 3;
-    this.activeDownloads = new Map();
-    this.downloadQueue = [];
-    this.chunkBuffers = new Map();
     this.downloadedChunks = new Map();
-    this.memoryUsage = 0;
+    this.chunkBuffers = new Map();
 
-    setInterval(() => this.cleanupMemory(), 30000);
+    // Düşük öncelikli indirme için process.priority ayarı
+    if (process.platform !== 'win32') {
+      process.nice(19); // Linux/Unix için düşük öncelik
+    }
+
+    MemoryManager.addCleanupCallback(() => this.cleanupMemory(true));
   }
 
   setChunkSize(size) {
-    // Chunk boyutunu sınırlar içinde tut
     this.CHUNK_SIZE = Math.min(
       Math.max(size, this.MIN_CHUNK_SIZE),
       this.MAX_CHUNK_SIZE
     );
     console.log(`Chunk size set to: ${this.CHUNK_SIZE / 1024}KB`);
-  }
-
-  getMemoryUsage() {
-    return this.memoryUsage;
-  }
-
-  trackMemoryUsage(size, operation = 'add') {
-    if (operation === 'add') {
-      this.memoryUsage += size;
-    } else {
-      this.memoryUsage -= size;
-    }
-    
-    if (this.memoryUsage > this.MAX_MEMORY_USAGE) {
-      console.warn('High memory usage detected:', this.memoryUsage);
-      this.emit('high-memory-usage', this.memoryUsage);
-      this.cleanupMemory(true); // Force cleanup
-    }
   }
 
   cleanupMemory(force = false) {
@@ -58,17 +41,10 @@ class ChunkDownloadManager extends EventEmitter {
     for (const [songId, chunks] of this.downloadedChunks.entries()) {
       if (force || this.isDownloadComplete(songId)) {
         const totalSize = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
-        this.trackMemoryUsage(totalSize, 'subtract');
+        MemoryManager.trackMemoryUsage(totalSize, 'subtract');
         this.downloadedChunks.delete(songId);
         this.chunkBuffers.delete(songId);
         console.log(`Cleaned up chunks for song: ${songId}`);
-      }
-    }
-
-    for (const [songId, download] of this.activeDownloads.entries()) {
-      if (!download.isActive && (force || Date.now() - download.lastActive > 300000)) {
-        this.activeDownloads.delete(songId);
-        console.log(`Cleaned up inactive download: ${songId}`);
       }
     }
   }
@@ -77,13 +53,17 @@ class ChunkDownloadManager extends EventEmitter {
     const chunks = this.downloadedChunks.get(songId);
     if (!chunks) return false;
     
-    const download = this.activeDownloads.get(songId);
+    const download = BandwidthManager.activeDownloads.get(songId);
     if (!download) return true;
     
-    return download.totalChunks === chunks.length;
+    return chunks.length === download.totalChunks;
   }
 
-  async downloadChunk(url, start, end) {
+  async downloadChunk(url, start, end, songId) {
+    if (!BandwidthManager.updateDownloadProgress(songId, start)) {
+      await new Promise(resolve => setTimeout(resolve, 100)); // Hız sınırı aşıldığında bekle
+    }
+
     const operation = async () => {
       try {
         const response = await axios({
@@ -99,7 +79,6 @@ class ChunkDownloadManager extends EventEmitter {
         const chunk = response.data;
         const md5Checksum = response.headers['x-chunk-md5'] || '';
 
-        // MD5 kontrolü yap
         if (md5Checksum && !(await ChecksumUtils.verifyChunkChecksum(chunk, md5Checksum))) {
           throw new Error('Chunk MD5 verification failed');
         }
@@ -111,22 +90,10 @@ class ChunkDownloadManager extends EventEmitter {
       }
     };
 
-    let attempts = 0;
-    while (attempts < this.MAX_RETRY_ATTEMPTS) {
-      try {
-        return await retryManager.executeWithRetry(
-          operation,
-          `Chunk download: ${url} (${start}-${end})`
-        );
-      } catch (error) {
-        attempts++;
-        if (attempts === this.MAX_RETRY_ATTEMPTS) {
-          throw error;
-        }
-        console.log(`Retrying chunk download, attempt ${attempts + 1}/${this.MAX_RETRY_ATTEMPTS}`);
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
-      }
-    }
+    return retryManager.executeWithRetry(
+      operation,
+      `Chunk download: ${url} (${start}-${end})`
+    );
   }
 
   async downloadSongInChunks(song, baseUrl, playlistDir) {
@@ -136,67 +103,36 @@ class ChunkDownloadManager extends EventEmitter {
       const songPath = path.join(playlistDir, `${song._id}.mp3`);
       const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
 
-      // İlk chunk'ı indir
-      const firstChunkSize = this.CHUNK_SIZE;
-      const firstChunkOperation = async () => {
-        const response = await axios({
-          url: songUrl,
-          method: 'GET',
-          responseType: 'arraybuffer',
-          headers: {
-            Range: `bytes=0-${firstChunkSize - 1}`
-          }
+      // Bant genişliği kontrolü
+      if (!BandwidthManager.addDownload(song._id, { songPath, songUrl })) {
+        console.log(`Song ${song.name} queued for download`);
+        return new Promise((resolve) => {
+          const checkQueue = setInterval(() => {
+            if (BandwidthManager.addDownload(song._id, { songPath, songUrl })) {
+              clearInterval(checkQueue);
+              this.downloadSongInChunks(song, baseUrl, playlistDir).then(resolve);
+            }
+          }, 1000);
         });
-        return response.data;
-      };
-
-      const firstChunkResponse = await retryManager.executeWithRetry(
-        firstChunkOperation,
-        `First chunk download: ${song.name}`
-      );
-
-      this.trackMemoryUsage(firstChunkResponse.length, 'add');
-      if (!this.downloadedChunks.has(song._id)) {
-        this.downloadedChunks.set(song._id, []);
       }
-      this.downloadedChunks.get(song._id).push(firstChunkResponse);
 
-      fs.writeFileSync(songPath, Buffer.from(firstChunkResponse));
-      
-      this.emit('firstChunkReady', {
-        songId: song._id,
-        songPath,
-        buffer: firstChunkResponse
-      });
-
-      // Dosya boyutunu ve SHA-256 checksumunu al
       const response = await axios.head(songUrl);
       const fileSize = parseInt(response.headers['content-length'], 10);
       const expectedSHA256 = response.headers['x-file-sha256'] || '';
       const totalChunks = Math.ceil(fileSize / this.CHUNK_SIZE);
-      
-      this.activeDownloads.set(song._id, {
-        isActive: true,
-        lastActive: Date.now(),
-        totalChunks
-      });
-      
-      // Kalan chunk'ları indir
-      for (let start = firstChunkSize; start < fileSize; start += this.CHUNK_SIZE) {
+
+      this.downloadedChunks.set(song._id, []);
+
+      for (let start = 0; start < fileSize; start += this.CHUNK_SIZE) {
         const end = Math.min(start + this.CHUNK_SIZE - 1, fileSize - 1);
         
         try {
-          const chunk = await this.downloadChunk(songUrl, start, end);
+          const chunk = await this.downloadChunk(songUrl, start, end, song._id);
           
-          this.trackMemoryUsage(chunk.length, 'add');
+          MemoryManager.trackMemoryUsage(chunk.length, 'add');
           this.downloadedChunks.get(song._id).push(chunk);
           
           fs.appendFileSync(songPath, Buffer.from(chunk));
-
-          const download = this.activeDownloads.get(song._id);
-          if (download) {
-            download.lastActive = Date.now();
-          }
 
           const progress = Math.floor((start + chunk.length) / fileSize * 100);
           this.emit('progress', {
@@ -211,7 +147,6 @@ class ChunkDownloadManager extends EventEmitter {
         }
       }
 
-      // Dosya tamamlandığında SHA-256 kontrolü yap
       if (expectedSHA256) {
         const isValid = await ChecksumUtils.verifyFileChecksum(songPath, expectedSHA256);
         if (!isValid) {
@@ -219,47 +154,14 @@ class ChunkDownloadManager extends EventEmitter {
         }
       }
 
-      const download = this.activeDownloads.get(song._id);
-      if (download) {
-        download.isActive = false;
-      }
-
+      BandwidthManager.completeDownload(song._id);
       console.log(`Download completed for ${song.name}`);
       return songPath;
 
     } catch (error) {
       console.error(`Error in chunked download for ${song.name}:`, error);
+      BandwidthManager.completeDownload(song._id);
       throw error;
-    }
-  }
-
-  addToQueue(song, baseUrl, playlistDir) {
-    this.downloadQueue.push({ song, baseUrl, playlistDir });
-    this.processQueue();
-  }
-
-  async processQueue() {
-    if (this.downloadQueue.length === 0) return;
-
-    while (
-      this.activeDownloads.size < this.MAX_CONCURRENT_DOWNLOADS && 
-      this.downloadQueue.length > 0
-    ) {
-      const download = this.downloadQueue.shift();
-      if (download) {
-        this.activeDownloads.set(download.song._id, download);
-        
-        try {
-          await this.downloadSongInChunks(
-            download.song,
-            download.baseUrl,
-            download.playlistDir
-          );
-        } finally {
-          this.activeDownloads.delete(download.song._id);
-          this.processQueue();
-        }
-      }
     }
   }
 }
