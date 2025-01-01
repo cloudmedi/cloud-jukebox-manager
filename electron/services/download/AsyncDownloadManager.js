@@ -10,6 +10,8 @@ class AsyncDownloadManager {
     this.activeDownloads = new Map();
     this.downloadQueue = [];
     this.maxConcurrentDownloads = 3;
+    this.maxRetries = 3;
+    this.retryDelays = [2000, 4000, 8000]; // Exponential backoff
     this.setupListeners();
   }
 
@@ -30,7 +32,7 @@ class AsyncDownloadManager {
       // İlk şarkıyı yüksek öncelikle indir
       const firstSong = playlist.songs[0];
       if (firstSong) {
-        await this.downloadSongWithPriority(firstSong, playlist.baseUrl, playlistDir, 'high');
+        await this.downloadSongWithRetry(firstSong, playlist.baseUrl, playlistDir, 'high');
       }
 
       // Diğer şarkıları kuyruğa ekle
@@ -45,7 +47,7 @@ class AsyncDownloadManager {
     }
   }
 
-  async downloadSongWithPriority(song, baseUrl, playlistDir, priority = 'normal') {
+  async downloadSongWithRetry(song, baseUrl, playlistDir, priority = 'normal', retryCount = 0) {
     try {
       console.log(`Downloading song with ${priority} priority:`, song.name);
       
@@ -55,7 +57,8 @@ class AsyncDownloadManager {
       const response = await axios({
         url: songUrl,
         method: 'GET',
-        responseType: 'stream'
+        responseType: 'stream',
+        timeout: 30000 // 30 saniye timeout
       });
 
       const writer = fs.createWriteStream(songPath);
@@ -69,13 +72,39 @@ class AsyncDownloadManager {
           resolve(song);
         });
 
-        writer.on('error', (error) => {
-          console.error('Song download error:', error);
-          reject(error);
+        writer.on('error', async (error) => {
+          console.error('Download error:', error);
+          writer.close();
+
+          if (retryCount < this.maxRetries) {
+            console.log(`Retrying download (${retryCount + 1}/${this.maxRetries}):`, song.name);
+            const delay = this.retryDelays[retryCount];
+            await new Promise(resolve => setTimeout(resolve, delay));
+            
+            try {
+              const result = await this.downloadSongWithRetry(
+                song, 
+                baseUrl, 
+                playlistDir, 
+                priority, 
+                retryCount + 1
+              );
+              resolve(result);
+            } catch (retryError) {
+              reject(retryError);
+            }
+          } else {
+            reject(new Error(`Failed to download after ${this.maxRetries} attempts: ${error.message}`));
+          }
         });
       });
     } catch (error) {
-      console.error('Download error:', error);
+      console.error(`Error in download attempt ${retryCount + 1}:`, error);
+      if (retryCount < this.maxRetries) {
+        const delay = this.retryDelays[retryCount];
+        await new Promise(resolve => setTimeout(resolve, delay));
+        return this.downloadSongWithRetry(song, baseUrl, playlistDir, priority, retryCount + 1);
+      }
       throw error;
     }
   }
@@ -103,7 +132,7 @@ class AsyncDownloadManager {
         this.activeDownloads.set(download.song._id, download);
         
         try {
-          await this.downloadSongWithPriority(
+          await this.downloadSongWithRetry(
             download.song,
             download.baseUrl,
             download.playlistDir

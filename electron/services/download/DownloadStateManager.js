@@ -15,13 +15,28 @@ class DownloadStateManager extends EventEmitter {
     });
   }
 
-  updateDownloadStatus(songId, status, progress = 0) {
-    this.downloads.set(songId, { status, progress });
-    this.emit('download-status-change', { songId, status, progress });
+  updateDownloadStatus(songId, status, progress = 0, retryCount = 0) {
+    this.downloads.set(songId, { 
+      status, 
+      progress, 
+      retryCount,
+      timestamp: Date.now()
+    });
+    
+    this.emit('download-status-change', { 
+      songId, 
+      status, 
+      progress, 
+      retryCount 
+    });
   }
 
   getDownloadStatus(songId) {
-    return this.downloads.get(songId) || { status: 'pending', progress: 0 };
+    return this.downloads.get(songId) || { 
+      status: 'pending', 
+      progress: 0, 
+      retryCount: 0 
+    };
   }
 
   clearDownloadStatus(songId) {
