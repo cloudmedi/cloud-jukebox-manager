@@ -9,7 +9,8 @@ const chunkSizeManager = require('./ChunkSizeManager');
 class ChunkDownloadManager extends EventEmitter {
   constructor() {
     super();
-    this.MAX_CONCURRENT_DOWNLOADS = 3;
+    this.MAX_CONCURRENT_DOWNLOADS = 3; // Maximum 3 eşzamanlı şarkı indirme
+    this.MAX_CHUNK_SPEED = 2 * 1024 * 1024; // 2MB/s maximum chunk hızı
     this.BUFFER_SIZE = 5 * 1024 * 1024; // 5MB buffer
     this.MAX_MEMORY_USAGE = 100 * 1024 * 1024; // 100MB max memory
     this.downloadQueue = [];
@@ -17,7 +18,9 @@ class ChunkDownloadManager extends EventEmitter {
     this.downloadedChunks = new Map();
     this.memoryUsage = 0;
     this.checksums = new Map();
+    this.activeDownloads = new Set();
 
+    // Bellek temizleme için interval
     setInterval(() => this.cleanupMemory(), 30000);
   }
 
@@ -35,7 +38,7 @@ class ChunkDownloadManager extends EventEmitter {
     if (this.memoryUsage > this.MAX_MEMORY_USAGE) {
       console.warn('High memory usage detected:', this.memoryUsage);
       this.emit('high-memory-usage', this.memoryUsage);
-      this.cleanupMemory(true); // Force cleanup
+      this.cleanupMemory(true);
     }
   }
 
@@ -52,19 +55,10 @@ class ChunkDownloadManager extends EventEmitter {
         console.log(`Cleaned up chunks for song: ${songId}`);
       }
     }
-
-    for (const songId of this.checksums.keys()) {
-      if (!downloadWorker.isActive(songId)) {
-        this.checksums.delete(songId);
-        console.log(`Cleaned up checksums for inactive download: ${songId}`);
-      }
-    }
   }
 
   isDownloadComplete(songId) {
-    const chunks = this.downloadedChunks.get(songId);
-    if (!chunks) return false;
-    return !downloadWorker.isActive(songId);
+    return !this.activeDownloads.has(songId);
   }
 
   async downloadSongInChunks(song, baseUrl, playlistDir) {
@@ -74,12 +68,17 @@ class ChunkDownloadManager extends EventEmitter {
       const songPath = path.join(playlistDir, `${song._id}.mp3`);
       const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
 
+      // İndirme başlangıç zamanı
+      const startTime = Date.now();
+      this.activeDownloads.add(song._id);
+
       // İlk chunk'ı indir
       const firstChunkSize = chunkSizeManager.getCurrentChunkSize();
       const firstChunkResult = await downloadWorker.downloadChunk(
         songUrl,
         0,
-        firstChunkSize - 1
+        firstChunkSize - 1,
+        this.MAX_CHUNK_SPEED
       );
 
       this.trackMemoryUsage(firstChunkResult.data.length, 'add');
@@ -88,6 +87,7 @@ class ChunkDownloadManager extends EventEmitter {
 
       fs.writeFileSync(songPath, Buffer.from(firstChunkResult.data));
       
+      // İlk chunk hazır eventi
       this.emit('firstChunkReady', {
         songId: song._id,
         songPath,
@@ -103,7 +103,12 @@ class ChunkDownloadManager extends EventEmitter {
         const end = Math.min(downloadedSize + chunkSize - 1, fileSize - 1);
         
         try {
-          const chunkResult = await downloadWorker.downloadChunk(songUrl, downloadedSize, end);
+          const chunkResult = await downloadWorker.downloadChunk(
+            songUrl, 
+            downloadedSize, 
+            end,
+            this.MAX_CHUNK_SPEED
+          );
           
           this.trackMemoryUsage(chunkResult.data.length, 'add');
           this.downloadedChunks.get(song._id).push(chunkResult.data);
@@ -114,9 +119,16 @@ class ChunkDownloadManager extends EventEmitter {
           downloadedSize += chunkResult.data.length;
           const progress = Math.floor(downloadedSize / fileSize * 100);
           
+          // İndirme hızını hesapla ve chunk boyutunu ayarla
+          const currentTime = Date.now();
+          const elapsedTime = (currentTime - startTime) / 1000; // saniye cinsinden
+          const downloadSpeed = downloadedSize / elapsedTime; // bytes/second
+          chunkSizeManager.adjustChunkSize(chunkResult.data.length, elapsedTime);
+
           this.emit('progress', {
             songId: song._id,
             progress,
+            speed: downloadSpeed,
             isComplete: progress === 100
           });
 
@@ -126,7 +138,7 @@ class ChunkDownloadManager extends EventEmitter {
         }
       }
 
-      // Final file verification
+      // Final dosya doğrulaması
       const finalChecksum = await checksumManager.calculateFileChecksum(songPath);
       const allChunksChecksum = this.checksums.get(song._id).join('');
       
@@ -134,13 +146,14 @@ class ChunkDownloadManager extends EventEmitter {
         throw new Error('Final file verification failed');
       }
 
-      downloadWorker.setActive(song._id, false);
+      this.activeDownloads.delete(song._id);
       this.cleanupDownload(song._id);
       
       console.log(`Download completed for ${song.name}`);
       return songPath;
 
     } catch (error) {
+      this.activeDownloads.delete(song._id);
       console.error(`Error in chunked download for ${song.name}:`, error);
       throw error;
     }
@@ -150,33 +163,37 @@ class ChunkDownloadManager extends EventEmitter {
     this.downloadedChunks.delete(songId);
     this.checksums.delete(songId);
     this.chunkBuffers.delete(songId);
+    this.activeDownloads.delete(songId);
   }
 
   addToQueue(song, baseUrl, playlistDir) {
-    this.downloadQueue.push({ song, baseUrl, playlistDir });
-    this.processQueue();
+    // Düşük öncelikli arka plan indirmesi için process.nextTick kullan
+    process.nextTick(() => {
+      this.downloadQueue.push({ song, baseUrl, playlistDir });
+      this.processQueue();
+    });
   }
 
   async processQueue() {
     if (this.downloadQueue.length === 0) return;
 
+    // Maximum eşzamanlı indirme kontrolü
     while (
       this.downloadQueue.length > 0 && 
-      downloadWorker.activeDownloads.size < this.MAX_CONCURRENT_DOWNLOADS
+      this.activeDownloads.size < this.MAX_CONCURRENT_DOWNLOADS
     ) {
       const download = this.downloadQueue.shift();
       if (download) {
-        downloadWorker.setActive(download.song._id, true);
-        
         try {
           await this.downloadSongInChunks(
             download.song,
             download.baseUrl,
             download.playlistDir
           );
-        } finally {
-          downloadWorker.setActive(download.song._id, false);
-          this.processQueue();
+        } catch (error) {
+          console.error(`Error processing download for ${download.song.name}:`, error);
+          // Hata durumunda kuyruğun devam etmesini sağla
+          continue;
         }
       }
     }
