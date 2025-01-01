@@ -1,7 +1,7 @@
 const QueueManager = require('./QueueManager');
 const PlaybackState = require('./PlaybackState');
 const path = require('path');
-
+const { Howl } = require('howler');
 const EmergencyStateManager = require('../emergency/EmergencyStateManager');
 const Store = require('electron-store');
 const store = new Store();
@@ -10,7 +10,7 @@ class AudioPlayer {
   constructor() {
     this.queueManager = new QueueManager();
     this.playbackState = new PlaybackState();
-    this.audio = new Audio();
+    this.sound = null;
     this.playlist = null;
     this.isPlaying = false;
     this.volume = 1.0;
@@ -19,27 +19,7 @@ class AudioPlayer {
   }
 
   setupEventListeners() {
-    this.audio.addEventListener('ended', () => {
-      console.log('Song ended, playing next');
-      this.playNext();
-    });
-
-    this.audio.addEventListener('error', (e) => {
-      console.error('Audio error:', e);
-      this.playNext();
-    });
-
-    this.audio.addEventListener('play', () => {
-      console.log('Audio started playing');
-      this.isPlaying = true;
-      this.updatePlaybackState('playing');
-    });
-
-    this.audio.addEventListener('pause', () => {
-      console.log('Audio paused');
-      this.isPlaying = false;
-      this.updatePlaybackState('paused');
-    });
+    // Howler events will be set up when loading songs
   }
 
   play() {
@@ -49,11 +29,8 @@ class AudioPlayer {
     }
 
     console.log('Play requested');
-    if (this.audio.src) {
-      this.audio.play().catch(error => {
-        console.error('Error playing audio:', error);
-        this.playNext();
-      });
+    if (this.sound) {
+      this.sound.play();
       this.isPlaying = true;
     } else {
       console.log('No audio source loaded');
@@ -82,17 +59,32 @@ class AudioPlayer {
       const normalizedPath = path.normalize(song.localPath);
       console.log('Playing file from:', normalizedPath);
       
-      this.audio.pause();
-      this.audio.currentTime = 0;
+      // Stop current sound if exists
+      if (this.sound) {
+        this.sound.stop();
+        this.sound.unload();
+      }
       
-      this.audio.src = normalizedPath;
-      this.audio.volume = this.volume;
-      
-      if (this.isPlaying) {
-        this.audio.play().catch(error => {
+      // Create new Howl instance
+      this.sound = new Howl({
+        src: [normalizedPath],
+        volume: this.volume,
+        onend: () => {
+          console.log('Song ended');
+          this.playNext();
+        },
+        onloaderror: (id, error) => {
+          console.error('Error loading audio:', error);
+          this.playNext();
+        },
+        onplayerror: (id, error) => {
           console.error('Error playing audio:', error);
           this.playNext();
-        });
+        }
+      });
+      
+      if (this.isPlaying) {
+        this.sound.play();
       }
     } catch (error) {
       console.error('Error loading song:', error);
@@ -113,8 +105,9 @@ class AudioPlayer {
   }
 
   stop() {
-    this.audio.pause();
-    this.audio.currentTime = 0;
+    if (this.sound) {
+      this.sound.stop();
+    }
     this.isPlaying = false;
   }
 
@@ -130,21 +123,14 @@ class AudioPlayer {
     
     // 0-100 arasındaki değeri 0-1 arasına dönüştür
     this.volume = normalizedVolume / 100;
-    this.audio.volume = this.volume;
-    console.log('Audio element volume set:', this.audio.volume);
+    if (this.sound) {
+      this.sound.volume(this.volume);
+    }
+    console.log('Audio volume set:', this.volume);
 
     // Store'a kaydet
-    const store = new Store();
     store.set('volume', normalizedVolume);
     console.log('Volume saved to store:', normalizedVolume);
-
-    // Başarılı volume değişikliğini bildir
-    websocketService.sendMessage({
-      type: 'volumeUpdate',
-      status: 'success',
-      volume: normalizedVolume
-    });
-    console.log('Volume update success message sent');
   }
 
   updatePlaybackState(state) {
@@ -166,29 +152,30 @@ class AudioPlayer {
   }
 
   handleEmergencyStop() {
-    // Save current state before stopping
     const currentState = {
       wasPlaying: this.isPlaying,
       volume: this.volume,
-      currentTime: this.audio.currentTime
+      currentTime: this.sound ? this.sound.seek() : 0
     };
     store.set('playbackState', currentState);
     
-    // Stop playback
     this.stop();
-    this.audio.volume = 0;
+    if (this.sound) {
+      this.sound.volume(0);
+    }
   }
 
   handleEmergencyReset() {
     const savedState = store.get('playbackState');
     if (savedState) {
       this.volume = savedState.volume;
-      this.audio.volume = this.volume;
-      
-      if (savedState.wasPlaying) {
-        console.log('Restoring playback state after emergency');
-        this.audio.currentTime = savedState.currentTime;
-        this.play();
+      if (this.sound) {
+        this.sound.volume(this.volume);
+        if (savedState.wasPlaying) {
+          console.log('Restoring playback state after emergency');
+          this.sound.seek(savedState.currentTime);
+          this.play();
+        }
       }
     }
   }
