@@ -15,7 +15,14 @@ class StatusHandler {
 
       // Playlist durumunu güncelle
       await Device.findByIdAndUpdate(device._id, {
-        playlistStatus: message.status
+        playlistStatus: message.status,
+        downloadProgress: message.progress || 0,
+        downloadSpeed: message.speed || 0,
+        downloadedSongs: message.downloadedSongs || 0,
+        totalSongs: message.totalSongs || 0,
+        estimatedTimeRemaining: message.estimatedTimeRemaining || 0,
+        retryCount: message.retryCount || 0,
+        lastError: message.error
       });
 
       // Admin paneline bildir
@@ -23,7 +30,14 @@ class StatusHandler {
         type: 'deviceStatus',
         token: token,
         playlistStatus: message.status,
-        playlistId: message.playlistId
+        playlistId: message.playlistId,
+        downloadProgress: message.progress || 0,
+        downloadSpeed: message.speed || 0,
+        downloadedSongs: message.downloadedSongs || 0,
+        totalSongs: message.totalSongs || 0,
+        estimatedTimeRemaining: message.estimatedTimeRemaining || 0,
+        retryCount: message.retryCount || 0,
+        lastError: message.error
       });
 
       console.log(`Updated playlist status for device ${token} to ${message.status}`);

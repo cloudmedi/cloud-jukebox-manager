@@ -2,12 +2,24 @@ import { Device } from "@/services/deviceService";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { formatDistanceToNow } from "date-fns";
+import { formatDistanceToNow, formatDistance } from "date-fns";
 import { tr } from "date-fns/locale";
-import { Volume2, Play, Loader2, AlertCircle, MapPin, CheckCircle2, XCircle } from "lucide-react";
+import { 
+  Volume2, 
+  Play, 
+  Loader2, 
+  AlertCircle, 
+  MapPin, 
+  CheckCircle2, 
+  XCircle,
+  RefreshCw,
+  Download
+} from "lucide-react";
 import { Progress } from "@/components/ui/progress";
+import { Button } from "@/components/ui/button";
 import DeviceActions from "./DeviceActions";
 import { cn } from "@/lib/utils";
+import { formatBytes } from "@/lib/utils";
 
 interface DeviceCardProps {
   device: Device;
@@ -30,19 +42,59 @@ const renderPlaylistStatus = () => {
         );
       case "loading":
         return (
-          <div className="space-y-2">
+          <div className="space-y-3">
             <div className="flex items-center gap-2 text-orange-500">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>İndiriliyor %{device.downloadProgress || 0}</span>
+              <span>İndiriliyor</span>
             </div>
-            <Progress value={device.downloadProgress || 0} className="h-1.5 w-32" />
+            
+            <div className="space-y-1">
+              <Progress value={device.downloadProgress || 0} className="h-1.5" />
+              <div className="grid grid-cols-2 text-xs text-muted-foreground">
+                <div>İlerleme: %{device.downloadProgress || 0}</div>
+                <div className="text-right">{device.downloadedSongs || 0}/{device.totalSongs || 0} şarkı</div>
+              </div>
+              
+              {device.downloadSpeed > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  Hız: {formatBytes(device.downloadSpeed)}/s
+                </div>
+              )}
+              
+              {device.estimatedTimeRemaining > 0 && (
+                <div className="text-xs text-muted-foreground">
+                  Kalan süre: {formatDistance(0, device.estimatedTimeRemaining * 1000, { locale: tr })}
+                </div>
+              )}
+            </div>
           </div>
         );
       case "error":
         return (
-          <div className="flex items-center gap-2 text-red-500">
-            <AlertCircle className="h-4 w-4" />
-            <span>Yükleme Hatası</span>
+          <div className="space-y-2">
+            <div className="flex items-center gap-2 text-red-500">
+              <AlertCircle className="h-4 w-4" />
+              <span>Yükleme Hatası</span>
+            </div>
+            {device.retryCount > 0 && (
+              <div className="text-xs text-muted-foreground">
+                Deneme: {device.retryCount}/3
+              </div>
+            )}
+            {device.lastError && (
+              <div className="text-xs text-red-500">
+                {device.lastError}
+              </div>
+            )}
+            <Button 
+              variant="outline" 
+              size="sm"
+              className="w-full"
+              onClick={() => {/* Retry logic will be implemented */}}
+            >
+              <RefreshCw className="h-3 w-3 mr-2" />
+              Tekrar Dene
+            </Button>
           </div>
         );
       default:
