@@ -15,6 +15,7 @@ class AudioPlayer {
     this.isPlaying = false;
     this.volume = 1.0;
     this.pendingFirstChunk = null;
+    this.readyToPlay = false;
   }
 
   setupEventListeners() {
@@ -43,52 +44,52 @@ class AudioPlayer {
     }
   }
 
-  handleFirstChunkReady(songId, songPath) {
-    console.log(`Handling first chunk ready for song ${songId}`);
+  handleFirstChunkReady(songId, songPath, buffer) {
+    console.log(`First chunk ready for song ${songId}`);
     const currentSong = this.queueManager.getCurrentSong();
     
     if (currentSong && currentSong._id === songId) {
       console.log('Loading first chunk for current song');
-      this.loadSong({ ...currentSong, localPath: songPath });
+      this.loadSongWithBuffer({ ...currentSong, localPath: songPath }, buffer);
     } else {
       console.log('Storing pending first chunk');
-      this.pendingFirstChunk = { songId, songPath };
+      this.pendingFirstChunk = { songId, songPath, buffer };
     }
   }
 
-  loadSong(song) {
+  loadSongWithBuffer(song, buffer) {
     if (!song) {
       console.log('No song to load');
       return;
     }
 
-    console.log('Loading song:', song);
-
-    if (!song.localPath) {
-      console.error('Song localPath is missing:', song);
-      this.playNext();
-      return;
-    }
+    console.log('Loading song with buffer:', song);
 
     try {
-      const normalizedPath = path.normalize(song.localPath);
-      console.log('Playing file from:', normalizedPath);
-      
       if (this.sound) {
         this.sound.unload();
       }
 
+      // Buffer'dan blob oluştur
+      const blob = new Blob([buffer], { type: 'audio/mpeg' });
+      const url = URL.createObjectURL(blob);
+
       this.sound = new Howl({
-        src: [normalizedPath],
+        src: [url],
         html5: true,
-        volume: this.volume
+        volume: this.volume,
+        format: ['mp3'],
+        onload: () => {
+          console.log('Song loaded successfully');
+          this.readyToPlay = true;
+          if (this.isPlaying) {
+            this.sound.play();
+          }
+        }
       });
 
       this.setupEventListeners();
       
-      if (this.isPlaying) {
-        this.sound.play();
-      }
     } catch (error) {
       console.error('Error loading song:', error);
       this.playNext();
