@@ -23,7 +23,6 @@ class PlaylistHandler {
   setupChunkDownloadListeners() {
     chunkDownloadManager.on('firstChunkReady', ({ songId, songPath }) => {
       console.log(`First chunk ready for song ${songId}, path: ${songPath}`);
-      // Notify audio player that first chunk is ready
       audioPlayer.handleFirstChunkReady(songId, songPath);
     });
 
@@ -42,26 +41,39 @@ class PlaylistHandler {
       const playlistDir = path.join(this.downloadPath, playlist._id);
       this.ensureDirectoryExists(playlistDir);
 
-      // Start downloading first song immediately
+      // URL'leri düzgün formatta oluştur
+      const baseUrl = playlist.baseUrl.endsWith('/') ? playlist.baseUrl : `${playlist.baseUrl}/`;
+      
+      // İlk şarkıyı hemen indir
       const firstSong = playlist.songs[0];
       if (firstSong) {
+        // filePath'deki Windows tarzı ters eğik çizgileri düzelt
+        const normalizedPath = firstSong.filePath.replace(/\\/g, '/');
+        // URL'yi doğru şekilde oluştur
+        const songUrl = `${baseUrl}${normalizedPath}`;
+        console.log('Downloading first song from URL:', songUrl);
+        
         await chunkDownloadManager.downloadSongInChunks(
           firstSong,
-          playlist.baseUrl,
+          baseUrl,
           playlistDir
         );
       }
 
-      // Queue remaining songs for download
+      // Kalan şarkıları kuyruğa al
       for (let i = 1; i < playlist.songs.length; i++) {
+        const song = playlist.songs[i];
+        const normalizedPath = song.filePath.replace(/\\/g, '/');
+        console.log(`Queueing song ${i + 1}/${playlist.songs.length}: ${normalizedPath}`);
+        
         chunkDownloadManager.addToQueue(
-          playlist.songs[i],
-          playlist.baseUrl,
+          song,
+          baseUrl,
           playlistDir
         );
       }
 
-      // Store playlist info
+      // Playlist bilgisini sakla
       const updatedPlaylist = {
         ...playlist,
         songs: playlist.songs.map(song => ({

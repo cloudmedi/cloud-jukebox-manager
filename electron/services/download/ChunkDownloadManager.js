@@ -12,20 +12,23 @@ class ChunkDownloadManager extends EventEmitter {
     this.activeDownloads = new Map();
     this.downloadQueue = [];
     this.downloadBuffer = new Map();
-    this.chunkOrder = new Map(); // Yeni: chunk sırasını takip etmek için
+    this.chunkOrder = new Map();
   }
 
   async downloadSongInChunks(song, baseUrl, playlistDir) {
     try {
       const songPath = path.join(playlistDir, `${song._id}.mp3`);
-      const songUrl = `${baseUrl}${song.filePath}`;
+      // URL'yi doğru formatta oluştur
+      const normalizedPath = song.filePath.replace(/\\/g, '/');
+      const songUrl = `${baseUrl}${normalizedPath}`;
+      
+      console.log(`Starting download for ${song.name} from URL: ${songUrl}`);
 
       // Get file size
       const response = await axios.head(songUrl);
       const fileSize = parseInt(response.headers['content-length'], 10);
       const totalChunks = Math.ceil(fileSize / this.CHUNK_SIZE);
 
-      console.log(`Starting download for ${song.name}`);
       console.log(`File size: ${fileSize}, Total chunks: ${totalChunks}`);
 
       // Yüksek performanslı write stream oluştur
@@ -51,7 +54,7 @@ class ChunkDownloadManager extends EventEmitter {
         };
 
         this.downloadQueue.push(chunkInfo);
-        this.chunkOrder.set(`${song._id}-${i}`, false); // Yeni: chunk durumunu false olarak işaretle
+        this.chunkOrder.set(`${song._id}-${i}`, false);
       }
 
       this.processQueue();
