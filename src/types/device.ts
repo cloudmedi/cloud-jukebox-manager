@@ -30,13 +30,12 @@ export interface Device {
   playlistStatus: 'loaded' | 'loading' | 'error' | 'emergency-stopped' | null;
   groupId: string | null;
   lastSeen: string;
-  // Download status fields
-  downloadProgress?: number;
-  downloadedSongs?: number;
-  totalSongs?: number;
-  downloadSpeed?: number;
-  estimatedTimeRemaining?: number;
-  retryCount?: number;
-  lastError?: string;
-  emergencyStopped?: boolean;
+  downloadProgress: number;
+  downloadedSongs: number;
+  totalSongs: number;
+  downloadSpeed: number;
+  estimatedTimeRemaining: number;
+  retryCount: number;
+  lastError: string | null;
+  emergencyStopped: boolean;
 }

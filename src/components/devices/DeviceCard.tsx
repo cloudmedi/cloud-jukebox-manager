@@ -2,7 +2,7 @@ import { Device } from "@/services/deviceService";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
-import { formatDistanceToNow, formatDistance } from "date-fns";
+import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
 import { 
   Volume2, 
@@ -19,7 +19,7 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import DeviceActions from "./DeviceActions";
 import { cn } from "@/lib/utils";
-import { formatBytes } from "@/lib/utils";
+import { formatBytes, formatDuration } from "@/lib/utils";
 
 interface DeviceCardProps {
   device: Device;
@@ -28,8 +28,7 @@ interface DeviceCardProps {
 }
 
 export const DeviceCard = ({ device, isSelected, onSelect }: DeviceCardProps) => {
-
-const renderPlaylistStatus = () => {
+  const renderPlaylistStatus = () => {
     if (!device.playlistStatus) return "-";
 
     switch (device.playlistStatus) {
@@ -63,7 +62,7 @@ const renderPlaylistStatus = () => {
               
               {device.estimatedTimeRemaining > 0 && (
                 <div className="text-xs text-muted-foreground">
-                  Kalan süre: {formatDistance(0, device.estimatedTimeRemaining * 1000, { locale: tr })}
+                  Kalan süre: {formatDuration(device.estimatedTimeRemaining)}
                 </div>
               )}
             </div>
@@ -105,7 +104,6 @@ const renderPlaylistStatus = () => {
   const getGroupColor = (groupId?: string) => {
     if (!groupId) return "bg-gray-100";
     
-    // Hash the groupId to generate a consistent color
     const hash = groupId.split('').reduce((acc, char) => char.charCodeAt(0) + acc, 0);
     const colors = [
       "bg-blue-100", "bg-green-100", "bg-purple-100", 
