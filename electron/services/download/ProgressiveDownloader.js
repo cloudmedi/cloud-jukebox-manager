@@ -11,10 +11,9 @@ class ProgressiveDownloader extends EventEmitter {
   constructor() {
     super();
     this.downloadQueue = [];
-    this.priorityQueue = new Set();
     this.currentDownloads = new Map();
+    this.priorityQueue = new Set();
     this.downloadPath = path.join(app.getPath('userData'), 'downloads');
-    this.maxConcurrentDownloads = 3;
     
     if (!fs.existsSync(this.downloadPath)) {
       fs.mkdirSync(this.downloadPath, { recursive: true });
@@ -23,7 +22,7 @@ class ProgressiveDownloader extends EventEmitter {
     logger.info('ProgressiveDownloader initialized');
   }
 
-  async startPlaylistDownload(playlist, baseUrl) {
+  async startPlaylistDownload(playlist) {
     logger.info('Starting progressive download for playlist:', playlist.name);
     
     // İlk 3 şarkıyı öncelikli olarak indir
@@ -34,12 +33,12 @@ class ProgressiveDownloader extends EventEmitter {
     if (prioritySongs.length > 0) {
       const firstSong = prioritySongs[0];
       try {
-        const songPath = await this.downloadSong(firstSong, baseUrl);
+        const songPath = await this.downloadSong(firstSong, playlist.baseUrl);
         this.emit('firstSongReady', { ...firstSong, localPath: songPath });
         
         // Diğer öncelikli şarkıları indir
         for (const song of prioritySongs.slice(1)) {
-          this.priorityQueue.add({ song, baseUrl });
+          this.priorityQueue.add({ song, baseUrl: playlist.baseUrl });
         }
       } catch (error) {
         logger.error('Error downloading first song:', error);
@@ -49,7 +48,7 @@ class ProgressiveDownloader extends EventEmitter {
 
     // Kalan şarkıları kuyruğa ekle
     remainingSongs.forEach(song => {
-      this.downloadQueue.push({ song, baseUrl });
+      this.downloadQueue.push({ song, baseUrl: playlist.baseUrl });
     });
 
     this.processQueue();
@@ -101,21 +100,18 @@ class ProgressiveDownloader extends EventEmitter {
   }
 
   processQueue() {
-    while (this.currentDownloads.size < this.maxConcurrentDownloads) {
-      // Önce öncelikli kuyruktan al
-      const nextPriority = Array.from(this.priorityQueue)[0];
-      if (nextPriority) {
-        this.priorityQueue.delete(nextPriority);
-        this.downloadSong(nextPriority.song, nextPriority.baseUrl);
-        continue;
+    // Önce öncelikli kuyruktaki şarkıları işle
+    for (const song of this.priorityQueue) {
+      if (!this.currentDownloads.has(song._id)) {
+        this.downloadSong(song.song, song.baseUrl);
       }
+    }
 
-      // Sonra normal kuyruktan al
-      const next = this.downloadQueue.shift();
-      if (next) {
-        this.downloadSong(next.song, next.baseUrl);
-      } else {
-        break;
+    // Sonra normal kuyruğu işle
+    while (this.downloadQueue.length > 0 && this.currentDownloads.size < 3) {
+      const { song, baseUrl } = this.downloadQueue.shift();
+      if (!this.currentDownloads.has(song._id)) {
+        this.downloadSong(song, baseUrl);
       }
     }
   }

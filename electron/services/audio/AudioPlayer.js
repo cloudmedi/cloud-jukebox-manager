@@ -1,6 +1,6 @@
 const { Howl } = require('howler');
-const Store = require('electron-store');
-const store = new Store();
+const { app } = require('electron');
+const path = require('path');
 const { createLogger } = require('../../utils/logger');
 
 const logger = createLogger('AudioPlayer');
@@ -11,7 +11,7 @@ class AudioPlayer {
     this.playlist = null;
     this.currentSongIndex = 0;
     this.isPlaying = false;
-    this.volume = store.get('volume', 70) / 100;
+    this.volume = 1.0;
     
     logger.info('AudioPlayer initialized');
   }
@@ -85,7 +85,6 @@ class AudioPlayer {
     if (this.sound) {
       this.sound.volume(this.volume);
     }
-    store.set('volume', volume);
   }
 
   playNext() {

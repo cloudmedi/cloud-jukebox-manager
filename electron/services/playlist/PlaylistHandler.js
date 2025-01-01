@@ -48,7 +48,7 @@ class PlaylistHandler {
     ProgressiveDownloader.cancelDownloads();
     
     // Yeni playlist'i başlat
-    await ProgressiveDownloader.startPlaylistDownload(playlist, 'http://localhost:5000');
+    await ProgressiveDownloader.startPlaylistDownload(playlist);
     
     return true;
   }
