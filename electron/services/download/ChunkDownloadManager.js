@@ -8,11 +8,11 @@ class ChunkDownloadManager extends EventEmitter {
   constructor() {
     super();
     this.CHUNK_SIZE = 1024 * 1024; // 1MB chunks
-    this.MAX_CONCURRENT_DOWNLOADS = 10; // Paralel indirme sayısını artırdık
+    this.MAX_CONCURRENT_DOWNLOADS = 10; // Paralel indirme sayısını 10'a çıkardık
     this.BUFFER_SIZE = 5 * 1024 * 1024; // 5MB buffer
     this.activeDownloads = new Map();
     this.downloadQueue = [];
-    this.downloadBuffer = new Map(); // Yeni buffer yönetimi
+    this.downloadBuffer = new Map();
   }
 
   async downloadSongInChunks(song, baseUrl, playlistDir) {
@@ -28,7 +28,7 @@ class ChunkDownloadManager extends EventEmitter {
 
       console.log(`File size: ${fileSize}, Total chunks: ${totalChunks}`);
 
-      // Create write stream with larger buffer
+      // Yüksek performanslı write stream oluştur
       const writer = fs.createWriteStream(songPath, {
         highWaterMark: this.BUFFER_SIZE
       });
