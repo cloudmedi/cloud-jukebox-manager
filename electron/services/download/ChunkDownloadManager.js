@@ -1,31 +1,31 @@
-const axios = require('axios');
+const EventEmitter = require('events');
 const fs = require('fs');
 const path = require('path');
-const { EventEmitter } = require('events');
-const storageService = require('../storage/StorageService');
+const axios = require('axios');
 
 class ChunkDownloadManager extends EventEmitter {
   constructor() {
     super();
     this.CHUNK_SIZE = 1024 * 1024; // 1MB chunks
-    this.MAX_CONCURRENT_DOWNLOADS = 10; // Paralel indirme sayısını 10'a çıkardık
+    this.MAX_CONCURRENT_DOWNLOADS = 10;
     this.BUFFER_SIZE = 5 * 1024 * 1024; // 5MB buffer
     this.activeDownloads = new Map();
     this.downloadQueue = [];
     this.downloadBuffer = new Map();
+    this.chunkOrder = new Map(); // Yeni: chunk sırasını takip etmek için
   }
 
   async downloadSongInChunks(song, baseUrl, playlistDir) {
     try {
-      console.log(`Starting chunked download for song: ${song.name}`);
-      
       const songPath = path.join(playlistDir, `${song._id}.mp3`);
-      const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
+      const songUrl = `${baseUrl}${song.filePath}`;
 
+      // Get file size
       const response = await axios.head(songUrl);
       const fileSize = parseInt(response.headers['content-length'], 10);
       const totalChunks = Math.ceil(fileSize / this.CHUNK_SIZE);
 
+      console.log(`Starting download for ${song.name}`);
       console.log(`File size: ${fileSize}, Total chunks: ${totalChunks}`);
 
       // Yüksek performanslı write stream oluştur
@@ -33,126 +33,121 @@ class ChunkDownloadManager extends EventEmitter {
         highWaterMark: this.BUFFER_SIZE
       });
 
-      let downloadedChunks = 0;
-      let firstChunkDownloaded = false;
-
-      // Paralel chunk indirme için Promise.all kullanıyoruz
-      const chunkPromises = [];
-
+      // Her chunk için indirme işlemi başlat
       for (let i = 0; i < totalChunks; i++) {
         const start = i * this.CHUNK_SIZE;
         const end = Math.min(start + this.CHUNK_SIZE - 1, fileSize - 1);
 
-        const chunkPromise = this.downloadChunk(songUrl, start, end)
-          .then(chunk => {
-            writer.write(chunk);
-            downloadedChunks++;
+        const chunkInfo = {
+          songId: song._id,
+          chunkIndex: i,
+          start,
+          end,
+          url: songUrl,
+          writer,
+          totalChunks,
+          songPath,
+          isFirstChunk: i === 0
+        };
 
-            // İlk chunk indiğinde hemen event fırlat
-            if (!firstChunkDownloaded && i === 0) {
-              firstChunkDownloaded = true;
-              console.log(`First chunk ready for ${song.name}`);
-              this.emit('firstChunkReady', {
-                songId: song._id,
-                songPath,
-                buffer: chunk
-              });
-            }
-
-            // Progress bildirimi
-            const progress = Math.floor((downloadedChunks / totalChunks) * 100);
-            this.emit('progress', {
-              songId: song._id,
-              progress,
-              isFirstChunk: i === 0,
-              isComplete: downloadedChunks === totalChunks,
-              downloadedSize: downloadedChunks * this.CHUNK_SIZE,
-              totalSize: fileSize
-            });
-          })
-          .catch(error => {
-            console.error(`Error downloading chunk ${i} for ${song.name}:`, error);
-            throw error;
-          });
-
-        chunkPromises.push(chunkPromise);
-
-        // Paralel indirme limitini kontrol et
-        if (chunkPromises.length >= this.MAX_CONCURRENT_DOWNLOADS) {
-          await Promise.all(chunkPromises);
-          chunkPromises.length = 0;
-        }
+        this.downloadQueue.push(chunkInfo);
+        this.chunkOrder.set(`${song._id}-${i}`, false); // Yeni: chunk durumunu false olarak işaretle
       }
 
-      // Kalan chunk'ları tamamla
-      if (chunkPromises.length > 0) {
-        await Promise.all(chunkPromises);
-      }
+      this.processQueue();
 
-      return new Promise((resolve, reject) => {
-        writer.end();
-        writer.on('finish', () => {
-          console.log(`Download completed for ${song.name}`);
-          resolve(songPath);
-        });
-        writer.on('error', reject);
-      });
-
+      return songPath;
     } catch (error) {
-      console.error(`Error in chunked download for ${song.name}:`, error);
+      console.error(`Error starting download for ${song.name}:`, error);
       throw error;
     }
   }
 
-  async downloadChunk(url, start, end) {
+  async downloadChunk(chunkInfo) {
     try {
+      const { start, end, url, songId, chunkIndex, isFirstChunk } = chunkInfo;
+      
       const response = await axios({
-        url,
         method: 'GET',
-        responseType: 'arraybuffer',
+        url: url,
         headers: {
           Range: `bytes=${start}-${end}`
         },
-        timeout: 30000 // 30 saniye timeout
+        responseType: 'arraybuffer'
       });
 
-      return response.data;
+      // Chunk'ı buffer'a kaydet
+      this.downloadBuffer.set(`${songId}-${chunkIndex}`, response.data);
+      this.chunkOrder.set(`${songId}-${chunkIndex}`, true); // Yeni: chunk başarıyla indirildi
+
+      // İlk chunk ise ve tüm gerekli parçalar hazırsa event fırlat
+      if (isFirstChunk) {
+        console.log(`First chunk downloaded for song ${songId}`);
+        this.emit('firstChunkReady', {
+          songId,
+          songPath: chunkInfo.songPath,
+          buffer: response.data
+        });
+      }
+
+      // Sıralı chunk'ları diske yaz
+      this.writeOrderedChunks(songId, chunkInfo.writer, chunkInfo.totalChunks);
+
+      return true;
     } catch (error) {
-      console.error('Error downloading chunk:', error);
+      console.error(`Error downloading chunk ${chunkInfo.chunkIndex}:`, error);
       throw error;
     }
   }
 
-  addToQueue(song, baseUrl, playlistDir) {
-    this.downloadQueue.push({ song, baseUrl, playlistDir });
-    this.processQueue();
-  }
+  // Yeni: Sıralı chunk yazma fonksiyonu
+  writeOrderedChunks(songId, writer, totalChunks) {
+    let nextChunkIndex = 0;
 
-  async processQueue() {
-    if (this.downloadQueue.length === 0) return;
-
-    while (this.activeDownloads.size < this.MAX_CONCURRENT_DOWNLOADS && this.downloadQueue.length > 0) {
-      const { song, baseUrl, playlistDir } = this.downloadQueue.shift();
+    while (nextChunkIndex < totalChunks) {
+      const chunkKey = `${songId}-${nextChunkIndex}`;
       
-      this.activeDownloads.set(song._id, {
-        song,
-        baseUrl,
-        playlistDir,
-        startTime: Date.now()
-      });
+      // Eğer sıradaki chunk hazır değilse döngüden çık
+      if (!this.chunkOrder.get(chunkKey)) {
+        break;
+      }
 
-      try {
-        await this.downloadSongInChunks(song, baseUrl, playlistDir);
-        this.activeDownloads.delete(song._id);
-      } catch (error) {
-        console.error('Error processing download queue:', error);
-        this.activeDownloads.delete(song._id);
+      // Chunk'ı buffer'dan al ve diske yaz
+      const chunkData = this.downloadBuffer.get(chunkKey);
+      if (chunkData) {
+        writer.write(chunkData);
+        
+        // Yazılan chunk'ı buffer'dan temizle
+        this.downloadBuffer.delete(chunkKey);
+        this.chunkOrder.delete(chunkKey);
+        
+        nextChunkIndex++;
       }
     }
 
-    // Kuyrukta hala öğe varsa devam et
-    if (this.downloadQueue.length > 0) {
-      this.processQueue();
+    // Tüm chunk'lar yazıldıysa stream'i kapat
+    if (nextChunkIndex === totalChunks) {
+      writer.end();
+      console.log(`All chunks written for song ${songId}`);
+    }
+  }
+
+  async processQueue() {
+    while (this.downloadQueue.length > 0 && this.activeDownloads.size < this.MAX_CONCURRENT_DOWNLOADS) {
+      const chunkInfo = this.downloadQueue.shift();
+      if (!chunkInfo) continue;
+
+      const downloadKey = `${chunkInfo.songId}-${chunkInfo.chunkIndex}`;
+      if (this.activeDownloads.has(downloadKey)) continue;
+
+      this.activeDownloads.set(downloadKey, true);
+
+      try {
+        await this.downloadChunk(chunkInfo);
+      } finally {
+        this.activeDownloads.delete(downloadKey);
+        this.processQueue();
+      }
     }
   }
 }
