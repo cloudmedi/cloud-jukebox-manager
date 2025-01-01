@@ -7,7 +7,10 @@ const retryManager = require('./RetryManager');
 class ChunkDownloadManager extends EventEmitter {
   constructor() {
     super();
-    this.CHUNK_SIZE = 1024 * 1024; // 1MB chunks
+    this.MIN_CHUNK_SIZE = 256 * 1024; // 256KB
+    this.MAX_CHUNK_SIZE = 2 * 1024 * 1024; // 2MB
+    this.DEFAULT_CHUNK_SIZE = 1024 * 1024; // 1MB
+    this.CHUNK_SIZE = this.DEFAULT_CHUNK_SIZE;
     this.MAX_CONCURRENT_DOWNLOADS = 10;
     this.BUFFER_SIZE = 5 * 1024 * 1024; // 5MB buffer
     this.MAX_MEMORY_USAGE = 100 * 1024 * 1024; // 100MB max memory
@@ -18,6 +21,15 @@ class ChunkDownloadManager extends EventEmitter {
     this.memoryUsage = 0;
 
     setInterval(() => this.cleanupMemory(), 30000);
+  }
+
+  setChunkSize(size) {
+    // Chunk boyutunu sınırlar içinde tut
+    this.CHUNK_SIZE = Math.min(
+      Math.max(size, this.MIN_CHUNK_SIZE),
+      this.MAX_CHUNK_SIZE
+    );
+    console.log(`Chunk size set to: ${this.CHUNK_SIZE / 1024}KB`);
   }
 
   getMemoryUsage() {
@@ -102,7 +114,8 @@ class ChunkDownloadManager extends EventEmitter {
       const songPath = path.join(playlistDir, `${song._id}.mp3`);
       const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
 
-      const firstChunkSize = 1024 * 1024;
+      // İlk chunk'ı indir (header bilgisi için)
+      const firstChunkSize = this.CHUNK_SIZE;
       const firstChunkOperation = async () => {
         const response = await axios({
           url: songUrl,
@@ -135,6 +148,7 @@ class ChunkDownloadManager extends EventEmitter {
         buffer: firstChunkResponse
       });
 
+      // Dosya boyutunu al
       const response = await axios.head(songUrl);
       const fileSize = parseInt(response.headers['content-length'], 10);
       const totalChunks = Math.ceil(fileSize / this.CHUNK_SIZE);
@@ -145,6 +159,7 @@ class ChunkDownloadManager extends EventEmitter {
         totalChunks
       });
       
+      // Kalan chunk'ları indir
       for (let start = firstChunkSize; start < fileSize; start += this.CHUNK_SIZE) {
         const end = Math.min(start + this.CHUNK_SIZE - 1, fileSize - 1);
         
