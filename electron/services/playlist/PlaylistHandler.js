@@ -1,93 +1,41 @@
-const { app } = require('electron');
-const path = require('path');
-const fs = require('fs');
-const axios = require('axios');
-const Store = require('electron-store');
-const store = new Store();
+const ProgressiveDownloader = require('./ProgressiveDownloader');
+const websocketService = require('../websocketService');
+const audioPlayer = require('../audio/AudioPlayer');
 
 class PlaylistHandler {
   constructor() {
-    this.downloadPath = path.join(app.getPath('userData'), 'downloads');
-    this.ensureDirectoryExists(this.downloadPath);
-  }
-
-  ensureDirectoryExists(dir) {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
+    this.currentPlaylist = null;
   }
 
   async handlePlaylist(playlist) {
-    try {
-      console.log('Handling playlist:', playlist.name);
+    console.log('New playlist received:', playlist.name);
+
+    // Mevcut indirmeleri iptal et
+    ProgressiveDownloader.cancelDownloads();
+
+    // Yeni playlist'i kaydet
+    this.currentPlaylist = playlist;
+
+    // İlk şarkı hazır olduğunda çalmaya başla
+    ProgressiveDownloader.startPlaylistDownload(playlist, (firstSong) => {
+      console.log('First song ready:', firstSong.name);
       
-      // Playlist için klasör oluştur
-      const playlistDir = path.join(this.downloadPath, playlist._id);
-      this.ensureDirectoryExists(playlistDir);
+      // Playlist durumunu güncelle
+      websocketService.sendMessage({
+        type: 'playlistStatus',
+        status: 'loading',
+        playlistId: playlist._id,
+        message: 'First song ready, starting playback'
+      });
 
-      // Şarkıları indir ve localPath'leri güncelle
-      const updatedSongs = await Promise.all(
-        playlist.songs.map(async (song) => {
-          try {
-            const songPath = path.join(playlistDir, `${song._id}.mp3`);
-            const songUrl = `${playlist.baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
-
-            // Şarkı zaten indirilmiş mi kontrol et
-            if (!fs.existsSync(songPath)) {
-              console.log(`Downloading song: ${song.name}`);
-              await this.downloadFile(songUrl, songPath);
-            }
-
-            return {
-              ...song,
-              localPath: songPath
-            };
-          } catch (error) {
-            console.error(`Error downloading song ${song.name}:`, error);
-            return song;
-          }
-        })
-      );
-
-      // Güncellenmiş playlist'i oluştur
-      const updatedPlaylist = {
+      // Audio player'a playlist'i yükle
+      audioPlayer.loadPlaylist({
         ...playlist,
-        songs: updatedSongs
-      };
-
-      // Local storage'a kaydet
-      const playlists = store.get('playlists', []);
-      const existingIndex = playlists.findIndex(p => p._id === playlist._id);
-      
-      if (existingIndex !== -1) {
-        playlists[existingIndex] = updatedPlaylist;
-      } else {
-        playlists.push(updatedPlaylist);
-      }
-      
-      store.set('playlists', playlists);
-      
-      return updatedPlaylist;
-    } catch (error) {
-      console.error('Error handling playlist:', error);
-      throw error;
-    }
-  }
-
-  async downloadFile(url, filePath) {
-    const response = await axios({
-      url,
-      method: 'GET',
-      responseType: 'stream'
+        songs: [firstSong] // Şimdilik sadece ilk şarkıyı ekle
+      });
     });
 
-    const writer = fs.createWriteStream(filePath);
-
-    return new Promise((resolve, reject) => {
-      response.data.pipe(writer);
-      writer.on('finish', resolve);
-      writer.on('error', reject);
-    });
+    return true;
   }
 }
 
