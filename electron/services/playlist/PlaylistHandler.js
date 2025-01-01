@@ -1,14 +1,16 @@
 const { app } = require('electron');
 const path = require('path');
 const fs = require('fs');
-const axios = require('axios');
 const Store = require('electron-store');
 const store = new Store();
+const chunkDownloadManager = require('../download/ChunkDownloadManager');
+const audioPlayer = require('../audio/AudioPlayer');
 
 class PlaylistHandler {
   constructor() {
     this.downloadPath = path.join(app.getPath('userData'), 'downloads');
     this.ensureDirectoryExists(this.downloadPath);
+    this.setupChunkDownloadListeners();
   }
 
   ensureDirectoryExists(dir) {
@@ -17,45 +19,56 @@ class PlaylistHandler {
     }
   }
 
+  setupChunkDownloadListeners() {
+    chunkDownloadManager.on('firstChunkReady', ({ songId, songPath }) => {
+      console.log(`First chunk ready for song ${songId}, path: ${songPath}`);
+      // Notify audio player that first chunk is ready
+      audioPlayer.handleFirstChunkReady(songId, songPath);
+    });
+
+    chunkDownloadManager.on('progress', ({ songId, progress, isComplete }) => {
+      console.log(`Download progress for ${songId}: ${progress}%`);
+      if (isComplete) {
+        console.log(`Download completed for song ${songId}`);
+      }
+    });
+  }
+
   async handlePlaylist(playlist) {
     try {
       console.log('Handling playlist:', playlist.name);
       
-      // Playlist için klasör oluştur
       const playlistDir = path.join(this.downloadPath, playlist._id);
       this.ensureDirectoryExists(playlistDir);
 
-      // Şarkıları indir ve localPath'leri güncelle
-      const updatedSongs = await Promise.all(
-        playlist.songs.map(async (song) => {
-          try {
-            const songPath = path.join(playlistDir, `${song._id}.mp3`);
-            const songUrl = `${playlist.baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
+      // Start downloading first song immediately
+      const firstSong = playlist.songs[0];
+      if (firstSong) {
+        await chunkDownloadManager.downloadSongInChunks(
+          firstSong,
+          playlist.baseUrl,
+          playlistDir
+        );
+      }
 
-            // Şarkı zaten indirilmiş mi kontrol et
-            if (!fs.existsSync(songPath)) {
-              console.log(`Downloading song: ${song.name}`);
-              await this.downloadFile(songUrl, songPath);
-            }
+      // Queue remaining songs for download
+      for (let i = 1; i < playlist.songs.length; i++) {
+        chunkDownloadManager.addToQueue(
+          playlist.songs[i],
+          playlist.baseUrl,
+          playlistDir
+        );
+      }
 
-            return {
-              ...song,
-              localPath: songPath
-            };
-          } catch (error) {
-            console.error(`Error downloading song ${song.name}:`, error);
-            return song;
-          }
-        })
-      );
-
-      // Güncellenmiş playlist'i oluştur
+      // Store playlist info
       const updatedPlaylist = {
         ...playlist,
-        songs: updatedSongs
+        songs: playlist.songs.map(song => ({
+          ...song,
+          localPath: path.join(playlistDir, `${song._id}.mp3`)
+        }))
       };
 
-      // Local storage'a kaydet
       const playlists = store.get('playlists', []);
       const existingIndex = playlists.findIndex(p => p._id === playlist._id);
       
@@ -72,22 +85,6 @@ class PlaylistHandler {
       console.error('Error handling playlist:', error);
       throw error;
     }
-  }
-
-  async downloadFile(url, filePath) {
-    const response = await axios({
-      url,
-      method: 'GET',
-      responseType: 'stream'
-    });
-
-    const writer = fs.createWriteStream(filePath);
-
-    return new Promise((resolve, reject) => {
-      response.data.pipe(writer);
-      writer.on('finish', resolve);
-      writer.on('error', reject);
-    });
   }
 }
 

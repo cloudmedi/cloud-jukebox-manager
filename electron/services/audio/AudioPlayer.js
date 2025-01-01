@@ -13,6 +13,7 @@ class AudioPlayer {
     this.playlist = null;
     this.isPlaying = false;
     this.volume = 1.0;
+    this.pendingFirstChunk = null;
     
     this.setupEventListeners();
   }
@@ -41,25 +42,16 @@ class AudioPlayer {
     });
   }
 
-  play() {
-    if (EmergencyStateManager.isEmergencyActive()) {
-      console.log('Playback blocked: Emergency mode is active');
-      return false;
-    }
-
-    console.log('Play requested');
-    if (this.audio.src) {
-      this.audio.play().catch(error => {
-        console.error('Error playing audio:', error);
-        this.playNext();
-      });
-      this.isPlaying = true;
+  handleFirstChunkReady(songId, songPath) {
+    console.log(`Handling first chunk ready for song ${songId}`);
+    const currentSong = this.queueManager.getCurrentSong();
+    
+    if (currentSong && currentSong._id === songId) {
+      console.log('Loading first chunk for current song');
+      this.loadSong({ ...currentSong, localPath: songPath });
     } else {
-      console.log('No audio source loaded');
-      const currentSong = this.queueManager.getCurrentSong();
-      if (currentSong) {
-        this.loadSong(currentSong);
-      }
+      console.log('Storing pending first chunk');
+      this.pendingFirstChunk = { songId, songPath };
     }
   }
 
@@ -99,6 +91,28 @@ class AudioPlayer {
     }
   }
 
+  play() {
+    if (EmergencyStateManager.isEmergencyActive()) {
+      console.log('Playback blocked: Emergency mode is active');
+      return false;
+    }
+
+    console.log('Play requested');
+    if (this.audio.src) {
+      this.audio.play().catch(error => {
+        console.error('Error playing audio:', error);
+        this.playNext();
+      });
+      this.isPlaying = true;
+    } else {
+      console.log('No audio source loaded');
+      const currentSong = this.queueManager.getCurrentSong();
+      if (currentSong) {
+        this.loadSong(currentSong);
+      }
+    }
+  }
+
   playNext() {
     console.log('Playing next song');
     const nextSong = this.queueManager.next();
@@ -123,27 +137,16 @@ class AudioPlayer {
       normalizedVolume: volume / 100 
     });
     
-    // Volume değerini 0-100 arasında tut
     const normalizedVolume = Math.max(0, Math.min(100, volume));
     console.log('Volume normalized:', normalizedVolume);
     
-    // 0-100 arasındaki değeri 0-1 arasına dönüştür
     this.volume = normalizedVolume / 100;
     this.audio.volume = this.volume;
     console.log('Audio element volume set:', this.audio.volume);
 
-    // Store'a kaydet
     const store = new Store();
     store.set('volume', normalizedVolume);
     console.log('Volume saved to store:', normalizedVolume);
-
-    // Başarılı volume değişikliğini bildir
-    websocketService.sendMessage({
-      type: 'volumeUpdate',
-      status: 'success',
-      volume: normalizedVolume
-    });
-    console.log('Volume update success message sent');
   }
 
   updatePlaybackState(state) {
@@ -162,34 +165,6 @@ class AudioPlayer {
       playlist: this.playlist,
       volume: this.volume * 100
     };
-  }
-
-  handleEmergencyStop() {
-    // Save current state before stopping
-    const currentState = {
-      wasPlaying: this.isPlaying,
-      volume: this.volume,
-      currentTime: this.audio.currentTime
-    };
-    store.set('playbackState', currentState);
-    
-    // Stop playback
-    this.stop();
-    this.audio.volume = 0;
-  }
-
-  handleEmergencyReset() {
-    const savedState = store.get('playbackState');
-    if (savedState) {
-      this.volume = savedState.volume;
-      this.audio.volume = this.volume;
-      
-      if (savedState.wasPlaying) {
-        console.log('Restoring playback state after emergency');
-        this.audio.currentTime = savedState.currentTime;
-        this.play();
-      }
-    }
   }
 }
 
