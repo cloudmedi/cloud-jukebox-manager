@@ -1,6 +1,12 @@
 export interface DeviceInfo {
   hostname: string;
   platform: string;
+  arch: string;
+  cpus: string;
+  totalMemory: string;
+  freeMemory: string;
+  networkInterfaces: string[];
+  osVersion: string;
   language: string;
   screenResolution: string;
   timeZone: string;
@@ -23,19 +29,27 @@ export interface Device {
   ipAddress: string | null;
   isOnline: boolean;
   volume: number;
-  activePlaylist: {
+  isPlaying?: boolean;
+  downloadProgress?: number;
+  downloadedSongs?: number;
+  totalSongs?: number;
+  downloadSpeed?: number;
+  estimatedTimeRemaining?: number;
+  retryCount?: number;
+  lastError?: string;
+  activePlaylist?: {
     _id: string;
     name: string;
-  } | null;
-  playlistStatus: 'loaded' | 'loading' | 'error' | 'emergency-stopped' | null;
-  groupId: string | null;
+  };
+  currentSong?: {
+    name: string;
+    artist: string;
+  };
+  playlistStatus?: 'loaded' | 'loading' | 'error' | 'emergency-stopped' | null;
+  deviceInfo?: DeviceInfo;
+  groupId?: string | null;
   lastSeen: string;
-  downloadProgress: number;
-  downloadedSongs: number;
-  totalSongs: number;
-  downloadSpeed: number;
-  estimatedTimeRemaining: number;
-  retryCount: number;
-  lastError: string | null;
-  emergencyStopped: boolean;
+  createdAt?: string;
+  updatedAt?: string;
+  emergencyStopped?: boolean;
 }

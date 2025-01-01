@@ -1,5 +1,5 @@
 import axios from 'axios';
-import { Device } from '../types/device';
+import type { Device } from '@/types/device';
 
 const API_URL = 'http://localhost:5000/api/devices';
 

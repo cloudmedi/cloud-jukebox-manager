@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { deviceService } from "@/services/deviceService";
-import type { Device } from "@/services/deviceService";
+import type { Device } from "@/types/device";
 import websocketService from "@/services/websocketService";
 import { toast } from "sonner";
 import { DeviceActionMenu } from "./actions/DeviceActionMenu";
@@ -194,3 +194,4 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
 };
 
 export default DeviceActions;
+

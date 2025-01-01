@@ -1,4 +1,4 @@
-import { Device } from "@/services/deviceService";
+import type { Device } from "@/types/device";
 import {
   AlertDialog,
   AlertDialogAction,

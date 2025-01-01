@@ -1,5 +1,5 @@
 import { Music2, PlayCircle } from "lucide-react";
-import { Device } from "@/services/deviceService";
+import type { Device } from "@/types/device";
 import { Separator } from "@/components/ui/separator";
 
 interface PlaybackDetailsProps {

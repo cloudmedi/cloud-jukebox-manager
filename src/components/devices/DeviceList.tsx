@@ -6,7 +6,7 @@ import { DeviceTableRow } from "./DeviceTableRow";
 import { BulkActionsMenu } from "./bulk-actions/BulkActionsMenu";
 import { DeviceCard } from "./DeviceCard";
 import websocketService from "@/services/websocketService";
-import { Device } from "@/services/deviceService";
+import type { Device } from "@/types/device";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { 
   showDeviceOfflineNotification, 

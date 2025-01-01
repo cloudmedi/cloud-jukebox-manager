@@ -5,7 +5,7 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Device } from "@/services/deviceService";
+import type { Device } from "@/types/device";
 import { formatDistanceToNow } from "date-fns";
 import { tr } from "date-fns/locale";
 import { Separator } from "@/components/ui/separator";
