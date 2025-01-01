@@ -16,7 +16,6 @@ class AudioPlayer {
     this.volume = 1.0;
     this.pendingFirstChunk = null;
     this.readyToPlay = false;
-    this.currentSongId = null;
   }
 
   setupEventListeners() {
@@ -47,21 +46,24 @@ class AudioPlayer {
 
   handleFirstChunkReady(songId, songPath, buffer) {
     console.log(`First chunk ready for song ${songId}`);
+    const currentSong = this.queueManager.getCurrentSong();
     
-    // Sadece mevcut şarkı için işlem yap
-    if (this.currentSongId === songId) {
+    if (currentSong && currentSong._id === songId) {
       console.log('Loading first chunk for current song');
-      this.loadSongWithBuffer(songPath, buffer);
+      this.loadSongWithBuffer({ ...currentSong, localPath: songPath }, buffer);
     } else {
-      console.log('Ignoring first chunk for non-current song');
+      console.log('Storing pending first chunk');
+      this.pendingFirstChunk = { songId, songPath, buffer };
     }
   }
 
-  loadSongWithBuffer(songPath, buffer) {
-    if (!songPath) {
-      console.log('No song path provided');
+  loadSongWithBuffer(song, buffer) {
+    if (!song) {
+      console.log('No song to load');
       return;
     }
+
+    console.log('Loading song with buffer:', song);
 
     try {
       if (this.sound) {
@@ -83,9 +85,6 @@ class AudioPlayer {
           if (this.isPlaying) {
             this.sound.play();
           }
-        },
-        onend: () => {
-          URL.revokeObjectURL(url);
         }
       });
 
@@ -135,7 +134,6 @@ class AudioPlayer {
     const nextSong = this.queueManager.next();
     if (nextSong) {
       console.log('Next song found:', nextSong.name);
-      this.currentSongId = nextSong._id;
       this.loadSong(nextSong);
     } else {
       console.log('No more songs in queue');

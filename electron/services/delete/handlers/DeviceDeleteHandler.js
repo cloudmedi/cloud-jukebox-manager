@@ -30,9 +30,6 @@ class DeviceDeleteHandler extends BaseDeleteHandler {
       const token = deviceData?.token;
       const deviceInfo = deviceData?.deviceInfo;
 
-      // Get playlists before clearing store
-      const playlists = store.get('playlists', []);
-
       // Clear all store data
       store.clear();
 
@@ -44,36 +41,7 @@ class DeviceDeleteHandler extends BaseDeleteHandler {
         });
       }
 
-      // Clean up all audio files from playlists
-      if (playlists && playlists.length > 0) {
-        for (const playlist of playlists) {
-          if (playlist.songs) {
-            for (const song of playlist.songs) {
-              if (song.localPath && fs.existsSync(song.localPath)) {
-                try {
-                  // Delete song file
-                  fs.unlinkSync(song.localPath);
-                  this.logger.info(`Deleted song file: ${song.localPath}`);
-                  
-                  // Delete song directory if empty
-                  const songDir = path.dirname(song.localPath);
-                  if (fs.existsSync(songDir)) {
-                    const files = fs.readdirSync(songDir);
-                    if (files.length === 0) {
-                      fs.rmdirSync(songDir);
-                      this.logger.info(`Deleted empty song directory: ${songDir}`);
-                    }
-                  }
-                } catch (error) {
-                  this.logger.warn(`Failed to delete song file: ${error.message}`);
-                }
-              }
-            }
-          }
-        }
-      }
-
-      // Clean up all folders in userData
+      // Clean up all audio files
       const userDataPath = app.getPath('userData');
       const foldersToClean = [
         'downloads',
