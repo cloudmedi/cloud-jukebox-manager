@@ -2,7 +2,7 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const { EventEmitter } = require('events');
-const { storageService } = require('../storage/StorageService');
+const storageService = require('../storage/StorageService');
 
 class ChunkDownloadManager extends EventEmitter {
   constructor() {

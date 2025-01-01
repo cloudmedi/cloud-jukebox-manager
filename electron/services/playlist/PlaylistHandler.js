@@ -5,6 +5,7 @@ const Store = require('electron-store');
 const store = new Store();
 const chunkDownloadManager = require('../download/ChunkDownloadManager');
 const audioPlayer = require('../audio/AudioPlayer');
+const storageService = require('../storage/StorageService');
 
 class PlaylistHandler {
   constructor() {
