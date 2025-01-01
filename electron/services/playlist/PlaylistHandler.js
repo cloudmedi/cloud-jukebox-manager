@@ -1,56 +1,93 @@
-const ProgressiveDownloader = require('../download/ProgressiveDownloader');
-const audioPlayer = require('../audio/AudioPlayer');
-const { BrowserWindow } = require('electron');
-const { createLogger } = require('../../utils/logger');
-
-const logger = createLogger('PlaylistHandler');
+const { app } = require('electron');
+const path = require('path');
+const fs = require('fs');
+const axios = require('axios');
+const Store = require('electron-store');
+const store = new Store();
 
 class PlaylistHandler {
   constructor() {
-    this.setupDownloadListeners();
-    logger.info('PlaylistHandler initialized');
+    this.downloadPath = path.join(app.getPath('userData'), 'downloads');
+    this.ensureDirectoryExists(this.downloadPath);
   }
 
-  setupDownloadListeners() {
-    ProgressiveDownloader.on('firstSongReady', (song) => {
-      logger.info('First song ready, starting playback:', song.name);
-      audioPlayer.loadAndPlay(song);
-      this.updateRenderer('playlistStatus', { status: 'playing', currentSong: song });
-    });
-
-    ProgressiveDownloader.on('downloadProgress', ({ song, progress }) => {
-      logger.info(`Download progress for ${song.name}: ${progress}%`);
-      this.updateRenderer('downloadProgress', { song, progress });
-    });
-
-    ProgressiveDownloader.on('downloadComplete', ({ song, path }) => {
-      logger.info('Song download complete:', song.name);
-      this.updateRenderer('songReady', { song, path });
-    });
-
-    ProgressiveDownloader.on('error', ({ song, error }) => {
-      logger.error('Download error:', error);
-      this.updateRenderer('error', { song, error: error.message });
-    });
-  }
-
-  updateRenderer(type, data) {
-    const win = BrowserWindow.getAllWindows()[0];
-    if (win) {
-      win.webContents.send(type, data);
+  ensureDirectoryExists(dir) {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
     }
   }
 
   async handlePlaylist(playlist) {
-    logger.info('New playlist received:', playlist.name);
-    
-    // Mevcut indirmeleri iptal et
-    ProgressiveDownloader.cancelDownloads();
-    
-    // Yeni playlist'i başlat
-    await ProgressiveDownloader.startPlaylistDownload(playlist);
-    
-    return true;
+    try {
+      console.log('Handling playlist:', playlist.name);
+      
+      // Playlist için klasör oluştur
+      const playlistDir = path.join(this.downloadPath, playlist._id);
+      this.ensureDirectoryExists(playlistDir);
+
+      // Şarkıları indir ve localPath'leri güncelle
+      const updatedSongs = await Promise.all(
+        playlist.songs.map(async (song) => {
+          try {
+            const songPath = path.join(playlistDir, `${song._id}.mp3`);
+            const songUrl = `${playlist.baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
+
+            // Şarkı zaten indirilmiş mi kontrol et
+            if (!fs.existsSync(songPath)) {
+              console.log(`Downloading song: ${song.name}`);
+              await this.downloadFile(songUrl, songPath);
+            }
+
+            return {
+              ...song,
+              localPath: songPath
+            };
+          } catch (error) {
+            console.error(`Error downloading song ${song.name}:`, error);
+            return song;
+          }
+        })
+      );
+
+      // Güncellenmiş playlist'i oluştur
+      const updatedPlaylist = {
+        ...playlist,
+        songs: updatedSongs
+      };
+
+      // Local storage'a kaydet
+      const playlists = store.get('playlists', []);
+      const existingIndex = playlists.findIndex(p => p._id === playlist._id);
+      
+      if (existingIndex !== -1) {
+        playlists[existingIndex] = updatedPlaylist;
+      } else {
+        playlists.push(updatedPlaylist);
+      }
+      
+      store.set('playlists', playlists);
+      
+      return updatedPlaylist;
+    } catch (error) {
+      console.error('Error handling playlist:', error);
+      throw error;
+    }
+  }
+
+  async downloadFile(url, filePath) {
+    const response = await axios({
+      url,
+      method: 'GET',
+      responseType: 'stream'
+    });
+
+    const writer = fs.createWriteStream(filePath);
+
+    return new Promise((resolve, reject) => {
+      response.data.pipe(writer);
+      writer.on('finish', resolve);
+      writer.on('error', reject);
+    });
   }
 }
 
