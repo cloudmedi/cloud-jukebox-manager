@@ -4,6 +4,7 @@ const fs = require('fs');
 const path = require('path');
 const retryManager = require('./RetryManager');
 const ChecksumUtils = require('./utils/checksumUtils');
+const bandwidthManager = require('./utils/bandwidthManager');
 
 class ChunkDownloadManager extends EventEmitter {
   constructor() {
@@ -12,16 +13,16 @@ class ChunkDownloadManager extends EventEmitter {
     this.MAX_CHUNK_SIZE = 2 * 1024 * 1024; // 2MB
     this.DEFAULT_CHUNK_SIZE = 1024 * 1024; // 1MB
     this.CHUNK_SIZE = this.DEFAULT_CHUNK_SIZE;
-    this.MAX_CONCURRENT_DOWNLOADS = 10;
     this.BUFFER_SIZE = 5 * 1024 * 1024; // 5MB buffer
     this.MAX_MEMORY_USAGE = 100 * 1024 * 1024; // 100MB max memory
     this.MAX_RETRY_ATTEMPTS = 3;
-    this.activeDownloads = new Map();
-    this.downloadQueue = [];
     this.chunkBuffers = new Map();
     this.downloadedChunks = new Map();
     this.memoryUsage = 0;
 
+    // Düşük öncelikli indirme
+    bandwidthManager.setPriority();
+    
     setInterval(() => this.cleanupMemory(), 30000);
   }
 
@@ -99,7 +100,10 @@ class ChunkDownloadManager extends EventEmitter {
         const chunk = response.data;
         const md5Checksum = response.headers['x-chunk-md5'] || '';
 
-        // MD5 kontrolü yap
+        // Hız sınırlaması uygula
+        await bandwidthManager.throttleSpeed(chunk);
+
+        // MD5 kontrolü
         if (md5Checksum && !(await ChecksumUtils.verifyChunkChecksum(chunk, md5Checksum))) {
           throw new Error('Chunk MD5 verification failed');
         }
@@ -135,6 +139,15 @@ class ChunkDownloadManager extends EventEmitter {
       
       const songPath = path.join(playlistDir, `${song._id}.mp3`);
       const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
+
+      // Eşzamanlı indirme limiti kontrolü
+      if (!bandwidthManager.canStartNewDownload()) {
+        console.log(`Adding ${song.name} to download queue`);
+        bandwidthManager.addToQueue({ song, baseUrl, playlistDir });
+        return;
+      }
+
+      bandwidthManager.trackDownload(song._id, { isActive: true });
 
       // İlk chunk'ı indir
       const firstChunkSize = this.CHUNK_SIZE;
@@ -180,7 +193,7 @@ class ChunkDownloadManager extends EventEmitter {
         lastActive: Date.now(),
         totalChunks
       });
-      
+
       // Kalan chunk'ları indir
       for (let start = firstChunkSize; start < fileSize; start += this.CHUNK_SIZE) {
         const end = Math.min(start + this.CHUNK_SIZE - 1, fileSize - 1);
@@ -192,11 +205,6 @@ class ChunkDownloadManager extends EventEmitter {
           this.downloadedChunks.get(song._id).push(chunk);
           
           fs.appendFileSync(songPath, Buffer.from(chunk));
-
-          const download = this.activeDownloads.get(song._id);
-          if (download) {
-            download.lastActive = Date.now();
-          }
 
           const progress = Math.floor((start + chunk.length) / fileSize * 100);
           this.emit('progress', {
@@ -211,7 +219,7 @@ class ChunkDownloadManager extends EventEmitter {
         }
       }
 
-      // Dosya tamamlandığında SHA-256 kontrolü yap
+      // SHA-256 kontrolü
       if (expectedSHA256) {
         const isValid = await ChecksumUtils.verifyFileChecksum(songPath, expectedSHA256);
         if (!isValid) {
@@ -219,9 +227,16 @@ class ChunkDownloadManager extends EventEmitter {
         }
       }
 
-      const download = this.activeDownloads.get(song._id);
-      if (download) {
-        download.isActive = false;
+      bandwidthManager.removeDownload(song._id);
+
+      // Sıradaki indirmeyi başlat
+      const nextDownload = bandwidthManager.getNextDownload();
+      if (nextDownload) {
+        this.downloadSongInChunks(
+          nextDownload.song,
+          nextDownload.baseUrl,
+          nextDownload.playlistDir
+        );
       }
 
       console.log(`Download completed for ${song.name}`);
@@ -229,37 +244,8 @@ class ChunkDownloadManager extends EventEmitter {
 
     } catch (error) {
       console.error(`Error in chunked download for ${song.name}:`, error);
+      bandwidthManager.removeDownload(song._id);
       throw error;
-    }
-  }
-
-  addToQueue(song, baseUrl, playlistDir) {
-    this.downloadQueue.push({ song, baseUrl, playlistDir });
-    this.processQueue();
-  }
-
-  async processQueue() {
-    if (this.downloadQueue.length === 0) return;
-
-    while (
-      this.activeDownloads.size < this.MAX_CONCURRENT_DOWNLOADS && 
-      this.downloadQueue.length > 0
-    ) {
-      const download = this.downloadQueue.shift();
-      if (download) {
-        this.activeDownloads.set(download.song._id, download);
-        
-        try {
-          await this.downloadSongInChunks(
-            download.song,
-            download.baseUrl,
-            download.playlistDir
-          );
-        } finally {
-          this.activeDownloads.delete(download.song._id);
-          this.processQueue();
-        }
-      }
     }
   }
 }
