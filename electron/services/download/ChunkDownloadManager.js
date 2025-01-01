@@ -3,11 +3,11 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const retryManager = require('./RetryManager');
+const chunkSizeManager = require('./ChunkSizeManager');
 
 class ChunkDownloadManager extends EventEmitter {
   constructor() {
     super();
-    this.CHUNK_SIZE = 1024 * 1024; // 1MB chunks
     this.MAX_CONCURRENT_DOWNLOADS = 10;
     this.BUFFER_SIZE = 5 * 1024 * 1024; // 5MB buffer
     this.MAX_MEMORY_USAGE = 100 * 1024 * 1024; // 100MB max memory
@@ -70,6 +70,8 @@ class ChunkDownloadManager extends EventEmitter {
   }
 
   async downloadChunk(url, start, end) {
+    const startTime = Date.now();
+    
     const operation = async () => {
       try {
         const response = await axios({
@@ -81,6 +83,12 @@ class ChunkDownloadManager extends EventEmitter {
           },
           timeout: 30000
         });
+
+        const endTime = Date.now();
+        const timeElapsed = endTime - startTime;
+        
+        // Chunk boyutunu optimize et
+        chunkSizeManager.adjustChunkSize(response.data.length, timeElapsed);
 
         return response.data;
       } catch (error) {
@@ -102,7 +110,8 @@ class ChunkDownloadManager extends EventEmitter {
       const songPath = path.join(playlistDir, `${song._id}.mp3`);
       const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
 
-      const firstChunkSize = 1024 * 1024;
+      // İlk chunk'ı indir
+      const firstChunkSize = chunkSizeManager.getCurrentChunkSize();
       const firstChunkOperation = async () => {
         const response = await axios({
           url: songUrl,
@@ -128,7 +137,6 @@ class ChunkDownloadManager extends EventEmitter {
 
       fs.writeFileSync(songPath, Buffer.from(firstChunkResponse));
       
-      console.log(`First chunk ready for ${song.name}, emitting event`);
       this.emit('firstChunkReady', {
         songId: song._id,
         songPath,
@@ -137,19 +145,14 @@ class ChunkDownloadManager extends EventEmitter {
 
       const response = await axios.head(songUrl);
       const fileSize = parseInt(response.headers['content-length'], 10);
-      const totalChunks = Math.ceil(fileSize / this.CHUNK_SIZE);
+      let downloadedSize = firstChunkSize;
       
-      this.activeDownloads.set(song._id, {
-        isActive: true,
-        lastActive: Date.now(),
-        totalChunks
-      });
-      
-      for (let start = firstChunkSize; start < fileSize; start += this.CHUNK_SIZE) {
-        const end = Math.min(start + this.CHUNK_SIZE - 1, fileSize - 1);
+      while (downloadedSize < fileSize) {
+        const chunkSize = chunkSizeManager.getCurrentChunkSize();
+        const end = Math.min(downloadedSize + chunkSize - 1, fileSize - 1);
         
         try {
-          const chunk = await this.downloadChunk(songUrl, start, end);
+          const chunk = await this.downloadChunk(songUrl, downloadedSize, end);
           
           this.trackMemoryUsage(chunk.length, 'add');
           this.downloadedChunks.get(song._id).push(chunk);
@@ -161,7 +164,9 @@ class ChunkDownloadManager extends EventEmitter {
             download.lastActive = Date.now();
           }
 
-          const progress = Math.floor((start + chunk.length) / fileSize * 100);
+          downloadedSize += chunk.length;
+          const progress = Math.floor(downloadedSize / fileSize * 100);
+          
           this.emit('progress', {
             songId: song._id,
             progress,
@@ -178,6 +183,9 @@ class ChunkDownloadManager extends EventEmitter {
       if (download) {
         download.isActive = false;
       }
+
+      // İndirme tamamlandığında chunk boyutunu sıfırla
+      chunkSizeManager.reset();
 
       console.log(`Download completed for ${song.name}`);
       return songPath;
