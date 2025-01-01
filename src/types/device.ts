@@ -30,7 +30,7 @@ export interface Device {
   playlistStatus: 'loaded' | 'loading' | 'error' | 'emergency-stopped' | null;
   groupId: string | null;
   lastSeen: string;
-  // İndirme durumu için yeni alanlar
+  // Download status fields
   downloadProgress?: number;
   downloadedSongs?: number;
   totalSongs?: number;
