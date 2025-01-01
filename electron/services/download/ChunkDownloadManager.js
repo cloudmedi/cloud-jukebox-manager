@@ -2,6 +2,7 @@ const { EventEmitter } = require('events');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
+const retryManager = require('./RetryManager');
 
 class ChunkDownloadManager extends EventEmitter {
   constructor() {
@@ -16,7 +17,6 @@ class ChunkDownloadManager extends EventEmitter {
     this.downloadedChunks = new Map();
     this.memoryUsage = 0;
 
-    // Her 30 saniyede bir bellek temizliği yap
     setInterval(() => this.cleanupMemory(), 30000);
   }
 
@@ -31,7 +31,6 @@ class ChunkDownloadManager extends EventEmitter {
       this.memoryUsage -= size;
     }
     
-    // Bellek kullanımı çok yüksekse uyarı yayınla
     if (this.memoryUsage > this.MAX_MEMORY_USAGE) {
       console.warn('High memory usage detected:', this.memoryUsage);
       this.emit('high-memory-usage', this.memoryUsage);
@@ -42,7 +41,6 @@ class ChunkDownloadManager extends EventEmitter {
   cleanupMemory(force = false) {
     console.log('Running memory cleanup...');
     
-    // Tamamlanmış indirmelerin chunk'larını temizle
     for (const [songId, chunks] of this.downloadedChunks.entries()) {
       if (force || this.isDownloadComplete(songId)) {
         const totalSize = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
@@ -53,7 +51,6 @@ class ChunkDownloadManager extends EventEmitter {
       }
     }
 
-    // Aktif olmayan indirmeleri temizle
     for (const [songId, download] of this.activeDownloads.entries()) {
       if (!download.isActive && (force || Date.now() - download.lastActive > 300000)) {
         this.activeDownloads.delete(songId);
@@ -72,6 +69,32 @@ class ChunkDownloadManager extends EventEmitter {
     return download.totalChunks === chunks.length;
   }
 
+  async downloadChunk(url, start, end) {
+    const operation = async () => {
+      try {
+        const response = await axios({
+          url,
+          method: 'GET',
+          responseType: 'arraybuffer',
+          headers: {
+            Range: `bytes=${start}-${end}`
+          },
+          timeout: 30000
+        });
+
+        return response.data;
+      } catch (error) {
+        error.code = 'CHUNK_DOWNLOAD_ERROR';
+        throw error;
+      }
+    };
+
+    return await retryManager.executeWithRetry(
+      operation,
+      `Chunk download: ${url} (${start}-${end})`
+    );
+  }
+
   async downloadSongInChunks(song, baseUrl, playlistDir) {
     try {
       console.log(`Starting chunked download for song: ${song.name}`);
@@ -79,68 +102,65 @@ class ChunkDownloadManager extends EventEmitter {
       const songPath = path.join(playlistDir, `${song._id}.mp3`);
       const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
 
-      // İlk chunk'ı hemen indir ve oynatmaya başla
-      const firstChunkSize = 1024 * 1024; // 1MB
-      const firstChunkResponse = await axios({
-        url: songUrl,
-        method: 'GET',
-        responseType: 'arraybuffer',
-        headers: {
-          Range: `bytes=0-${firstChunkSize - 1}`
-        }
-      });
+      const firstChunkSize = 1024 * 1024;
+      const firstChunkOperation = async () => {
+        const response = await axios({
+          url: songUrl,
+          method: 'GET',
+          responseType: 'arraybuffer',
+          headers: {
+            Range: `bytes=0-${firstChunkSize - 1}`
+          }
+        });
+        return response.data;
+      };
 
-      // İlk chunk'ı belleğe kaydet ve takip et
-      this.trackMemoryUsage(firstChunkResponse.data.length, 'add');
+      const firstChunkResponse = await retryManager.executeWithRetry(
+        firstChunkOperation,
+        `First chunk download: ${song.name}`
+      );
+
+      this.trackMemoryUsage(firstChunkResponse.length, 'add');
       if (!this.downloadedChunks.has(song._id)) {
         this.downloadedChunks.set(song._id, []);
       }
-      this.downloadedChunks.get(song._id).push(firstChunkResponse.data);
+      this.downloadedChunks.get(song._id).push(firstChunkResponse);
 
-      // İlk chunk'ı dosyaya yaz
-      fs.writeFileSync(songPath, Buffer.from(firstChunkResponse.data));
+      fs.writeFileSync(songPath, Buffer.from(firstChunkResponse));
       
-      // İlk chunk hazır eventi
       console.log(`First chunk ready for ${song.name}, emitting event`);
       this.emit('firstChunkReady', {
         songId: song._id,
         songPath,
-        buffer: firstChunkResponse.data
+        buffer: firstChunkResponse
       });
 
-      // Geri kalan dosyayı arka planda indir
       const response = await axios.head(songUrl);
       const fileSize = parseInt(response.headers['content-length'], 10);
       const totalChunks = Math.ceil(fileSize / this.CHUNK_SIZE);
       
-      // Aktif indirmeyi kaydet
       this.activeDownloads.set(song._id, {
         isActive: true,
         lastActive: Date.now(),
         totalChunks
       });
       
-      // İlk chunk sonrası kalan chunk'ları indir
       for (let start = firstChunkSize; start < fileSize; start += this.CHUNK_SIZE) {
         const end = Math.min(start + this.CHUNK_SIZE - 1, fileSize - 1);
         
         try {
           const chunk = await this.downloadChunk(songUrl, start, end);
           
-          // Chunk'ı belleğe kaydet ve takip et
           this.trackMemoryUsage(chunk.length, 'add');
           this.downloadedChunks.get(song._id).push(chunk);
           
-          // Chunk'ı dosyaya ekle
           fs.appendFileSync(songPath, Buffer.from(chunk));
 
-          // İndirme durumunu güncelle
           const download = this.activeDownloads.get(song._id);
           if (download) {
             download.lastActive = Date.now();
           }
 
-          // İndirme durumunu bildir
           const progress = Math.floor((start + chunk.length) / fileSize * 100);
           this.emit('progress', {
             songId: song._id,
@@ -154,7 +174,6 @@ class ChunkDownloadManager extends EventEmitter {
         }
       }
 
-      // İndirme tamamlandı, aktif indirmeyi güncelle
       const download = this.activeDownloads.get(song._id);
       if (download) {
         download.isActive = false;
@@ -165,25 +184,6 @@ class ChunkDownloadManager extends EventEmitter {
 
     } catch (error) {
       console.error(`Error in chunked download for ${song.name}:`, error);
-      throw error;
-    }
-  }
-
-  async downloadChunk(url, start, end) {
-    try {
-      const response = await axios({
-        url,
-        method: 'GET',
-        responseType: 'arraybuffer',
-        headers: {
-          Range: `bytes=${start}-${end}`
-        },
-        timeout: 30000
-      });
-
-      return response.data;
-    } catch (error) {
-      console.error('Error downloading chunk:', error);
       throw error;
     }
   }
