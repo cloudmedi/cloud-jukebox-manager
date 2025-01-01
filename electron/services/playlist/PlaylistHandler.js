@@ -1,40 +1,51 @@
-const ProgressiveDownloader = require('./ProgressiveDownloader');
-const websocketService = require('../websocketService');
+const ProgressiveDownloader = require('../download/ProgressiveDownloader');
 const audioPlayer = require('../audio/AudioPlayer');
+const { BrowserWindow } = require('electron');
 
 class PlaylistHandler {
   constructor() {
-    this.currentPlaylist = null;
+    this.setupDownloadListeners();
+  }
+
+  setupDownloadListeners() {
+    ProgressiveDownloader.on('firstSongReady', (song) => {
+      console.log('First song ready, starting playback:', song.name);
+      audioPlayer.loadAndPlay(song);
+      this.updateRenderer('playlistStatus', { status: 'playing', currentSong: song });
+    });
+
+    ProgressiveDownloader.on('downloadProgress', ({ song, progress }) => {
+      this.updateRenderer('downloadProgress', { song, progress });
+    });
+
+    ProgressiveDownloader.on('downloadComplete', ({ song, path }) => {
+      console.log('Song download complete:', song.name);
+      audioPlayer.addToQueue(song);
+      this.updateRenderer('songReady', { song, path });
+    });
+
+    ProgressiveDownloader.on('error', ({ song, error }) => {
+      console.error('Download error:', error);
+      this.updateRenderer('error', { song, error: error.message });
+    });
+  }
+
+  updateRenderer(type, data) {
+    const win = BrowserWindow.getAllWindows()[0];
+    if (win) {
+      win.webContents.send(type, data);
+    }
   }
 
   async handlePlaylist(playlist) {
     console.log('New playlist received:', playlist.name);
-
+    
     // Mevcut indirmeleri iptal et
     ProgressiveDownloader.cancelDownloads();
-
-    // Yeni playlist'i kaydet
-    this.currentPlaylist = playlist;
-
-    // İlk şarkı hazır olduğunda çalmaya başla
-    ProgressiveDownloader.startPlaylistDownload(playlist, (firstSong) => {
-      console.log('First song ready:', firstSong.name);
-      
-      // Playlist durumunu güncelle
-      websocketService.sendMessage({
-        type: 'playlistStatus',
-        status: 'loading',
-        playlistId: playlist._id,
-        message: 'First song ready, starting playback'
-      });
-
-      // Audio player'a playlist'i yükle
-      audioPlayer.loadPlaylist({
-        ...playlist,
-        songs: [firstSong] // Şimdilik sadece ilk şarkıyı ekle
-      });
-    });
-
+    
+    // Yeni playlist'i başlat
+    await ProgressiveDownloader.startPlaylistDownload(playlist, 'http://localhost:5000');
+    
     return true;
   }
 }

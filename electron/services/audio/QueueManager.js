@@ -4,20 +4,13 @@ class QueueManager {
     this.currentIndex = 0;
   }
 
-  setQueue(songs) {
-    this.queue = songs.filter(song => song.localPath);
-    this.currentIndex = 0;
-    console.log('Queue updated:', this.queue);
+  addSong(song) {
+    this.queue.push(song);
+    console.log('Song added to queue:', song.name);
   }
 
   getCurrentSong() {
     return this.queue[this.currentIndex];
-  }
-
-  peekNext() {
-    if (this.queue.length === 0) return null;
-    const nextIndex = (this.currentIndex + 1) % this.queue.length;
-    return this.queue[nextIndex];
   }
 
   next() {
@@ -32,17 +25,13 @@ class QueueManager {
     return this.getCurrentSong();
   }
 
-  shuffle() {
-    if (this.queue.length === 0) return;
-
-    const currentSong = this.getCurrentSong();
-    for (let i = this.queue.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [this.queue[i], this.queue[j]] = [this.queue[j], this.queue[i]];
-    }
-
-    this.queue = [currentSong, ...this.queue.filter(s => s._id !== currentSong._id)];
+  clear() {
+    this.queue = [];
     this.currentIndex = 0;
+  }
+
+  getQueueLength() {
+    return this.queue.length;
   }
 }
 

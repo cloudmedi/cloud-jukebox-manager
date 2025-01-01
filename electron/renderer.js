@@ -552,4 +552,3 @@ ipcRenderer.on('show-toast', (event, toast) => {
       break;
   }
 });
-
