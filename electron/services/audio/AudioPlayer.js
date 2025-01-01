@@ -1,5 +1,5 @@
-const QueueManager = require('./audio/QueueManager');
-const PlaybackState = require('./audio/PlaybackState');
+const QueueManager = require('./QueueManager');
+const PlaybackState = require('./PlaybackState');
 const path = require('path');
 const EmergencyStateManager = require('../emergency/EmergencyStateManager');
 const Store = require('electron-store');
