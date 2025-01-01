@@ -1,31 +1,35 @@
 const ProgressiveDownloader = require('../download/ProgressiveDownloader');
 const audioPlayer = require('../audio/AudioPlayer');
 const { BrowserWindow } = require('electron');
+const { createLogger } = require('../../utils/logger');
+
+const logger = createLogger('PlaylistHandler');
 
 class PlaylistHandler {
   constructor() {
     this.setupDownloadListeners();
+    logger.info('PlaylistHandler initialized');
   }
 
   setupDownloadListeners() {
     ProgressiveDownloader.on('firstSongReady', (song) => {
-      console.log('First song ready, starting playback:', song.name);
+      logger.info('First song ready, starting playback:', song.name);
       audioPlayer.loadAndPlay(song);
       this.updateRenderer('playlistStatus', { status: 'playing', currentSong: song });
     });
 
     ProgressiveDownloader.on('downloadProgress', ({ song, progress }) => {
+      logger.info(`Download progress for ${song.name}: ${progress}%`);
       this.updateRenderer('downloadProgress', { song, progress });
     });
 
     ProgressiveDownloader.on('downloadComplete', ({ song, path }) => {
-      console.log('Song download complete:', song.name);
-      audioPlayer.addToQueue(song);
+      logger.info('Song download complete:', song.name);
       this.updateRenderer('songReady', { song, path });
     });
 
     ProgressiveDownloader.on('error', ({ song, error }) => {
-      console.error('Download error:', error);
+      logger.error('Download error:', error);
       this.updateRenderer('error', { song, error: error.message });
     });
   }
@@ -38,7 +42,7 @@ class PlaylistHandler {
   }
 
   async handlePlaylist(playlist) {
-    console.log('New playlist received:', playlist.name);
+    logger.info('New playlist received:', playlist.name);
     
     // Mevcut indirmeleri iptal et
     ProgressiveDownloader.cancelDownloads();

@@ -3,6 +3,9 @@ const fs = require('fs');
 const path = require('path');
 const { app } = require('electron');
 const { EventEmitter } = require('events');
+const { createLogger } = require('../../utils/logger');
+
+const logger = createLogger('ProgressiveDownloader');
 
 class ProgressiveDownloader extends EventEmitter {
   constructor() {
@@ -16,10 +19,12 @@ class ProgressiveDownloader extends EventEmitter {
     if (!fs.existsSync(this.downloadPath)) {
       fs.mkdirSync(this.downloadPath, { recursive: true });
     }
+
+    logger.info('ProgressiveDownloader initialized');
   }
 
   async startPlaylistDownload(playlist, baseUrl) {
-    console.log('Starting progressive download for playlist:', playlist.name);
+    logger.info('Starting progressive download for playlist:', playlist.name);
     
     // İlk 3 şarkıyı öncelikli olarak indir
     const prioritySongs = playlist.songs.slice(0, 3);
@@ -37,7 +42,7 @@ class ProgressiveDownloader extends EventEmitter {
           this.priorityQueue.add({ song, baseUrl });
         }
       } catch (error) {
-        console.error('Error downloading first song:', error);
+        logger.error('Error downloading first song:', error);
         this.emit('error', { song: firstSong, error });
       }
     }
@@ -55,11 +60,11 @@ class ProgressiveDownloader extends EventEmitter {
 
     // Şarkı zaten indirilmişse, direkt döndür
     if (fs.existsSync(songPath)) {
-      console.log('Song already exists:', song.name);
+      logger.info('Song already exists:', song.name);
       return songPath;
     }
 
-    console.log('Downloading song:', song.name);
+    logger.info('Downloading song:', song.name);
     this.emit('downloadStart', song);
 
     try {
@@ -78,18 +83,18 @@ class ProgressiveDownloader extends EventEmitter {
 
       return new Promise((resolve, reject) => {
         writer.on('finish', () => {
-          console.log('Song downloaded successfully:', song.name);
+          logger.info('Song downloaded successfully:', song.name);
           this.emit('downloadComplete', { song, path: songPath });
           resolve(songPath);
         });
         writer.on('error', (error) => {
-          console.error('Error writing song:', error);
+          logger.error('Error writing song:', error);
           this.emit('error', { song, error });
           reject(error);
         });
       });
     } catch (error) {
-      console.error('Error downloading song:', error);
+      logger.error('Error downloading song:', error);
       this.emit('error', { song, error });
       throw error;
     }
@@ -98,7 +103,7 @@ class ProgressiveDownloader extends EventEmitter {
   processQueue() {
     while (this.currentDownloads.size < this.maxConcurrentDownloads) {
       // Önce öncelikli kuyruktan al
-      const nextPriority = this.priorityQueue.values().next().value;
+      const nextPriority = Array.from(this.priorityQueue)[0];
       if (nextPriority) {
         this.priorityQueue.delete(nextPriority);
         this.downloadSong(nextPriority.song, nextPriority.baseUrl);
@@ -116,6 +121,7 @@ class ProgressiveDownloader extends EventEmitter {
   }
 
   cancelDownloads() {
+    logger.info('Cancelling all downloads');
     this.downloadQueue = [];
     this.priorityQueue.clear();
     this.currentDownloads.clear();

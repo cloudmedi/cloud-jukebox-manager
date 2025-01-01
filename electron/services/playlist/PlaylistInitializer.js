@@ -1,54 +1,39 @@
-const { ipcRenderer } = require('electron');
 const Store = require('electron-store');
 const store = new Store();
-const SmartQueueManager = require('../audio/SmartQueueManager');
+const path = require('path');
+const { createLogger } = require('../../utils/logger');
+
+const logger = createLogger('PlaylistInitializer');
 
 class PlaylistInitializer {
-  constructor() {
-    this.store = new Store();
-    this.queueManager = SmartQueueManager;
-  }
+  static initializePlaylist(playlist) {
+    logger.info('Initializing playlist:', playlist.name);
 
-  initializePlaylist(playlist) {
-    if (!playlist || !playlist.songs || playlist.songs.length === 0) {
-      console.log('No valid playlist to initialize');
-      return;
-    }
-
-    // SmartQueueManager'ı başlat ve karıştırma yap
-    this.queueManager.initializeQueue(playlist.songs);
-    
-    // İlk şarkıyı seç
-    const firstSong = this.queueManager.getCurrentSong();
-    
-    if (firstSong) {
-      console.log('Starting with randomly selected song:', firstSong.name);
-      // Playlist'i güncelle ve ilk şarkıyı ayarla
-      const updatedPlaylist = {
-        ...playlist,
-        songs: this.queueManager.getQueue()
-      };
-      
-      // Store'u güncelle
-      const playlists = this.store.get('playlists', []);
+    try {
+      // Playlist'i store'a kaydet
+      const playlists = store.get('playlists', []);
       const existingIndex = playlists.findIndex(p => p._id === playlist._id);
       
       if (existingIndex !== -1) {
-        playlists[existingIndex] = updatedPlaylist;
+        playlists[existingIndex] = playlist;
       } else {
-        playlists.push(updatedPlaylist);
+        playlists.push(playlist);
       }
       
-      this.store.set('playlists', playlists);
+      store.set('playlists', playlists);
       
-      return {
-        playlist: updatedPlaylist,
-        currentSong: firstSong
-      };
+      // Şarkı yollarını normalize et
+      playlist.songs = playlist.songs.map(song => ({
+        ...song,
+        localPath: path.join(app.getPath('userData'), 'downloads', `${song._id}.mp3`)
+      }));
+
+      return { playlist, shouldAutoPlay: true };
+    } catch (error) {
+      logger.error('Error initializing playlist:', error);
+      return null;
     }
-    
-    return null;
   }
 }
 
-module.exports = new PlaylistInitializer();
+module.exports = PlaylistInitializer;

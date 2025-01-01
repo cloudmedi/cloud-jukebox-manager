@@ -1,30 +1,28 @@
 const { Howl } = require('howler');
-const QueueManager = require('./QueueManager');
-const PlaybackState = require('./PlaybackState');
-const EmergencyStateManager = require('../emergency/EmergencyStateManager');
 const Store = require('electron-store');
 const store = new Store();
+const { createLogger } = require('../../utils/logger');
+
+const logger = createLogger('AudioPlayer');
 
 class AudioPlayer {
   constructor() {
-    this.queueManager = new QueueManager();
-    this.playbackState = new PlaybackState();
     this.sound = null;
     this.playlist = null;
+    this.currentSongIndex = 0;
     this.isPlaying = false;
     this.volume = store.get('volume', 70) / 100;
+    
+    logger.info('AudioPlayer initialized');
   }
 
   loadAndPlay(song) {
     if (!song || !song.localPath) {
-      console.error('Invalid song data:', song);
+      logger.error('Invalid song data:', song);
       return;
     }
 
-    if (EmergencyStateManager.isEmergencyActive()) {
-      console.log('Playback blocked: Emergency mode is active');
-      return;
-    }
+    logger.info('Loading song:', song.name, 'from:', song.localPath);
 
     // Mevcut sesi durdur
     if (this.sound) {
@@ -32,28 +30,26 @@ class AudioPlayer {
       this.sound.unload();
     }
 
-    console.log('Loading song:', song.name, 'from:', song.localPath);
-
     // Yeni Howl instance'ı oluştur
     this.sound = new Howl({
       src: [song.localPath],
       volume: this.volume,
       onend: () => {
-        console.log('Song ended, playing next');
+        logger.info('Song ended, playing next');
         this.playNext();
       },
       onload: () => {
-        console.log('Song loaded successfully');
+        logger.info('Song loaded successfully');
         if (this.isPlaying) {
           this.sound.play();
         }
       },
       onloaderror: (id, error) => {
-        console.error('Error loading audio:', error);
+        logger.error('Error loading audio:', error);
         this.playNext();
       },
       onplayerror: (id, error) => {
-        console.error('Error playing audio:', error);
+        logger.error('Error playing audio:', error);
         this.playNext();
       }
     });
@@ -61,25 +57,12 @@ class AudioPlayer {
     // Çalmaya başla
     this.sound.play();
     this.isPlaying = true;
-    this.updatePlaybackState('playing');
-  }
-
-  addToQueue(song) {
-    this.queueManager.addSong(song);
-  }
-
-  playNext() {
-    const nextSong = this.queueManager.next();
-    if (nextSong) {
-      this.loadAndPlay(nextSong);
-    }
   }
 
   play() {
     if (this.sound) {
       this.sound.play();
       this.isPlaying = true;
-      this.updatePlaybackState('playing');
     }
   }
 
@@ -87,7 +70,6 @@ class AudioPlayer {
     if (this.sound) {
       this.sound.pause();
       this.isPlaying = false;
-      this.updatePlaybackState('paused');
     }
   }
 
@@ -95,7 +77,6 @@ class AudioPlayer {
     if (this.sound) {
       this.sound.stop();
       this.isPlaying = false;
-      this.updatePlaybackState('stopped');
     }
   }
 
@@ -107,40 +88,17 @@ class AudioPlayer {
     store.set('volume', volume);
   }
 
-  updatePlaybackState(state) {
-    this.playbackState.update(
-      state,
-      this.queueManager.getCurrentSong(),
-      this.playlist,
-      this.volume * 100
-    );
-  }
-
-  handleEmergencyStop() {
-    store.set('playbackState', {
-      wasPlaying: this.isPlaying,
-      volume: this.volume,
-      currentTime: this.sound ? this.sound.seek() : 0
-    });
-    
-    this.stop();
-    if (this.sound) {
-      this.sound.volume(0);
+  playNext() {
+    if (this.playlist && this.playlist.songs) {
+      this.currentSongIndex = (this.currentSongIndex + 1) % this.playlist.songs.length;
+      const nextSong = this.playlist.songs[this.currentSongIndex];
+      this.loadAndPlay(nextSong);
     }
   }
 
-  handleEmergencyReset() {
-    const savedState = store.get('playbackState');
-    if (savedState) {
-      this.volume = savedState.volume;
-      if (this.sound) {
-        this.sound.volume(this.volume);
-        if (savedState.wasPlaying) {
-          this.sound.seek(savedState.currentTime);
-          this.play();
-        }
-      }
-    }
+  getCurrentSong() {
+    if (!this.playlist || !this.playlist.songs) return null;
+    return this.playlist.songs[this.currentSongIndex];
   }
 }
 
