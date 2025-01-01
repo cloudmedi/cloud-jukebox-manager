@@ -1,4 +1,4 @@
-import { Device } from "@/services/deviceService";
+import { Device } from "@/types/device";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardHeader, CardContent, CardFooter } from "@/components/ui/card";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -56,7 +56,7 @@ export const DeviceCard = ({ device, isSelected, onSelect }: DeviceCardProps) =>
               
               {device.downloadSpeed > 0 && (
                 <div className="text-xs text-muted-foreground">
-                  Hız: {formatBytes(device.downloadSpeed)}/s
+                  Hız: {formatBytes(device.downloadSpeed)}
                 </div>
               )}
               

@@ -1,55 +1,21 @@
 import axios from 'axios';
-
-export interface Device {
-  _id: string;
-  name: string;
-  token: string;
-  location: string;
-  ipAddress?: string;
-  isOnline: boolean;
-  volume: number;
-  isPlaying?: boolean;
-  downloadProgress?: number;
-  activePlaylist?: {
-    _id: string;
-    name: string;
-  };
-  currentSong?: {
-    name: string;
-    artist: string;
-  };
-  playlistStatus?: string;
-  deviceInfo?: {
-    hostname: string;
-    platform: string;
-    arch: string;
-    cpus: string;
-    totalMemory: string;
-    freeMemory: string;
-    networkInterfaces: string[];
-    osVersion: string;
-  };
-  groupId?: string;
-  lastSeen: string;
-  createdAt?: string;
-  updatedAt?: string;
-}
+import { Device } from '../types/device';
 
 const API_URL = 'http://localhost:5000/api/devices';
 
 export const deviceService = {
   getDevices: async () => {
-    const response = await axios.get(API_URL);
+    const response = await axios.get<Device[]>(API_URL);
     return response.data;
   },
 
   createDevice: async (deviceData: Partial<Device>) => {
-    const response = await axios.post(API_URL, deviceData);
+    const response = await axios.post<Device>(API_URL, deviceData);
     return response.data;
   },
 
   updateDevice: async (id: string, deviceData: Partial<Device>) => {
-    const response = await axios.patch(`${API_URL}/${id}`, deviceData);
+    const response = await axios.patch<Device>(`${API_URL}/${id}`, deviceData);
     return response.data;
   },
 
@@ -59,7 +25,7 @@ export const deviceService = {
   },
 
   updateGroup: async (deviceId: string, groupId: string | null) => {
-    const response = await axios.patch(`${API_URL}/${deviceId}`, { groupId });
+    const response = await axios.patch<Device>(`${API_URL}/${deviceId}`, { groupId });
     return response.data;
   },
 
