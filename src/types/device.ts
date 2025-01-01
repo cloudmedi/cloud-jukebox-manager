@@ -34,8 +34,8 @@ export interface Device {
   downloadProgress?: number;
   downloadedSongs?: number;
   totalSongs?: number;
-  downloadSpeed?: number; // bytes/second
-  estimatedTimeRemaining?: number; // seconds
+  downloadSpeed?: number;
+  estimatedTimeRemaining?: number;
   retryCount?: number;
   lastError?: string;
   emergencyStopped?: boolean;
