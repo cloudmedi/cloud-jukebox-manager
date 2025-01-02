@@ -27,6 +27,7 @@ interface Schedule {
 
 // Renk paleti
 const colorPalette = [
+  '#9b87f5', // İlk zamanlama için varsayılan renk (mor)
   '#F97316', // Turuncu
   '#0EA5E9', // Mavi
   '#D946EF', // Pembe
@@ -72,6 +73,7 @@ const Schedule = () => {
   };
 
   const getScheduleColor = (index: number) => {
+    // Mevcut zamanlama sayısına göre renk seç
     return colorPalette[index % colorPalette.length];
   };
 
