@@ -1,94 +1,58 @@
-const { EventEmitter } = require('events');
+const DownloadStateManager = require('./DownloadStateManager');
 const websocketService = require('../websocketService');
 
-class DownloadProgressService extends EventEmitter {
+class DownloadProgressService {
   constructor() {
-    super();
     this.activeDownloads = new Map();
   }
 
-  initializeDownload(deviceToken, playlistId, totalSongs) {
-    console.log('Initializing download:', { deviceToken, playlistId, totalSongs });
-    
-    const downloadState = {
-      deviceToken,
-      playlistId,
-      status: 'downloading',
-      progress: 0,
-      downloadSpeed: 0,
-      downloadedSongs: 0,
+  initializeDownload(token, playlistId, totalSongs) {
+    this.activeDownloads.set(playlistId, {
+      token,
       totalSongs,
-      estimatedTimeRemaining: 0,
-      retryCount: 0,
-      startTime: Date.now(),
-      completedChunks: []
-    };
-
-    this.activeDownloads.set(playlistId, downloadState);
-    this.emitProgress(downloadState);
+      downloadedSongs: 0,
+      progress: 0,
+      status: 'downloading'
+    });
   }
 
-  updateChunkProgress(playlistId, chunkInfo) {
+  updateProgress(playlistId, progress) {
     const download = this.activeDownloads.get(playlistId);
-    if (!download) {
-      console.warn('No active download found for playlist:', playlistId);
-      return;
+    if (download) {
+      download.progress = progress;
+      this.saveState(playlistId, download);
+      this.broadcastProgress(download);
     }
-
-    download.completedChunks.push(chunkInfo);
-    this.calculateProgress(download);
-    this.emitProgress(download);
   }
 
-  calculateProgress(download) {
-    const totalChunks = download.totalSongs * 100; // Assuming 100 chunks per song
-    download.progress = (download.completedChunks.length / totalChunks) * 100;
-    
-    const now = Date.now();
-    const elapsed = (now - download.startTime) / 1000;
-    
-    const totalBytes = download.completedChunks.reduce((sum, chunk) => sum + chunk.size, 0);
-    download.downloadSpeed = totalBytes / elapsed;
-    
-    const remainingChunks = totalChunks - download.completedChunks.length;
-    const avgChunkTime = elapsed / download.completedChunks.length;
-    download.estimatedTimeRemaining = remainingChunks * avgChunkTime;
+  updateDownloadedSongs(playlistId, downloadedSongs) {
+    const download = this.activeDownloads.get(playlistId);
+    if (download) {
+      download.downloadedSongs = downloadedSongs;
+      this.saveState(playlistId, download);
+      this.broadcastProgress(download);
+    }
   }
 
-  emitProgress(downloadState) {
-    console.log('Emitting download progress:', downloadState);
-    
-    try {
-      websocketService.send({
-        type: 'downloadProgress',
-        data: {
-          playlistId: downloadState.playlistId,
-          deviceToken: downloadState.deviceToken,
-          status: downloadState.status,
-          progress: downloadState.progress,
-          downloadSpeed: downloadState.downloadSpeed,
-          downloadedSongs: downloadState.downloadedSongs,
-          totalSongs: downloadState.totalSongs,
-          estimatedTimeRemaining: downloadState.estimatedTimeRemaining,
-          retryCount: downloadState.retryCount,
-          completedChunks: downloadState.completedChunks,
-          lastError: downloadState.lastError
-        }
-      });
-    } catch (error) {
-      console.error('Error sending progress update:', error);
-    }
+  saveState(playlistId, state) {
+    DownloadStateManager.saveDownloadState(playlistId, state);
+  }
+
+  broadcastProgress(download) {
+    websocketService.sendMessage({
+      type: 'downloadProgress',
+      ...download
+    });
   }
 
   handleError(playlistId, error) {
     const download = this.activeDownloads.get(playlistId);
-    if (!download) return;
-
-    download.status = 'error';
-    download.lastError = error.message;
-    download.retryCount++;
-    
-    this.emitProgress(download);
+    if (download) {
+      download.status = 'error';
+      download.error = error.message;
+      this.saveState(playlistId, download);
+      this.broadcastProgress(download);
+    }
   }
 }
 
