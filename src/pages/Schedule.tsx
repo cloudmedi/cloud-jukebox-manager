@@ -132,6 +132,9 @@ const Schedule = () => {
           select={handleDateSelect}
           height="auto"
           locale="tr"
+          nowIndicator={true}
+          slotMinTime="00:00:00"
+          slotMaxTime="24:00:00"
         />
       </div>
 
