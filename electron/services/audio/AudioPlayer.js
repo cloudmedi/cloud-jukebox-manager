@@ -16,6 +16,8 @@ class AudioPlayer {
     this.volume = 1.0;
     this.pendingFirstChunk = null;
     this.readyToPlay = false;
+
+    this.setupEventListeners();
   }
 
   setupEventListeners() {
@@ -44,64 +46,46 @@ class AudioPlayer {
     }
   }
 
-  handleFirstChunkReady(songId, songPath, buffer) {
-    console.log(`First chunk ready for song ${songId}`);
-    const currentSong = this.queueManager.getCurrentSong();
+  handleFirstSongReady(songId, songPath) {
+    console.log('First song ready handler called:', { songId, songPath });
     
-    if (currentSong && currentSong._id === songId) {
-      console.log('Loading first chunk for current song');
-      this.loadSongWithBuffer({ ...currentSong, localPath: songPath }, buffer);
-    } else {
-      console.log('Storing pending first chunk');
-      this.pendingFirstChunk = { songId, songPath, buffer };
-    }
-  }
-
-  loadSongWithBuffer(song, buffer) {
-    if (!song) {
-      console.log('No song to load');
-      return;
-    }
-
-    console.log('Loading song with buffer:', song);
-
     try {
+      if (!songPath) {
+        console.error('No song path provided to handleFirstSongReady');
+        return;
+      }
+
+      // Create a new Howl instance for the song
       if (this.sound) {
         this.sound.unload();
       }
 
-      // Buffer'dan blob oluştur
-      const blob = new Blob([buffer], { type: 'audio/mpeg' });
-      const url = URL.createObjectURL(blob);
-
       this.sound = new Howl({
-        src: [url],
+        src: [songPath],
         html5: true,
         volume: this.volume,
         format: ['mp3'],
         onload: () => {
-          console.log('Song loaded successfully');
+          console.log('First song loaded successfully');
           this.readyToPlay = true;
           if (this.isPlaying) {
             this.sound.play();
           }
+        },
+        onloaderror: (id, error) => {
+          console.error('Error loading first song:', error);
         }
       });
 
       this.setupEventListeners();
       
+      console.log('First song initialized successfully');
     } catch (error) {
-      console.error('Error loading song:', error);
-      this.playNext();
+      console.error('Error in handleFirstSongReady:', error);
     }
   }
 
   play() {
-    if (EmergencyStateManager.isEmergencyActive()) {
-      console.log('Playback blocked: Emergency mode is active');
-      return false;
-    }
-
     console.log('Play requested');
     if (this.sound) {
       this.sound.play();
@@ -142,22 +126,10 @@ class AudioPlayer {
   }
 
   setVolume(volume) {
-    console.log('AudioPlayer setVolume called:', { 
-      rawVolume: volume,
-      normalizedVolume: volume / 100 
-    });
-    
-    const normalizedVolume = Math.max(0, Math.min(100, volume));
-    console.log('Volume normalized:', normalizedVolume);
-    
-    this.volume = normalizedVolume / 100;
+    this.volume = volume / 100;
     if (this.sound) {
       this.sound.volume(this.volume);
     }
-    console.log('Audio volume set:', this.volume);
-
-    store.set('volume', normalizedVolume);
-    console.log('Volume saved to store:', normalizedVolume);
   }
 
   updatePlaybackState(state) {
@@ -176,6 +148,23 @@ class AudioPlayer {
       playlist: this.playlist,
       volume: this.volume * 100
     };
+  }
+
+  restoreState() {
+    const state = this.playbackState.restore();
+    if (state && state.playlist) {
+      console.log('Restoring previous state:', state);
+      this.loadPlaylist(state.playlist);
+      this.setVolume(state.volume);
+      
+      // Eğer önceki durum 'playing' ise, otomatik başlat
+      if (state.state === 'playing') {
+        setTimeout(() => {
+          console.log('Auto-playing restored playlist');
+          this.play();
+        }, 1000); // Ses dosyasının yüklenmesi için kısa bir gecikme
+      }
+    }
   }
 }
 
