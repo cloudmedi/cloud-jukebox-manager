@@ -7,8 +7,18 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
+import { useFormContext } from "react-hook-form";
 
-export function TimeSettings() {
+interface TimeSettingsProps {
+  initialDates?: {
+    start: Date | null;
+    end: Date | null;
+  };
+}
+
+export function TimeSettings({ initialDates }: TimeSettingsProps) {
+  const form = useFormContext();
+
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-lg font-semibold text-primary">
