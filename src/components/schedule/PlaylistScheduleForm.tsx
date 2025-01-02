@@ -114,12 +114,6 @@ export function PlaylistScheduleForm({ onSuccess }: PlaylistScheduleFormProps) {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-w-4xl mx-auto">
         <Card>
-          <CardHeader className="border-b">
-            <div className="flex items-center gap-2 text-2xl font-semibold">
-              <Music className="h-6 w-6 text-primary" />
-              Playlist Zamanlaması
-            </div>
-          </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
               <TabsList className="grid w-full grid-cols-3">
