@@ -9,7 +9,7 @@ import {
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Song } from "@/types/song";
-import { formatSongDuration } from "@/lib/utils";
+import { formatDuration } from "@/lib/utils";
 
 export interface SongTableRowProps {
   song: Song;
@@ -69,7 +69,7 @@ export const SongTableRow = ({
       <TableCell>{song.artist}</TableCell>
       <TableCell>{song.genre}</TableCell>
       <TableCell>{song.album || "-"}</TableCell>
-      <TableCell>{formatSongDuration(song.duration)}</TableCell>
+      <TableCell>{formatDuration(song.duration)}</TableCell>
       <TableCell>
         {new Date(song.createdAt).toLocaleDateString("tr-TR")}
       </TableCell>
