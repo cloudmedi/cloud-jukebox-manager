@@ -5,7 +5,6 @@ const Store = require('electron-store');
 const store = new Store();
 const chunkDownloadManager = require('../download/ChunkDownloadManager');
 const audioPlayer = require('../audio/AudioPlayer');
-const storageService = require('../storage/StorageService');
 
 class PlaylistHandler {
   constructor() {
@@ -21,11 +20,6 @@ class PlaylistHandler {
   }
 
   setupChunkDownloadListeners() {
-    chunkDownloadManager.on('firstChunkReady', ({ songId, songPath }) => {
-      console.log(`First chunk ready for song ${songId}, path: ${songPath}`);
-      audioPlayer.handleFirstChunkReady(songId, songPath);
-    });
-
     chunkDownloadManager.on('progress', ({ songId, progress, isComplete }) => {
       console.log(`Download progress for ${songId}: ${progress}%`);
       if (isComplete) {
@@ -45,11 +39,17 @@ class PlaylistHandler {
       const firstSong = playlist.songs[0];
       if (firstSong) {
         console.log('Starting download of first song:', firstSong.name);
-        await chunkDownloadManager.downloadSongInChunks(
+        const firstSongPath = await chunkDownloadManager.downloadSongInChunks(
           firstSong,
           playlist.baseUrl,
           playlistDir
         );
+
+        // İlk şarkı hazır olduğunda oynatıcıya bildir
+        if (firstSongPath) {
+          console.log('First song ready:', firstSongPath);
+          audioPlayer.handleFirstSongReady(firstSong._id, firstSongPath);
+        }
       }
 
       // Kalan şarkıları kuyruğa ekle
