@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { PlaylistScheduleForm } from "@/components/schedule/PlaylistScheduleForm";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import { EventDetailDialog } from "@/components/schedule/EventDetailDialog";
 
 interface Schedule {
   _id: string;
@@ -48,6 +49,8 @@ const Schedule = () => {
     start: Date | null;
     end: Date | null;
   }>({ start: null, end: null });
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [isEventDetailOpen, setIsEventDetailOpen] = useState(false);
 
   const queryClient = useQueryClient();
 
@@ -72,6 +75,11 @@ const Schedule = () => {
     setIsDialogOpen(true);
   };
 
+  const handleEventClick = (clickInfo: any) => {
+    setSelectedEvent(clickInfo.event);
+    setIsEventDetailOpen(true);
+  };
+
   const handleScheduleCreated = () => {
     setIsDialogOpen(false);
     queryClient.invalidateQueries({ queryKey: ["playlist-schedules"] });
@@ -81,25 +89,28 @@ const Schedule = () => {
     return colorPalette[index % colorPalette.length];
   };
 
-  const events = schedules?.map((schedule, index) => {
+  const events = schedules?.map((schedule: Schedule, index: number) => {
     if (!schedule?.playlist) {
       return null;
     }
 
     const backgroundColor = getScheduleColor(index);
+    const targetType = Array.isArray(schedule.targets?.devices) && schedule.targets.devices.length > 0 
+      ? 'device' 
+      : 'group';
     
     return {
       id: schedule._id,
-      title: `${schedule.playlist.name || 'Unnamed Playlist'} - ${
-        Array.isArray(schedule.targets?.devices) && schedule.targets.devices.length > 0 
-          ? 'Cihaz' 
-          : 'Grup'
-      }`,
+      title: schedule.playlist.name || 'İsimsiz Playlist',
       start: schedule.startDate,
       end: schedule.endDate,
       backgroundColor: backgroundColor,
       borderColor: backgroundColor,
-      textColor: '#222222', // Tüm metinler koyu renk
+      textColor: '#222222',
+      extendedProps: {
+        targetType: targetType,
+        playlistId: schedule.playlist._id
+      }
     };
   }).filter(Boolean) || [];
 
@@ -161,6 +172,7 @@ const Schedule = () => {
           weekends={true}
           events={events}
           select={handleDateSelect}
+          eventClick={handleEventClick}
           height="auto"
           locale="tr"
           nowIndicator={true}
@@ -187,6 +199,15 @@ const Schedule = () => {
           />
         </DialogContent>
       </Dialog>
+
+      <EventDetailDialog 
+        event={selectedEvent}
+        isOpen={isEventDetailOpen}
+        onClose={() => {
+          setIsEventDetailOpen(false);
+          setSelectedEvent(null);
+        }}
+      />
     </div>
   );
 };
