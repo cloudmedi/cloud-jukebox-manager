@@ -3,9 +3,9 @@ const { createLogger } = require('../../../utils/logger');
 const logger = createLogger('timeout-manager');
 
 class TimeoutManager {
-  constructor(globalTimeoutMs = 30 * 60 * 1000, chunkTimeoutMs = 30 * 1000) {
-    this.globalTimeoutMs = globalTimeoutMs;
-    this.chunkTimeoutMs = chunkTimeoutMs;
+  constructor(options = {}) {
+    this.globalTimeoutMs = options.globalTimeoutMs || 30 * 60 * 1000; // 30 minutes
+    this.chunkTimeoutMs = options.chunkTimeoutMs || 30 * 1000; // 30 seconds
     this.timeouts = new Map();
     
     logger.info('TimeoutManager initialized', {

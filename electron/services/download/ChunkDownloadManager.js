@@ -3,18 +3,30 @@ const path = require('path');
 const fs = require('fs');
 const { createLogger } = require('../../utils/logger');
 const Store = require('electron-store');
-const store = new Store();
 const EventEmitter = require('events');
+const NetworkErrorHandler = require('./utils/NetworkErrorHandler');
+const TimeoutManager = require('./utils/TimeoutManager');
 
 const logger = createLogger('chunk-download-manager');
 
 class ChunkDownloadManager extends EventEmitter {
   constructor() {
     super();
+    this.store = new Store({
+      name: 'download-state',
+      defaults: {
+        downloads: {},
+        chunks: {},
+        activeDownloads: 0
+      }
+    });
+    
     this.downloadQueue = [];
     this.activeDownloads = 0;
     this.maxConcurrentDownloads = 3;
     this.baseDownloadPath = path.join(app.getPath('userData'), 'downloads');
+    this.timeoutManager = new TimeoutManager();
+    this.chunkSize = 1024 * 1024; // 1MB default
     this.ensureBaseDirectory();
   }
 
@@ -45,20 +57,33 @@ class ChunkDownloadManager extends EventEmitter {
       const playlistDir = this.ensurePlaylistDirectory(playlistId);
       const songPath = path.join(playlistDir, `${song._id}.mp3`);
       
-      // Eğer dosya zaten varsa ve tamamsa, tekrar indirme
-      if (fs.existsSync(songPath)) {
-        const stats = fs.statSync(songPath);
-        if (stats.size > 0) {
-          logger.info(`Song already exists: ${song.name}`);
-          this.emit('songDownloaded', { song, path: songPath });
-          return songPath;
-        }
+      // Check if download state exists
+      const downloadState = this.store.get(`downloads.${song._id}`);
+      if (downloadState && downloadState.completed) {
+        logger.info(`Song already downloaded: ${song.name}`);
+        this.emit('songDownloaded', { song, path: songPath });
+        return songPath;
       }
 
-      const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
+      const songUrl = new URL(song.filePath, baseUrl).toString();
       
-      // İndirme işlemini başlat
-      await this.downloadWithRetry(songUrl, songPath, song);
+      // Initialize download state
+      this.store.set(`downloads.${song._id}`, {
+        songId: song._id,
+        playlistId,
+        url: songUrl,
+        path: songPath,
+        chunks: [],
+        started: Date.now(),
+        completed: false,
+        retryCount: 0
+      });
+
+      // Start download with chunks
+      await this.downloadWithChunks(songUrl, songPath, song);
+      
+      // Update download state
+      this.store.set(`downloads.${song._id}.completed`, true);
       
       logger.info(`Successfully downloaded song: ${song.name}`);
       this.emit('songDownloaded', { song, path: songPath });
@@ -71,26 +96,54 @@ class ChunkDownloadManager extends EventEmitter {
     }
   }
 
-  async downloadWithRetry(url, filePath, song, retryCount = 0) {
+  async downloadWithChunks(url, filePath, song) {
     try {
       const response = await fetch(url);
       if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
       
+      const totalSize = parseInt(response.headers.get('content-length') || '0');
+      const chunks = Math.ceil(totalSize / this.chunkSize);
+      
       const fileStream = fs.createWriteStream(filePath);
-      const reader = response.body.getReader();
       let downloadedSize = 0;
       
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        downloadedSize += value.length;
-        fileStream.write(Buffer.from(value));
+      for (let i = 0; i < chunks; i++) {
+        const start = i * this.chunkSize;
+        const end = Math.min(start + this.chunkSize, totalSize);
         
-        // İndirme ilerlemesini bildir
+        // Check if chunk already exists
+        const chunkState = this.store.get(`chunks.${song._id}.${i}`);
+        if (chunkState && chunkState.completed) {
+          downloadedSize += chunkState.size;
+          continue;
+        }
+
+        const chunkResponse = await fetch(url, {
+          headers: { Range: `bytes=${start}-${end}` }
+        });
+
+        if (!chunkResponse.ok) {
+          throw new Error(`Chunk download failed: ${chunkResponse.status}`);
+        }
+
+        const chunk = await chunkResponse.arrayBuffer();
+        fileStream.write(Buffer.from(chunk));
+        
+        downloadedSize += chunk.byteLength;
+        
+        // Save chunk state
+        this.store.set(`chunks.${song._id}.${i}`, {
+          completed: true,
+          size: chunk.byteLength,
+          timestamp: Date.now()
+        });
+
+        // Emit progress
         this.emit('downloadProgress', {
           song,
           downloaded: downloadedSize,
-          total: parseInt(response.headers.get('content-length') || '0')
+          total: totalSize,
+          progress: (downloadedSize / totalSize) * 100
         });
       }
       
@@ -102,20 +155,17 @@ class ChunkDownloadManager extends EventEmitter {
       });
 
     } catch (error) {
-      if (retryCount < 3 && this.isRetryableError(error)) {
-        logger.warn(`Retrying download for ${song.name}, attempt ${retryCount + 1}`);
-        await new Promise(resolve => setTimeout(resolve, 5000));
-        return this.downloadWithRetry(url, filePath, song, retryCount + 1);
+      if (NetworkErrorHandler.isRetryableError(error)) {
+        const downloadState = this.store.get(`downloads.${song._id}`);
+        if (downloadState.retryCount < 3) {
+          logger.warn(`Retrying download for ${song.name}`);
+          this.store.set(`downloads.${song._id}.retryCount`, downloadState.retryCount + 1);
+          await new Promise(resolve => setTimeout(resolve, 5000));
+          return this.downloadWithChunks(url, filePath, song);
+        }
       }
       throw error;
     }
-  }
-
-  isRetryableError(error) {
-    return error.code === 'ECONNRESET' || 
-           error.code === 'ETIMEDOUT' || 
-           error.code === 'ECONNREFUSED' ||
-           (error.message && error.message.includes('network'));
   }
 
   queueSongDownload(song, baseUrl, playlistId) {
@@ -137,8 +187,14 @@ class ChunkDownloadManager extends EventEmitter {
       logger.error(`Queue processing error for ${song.name}:`, error);
     } finally {
       this.activeDownloads--;
+      this.store.set('activeDownloads', this.activeDownloads);
       this.processQueue();
     }
+  }
+
+  clearDownloadState(songId) {
+    this.store.delete(`downloads.${songId}`);
+    this.store.delete(`chunks.${songId}`);
   }
 }
 
