@@ -20,6 +20,7 @@ class ChunkDownloadManager extends EventEmitter {
     this.timeoutManager = new TimeoutManager();
     this.isProcessing = false;
 
+    logger.info('ChunkDownloadManager initialized');
     this.resumeIncompleteDownloads();
   }
 
@@ -41,8 +42,16 @@ class ChunkDownloadManager extends EventEmitter {
 
   async downloadChunk(url, start, end, songId, playlistId, retryCount = 0) {
     const chunkId = `${songId}-${start}`;
+    const downloadId = `${songId}-${Date.now()}`;
     
     try {
+      if (!bandwidthManager.startDownload(downloadId)) {
+        logger.warn(`Download delayed due to bandwidth limits`, { chunkId });
+        return new Promise(resolve => setTimeout(() => resolve(
+          this.downloadChunk(url, start, end, songId, playlistId, retryCount)
+        ), 1000));
+      }
+
       downloadStateManager.updateChunkState(songId, chunkId, {
         status: 'downloading',
         startByte: start,
@@ -50,16 +59,18 @@ class ChunkDownloadManager extends EventEmitter {
         retryCount
       });
 
-      const chunk = await this._performChunkDownload(url, start, end, songId);
+      const chunk = await this._performChunkDownload(url, start, end, songId, downloadId);
       
       downloadStateManager.updateChunkState(songId, chunkId, {
         status: 'completed',
         size: chunk.length
       });
 
+      bandwidthManager.finishDownload(downloadId);
       return chunk;
 
     } catch (error) {
+      bandwidthManager.finishDownload(downloadId);
       downloadStateManager.updateChunkState(songId, chunkId, {
         status: 'failed',
         error: error.message
@@ -68,14 +79,32 @@ class ChunkDownloadManager extends EventEmitter {
     }
   }
 
-  async _performChunkDownload(url, start, end, songId) {
+  async _performChunkDownload(url, start, end, songId, downloadId) {
+    const startTime = Date.now();
+    let downloadedBytes = 0;
+
     const response = await axios({
       url,
       method: 'GET',
       responseType: 'arraybuffer',
       headers: { 
         Range: `bytes=${start}-${end}`
+      },
+      onDownloadProgress: (progressEvent) => {
+        downloadedBytes = progressEvent.loaded;
+        bandwidthManager.updateProgress(downloadId, downloadedBytes);
       }
+    });
+
+    const endTime = Date.now();
+    const duration = (endTime - startTime) / 1000;
+    const speed = downloadedBytes / duration;
+
+    logger.info(`Chunk download completed:`, {
+      songId,
+      chunkSize: downloadedBytes,
+      duration: `${duration.toFixed(2)}s`,
+      speed: `${(speed / (1024 * 1024)).toFixed(2)}MB/s`
     });
 
     return response.data;
