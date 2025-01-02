@@ -3,13 +3,14 @@ const path = require('path');
 const fs = require('fs');
 const Store = require('electron-store');
 const store = new Store();
-const chunkDownloadManager = require('../download/ChunkDownloadManager');
+const ChunkDownloadManager = require('../download/ChunkDownloadManager');
 const audioPlayer = require('../audio/AudioPlayer');
 
 class PlaylistHandler {
   constructor() {
     this.downloadPath = path.join(app.getPath('userData'), 'downloads');
     this.ensureDirectoryExists(this.downloadPath);
+    this.chunkDownloadManager = new ChunkDownloadManager();
     this.setupDownloadListeners();
   }
 
@@ -20,7 +21,7 @@ class PlaylistHandler {
   }
 
   setupDownloadListeners() {
-    chunkDownloadManager.on('songDownloaded', (songId) => {
+    this.chunkDownloadManager.on('songDownloaded', (songId) => {
       console.log(`Song ${songId} downloaded successfully`);
     });
   }
@@ -36,7 +37,7 @@ class PlaylistHandler {
       const firstSong = playlist.songs[0];
       if (firstSong) {
         console.log('Starting download of first song:', firstSong.name);
-        const firstSongPath = await chunkDownloadManager.downloadSong(
+        const firstSongPath = await this.chunkDownloadManager.downloadSong(
           firstSong,
           playlist.baseUrl,
           playlistDir
@@ -57,7 +58,7 @@ class PlaylistHandler {
       for (let i = 1; i < playlist.songs.length; i++) {
         const song = playlist.songs[i];
         console.log(`Adding song to queue: ${song.name}`);
-        chunkDownloadManager.queueSongDownload(
+        this.chunkDownloadManager.queueSongDownload(
           song,
           playlist.baseUrl,
           playlistDir

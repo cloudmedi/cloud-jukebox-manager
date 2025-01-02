@@ -1,56 +1,68 @@
-const BaseDownloadManager = require('./managers/BaseDownloadManager');
-const ChunkManager = require('./managers/ChunkManager');
-const ProgressManager = require('./managers/ProgressManager');
-const { createLogger } = require('../../utils/logger');
+const EventEmitter = require('events');
+const fs = require('fs');
+const path = require('path');
+const axios = require('axios');
 
-class ChunkDownloadManager extends BaseDownloadManager {
+class ChunkDownloadManager extends EventEmitter {
   constructor() {
     super();
-    this.logger = createLogger('chunk-download-manager');
-    this.chunkManager = new ChunkManager();
-    this.progressManager = new ProgressManager();
+    this.downloadQueue = [];
+    this.isDownloading = false;
   }
 
-  initialize(deviceToken, wsUrl) {
-    this.progressManager.initialize(deviceToken, wsUrl);
-  }
-
-  async processDownload(download) {
-    const { url, playlistId } = download;
-    
+  async downloadSong(song, baseUrl, downloadDir) {
     try {
-      const fileSize = await this.chunkManager.getFileSize(url);
-      const chunks = this.chunkManager.calculateChunks(fileSize);
+      console.log(`Starting download for song: ${song.name}`);
+      const songPath = path.join(downloadDir, `${song._id}.mp3`);
       
-      for (const [index, chunk] of chunks.entries()) {
-        const chunkData = await this.chunkManager.downloadChunk(
-          url, 
-          chunk.start, 
-          chunk.end,
-          (progressEvent) => {
-            const progress = (index + progressEvent.loaded / progressEvent.total) / chunks.length;
-            this.progressManager.updateProgress(playlistId, progress);
-          }
-        );
+      const response = await axios({
+        method: 'get',
+        url: `${baseUrl}/songs/${song._id}/download`,
+        responseType: 'stream'
+      });
 
-        await this.progressManager.markChunkCompleted(playlistId, `${index}`);
-        this.emit('chunkComplete', { 
-          downloadId: download.id, 
-          chunkIndex: index, 
-          totalChunks: chunks.length 
+      return new Promise((resolve, reject) => {
+        const writer = fs.createWriteStream(songPath);
+        
+        response.data.pipe(writer);
+        
+        writer.on('finish', () => {
+          console.log(`Download completed for song: ${song.name}`);
+          this.emit('songDownloaded', song._id);
+          resolve(songPath);
         });
-      }
-
-      return true;
+        
+        writer.on('error', (error) => {
+          console.error(`Error downloading song ${song.name}:`, error);
+          reject(error);
+        });
+      });
     } catch (error) {
-      this.logger.error(`Error processing download: ${error.message}`);
+      console.error(`Failed to download song ${song.name}:`, error);
       throw error;
     }
   }
 
-  cleanup() {
-    this.progressManager.close();
+  queueSongDownload(song, baseUrl, downloadDir) {
+    this.downloadQueue.push({ song, baseUrl, downloadDir });
+    this.processQueue();
+  }
+
+  async processQueue() {
+    if (this.isDownloading || this.downloadQueue.length === 0) return;
+
+    this.isDownloading = true;
+    const { song, baseUrl, downloadDir } = this.downloadQueue.shift();
+
+    try {
+      await this.downloadSong(song, baseUrl, downloadDir);
+    } catch (error) {
+      console.error('Error processing download queue:', error);
+    } finally {
+      this.isDownloading = false;
+      this.processQueue();
+    }
   }
 }
 
-module.exports = new ChunkDownloadManager();
+module.exports = ChunkDownloadManager;
