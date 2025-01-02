@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Music, Calendar, Users, ArrowRight } from "lucide-react";
@@ -112,57 +112,75 @@ export function PlaylistScheduleForm({ onSuccess }: PlaylistScheduleFormProps) {
 
   return (
     <Form {...form}>
-      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-w-4xl mx-auto">
-        <Card>
-          <CardContent>
-            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
-              <TabsList className="grid w-full grid-cols-3">
-                <TabsTrigger value="basic" className="flex items-center gap-2">
+      <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+        <Card className="border-none shadow-none bg-background">
+          <CardContent className="p-0">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
+              <TabsList className="grid w-full grid-cols-3 h-14 p-1 bg-muted/50">
+                <TabsTrigger 
+                  value="basic" 
+                  className="data-[state=active]:bg-background data-[state=active]:shadow-sm flex items-center gap-2 h-12"
+                >
                   <Music className="h-4 w-4" />
-                  Playlist Bilgileri
+                  Playlist
                 </TabsTrigger>
-                <TabsTrigger value="time" className="flex items-center gap-2">
+                <TabsTrigger 
+                  value="time" 
+                  className="data-[state=active]:bg-background data-[state=active]:shadow-sm flex items-center gap-2 h-12"
+                >
                   <Calendar className="h-4 w-4" />
-                  Zaman Ayarları
+                  Zaman
                 </TabsTrigger>
-                <TabsTrigger value="target" className="flex items-center gap-2">
+                <TabsTrigger 
+                  value="target" 
+                  className="data-[state=active]:bg-background data-[state=active]:shadow-sm flex items-center gap-2 h-12"
+                >
                   <Users className="h-4 w-4" />
-                  Hedef Seçimi
+                  Hedef
                 </TabsTrigger>
               </TabsList>
 
-              <ScrollArea className="h-[calc(100vh-400px)] px-1">
-                <TabsContent value="basic" className="space-y-4 mt-0">
+              <ScrollArea className="h-[calc(100vh-280px)] px-6">
+                <TabsContent value="basic" className="mt-0 space-y-6">
                   <BasicInfo />
                 </TabsContent>
 
-                <TabsContent value="time" className="space-y-4 mt-0">
+                <TabsContent value="time" className="mt-0 space-y-6">
                   <TimeSettings />
                 </TabsContent>
 
-                <TabsContent value="target" className="space-y-4 mt-0">
+                <TabsContent value="target" className="mt-0 space-y-6">
                   <TargetSelection />
                 </TabsContent>
               </ScrollArea>
 
-              <div className="flex justify-between pt-4 border-t">
+              <div className="flex justify-between px-6 py-4 border-t bg-muted/10">
                 <Button
                   type="button"
                   variant="outline"
                   onClick={handlePreviousTab}
                   disabled={activeTab === "basic"}
+                  className="w-32"
                 >
                   Geri
                 </Button>
                 
                 {activeTab !== "target" ? (
-                  <Button type="button" onClick={handleNextTab}>
+                  <Button 
+                    type="button" 
+                    onClick={handleNextTab}
+                    className="w-32"
+                  >
                     İleri
                     <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
                 ) : (
-                  <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting ? "Oluşturuluyor..." : "Zamanlama Oluştur"}
+                  <Button 
+                    type="submit" 
+                    disabled={isSubmitting}
+                    className="w-32"
+                  >
+                    {isSubmitting ? "Oluşturuluyor..." : "Oluştur"}
                   </Button>
                 )}
               </div>
