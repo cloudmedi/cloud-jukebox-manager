@@ -79,18 +79,23 @@ class StatusHandler {
       if (isOnline) {
         const activeDownload = await DownloadProgress.findOne({
           deviceToken: token,
-          status: 'downloading',
+          status: { $in: ['downloading', 'pending'] },
           lastUpdated: { $gte: new Date(Date.now() - 5 * 60 * 1000) }
         });
 
         if (activeDownload) {
           console.log(`Found active download for device ${token}, resuming...`);
+          
+          // Send resume command to device with all necessary information
           this.wss.sendToDevice(token, {
             type: 'resumeDownload',
             data: {
               playlistId: activeDownload.playlistId,
               progress: activeDownload.progress,
-              completedChunks: activeDownload.completedChunks
+              downloadedSongs: activeDownload.downloadedSongs,
+              totalSongs: activeDownload.totalSongs,
+              completedChunks: activeDownload.completedChunks || [],
+              status: 'downloading'
             }
           });
         }
@@ -139,7 +144,8 @@ class StatusHandler {
         downloadSpeed: downloadProgress.downloadSpeed,
         downloadedSongs: downloadProgress.downloadedSongs,
         totalSongs: downloadProgress.totalSongs,
-        estimatedTimeRemaining: downloadProgress.estimatedTimeRemaining
+        estimatedTimeRemaining: downloadProgress.estimatedTimeRemaining,
+        status: 'downloading'
       });
     } catch (error) {
       console.error('Error handling download progress:', error);

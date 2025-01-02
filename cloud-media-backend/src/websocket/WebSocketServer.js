@@ -76,33 +76,11 @@ class WebSocketServer {
         }
         break;
 
-      case 'volume':
-        const device = await Device.findOne({ token });
-        if (!device) return;
-
-        await device.setVolume(message.volume);
-        this.broadcastToAdmins({
-          type: 'deviceStatus',
-          token: token,
-          volume: message.volume
-        });
-        break;
-
-      case 'screenshot':
-        console.log('Screenshot received from device:', token);
-        this.broadcastToAdmins({
-          type: 'screenshot',
-          token: token,
-          data: message.data
-        });
-        break;
-
-      case 'error':
-        this.broadcastToAdmins({
-          type: 'deviceError',
-          token: token,
-          error: message.error
-        });
+      case 'resumeDownloadResponse':
+        console.log(`Device ${token} responded to resume request:`, message);
+        if (message.status === 'accepted') {
+          await this.downloadProgressHandler.handleDownloadResume(token, message);
+        }
         break;
 
       default:

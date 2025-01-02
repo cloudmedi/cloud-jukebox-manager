@@ -56,6 +56,25 @@ class DownloadProgressHandler {
     }
   }
 
+  async handleDownloadResume(token, message) {
+    try {
+      const downloadProgress = await DownloadProgress.findOne({
+        deviceToken: token,
+        playlistId: message.playlistId
+      });
+
+      if (downloadProgress) {
+        downloadProgress.status = 'downloading';
+        downloadProgress.lastUpdated = new Date();
+        await downloadProgress.save();
+
+        console.log(`Download resumed for device ${token}, playlist ${message.playlistId}`);
+      }
+    } catch (error) {
+      console.error('Error handling download resume:', error);
+    }
+  }
+
   calculateCompletedSongs(completedChunks) {
     if (!completedChunks || !Array.isArray(completedChunks)) {
       return 0;
@@ -87,13 +106,16 @@ class DownloadProgressHandler {
     try {
       // Get the most recent download progress for the device
       const progress = await DownloadProgress.findOne(
-        { deviceToken: token },
+        { 
+          deviceToken: token,
+          status: { $in: ['downloading', 'pending'] }
+        },
         {},
         { sort: { lastUpdated: -1 } }
       );
 
       if (!progress) {
-        console.log('No download state found for device:', token);
+        console.log('No active download state found for device:', token);
         return null;
       }
 
