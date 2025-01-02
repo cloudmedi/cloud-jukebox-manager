@@ -2,8 +2,8 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const { EventEmitter } = require('events');
-const downloadStateManager = require('./DownloadStateManager');
-const chunkManager = require('./ChunkManager');
+const downloadStateManager = require('./managers/DownloadStateManager');
+const chunkManager = require('./managers/ChunkManager');
 const { createLogger } = require('../../utils/logger');
 
 const logger = createLogger('chunk-download-manager');
