@@ -1,11 +1,29 @@
 import { useState } from "react";
-import { useQuery } from "@tanstack/react-query";
+import FullCalendar from "@fullcalendar/react";
+import dayGridPlugin from "@fullcalendar/daygrid";
+import timeGridPlugin from "@fullcalendar/timegrid";
+import interactionPlugin from "@fullcalendar/interaction";
+import { Button } from "@/components/ui/button";
+import { Calendar, List } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PlaylistScheduleForm } from "@/components/schedule/PlaylistScheduleForm";
+import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import { cn } from "@/lib/utils";
-import { ScheduleHeader } from "@/components/schedule/ScheduleHeader";
-import { ScheduleCalendar } from "@/components/schedule/ScheduleCalendar";
+
+interface Schedule {
+  _id: string;
+  playlist: {
+    _id: string;
+    name: string;
+  } | null;
+  startDate: string;
+  endDate: string;
+  status: 'active' | 'inactive';
+  targets: {
+    devices: string[];
+    groups: string[];
+  };
+}
 
 const Schedule = () => {
   const [view, setView] = useState<"timeGridWeek" | "dayGridMonth">("timeGridWeek");
@@ -50,16 +68,7 @@ const Schedule = () => {
       }`,
       start: schedule.startDate,
       end: schedule.endDate,
-      className: cn(
-        'rounded-lg shadow-sm border-l-4 p-2 transition-all hover:shadow-md',
-        schedule.status === 'active' 
-          ? 'border-emerald-500 bg-emerald-50/50' 
-          : 'border-gray-400 bg-gray-50/50'
-      ),
-      extendedProps: {
-        status: schedule.status,
-        targets: schedule.targets
-      }
+      backgroundColor: schedule.status === 'active' ? '#10b981' : '#6b7280',
     };
   }).filter(Boolean) || [];
 
@@ -88,12 +97,46 @@ const Schedule = () => {
 
   return (
     <div className="space-y-6">
-      <ScheduleHeader view={view} setView={setView} />
-      <ScheduleCalendar 
-        view={view}
-        events={events}
-        onDateSelect={handleDateSelect}
-      />
+      <div className="flex items-center justify-between">
+        <h2 className="text-3xl font-bold tracking-tight">Zamanlama</h2>
+        <div className="flex items-center gap-2">
+          <Button
+            variant={view === "timeGridWeek" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setView("timeGridWeek")}
+          >
+            <List className="h-4 w-4 mr-2" />
+            Haftalık
+          </Button>
+          <Button
+            variant={view === "dayGridMonth" ? "default" : "outline"}
+            size="sm"
+            onClick={() => setView("dayGridMonth")}
+          >
+            <Calendar className="h-4 w-4 mr-2" />
+            Aylık
+          </Button>
+        </div>
+      </div>
+
+      <div className="bg-background rounded-lg border p-4">
+        <FullCalendar
+          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+          initialView={view}
+          headerToolbar={false}
+          selectable={true}
+          selectMirror={true}
+          dayMaxEvents={true}
+          weekends={true}
+          events={events}
+          select={handleDateSelect}
+          height="auto"
+          locale="tr"
+          nowIndicator={true}
+          slotMinTime="00:00:00"
+          slotMaxTime="24:00:00"
+        />
+      </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
