@@ -3,10 +3,17 @@ import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Button } from "@/components/ui/button";
-import { Search, Users, Monitor, Check } from "lucide-react";
+import { Search, Users, Monitor, Check, Info } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import { useFormContext } from "react-hook-form";
+import { Card, CardContent } from "@/components/ui/card";
+import {
+  Tooltip,
+  TooltipContent,
+  TooltipProvider,
+  TooltipTrigger,
+} from "@/components/ui/tooltip";
 
 export function TargetSelection() {
   const [deviceSearch, setDeviceSearch] = useState("");
@@ -60,139 +67,160 @@ export function TargetSelection() {
     filteredGroups.every((group: any) => selectedGroups.includes(group._id));
 
   return (
-    <div className="space-y-4">
+    <div className="space-y-6">
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-lg font-semibold text-primary">
-              <Monitor className="h-5 w-5" />
-              <span>Cihazlar</span>
+        {/* Cihazlar Bölümü */}
+        <Card>
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Monitor className="h-5 w-5 text-primary" />
+                <h3 className="text-lg font-semibold">Cihazlar</h3>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-4 w-4 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Zamanlamanın uygulanacağı cihazları seçin</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <FormField
+                name="selectAllDevices"
+                render={({ field }) => (
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={areAllDevicesSelected}
+                      onCheckedChange={handleSelectAllDevices}
+                    />
+                    <span className="text-sm">Tümünü Seç</span>
+                  </div>
+                )}
+              />
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8"
-              onClick={() => handleSelectAllDevices(!areAllDevicesSelected)}
-            >
-              {areAllDevicesSelected ? (
-                <>
-                  <Check className="mr-1 h-4 w-4" />
-                  Tümünü Kaldır
-                </>
-              ) : (
-                <>
-                  <Check className="mr-1 h-4 w-4" />
-                  Tümünü Seç
-                </>
-              )}
-            </Button>
-          </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Cihaz ara..."
-              value={deviceSearch}
-              onChange={(e) => setDeviceSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <ScrollArea className="h-[300px] rounded-md border bg-card">
-            <div className="p-4 space-y-2">
-              {filteredDevices.map((device: any) => (
-                <FormField
-                  key={device._id}
-                  name="targetDevices"
-                  render={({ field }) => (
-                    <div className="flex items-center space-x-2 rounded-lg p-2 hover:bg-accent transition-colors">
-                      <Checkbox
-                        checked={field.value?.includes(device._id)}
-                        onCheckedChange={(checked) => {
-                          const newValue = checked
-                            ? [...(field.value || []), device._id]
-                            : field.value?.filter((id: string) => id !== device._id);
-                          field.onChange(newValue);
-                        }}
-                      />
-                      <div className="grid gap-1.5 leading-none">
-                        <span className="text-sm font-medium">{device.name}</span>
-                        {device.location && (
-                          <span className="text-xs text-muted-foreground">
-                            {device.location}
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  )}
-                />
-              ))}
-            </div>
-          </ScrollArea>
-        </div>
 
-        <div className="space-y-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2 text-lg font-semibold text-primary">
-              <Users className="h-5 w-5" />
-              <span>Gruplar</span>
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Cihaz ara..."
+                value={deviceSearch}
+                onChange={(e) => setDeviceSearch(e.target.value)}
+                className="pl-9"
+              />
             </div>
-            <Button
-              variant="outline"
-              size="sm"
-              className="h-8"
-              onClick={() => handleSelectAllGroups(!areAllGroupsSelected)}
-            >
-              {areAllGroupsSelected ? (
-                <>
-                  <Check className="mr-1 h-4 w-4" />
-                  Tümünü Kaldır
-                </>
-              ) : (
-                <>
-                  <Check className="mr-1 h-4 w-4" />
-                  Tümünü Seç
-                </>
-              )}
-            </Button>
-          </div>
-          <div className="relative">
-            <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Grup ara..."
-              value={groupSearch}
-              onChange={(e) => setGroupSearch(e.target.value)}
-              className="pl-9"
-            />
-          </div>
-          <ScrollArea className="h-[300px] rounded-md border bg-card">
-            <div className="p-4 space-y-2">
-              {filteredGroups.map((group: any) => (
-                <FormField
-                  key={group._id}
-                  name="targetGroups"
-                  render={({ field }) => (
-                    <div className="flex items-center space-x-2 rounded-lg p-2 hover:bg-accent transition-colors">
-                      <Checkbox
-                        checked={field.value?.includes(group._id)}
-                        onCheckedChange={(checked) => {
-                          const newValue = checked
-                            ? [...(field.value || []), group._id]
-                            : field.value?.filter((id: string) => id !== group._id);
-                          field.onChange(newValue);
-                        }}
-                      />
-                      <div className="grid gap-1.5 leading-none">
-                        <span className="text-sm font-medium">{group.name}</span>
-                        <span className="text-xs text-muted-foreground">
-                          {group.devices?.length || 0} cihaz
-                        </span>
-                      </div>
-                    </div>
-                  )}
-                />
-              ))}
+
+            <ScrollArea className="h-[300px] rounded-md">
+              <div className="space-y-1">
+                {filteredDevices.map((device: any) => (
+                  <FormField
+                    key={device._id}
+                    name="targetDevices"
+                    render={({ field }) => (
+                      <label className="flex items-center p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors">
+                        <Checkbox
+                          checked={field.value?.includes(device._id)}
+                          onCheckedChange={(checked) => {
+                            const newValue = checked
+                              ? [...(field.value || []), device._id]
+                              : field.value?.filter((id: string) => id !== device._id);
+                            field.onChange(newValue);
+                          }}
+                        />
+                        <div className="ml-3">
+                          <p className="text-sm font-medium">{device.name}</p>
+                          {device.location && (
+                            <p className="text-xs text-muted-foreground">
+                              {device.location}
+                            </p>
+                          )}
+                        </div>
+                        {device.isOnline && (
+                          <span className="ml-auto flex h-2 w-2 rounded-full bg-green-500" />
+                        )}
+                      </label>
+                    )}
+                  />
+                ))}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
+
+        {/* Gruplar Bölümü */}
+        <Card>
+          <CardContent className="p-4 space-y-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Users className="h-5 w-5 text-primary" />
+                <h3 className="text-lg font-semibold">Gruplar</h3>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger>
+                      <Info className="h-4 w-4 text-muted-foreground" />
+                    </TooltipTrigger>
+                    <TooltipContent>
+                      <p>Zamanlamanın uygulanacağı grupları seçin</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
+              <FormField
+                name="selectAllGroups"
+                render={({ field }) => (
+                  <div className="flex items-center gap-2">
+                    <Checkbox
+                      checked={areAllGroupsSelected}
+                      onCheckedChange={handleSelectAllGroups}
+                    />
+                    <span className="text-sm">Tümünü Seç</span>
+                  </div>
+                )}
+              />
             </div>
-          </ScrollArea>
-        </div>
+
+            <div className="relative">
+              <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Grup ara..."
+                value={groupSearch}
+                onChange={(e) => setGroupSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+
+            <ScrollArea className="h-[300px] rounded-md">
+              <div className="space-y-1">
+                {filteredGroups.map((group: any) => (
+                  <FormField
+                    key={group._id}
+                    name="targetGroups"
+                    render={({ field }) => (
+                      <label className="flex items-center p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors">
+                        <Checkbox
+                          checked={field.value?.includes(group._id)}
+                          onCheckedChange={(checked) => {
+                            const newValue = checked
+                              ? [...(field.value || []), group._id]
+                              : field.value?.filter((id: string) => id !== group._id);
+                            field.onChange(newValue);
+                          }}
+                        />
+                        <div className="ml-3">
+                          <p className="text-sm font-medium">{group.name}</p>
+                          <p className="text-xs text-muted-foreground">
+                            {group.devices?.length || 0} cihaz
+                          </p>
+                        </div>
+                      </label>
+                    )}
+                  />
+                ))}
+              </div>
+            </ScrollArea>
+          </CardContent>
+        </Card>
       </div>
     </div>
   );
