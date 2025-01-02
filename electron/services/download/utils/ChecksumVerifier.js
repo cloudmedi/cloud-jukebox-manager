@@ -38,12 +38,22 @@ class ChecksumVerifier {
   static async calculateFileChecksum(filePath) {
     return new Promise((resolve, reject) => {
       const hash = crypto.createHash('sha256');
-      const stream = fs.createReadStream(filePath);
+      const stream = require('fs').createReadStream(filePath);
       
       stream.on('data', data => hash.update(data));
       stream.on('end', () => resolve(hash.digest('hex')));
       stream.on('error', reject);
     });
+  }
+
+  static async verifyFileChecksum(filePath, expectedChecksum) {
+    try {
+      const calculatedChecksum = await this.calculateFileChecksum(filePath);
+      return calculatedChecksum === expectedChecksum;
+    } catch (error) {
+      logger.error('File checksum verification error:', error);
+      return false;
+    }
   }
 }
 
