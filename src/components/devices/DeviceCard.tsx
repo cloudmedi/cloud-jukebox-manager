@@ -13,7 +13,6 @@ import {
   CheckCircle2, 
   XCircle,
   RefreshCw,
-  Download
 } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
@@ -101,7 +100,7 @@ export const DeviceCard = ({ device, isSelected, onSelect }: DeviceCardProps) =>
     }
   };
 
-  const getGroupColor = (groupId?: string) => {
+  const getGroupColor = (groupId?: string | null) => {
     if (!groupId) return "bg-gray-100";
     
     const hash = groupId.split('').reduce((acc, char) => char.charCodeAt(0) + acc, 0);
