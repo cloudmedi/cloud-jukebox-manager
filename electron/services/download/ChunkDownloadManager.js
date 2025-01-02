@@ -144,6 +144,14 @@ class ChunkDownloadManager extends EventEmitter {
     } catch (error) {
       console.error(`Error in chunked download for ${song.name}:`, error);
       throw error;
+    } finally {
+      // Cleanup işlemlerini finally bloğunda yap
+      try {
+        await ChunkMemoryManager.cleanupMemory(true);
+        this.activeDownloads.delete(song._id);
+      } catch (cleanupError) {
+        console.error('Error during cleanup:', cleanupError);
+      }
     }
   }
 
