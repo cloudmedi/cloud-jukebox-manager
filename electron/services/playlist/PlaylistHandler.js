@@ -12,7 +12,6 @@ class PlaylistHandler {
     this.downloadPath = path.join(app.getPath('userData'), 'downloads');
     this.ensureDirectoryExists(this.downloadPath);
     this.setupChunkDownloadListeners();
-    this.activeDownloads = new Set();
   }
 
   ensureDirectoryExists(dir) {
@@ -22,16 +21,16 @@ class PlaylistHandler {
   }
 
   setupChunkDownloadListeners() {
-    chunkDownloadManager.on('firstChunkReady', ({ songId, songPath, buffer }) => {
+    chunkDownloadManager.on('firstChunkReady', ({ songId, songPath }) => {
       console.log(`First chunk ready for song ${songId}, path: ${songPath}`);
-      audioPlayer.handleFirstChunkReady(songId, songPath, buffer);
+      // Notify audio player that first chunk is ready
+      audioPlayer.handleFirstChunkReady(songId, songPath);
     });
 
     chunkDownloadManager.on('progress', ({ songId, progress, isComplete }) => {
       console.log(`Download progress for ${songId}: ${progress}%`);
       if (isComplete) {
         console.log(`Download completed for song ${songId}`);
-        this.activeDownloads.delete(songId);
       }
     });
   }
@@ -43,34 +42,24 @@ class PlaylistHandler {
       const playlistDir = path.join(this.downloadPath, playlist._id);
       this.ensureDirectoryExists(playlistDir);
 
-      // Tüm şarkıları paralel olarak indirmeye başla
-      const downloadPromises = playlist.songs.map(async (song, index) => {
-        if (this.activeDownloads.has(song._id)) {
-          console.log(`Song ${song.name} is already being downloaded`);
-          return;
-        }
+      // Start downloading first song immediately
+      const firstSong = playlist.songs[0];
+      if (firstSong) {
+        await chunkDownloadManager.downloadSongInChunks(
+          firstSong,
+          playlist.baseUrl,
+          playlistDir
+        );
+      }
 
-        this.activeDownloads.add(song._id);
-        
-        try {
-          await chunkDownloadManager.downloadSongInChunks(
-            song,
-            playlist.baseUrl,
-            playlistDir
-          );
-
-          // Şarkı yolunu güncelle
-          song.localPath = path.join(playlistDir, `${song._id}.mp3`);
-          
-          console.log(`Successfully downloaded song: ${song.name}`);
-        } catch (error) {
-          console.error(`Error downloading song ${song.name}:`, error);
-          this.activeDownloads.delete(song._id);
-        }
-      });
-
-      // Tüm indirme işlemlerinin tamamlanmasını bekle
-      await Promise.all(downloadPromises);
+      // Queue remaining songs for download
+      for (let i = 1; i < playlist.songs.length; i++) {
+        chunkDownloadManager.addToQueue(
+          playlist.songs[i],
+          playlist.baseUrl,
+          playlistDir
+        );
+      }
 
       // Store playlist info
       const updatedPlaylist = {
