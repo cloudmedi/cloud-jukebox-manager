@@ -10,9 +10,21 @@ class ChunkDownloadManager extends EventEmitter {
     this.activeDownloads = new Map();
     this.downloadQueue = [];
     this.maxConcurrentDownloads = 3;
-    this.chunkSize = 1024 * 1024; // 1MB chunks
     this.maxRetries = 3;
+    this.retryDelays = [2000, 4000, 8000]; // Exponential backoff
     this.isProcessing = false;
+    this.timeout = 30000; // 30 saniye timeout
+  }
+
+  calculateChunkSize(fileSize) {
+    // Dosya boyutuna göre dinamik chunk boyutu hesaplama
+    if (fileSize < 10 * 1024 * 1024) { // 10MB'dan küçük
+      return 512 * 1024; // 512KB chunks
+    } else if (fileSize < 100 * 1024 * 1024) { // 10MB-100MB arası
+      return 1024 * 1024; // 1MB chunks
+    } else {
+      return 2 * 1024 * 1024; // 2MB chunks
+    }
   }
 
   async downloadSong(song, baseUrl, playlistDir) {
@@ -24,10 +36,11 @@ class ChunkDownloadManager extends EventEmitter {
       const tempPath = `${songPath}.temp`;
 
       // Get file size
-      const { headers } = await axios.head(songUrl);
+      const { headers } = await axios.head(songUrl, { timeout: this.timeout });
       const fileSize = parseInt(headers['content-length'], 10);
+      const chunkSize = this.calculateChunkSize(fileSize);
       
-      // Check if partial file exists
+      // Resume kontrolü
       let startByte = 0;
       if (fs.existsSync(tempPath)) {
         const stats = fs.statSync(tempPath);
@@ -35,27 +48,51 @@ class ChunkDownloadManager extends EventEmitter {
         console.log(`Resuming download from byte ${startByte}`);
       }
 
-      const chunks = Math.ceil((fileSize - startByte) / this.chunkSize);
+      const chunks = Math.ceil((fileSize - startByte) / chunkSize);
       const writer = fs.createWriteStream(tempPath, { flags: startByte ? 'a' : 'w' });
       
       for (let i = 0; i < chunks; i++) {
-        const start = startByte + (i * this.chunkSize);
-        const end = Math.min(start + this.chunkSize - 1, fileSize - 1);
+        const start = startByte + (i * chunkSize);
+        const end = Math.min(start + chunkSize - 1, fileSize - 1);
         
-        await this.downloadChunk(songUrl, start, end, writer, song._id);
-        
-        // Emit progress
-        const progress = Math.round(((i + 1) / chunks) * 100);
-        this.emit('progress', { songId: song._id, progress });
+        let retryCount = 0;
+        let success = false;
+
+        while (!success && retryCount < this.maxRetries) {
+          try {
+            const chunk = await this.downloadChunk(songUrl, start, end, song._id);
+            
+            // Chunk checksum kontrolü
+            const chunkChecksum = await ChecksumUtils.calculateSHA256(chunk);
+            
+            writer.write(chunk);
+            success = true;
+
+            // İlerleme durumunu bildir
+            const progress = Math.round(((i + 1) / chunks) * 100);
+            this.emit('progress', { songId: song._id, progress });
+
+          } catch (error) {
+            retryCount++;
+            console.error(`Chunk download error (attempt ${retryCount}/${this.maxRetries}):`, error);
+            
+            if (retryCount === this.maxRetries) {
+              throw new Error(`Failed to download chunk after ${this.maxRetries} attempts`);
+            }
+            
+            // Exponential backoff
+            await new Promise(resolve => setTimeout(resolve, this.retryDelays[retryCount - 1]));
+          }
+        }
       }
 
       await new Promise((resolve) => writer.end(resolve));
       
-      // Verify checksum after download
+      // Final checksum verification
       if (song.checksum) {
         const isValid = await ChecksumUtils.verifyFileChecksum(tempPath, song.checksum);
         if (!isValid) {
-          throw new Error('Checksum verification failed');
+          throw new Error('Final checksum verification failed');
         }
       }
 
@@ -67,33 +104,30 @@ class ChunkDownloadManager extends EventEmitter {
 
     } catch (error) {
       console.error(`Error downloading song ${song.name}:`, error);
+      // Cleanup temp file in case of error
+      if (fs.existsSync(tempPath)) {
+        fs.unlinkSync(tempPath);
+      }
       throw error;
     }
   }
 
-  async downloadChunk(url, start, end, writer, songId, retryCount = 0) {
+  async downloadChunk(url, start, end, songId) {
     try {
       const response = await axios({
         url,
         method: 'GET',
-        responseType: 'stream',
+        responseType: 'arraybuffer',
+        timeout: this.timeout,
         headers: {
           Range: `bytes=${start}-${end}`
         }
       });
 
-      return new Promise((resolve, reject) => {
-        response.data.pipe(writer, { end: false });
-        response.data.on('end', resolve);
-        response.data.on('error', reject);
-      });
+      return response.data;
 
     } catch (error) {
-      if (retryCount < this.maxRetries) {
-        console.log(`Retrying chunk download (${retryCount + 1}/${this.maxRetries})`);
-        await new Promise(resolve => setTimeout(resolve, 1000 * (retryCount + 1)));
-        return this.downloadChunk(url, start, end, writer, songId, retryCount + 1);
-      }
+      console.error(`Error downloading chunk for song ${songId}:`, error);
       throw error;
     }
   }
