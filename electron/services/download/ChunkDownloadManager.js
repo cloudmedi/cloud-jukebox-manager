@@ -1,194 +1,130 @@
-const axios = require('axios');
-const fs = require('fs');
+const { app } = require('electron');
 const path = require('path');
-const { EventEmitter } = require('events');
-const TimeoutManager = require('./utils/TimeoutManager');
-const NetworkErrorHandler = require('./utils/NetworkErrorHandler');
-const ChecksumVerifier = require('./utils/ChecksumVerifier');
-const downloadStateManager = require('./DownloadStateManager');
+const fs = require('fs');
 const { createLogger } = require('../../utils/logger');
-const bandwidthManager = require('./BandwidthManager');
+const Store = require('electron-store');
+const store = new Store();
 
 const logger = createLogger('chunk-download-manager');
 
-class ChunkDownloadManager extends EventEmitter {
+class ChunkDownloadManager {
   constructor() {
-    super();
-    this.activeDownloads = new Map();
     this.downloadQueue = [];
-    this.maxConcurrentDownloads = bandwidthManager.maxConcurrentDownloads;
-    this.timeoutManager = new TimeoutManager();
-    this.isProcessing = false;
-
-    this.resumeIncompleteDownloads();
+    this.activeDownloads = 0;
+    this.maxConcurrentDownloads = 3;
+    this.baseDownloadPath = path.join(app.getPath('userData'), 'downloads');
+    this.ensureBaseDirectory();
   }
 
-  async resumeIncompleteDownloads() {
-    const incompleteDownloads = downloadStateManager.getIncompleteDownloads();
-    logger.info(`Found ${incompleteDownloads.length} incomplete downloads to resume`);
-
-    for (const playlist of incompleteDownloads) {
-      for (const song of playlist.songs) {
-        if (song.status !== 'completed') {
-          const downloadState = downloadStateManager.getSongDownloadState(song.id);
-          if (downloadState.chunks) {
-            this.queueSongDownload(song, playlist.baseUrl, playlist.downloadPath, true);
-          }
-        }
-      }
+  ensureBaseDirectory() {
+    if (!fs.existsSync(this.baseDownloadPath)) {
+      fs.mkdirSync(this.baseDownloadPath, { recursive: true });
+      logger.info(`Created base download directory: ${this.baseDownloadPath}`);
     }
   }
 
-  async downloadChunk(url, start, end, songId, playlistId, retryCount = 0) {
-    const chunkId = `${songId}-${start}`;
-    
+  getPlaylistDirectory(playlistId) {
+    return path.join(this.baseDownloadPath, playlistId);
+  }
+
+  ensurePlaylistDirectory(playlistId) {
+    const playlistDir = this.getPlaylistDirectory(playlistId);
+    if (!fs.existsSync(playlistDir)) {
+      fs.mkdirSync(playlistDir, { recursive: true });
+      logger.info(`Created playlist directory: ${playlistDir}`);
+    }
+    return playlistDir;
+  }
+
+  async downloadSong(song, baseUrl, playlistId) {
     try {
-      downloadStateManager.updateChunkState(songId, chunkId, {
-        status: 'downloading',
-        startByte: start,
-        endByte: end,
-        retryCount
-      });
-
-      const chunk = await this._performChunkDownload(url, start, end, songId);
+      logger.info(`Starting download for song: ${song.name}`);
       
-      downloadStateManager.updateChunkState(songId, chunkId, {
-        status: 'completed',
-        size: chunk.length
-      });
-
-      return chunk;
-
-    } catch (error) {
-      downloadStateManager.updateChunkState(songId, chunkId, {
-        status: 'failed',
-        error: error.message
-      });
-      throw error;
-    }
-  }
-
-  async _performChunkDownload(url, start, end, songId) {
-    const response = await axios({
-      url,
-      method: 'GET',
-      responseType: 'arraybuffer',
-      headers: { 
-        Range: `bytes=${start}-${end}`
-      }
-    });
-
-    return response.data;
-  }
-
-  async downloadSong(song, baseUrl, playlistDir, isResume = false) {
-    logger.info(`Starting download for song: ${song.name}`);
-    
-    const songPath = path.join(playlistDir, `${song._id}.mp3`);
-    const tempSongPath = `${songPath}.temp`;
-    const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
-
-    const { headers } = await axios.head(songUrl);
-    const fileSize = parseInt(headers['content-length'], 10);
-    const chunkSize = this.calculateChunkSize(fileSize);
-    
-    // Resume control
-    let startByte = 0;
-    if (fs.existsSync(tempSongPath)) {
-      const stats = fs.statSync(tempSongPath);
-      startByte = stats.size;
-      logger.info(`Resuming download from byte ${startByte}`);
-    }
-
-    const chunks = Math.ceil((fileSize - startByte) / chunkSize);
-    const writer = fs.createWriteStream(tempSongPath, { flags: startByte ? 'a' : 'w' });
-    
-    try {
-      for (let i = 0; i < chunks; i++) {
-        const start = startByte + (i * chunkSize);
-        const end = Math.min(start + chunkSize - 1, fileSize - 1);
-        
-        const chunk = await this.downloadChunk(songUrl, start, end, song._id, playlistDir);
-        writer.write(chunk);
-
-        const progress = Math.round(((i + 1) / chunks) * 100);
-        this.emit('progress', { 
-          songId: song._id, 
-          progress,
-          downloadedSize: start + chunk.length,
-          totalSize: fileSize,
-          currentChunk: i + 1,
-          totalChunks: chunks
-        });
-      }
-
-      await new Promise((resolve) => writer.end(resolve));
+      const playlistDir = this.ensurePlaylistDirectory(playlistId);
+      const songPath = path.join(playlistDir, `${song._id}.mp3`);
       
-      // Final checksum verification
-      if (song.checksum) {
-        const isValid = await ChecksumVerifier.verifyFileChecksum(tempSongPath, song.checksum);
-        if (!isValid) {
-          throw new Error('Final checksum verification failed');
+      // Eğer dosya zaten varsa ve tamamsa, tekrar indirme
+      if (fs.existsSync(songPath)) {
+        const stats = fs.statSync(songPath);
+        if (stats.size > 0) {
+          logger.info(`Song already exists: ${song.name}`);
+          return songPath;
         }
       }
 
-      fs.renameSync(tempSongPath, songPath);
-      logger.info(`Download completed for ${song.name}`);
+      const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
+      
+      // İndirme işlemini başlat
+      await this.downloadWithRetry(songUrl, songPath, song);
+      
+      logger.info(`Successfully downloaded song: ${song.name}`);
       return songPath;
 
     } catch (error) {
       logger.error(`Error downloading song ${song.name}:`, error);
-      if (fs.existsSync(tempSongPath)) {
-        fs.unlinkSync(tempSongPath);
+      throw error;
+    }
+  }
+
+  async downloadWithRetry(url, filePath, song, retryCount = 0) {
+    try {
+      const response = await fetch(url);
+      if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+      
+      const fileStream = fs.createWriteStream(filePath);
+      const reader = response.body.getReader();
+      
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        fileStream.write(Buffer.from(value));
+      }
+      
+      fileStream.end();
+      
+      return new Promise((resolve, reject) => {
+        fileStream.on('finish', resolve);
+        fileStream.on('error', reject);
+      });
+
+    } catch (error) {
+      if (retryCount < 3 && this.isRetryableError(error)) {
+        logger.warn(`Retrying download for ${song.name}, attempt ${retryCount + 1}`);
+        await new Promise(resolve => setTimeout(resolve, 5000));
+        return this.downloadWithRetry(url, filePath, song, retryCount + 1);
       }
       throw error;
     }
   }
 
-  queueSongDownload(song, baseUrl, playlistDir, isResume = false) {
-    logger.info(`Adding song to queue: ${song.name}`);
-    this.downloadQueue.push({ song, baseUrl, playlistDir, isResume });
+  isRetryableError(error) {
+    return error.code === 'ECONNRESET' || 
+           error.code === 'ETIMEDOUT' || 
+           error.code === 'ECONNREFUSED' ||
+           (error.message && error.message.includes('network'));
+  }
+
+  queueSongDownload(song, baseUrl, playlistId) {
+    this.downloadQueue.push({ song, baseUrl, playlistId });
     this.processQueue();
   }
 
   async processQueue() {
-    if (this.isProcessing || this.activeDownloads.size >= this.maxConcurrentDownloads) {
+    if (this.activeDownloads >= this.maxConcurrentDownloads || this.downloadQueue.length === 0) {
       return;
     }
 
-    this.isProcessing = true;
+    this.activeDownloads++;
+    const { song, baseUrl, playlistId } = this.downloadQueue.shift();
 
     try {
-      while (
-        this.downloadQueue.length > 0 && 
-        this.activeDownloads.size < this.maxConcurrentDownloads
-      ) {
-        const download = this.downloadQueue.shift();
-        if (download) {
-          const { song, baseUrl, playlistDir } = download;
-          this.activeDownloads.set(song._id, download);
-          
-          try {
-            await this.downloadSong(song, baseUrl, playlistDir);
-            this.emit('songDownloaded', song._id);
-          } finally {
-            this.activeDownloads.delete(song._id);
-          }
-        }
-      }
+      await this.downloadSong(song, baseUrl, playlistId);
+    } catch (error) {
+      logger.error(`Queue processing error for ${song.name}:`, error);
     } finally {
-      this.isProcessing = false;
-      
-      if (this.downloadQueue.length > 0) {
-        this.processQueue();
-      }
+      this.activeDownloads--;
+      this.processQueue();
     }
-  }
-
-  calculateChunkSize(fileSize) {
-    if (fileSize < 10 * 1024 * 1024) return 256 * 1024; // 256KB
-    if (fileSize < 100 * 1024 * 1024) return 1024 * 1024; // 1MB
-    return 2 * 1024 * 1024; // 2MB
   }
 }
 
