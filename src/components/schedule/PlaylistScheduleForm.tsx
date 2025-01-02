@@ -24,7 +24,6 @@ export function PlaylistScheduleForm({
   
   const form = useForm<ScheduleFormData>({
     defaultValues: {
-      name: "",
       playlist: "",
       startDate: initialStartDate || new Date(),
       endDate: initialEndDate || new Date(),
@@ -40,16 +39,30 @@ export function PlaylistScheduleForm({
 
   const mutation = useMutation({
     mutationFn: async (data: ScheduleFormData) => {
-      const response = await fetch("/api/playlist-schedules", {
+      // API'ye gönderilecek veriyi düzenle
+      const payload = {
+        playlist: data.playlist,
+        startDate: data.startDate,
+        endDate: data.endDate,
+        repeatType: data.repeatType,
+        targets: {
+          devices: data.targets.devices,
+          groups: data.targets.groups
+        },
+        createdBy: "admin" // Geçici olarak sabit bir değer atadık
+      };
+
+      const response = await fetch("http://localhost:5000/api/playlist-schedules", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify(data),
+        body: JSON.stringify(payload),
       });
 
       if (!response.ok) {
-        throw new Error("Zamanlama oluşturulamadı");
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Zamanlama oluşturulamadı");
       }
 
       return response.json();
@@ -61,7 +74,7 @@ export function PlaylistScheduleForm({
       });
       onSuccess?.();
     },
-    onError: (error) => {
+    onError: (error: Error) => {
       toast({
         title: "Hata",
         description: error.message,
