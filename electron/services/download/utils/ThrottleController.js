@@ -7,14 +7,14 @@ class ThrottleController extends EventEmitter {
   constructor(maxBytesPerSecond) {
     super();
     this.maxBytesPerSecond = maxBytesPerSecond;
+    this.tokens = maxBytesPerSecond;
+    this.lastRefill = Date.now();
     this.bytesTransferred = 0;
-    this.lastCheck = Date.now();
     this.paused = false;
     this.throttleQueue = Promise.resolve();
   }
 
   async throttle(bytes) {
-    // Queue'ya ekle ve sırayla işle
     return new Promise((resolve) => {
       this.throttleQueue = this.throttleQueue.then(async () => {
         try {
@@ -22,50 +22,46 @@ class ThrottleController extends EventEmitter {
           resolve();
         } catch (error) {
           logger.error('[THROTTLE] Error during throttling:', error);
-          resolve(); // Hata durumunda bile devam et
+          resolve();
         }
       });
     });
   }
 
   async _applyThrottle(bytes) {
-    this.bytesTransferred += bytes;
+    // Token bucket doldurma
     const now = Date.now();
-    const duration = (now - this.lastCheck) / 1000;
-    const currentSpeed = this.bytesTransferred / duration;
+    const timePassed = (now - this.lastRefill) / 1000;
+    this.tokens = Math.min(
+      this.maxBytesPerSecond,
+      this.tokens + (timePassed * this.maxBytesPerSecond)
+    );
+    this.lastRefill = now;
 
-    if (currentSpeed > this.maxBytesPerSecond) {
+    // Token kontrolü
+    if (bytes > this.tokens) {
       const requiredDelay = Math.ceil(
-        (this.bytesTransferred / this.maxBytesPerSecond) * 1000 - (now - this.lastCheck)
+        ((bytes - this.tokens) / this.maxBytesPerSecond) * 1000
       );
 
       if (requiredDelay > 0) {
         this.paused = true;
-        logger.debug(`[THROTTLE] Applying throttle:`, {
-          currentSpeed: `${(currentSpeed / (1024 * 1024)).toFixed(2)}MB/s`,
-          maxSpeed: `${(this.maxBytesPerSecond / (1024 * 1024)).toFixed(2)}MB/s`,
-          delay: `${requiredDelay}ms`,
-          bytesTransferred: `${(this.bytesTransferred / 1024).toFixed(2)}KB`
+        logger.debug(`[THROTTLE] Waiting for tokens:`, {
+          requiredBytes: bytes,
+          availableTokens: this.tokens,
+          delay: `${requiredDelay}ms`
         });
 
-        // Progressive delay - hız aşımı arttıkça delay'i artır
-        const progressiveDelay = requiredDelay * (currentSpeed / this.maxBytesPerSecond);
-        
-        await new Promise(resolve => setTimeout(resolve, progressiveDelay));
+        await new Promise(resolve => setTimeout(resolve, requiredDelay));
         
         this.paused = false;
-        this.bytesTransferred = 0;
-        this.lastCheck = Date.now();
-        
-        logger.debug(`[THROTTLE] Throttle released after ${progressiveDelay}ms delay`);
+        this.tokens = this.maxBytesPerSecond;
+        logger.debug(`[THROTTLE] Tokens refilled after ${requiredDelay}ms delay`);
       }
     }
 
-    // Her saniye başında veya büyük gecikme sonrası sayaçları sıfırla
-    if (duration >= 1 || this.bytesTransferred >= this.maxBytesPerSecond) {
-      this.bytesTransferred = 0;
-      this.lastCheck = now;
-    }
+    this.tokens -= bytes;
+    this.bytesTransferred += bytes;
   }
 
   isPaused() {

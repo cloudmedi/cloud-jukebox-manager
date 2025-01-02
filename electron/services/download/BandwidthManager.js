@@ -67,15 +67,8 @@ class BandwidthManager extends EventEmitter {
       const timeDiff = (now - stats.lastUpdate) / 1000;
       const bytesDiff = bytesDownloaded - stats.bytesDownloaded;
       
-      // Önce throttling uygula
-      try {
-        await this.throttleController.throttle(bytesDiff);
-      } catch (error) {
-        logger.error(`[THROTTLE ERROR] Error during throttling:`, {
-          downloadId,
-          error: error.message
-        });
-      }
+      // Throttling uygula
+      await this.throttleController.throttle(bytesDiff);
 
       const currentSpeed = bytesDiff / timeDiff;
       
@@ -93,14 +86,6 @@ class BandwidthManager extends EventEmitter {
         currentSpeed,
         lastUpdate: now
       });
-
-      if (Math.floor(bytesDownloaded / (1024 * 1024)) > Math.floor(stats.bytesDownloaded / (1024 * 1024))) {
-        logger.info(`[DOWNLOAD PROGRESS] Download progress update:`, {
-          downloadId,
-          totalDownloaded: `${(bytesDownloaded / (1024 * 1024)).toFixed(2)}MB`,
-          currentSpeed: `${(currentSpeed / (1024 * 1024)).toFixed(2)}MB/s`
-        });
-      }
     }
   }
 
