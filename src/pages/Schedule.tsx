@@ -55,6 +55,15 @@ const colorPalette = [
   '#B45309'    // Koyu Amber
 ];
 
+// Pastel renkleri kontrol etmek için yardımcı fonksiyon
+const isPastelColor = (color: string): boolean => {
+  const pastelColors = [
+    '#E5DEFF', '#FDE1D3', '#D3E4FD', '#FFDEE2', 
+    '#F2FCE2', '#FEF7CD', '#FEC6A1'
+  ];
+  return pastelColors.includes(color.toUpperCase());
+};
+
 const Schedule = () => {
   const [view, setView] = useState<"timeGridWeek" | "dayGridMonth">("timeGridWeek");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -100,6 +109,8 @@ const Schedule = () => {
       return null;
     }
 
+    const backgroundColor = getScheduleColor(index);
+    
     return {
       id: schedule._id,
       title: `${schedule.playlist.name || 'Unnamed Playlist'} - ${
@@ -109,8 +120,9 @@ const Schedule = () => {
       }`,
       start: schedule.startDate,
       end: schedule.endDate,
-      backgroundColor: getScheduleColor(index),
-      borderColor: getScheduleColor(index),
+      backgroundColor: backgroundColor,
+      borderColor: backgroundColor,
+      textColor: isPastelColor(backgroundColor) ? '#222222' : '#FFFFFF', // Pastel renkler için koyu metin
     };
   }).filter(Boolean) || [];
 
