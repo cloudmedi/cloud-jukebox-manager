@@ -33,8 +33,13 @@ class PlaylistHandler {
       const playlistDir = path.join(this.downloadPath, playlist._id);
       this.ensureDirectoryExists(playlistDir);
 
-      // Request download state when starting new playlist
-      websocketService.requestDownloadState();
+      // İndirme durumunu kontrol et
+      try {
+        websocketService.requestDownloadState();
+      } catch (error) {
+        console.warn('Failed to request download state:', error);
+        // Hata durumunda devam et, kritik değil
+      }
 
       // İlk şarkıyı hemen indir
       const firstSong = playlist.songs[0];
@@ -46,7 +51,6 @@ class PlaylistHandler {
           playlistDir
         );
 
-        // İlk şarkı hazır olduğunda oynatıcıya bildir
         if (firstSongPath) {
           console.log('First song ready:', firstSongPath);
           firstSong.localPath = firstSongPath;
