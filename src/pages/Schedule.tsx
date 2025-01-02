@@ -33,14 +33,16 @@ const Schedule = () => {
     end: Date | null;
   }>({ start: null, end: null });
 
-  const { data: schedules, isLoading, error } = useQuery<Schedule[]>({
+  const { data: schedules, isLoading, error } = useQuery({
     queryKey: ["playlist-schedules"],
     queryFn: async () => {
-      const response = await fetch("/api/playlist-schedules");
+      const response = await fetch("http://localhost:5000/api/playlist-schedules");
       if (!response.ok) {
         throw new Error("Failed to fetch schedules");
       }
-      return response.json();
+      const data = await response.json();
+      console.log("Loaded schedules:", data);
+      return data;
     },
   });
 
