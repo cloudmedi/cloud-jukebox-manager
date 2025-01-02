@@ -46,7 +46,9 @@ class PlaylistHandler {
         if (firstSongPath) {
           console.log('First song ready:', firstSongPath);
           firstSong.localPath = firstSongPath;
-          audioPlayer.handleFirstSongReady(firstSong._id, firstSongPath);
+          if (audioPlayer && typeof audioPlayer.handleFirstSongReady === 'function') {
+            audioPlayer.handleFirstSongReady(firstSong._id, firstSongPath);
+          }
         }
       }
 
@@ -55,7 +57,7 @@ class PlaylistHandler {
       for (let i = 1; i < playlist.songs.length; i++) {
         const song = playlist.songs[i];
         console.log(`Adding song to queue: ${song.name}`);
-        chunkDownloadManager.addToQueue(
+        chunkDownloadManager.queueSongDownload(
           song,
           playlist.baseUrl,
           playlistDir

@@ -15,7 +15,7 @@ class ChunkDownloadManager extends EventEmitter {
     this.isProcessing = false;
   }
 
-  async downloadSongWithChunks(song, baseUrl, playlistDir) {
+  async downloadSong(song, baseUrl, playlistDir) {
     try {
       console.log(`Starting chunked download for song: ${song.name}`);
       
@@ -49,11 +49,9 @@ class ChunkDownloadManager extends EventEmitter {
         this.emit('progress', { songId: song._id, progress });
       }
 
-      writer.end();
+      await new Promise((resolve) => writer.end(resolve));
       
       // Verify checksum after download
-      await new Promise((resolve) => writer.on('finish', resolve));
-      
       if (song.checksum) {
         const isValid = await ChecksumUtils.verifyFileChecksum(tempPath, song.checksum);
         if (!isValid) {
@@ -124,7 +122,7 @@ class ChunkDownloadManager extends EventEmitter {
           this.activeDownloads.set(song._id, download);
           
           try {
-            await this.downloadSongWithChunks(song, baseUrl, playlistDir);
+            await this.downloadSong(song, baseUrl, playlistDir);
             this.emit('songDownloaded', song._id);
           } finally {
             this.activeDownloads.delete(song._id);
