@@ -25,15 +25,34 @@ interface Schedule {
   };
 }
 
-// Renk paleti
+// Genişletilmiş renk paleti
 const colorPalette = [
-  '#9b87f5', // İlk zamanlama için varsayılan renk (mor)
-  '#F97316', // Turuncu
-  '#0EA5E9', // Mavi
-  '#D946EF', // Pembe
-  '#8B5CF6', // Mor
-  '#1EAEDB', // Açık Mavi
-  '#33C3F0', // Gök Mavisi
+  // Ana renkler (Canlı)
+  '#9b87f5',   // Mor
+  '#F97316',   // Turuncu
+  '#0EA5E9',   // Mavi
+  '#D946EF',   // Pembe
+  '#22C55E',   // Yeşil
+  '#EF4444',   // Kırmızı
+  '#F59E0B',   // Amber
+  
+  // Pastel tonlar
+  '#E5DEFF',   // Pastel Mor
+  '#FDE1D3',   // Pastel Turuncu
+  '#D3E4FD',   // Pastel Mavi
+  '#FFDEE2',   // Pastel Pembe
+  '#F2FCE2',   // Pastel Yeşil
+  '#FEF7CD',   // Pastel Sarı
+  '#FEC6A1',   // Pastel Şeftali
+  
+  // Koyu tonlar
+  '#6E59A5',   // Koyu Mor
+  '#C2410C',   // Koyu Turuncu
+  '#0369A1',   // Koyu Mavi
+  '#A21CAF',   // Koyu Pembe
+  '#15803D',   // Koyu Yeşil
+  '#991B1B',   // Koyu Kırmızı
+  '#B45309'    // Koyu Amber
 ];
 
 const Schedule = () => {
@@ -73,7 +92,6 @@ const Schedule = () => {
   };
 
   const getScheduleColor = (index: number) => {
-    // Mevcut zamanlama sayısına göre renk seç
     return colorPalette[index % colorPalette.length];
   };
 
@@ -164,9 +182,6 @@ const Schedule = () => {
             start: '00:00',
             end: '24:00',
             dows: [0, 1, 2, 3, 4, 5, 6]
-          }}
-          selectMirrorStyle={{
-            backgroundColor: getScheduleColor(schedules?.length || 0)
           }}
         />
       </div>
