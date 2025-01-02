@@ -1,16 +1,16 @@
-const { createWriteStream } = require('fs');
+const fs = require('fs');
 const { createLogger } = require('../../../utils/logger');
 
 const logger = createLogger('stream-manager');
 
 class StreamManager {
   createFileStream(filePath) {
-    return createWriteStream(filePath);
+    logger.info(`Creating write stream for: ${filePath}`);
+    return fs.createWriteStream(filePath);
   }
 
   async writeChunkToStream(stream, chunk) {
     if (!chunk) {
-      logger.error('Attempted to write null chunk to stream');
       throw new Error('Cannot write null chunk to stream');
     }
 
@@ -22,14 +22,20 @@ class StreamManager {
       } else {
         resolve();
       }
+
+      stream.once('error', reject);
     });
   }
 
-  closeStream(stream) {
+  async closeStream(stream) {
     return new Promise((resolve, reject) => {
       stream.end(err => {
-        if (err) reject(err);
-        else resolve();
+        if (err) {
+          logger.error('Error closing stream:', err);
+          reject(err);
+        } else {
+          resolve();
+        }
       });
     });
   }

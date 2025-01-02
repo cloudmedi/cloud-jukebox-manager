@@ -35,7 +35,8 @@ class ChunkDownloadManager extends EventEmitter {
         url,
         method: 'GET',
         responseType: 'arraybuffer',
-        headers: { Range: `bytes=${start}-${end}` }
+        headers: { Range: `bytes=${start}-${end}` },
+        timeout: 30000
       });
 
       bandwidthManager.finishDownload(downloadId);
@@ -64,18 +65,22 @@ class ChunkDownloadManager extends EventEmitter {
   async downloadSong(song, baseUrl, playlistDir) {
     logger.info(`Starting download for song: ${song.name}`);
     
+    if (!song || !baseUrl || !playlistDir) {
+      throw new Error('Missing required parameters for song download');
+    }
+    
     const songPath = path.join(playlistDir, `${song._id}.mp3`);
     const tempSongPath = `${songPath}.temp`;
     const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
 
-    const { headers } = await axios.head(songUrl);
-    const fileSize = parseInt(headers['content-length'], 10);
-    const chunkSize = this.calculateChunkSize(fileSize);
-    const chunks = Math.ceil(fileSize / chunkSize);
-
-    const writeStream = streamManager.createFileStream(tempSongPath);
-    
     try {
+      const { headers } = await axios.head(songUrl);
+      const fileSize = parseInt(headers['content-length'], 10);
+      const chunkSize = this.calculateChunkSize(fileSize);
+      const chunks = Math.ceil(fileSize / chunkSize);
+
+      const writeStream = streamManager.createFileStream(tempSongPath);
+      
       for (let i = 0; i < chunks; i++) {
         const start = i * chunkSize;
         const end = Math.min(start + chunkSize - 1, fileSize - 1);
@@ -107,11 +112,50 @@ class ChunkDownloadManager extends EventEmitter {
 
     } catch (error) {
       logger.error(`Error downloading song ${song.name}:`, error);
-      writeStream.destroy();
+      writeStream?.destroy();
       if (fs.existsSync(tempSongPath)) {
         fs.unlinkSync(tempSongPath);
       }
       throw error;
+    }
+  }
+
+  queueSongDownload(song, baseUrl, playlistDir) {
+    logger.info(`Queueing song download: ${song.name}`);
+    
+    this.downloadQueue.push({
+      song,
+      baseUrl,
+      playlistDir
+    });
+
+    this.processQueue();
+  }
+
+  async processQueue() {
+    if (this.activeDownloads.size >= this.maxConcurrentDownloads) {
+      return;
+    }
+
+    while (
+      this.downloadQueue.length > 0 && 
+      this.activeDownloads.size < this.maxConcurrentDownloads
+    ) {
+      const download = this.downloadQueue.shift();
+      if (download) {
+        this.activeDownloads.set(download.song._id, download);
+        
+        try {
+          await this.downloadSong(
+            download.song,
+            download.baseUrl,
+            download.playlistDir
+          );
+        } finally {
+          this.activeDownloads.delete(download.song._id);
+          this.processQueue();
+        }
+      }
     }
   }
 
