@@ -6,36 +6,40 @@
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
-    <div id="app">
-        <div id="deviceInfo">
+    <div class="titlebar">
+        <div class="version-info">CloudMedia V2.1</div>
+        <div class="titlebar-controls">
+            <div class="status-badge" id="playbackBadge"></div>
+            <button class="titlebar-button close" id="closeButton">✕</button>
+        </div>
+    </div>
+    <div class="container">
+        <!-- Token ve Bağlantı Durumu -->
+        <div id="deviceInfo" class="device-info">
             <div class="token-display"></div>
             <div class="connection-status"></div>
         </div>
-        
-        <div id="playlistContainer"></div>
-        
-        <!-- Audio Players -->
-        <audio id="audioPlayer"></audio>
-        <audio id="campaignPlayer"></audio>
-        
-        <!-- Player Controls -->
-        <div id="playerControls" class="player-controls">
-            <div id="playbackBadge" class="status-badge"></div>
-            <div class="progress-bar">
-                <div class="progress"></div>
-            </div>
+
+        <!-- Playlist Container -->
+        <div id="playlistContainer" class="playlist-container">
+            <!-- Playlistler buraya eklenecek -->
         </div>
         
-        <!-- Error Container -->
-        <div id="errorContainer"></div>
+        <!-- Ana playlist için audio element -->
+        <audio id="audioPlayer"></audio>
         
-        <!-- Download Progress -->
+        <!-- Kampanyalar için ikinci audio element -->
+        <audio id="campaignPlayer"></audio>
+        
+        <!-- İndirme Progress Bar -->
         <div class="download-progress" style="display: none;">
             <div class="download-progress-bar"></div>
             <div class="download-progress-text"></div>
         </div>
+
+        <!-- Hata Mesajları -->
+        <div id="errorContainer" class="error-container"></div>
     </div>
-    
     <script src="renderer.js"></script>
 </body>
 </html>
