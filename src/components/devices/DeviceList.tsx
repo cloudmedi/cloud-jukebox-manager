@@ -28,13 +28,15 @@ export const DeviceList = () => {
         throw new Error("Cihazlar yüklenirken bir hata oluştu");
       }
       return response.json();
-    }
+    },
+    refetchInterval: 5000 // Polling every 5 seconds as backup
   });
 
   useEffect(() => {
     const handleDeviceStatus = (data: any) => {
-      const currentDevices = queryClient.getQueryData<Device[]>(['devices']);
+      console.log('WebSocket device status received:', data);
       
+      const currentDevices = queryClient.getQueryData<Device[]>(['devices']);
       if (!currentDevices) return;
 
       const updatedDevices = currentDevices.map(device => {
@@ -48,13 +50,20 @@ export const DeviceList = () => {
           }
 
           if (data.playlistStatus === 'error') {
-            showPlaylistError(device.name, 'Playlist yüklenemedi');
+            showPlaylistError(device.name, data.lastError || 'Playlist yüklenemedi');
           }
           
           return { 
             ...device, 
             ...data,
-            playlistStatus: data.playlistStatus || device.playlistStatus
+            playlistStatus: data.playlistStatus || device.playlistStatus,
+            downloadProgress: data.downloadProgress || device.downloadProgress,
+            downloadSpeed: data.downloadSpeed || device.downloadSpeed,
+            downloadedSongs: data.downloadedSongs || device.downloadedSongs,
+            totalSongs: data.totalSongs || device.totalSongs,
+            estimatedTimeRemaining: data.estimatedTimeRemaining || device.estimatedTimeRemaining,
+            retryCount: data.retryCount || device.retryCount,
+            lastError: data.error || device.lastError
           };
         }
         return device;

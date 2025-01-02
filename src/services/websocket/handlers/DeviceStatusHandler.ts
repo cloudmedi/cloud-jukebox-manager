@@ -1,7 +1,14 @@
 import { toast } from "sonner";
 import { QueryClient } from "@tanstack/react-query";
 
-const queryClient = new QueryClient();
+// Singleton QueryClient instance
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      staleTime: Infinity,
+    },
+  },
+});
 
 export const handleDeviceStatusMessage = (message: any) => {
   console.log('Handling device status message:', message);
@@ -12,7 +19,8 @@ export const handleDeviceStatusMessage = (message: any) => {
 
     return oldData.map((device: any) => {
       if (device.token === message.token) {
-        return {
+        // Create updated device object with all possible status updates
+        const updatedDevice = {
           ...device,
           isOnline: message.isOnline ?? device.isOnline,
           volume: message.volume ?? device.volume,
@@ -25,10 +33,16 @@ export const handleDeviceStatusMessage = (message: any) => {
           retryCount: message.retryCount ?? device.retryCount,
           lastError: message.error ?? device.lastError
         };
+
+        console.log('Updating device:', device.token, updatedDevice);
+        return updatedDevice;
       }
       return device;
     });
   });
+
+  // Force a refetch to ensure UI is updated
+  queryClient.invalidateQueries({ queryKey: ['devices'] });
 
   // Handle notifications
   if (message.isOnline !== undefined && !message.isOnline) {
