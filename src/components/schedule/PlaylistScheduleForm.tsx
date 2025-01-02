@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Form } from "@/components/ui/form";
 import { toast } from "sonner";
 import { useQueryClient } from "@tanstack/react-query";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Music, Calendar, Users, ArrowRight } from "lucide-react";
@@ -114,14 +114,11 @@ export function PlaylistScheduleForm({ onSuccess }: PlaylistScheduleFormProps) {
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-w-4xl mx-auto">
         <Card>
-          <CardHeader className="space-y-1">
-            <CardTitle className="text-2xl flex items-center gap-2">
-              <Music className="h-6 w-6" />
-              Music for Business - Playlist Zamanlaması
-            </CardTitle>
-            <CardDescription>
-              Seçtiğiniz playlist'i belirli cihaz veya gruplarda çalmak için bir zamanlama oluşturun
-            </CardDescription>
+          <CardHeader className="border-b">
+            <div className="flex items-center gap-2 text-2xl font-semibold">
+              <Music className="h-6 w-6 text-primary" />
+              Playlist Zamanlaması
+            </div>
           </CardHeader>
           <CardContent>
             <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
