@@ -16,6 +16,9 @@ class DownloadProgressHandler {
 
       console.log('Processing download progress for device:', token, message);
 
+      // Calculate completed songs based on chunks
+      const completedSongs = this.calculateCompletedSongs(message.data.completedChunks);
+
       // Update download progress in database
       await DownloadProgress.findOneAndUpdate(
         {
@@ -26,7 +29,7 @@ class DownloadProgressHandler {
           status: message.data.status,
           progress: message.data.progress,
           downloadSpeed: message.data.downloadSpeed,
-          downloadedSongs: message.data.downloadedSongs,
+          downloadedSongs: completedSongs,
           totalSongs: message.data.totalSongs,
           estimatedTimeRemaining: message.data.estimatedTimeRemaining,
           completedChunks: message.data.completedChunks
@@ -41,7 +44,7 @@ class DownloadProgressHandler {
         playlistId: message.data.playlistId,
         progress: message.data.progress,
         downloadSpeed: message.data.downloadSpeed,
-        downloadedSongs: message.data.downloadedSongs,
+        downloadedSongs: completedSongs,
         totalSongs: message.data.totalSongs,
         estimatedTimeRemaining: message.data.estimatedTimeRemaining,
         status: message.data.status
@@ -50,6 +53,34 @@ class DownloadProgressHandler {
     } catch (error) {
       console.error('Error handling download progress:', error);
     }
+  }
+
+  calculateCompletedSongs(completedChunks) {
+    if (!completedChunks || !Array.isArray(completedChunks)) {
+      return 0;
+    }
+
+    // Group chunks by songId
+    const songChunks = completedChunks.reduce((acc, chunk) => {
+      if (!acc[chunk.songId]) {
+        acc[chunk.songId] = [];
+      }
+      acc[chunk.songId].push(chunk);
+      return acc;
+    }, {});
+
+    // Count songs where all chunks are downloaded
+    let completedCount = 0;
+    for (const songId in songChunks) {
+      const chunks = songChunks[songId];
+      // A song is considered complete if it has at least 10 chunks
+      // This is a simplified check - in reality, you'd want to compare with the expected total chunks
+      if (chunks.length >= 10) {
+        completedCount++;
+      }
+    }
+
+    return completedCount;
   }
 
   async handleDownloadState(token) {

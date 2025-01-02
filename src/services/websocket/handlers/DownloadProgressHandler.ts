@@ -28,11 +28,14 @@ export const handleDownloadProgress = (message: any) => {
           playlistStatus: message.status,
         };
 
-        // Show notifications based on status
+        // Show notifications based on status and progress
         if (message.status === 'error') {
           toast.error(`İndirme hatası: ${message.lastError}`);
         } else if (message.status === 'completed') {
           toast.success('Playlist başarıyla indirildi');
+        } else if (message.downloadedSongs > device.downloadedSongs) {
+          // Show notification when a new song is completed
+          toast.success(`${message.downloadedSongs}. şarkı indirildi`);
         }
 
         return updatedDevice;
