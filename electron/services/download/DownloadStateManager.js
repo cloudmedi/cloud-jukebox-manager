@@ -1,4 +1,6 @@
 const Store = require('electron-store');
+const fs = require('fs');
+const path = require('path');
 const { createLogger } = require('../../utils/logger');
 
 const logger = createLogger('download-state-manager');
@@ -15,70 +17,77 @@ class DownloadStateManager {
     });
   }
 
-  initializePlaylistDownload(playlist) {
-    const playlistState = {
+  initializeDownload(playlist) {
+    const downloadState = {
       id: playlist._id,
       status: 'initializing',
       songs: playlist.songs.map(song => ({
         id: song._id,
         name: song.name,
         status: 'pending',
-        chunks: [],
-        progress: 0,
-        retryCount: 0,
+        downloadedChunks: [],
+        totalChunks: 0,
+        tempPath: path.join(this.getTempDir(), `${song._id}.temp`),
         error: null
       })),
       startedAt: Date.now(),
       lastUpdated: Date.now()
     };
 
-    this.store.set(`playlists.${playlist._id}`, playlistState);
-    logger.info(`Initialized playlist download state: ${playlist._id}`);
-    return playlistState;
+    this.store.set(`downloads.${playlist._id}`, downloadState);
+    logger.info(`Initialized download state for playlist: ${playlist._id}`);
+    return downloadState;
   }
 
-  updateSongState(playlistId, songId, updates) {
-    const path = `playlists.${playlistId}.songs`;
-    const songs = this.store.get(path, []);
+  updateSongProgress(playlistId, songId, progress) {
+    const downloadPath = `downloads.${playlistId}.songs`;
+    const songs = this.store.get(downloadPath, []);
     const updatedSongs = songs.map(song => 
-      song.id === songId ? { ...song, ...updates, lastUpdated: Date.now() } : song
+      song.id === songId 
+        ? { ...song, ...progress, lastUpdated: Date.now() }
+        : song
     );
     
-    this.store.set(path, updatedSongs);
-    logger.info(`Updated song state: ${songId}`, updates);
+    this.store.set(downloadPath, updatedSongs);
+    logger.debug(`Updated progress for song ${songId} in playlist ${playlistId}`);
   }
 
-  updateChunkState(songId, chunkId, state) {
-    const path = `chunks.${songId}`;
-    const chunks = this.store.get(path, {});
-    chunks[chunkId] = {
-      ...chunks[chunkId],
-      ...state,
-      lastUpdated: Date.now()
-    };
-    
-    this.store.set(path, chunks);
-    logger.debug(`Updated chunk state: ${chunkId}`, state);
+  getTempDir() {
+    const tempDir = path.join(require('electron').app.getPath('userData'), 'temp');
+    if (!fs.existsSync(tempDir)) {
+      fs.mkdirSync(tempDir, { recursive: true });
+    }
+    return tempDir;
   }
 
   getIncompleteDownloads() {
-    const playlists = this.store.get('playlists', {});
-    return Object.values(playlists).filter(playlist => 
-      playlist.status !== 'completed' && playlist.status !== 'failed'
+    const downloads = this.store.get('downloads', {});
+    return Object.values(downloads).filter(download => 
+      download.status !== 'completed' && download.status !== 'failed'
     );
   }
 
-  getSongDownloadState(songId) {
-    const chunks = this.store.get(`chunks.${songId}`, {});
-    return {
-      chunks,
-      completedChunks: Object.values(chunks).filter(chunk => chunk.status === 'completed').length
-    };
+  getSongState(songId) {
+    return this.store.get(`chunks.${songId}`, {
+      downloadedChunks: [],
+      tempPath: null,
+      status: 'pending'
+    });
   }
 
-  clearPlaylistState(playlistId) {
-    this.store.delete(`playlists.${playlistId}`);
-    logger.info(`Cleared playlist state: ${playlistId}`);
+  cleanupTempFiles() {
+    const tempDir = this.getTempDir();
+    if (fs.existsSync(tempDir)) {
+      fs.readdirSync(tempDir).forEach(file => {
+        const filePath = path.join(tempDir, file);
+        try {
+          fs.unlinkSync(filePath);
+          logger.info(`Cleaned up temp file: ${filePath}`);
+        } catch (error) {
+          logger.error(`Error cleaning up temp file: ${filePath}`, error);
+        }
+      });
+    }
   }
 }
 
