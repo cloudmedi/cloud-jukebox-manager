@@ -25,6 +25,17 @@ interface Schedule {
   };
 }
 
+// Renk paleti
+const colorPalette = [
+  '#9b87f5', // İlk zamanlama için varsayılan renk (mor)
+  '#F97316', // Turuncu
+  '#0EA5E9', // Mavi
+  '#D946EF', // Pembe
+  '#8B5CF6', // Mor
+  '#1EAEDB', // Açık Mavi
+  '#33C3F0', // Gök Mavisi
+];
+
 const Schedule = () => {
   const [view, setView] = useState<"timeGridWeek" | "dayGridMonth">("timeGridWeek");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -58,11 +69,15 @@ const Schedule = () => {
 
   const handleScheduleCreated = () => {
     setIsDialogOpen(false);
-    // Zamanlamaları yenile
     queryClient.invalidateQueries({ queryKey: ["playlist-schedules"] });
   };
 
-  const events = schedules?.map(schedule => {
+  const getScheduleColor = (index: number) => {
+    // Mevcut zamanlama sayısına göre renk seç
+    return colorPalette[index % colorPalette.length];
+  };
+
+  const events = schedules?.map((schedule, index) => {
     if (!schedule?.playlist) {
       return null;
     }
@@ -76,7 +91,8 @@ const Schedule = () => {
       }`,
       start: schedule.startDate,
       end: schedule.endDate,
-      backgroundColor: schedule.status === 'active' ? '#10b981' : '#6b7280',
+      backgroundColor: getScheduleColor(index),
+      borderColor: getScheduleColor(index),
     };
   }).filter(Boolean) || [];
 
@@ -143,6 +159,15 @@ const Schedule = () => {
           nowIndicator={true}
           slotMinTime="00:00:00"
           slotMaxTime="24:00:00"
+          selectOverlap={false}
+          selectConstraint={{
+            start: '00:00',
+            end: '24:00',
+            dows: [0, 1, 2, 3, 4, 5, 6]
+          }}
+          selectMirrorStyle={{
+            backgroundColor: getScheduleColor(schedules?.length || 0)
+          }}
         />
       </div>
 
