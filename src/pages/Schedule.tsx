@@ -25,18 +25,8 @@ interface Schedule {
   };
 }
 
-// Genişletilmiş renk paleti
+// Sadece pastel renklerden oluşan palet
 const colorPalette = [
-  // Ana renkler (Canlı)
-  '#9b87f5',   // Mor
-  '#F97316',   // Turuncu
-  '#0EA5E9',   // Mavi
-  '#D946EF',   // Pembe
-  '#22C55E',   // Yeşil
-  '#EF4444',   // Kırmızı
-  '#F59E0B',   // Amber
-  
-  // Pastel tonlar
   '#E5DEFF',   // Pastel Mor
   '#FDE1D3',   // Pastel Turuncu
   '#D3E4FD',   // Pastel Mavi
@@ -44,25 +34,12 @@ const colorPalette = [
   '#F2FCE2',   // Pastel Yeşil
   '#FEF7CD',   // Pastel Sarı
   '#FEC6A1',   // Pastel Şeftali
-  
-  // Koyu tonlar
-  '#6E59A5',   // Koyu Mor
-  '#C2410C',   // Koyu Turuncu
-  '#0369A1',   // Koyu Mavi
-  '#A21CAF',   // Koyu Pembe
-  '#15803D',   // Koyu Yeşil
-  '#991B1B',   // Koyu Kırmızı
-  '#B45309'    // Koyu Amber
+  '#FFE4E1',   // Pastel Gül
+  '#E0FFFF',   // Pastel Turkuaz
+  '#F0FFF0',   // Pastel Nane
+  '#FFF0F5',   // Pastel Lavanta
+  '#F5F5DC',   // Pastel Bej
 ];
-
-// Pastel renkleri kontrol etmek için yardımcı fonksiyon
-const isPastelColor = (color: string): boolean => {
-  const pastelColors = [
-    '#E5DEFF', '#FDE1D3', '#D3E4FD', '#FFDEE2', 
-    '#F2FCE2', '#FEF7CD', '#FEC6A1'
-  ];
-  return pastelColors.includes(color.toUpperCase());
-};
 
 const Schedule = () => {
   const [view, setView] = useState<"timeGridWeek" | "dayGridMonth">("timeGridWeek");
@@ -122,7 +99,7 @@ const Schedule = () => {
       end: schedule.endDate,
       backgroundColor: backgroundColor,
       borderColor: backgroundColor,
-      textColor: isPastelColor(backgroundColor) ? '#222222' : '#FFFFFF', // Pastel renkler için koyu metin
+      textColor: '#222222', // Tüm metinler koyu renk
     };
   }).filter(Boolean) || [];
 
