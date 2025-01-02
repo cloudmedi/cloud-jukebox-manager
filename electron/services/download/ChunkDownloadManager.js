@@ -15,9 +15,10 @@ class ChunkDownloadManager extends EventEmitter {
       console.log(`Starting download for song: ${song.name}`);
       const songPath = path.join(downloadDir, `${song._id}.mp3`);
       
+      // Endpoint düzeltildi
       const response = await axios({
         method: 'get',
-        url: `${baseUrl}/songs/${song._id}/download`,
+        url: `${baseUrl}/api/songs/${song._id}`,
         responseType: 'stream'
       });
 
