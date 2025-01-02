@@ -6,6 +6,8 @@ const TimeoutManager = require('./utils/TimeoutManager');
 const NetworkErrorHandler = require('./utils/NetworkErrorHandler');
 const ChecksumVerifier = require('./utils/ChecksumVerifier');
 const { createLogger } = require('../../utils/logger');
+const bandwidthManager = require('./BandwidthManager');
+const throttle = require('lodash/throttle');
 
 const logger = createLogger('chunk-download-manager');
 
@@ -20,7 +22,7 @@ class ChunkDownloadManager extends EventEmitter {
     
     this.activeDownloads = new Map();
     this.downloadQueue = [];
-    this.maxConcurrentDownloads = 3;
+    this.maxConcurrentDownloads = bandwidthManager.maxConcurrentDownloads;
     this.timeoutManager = new TimeoutManager();
     this.isProcessing = false;
   }
@@ -38,11 +40,23 @@ class ChunkDownloadManager extends EventEmitter {
     try {
       clearChunkTimeout = this.timeoutManager.setChunkTimeout(chunkId);
 
+      // Hız sınırlaması uygula
+      const throttledProgress = throttle((loaded) => {
+        logger.debug(`Chunk download progress: ${loaded} bytes`);
+      }, 1000);
+
       const response = await axios({
         url,
         method: 'GET',
         responseType: 'arraybuffer',
-        headers: { Range: `bytes=${start}-${end}` }
+        headers: { 
+          Range: `bytes=${start}-${end}`,
+          Priority: bandwidthManager.downloadPriority
+        },
+        onDownloadProgress: (progressEvent) => {
+          throttledProgress(progressEvent.loaded);
+        },
+        maxRate: bandwidthManager.getThrottleSpeed()
       });
 
       const chunk = response.data;
