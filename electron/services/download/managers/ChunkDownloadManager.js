@@ -3,26 +3,24 @@ const fs = require('fs');
 const path = require('path');
 const BaseDownloadManager = require('./BaseDownloadManager');
 const downloadProgressService = require('../DownloadProgressService');
-const ChecksumVerifier = require('../utils/ChecksumVerifier');
 const bandwidthManager = require('../BandwidthManager');
 
 class ChunkDownloadManager extends BaseDownloadManager {
-  async downloadChunk(url, start, end, songId, playlistId) {
+  async downloadChunk(url, start, end, songId, playlistId, retryCount = 0) {
     const chunkId = `${songId}-${start}`;
     const downloadId = `${songId}-${Date.now()}`;
     
     try {
       if (!bandwidthManager.startDownload(downloadId)) {
-        this.logger.warn(`Download delayed due to bandwidth limits`, { chunkId });
+        console.log(`Download delayed due to bandwidth limits for chunk ${chunkId}`);
         return new Promise(resolve => setTimeout(() => resolve(
-          this.downloadChunk(url, start, end, songId, playlistId)
+          this.downloadChunk(url, start, end, songId, playlistId, retryCount)
         ), 1000));
       }
 
       const chunk = await this._performChunkDownload(url, start, end, songId, downloadId);
       
-      // İlerleme bilgisini güncelle
-      downloadProgressService.updateProgress(playlistId, {
+      downloadProgressService.updateChunkProgress(playlistId, {
         songId,
         chunkId,
         size: chunk.length,
@@ -33,14 +31,67 @@ class ChunkDownloadManager extends BaseDownloadManager {
       return chunk;
 
     } catch (error) {
+      console.error(`Error downloading chunk ${chunkId}:`, error);
       bandwidthManager.finishDownload(downloadId);
       downloadProgressService.handleError(playlistId, error);
       throw error;
     }
   }
 
-  async downloadSong(song, baseUrl, playlistDir, playlistId) {
-    this.logger.info(`Starting download for song: ${song.name}`);
+  async _performChunkDownload(url, start, end, songId, downloadId) {
+    console.log(`Starting chunk download for song ${songId}, range: ${start}-${end}`);
+    const startTime = Date.now();
+    let downloadedBytes = 0;
+    let lastLogTime = Date.now();
+
+    try {
+      const response = await axios({
+        url,
+        method: 'GET',
+        responseType: 'arraybuffer',
+        headers: { 
+          Range: `bytes=${start}-${end}`
+        },
+        onDownloadProgress: async (progressEvent) => {
+          const newBytes = progressEvent.loaded - downloadedBytes;
+          downloadedBytes = progressEvent.loaded;
+          
+          await bandwidthManager.updateProgress(downloadId, newBytes);
+          
+          const now = Date.now();
+          if (now - lastLogTime >= 1000) {
+            const speed = (downloadedBytes / ((now - startTime) / 1000));
+            console.log(`Download progress for chunk:`, {
+              songId,
+              chunkId: `${start}-${end}`,
+              downloadedBytes: `${(downloadedBytes / (1024 * 1024)).toFixed(2)}MB`,
+              speed: `${(speed / (1024 * 1024)).toFixed(2)}MB/s`
+            });
+            lastLogTime = now;
+          }
+        }
+      });
+
+      const endTime = Date.now();
+      const duration = (endTime - startTime) / 1000;
+      const speed = downloadedBytes / duration;
+
+      console.log(`Chunk download completed:`, {
+        songId,
+        chunkSize: `${(downloadedBytes / (1024 * 1024)).toFixed(2)}MB`,
+        duration: `${duration.toFixed(2)}s`,
+        speed: `${(speed / (1024 * 1024)).toFixed(2)}MB/s`
+      });
+
+      return response.data;
+    } catch (error) {
+      console.error(`Error in _performChunkDownload:`, error);
+      throw error;
+    }
+  }
+
+  async downloadSong(song, baseUrl, playlistDir, isResume = false) {
+    console.log(`Starting download for song: ${song.name}`);
     
     const songPath = path.join(playlistDir, `${song._id}.mp3`);
     const tempSongPath = `${songPath}.temp`;
@@ -55,7 +106,7 @@ class ChunkDownloadManager extends BaseDownloadManager {
       if (fs.existsSync(tempSongPath)) {
         const stats = fs.statSync(tempSongPath);
         startByte = stats.size;
-        this.logger.info(`Resuming download from byte ${startByte}`);
+        console.log(`Resuming download from byte ${startByte}`);
       }
 
       const chunks = Math.ceil((fileSize - startByte) / chunkSize);
@@ -65,24 +116,18 @@ class ChunkDownloadManager extends BaseDownloadManager {
         const start = startByte + (i * chunkSize);
         const end = Math.min(start + chunkSize - 1, fileSize - 1);
         
-        const chunk = await this.downloadChunk(songUrl, start, end, song._id, playlistId);
+        const chunk = await this.downloadChunk(songUrl, start, end, song._id, playlistDir);
         writer.write(chunk);
       }
 
       await new Promise((resolve) => writer.end(resolve));
       
-      if (song.checksum) {
-        const isValid = await ChecksumVerifier.verifyFileChecksum(tempSongPath, song.checksum);
-        if (!isValid) {
-          throw new Error('Final checksum verification failed');
-        }
-      }
-
       fs.renameSync(tempSongPath, songPath);
+      console.log(`Download completed for ${song.name}`);
       return songPath;
 
     } catch (error) {
-      this.logger.error(`Error downloading song ${song.name}:`, error);
+      console.error(`Error downloading song ${song.name}:`, error);
       if (fs.existsSync(tempSongPath)) {
         fs.unlinkSync(tempSongPath);
       }
