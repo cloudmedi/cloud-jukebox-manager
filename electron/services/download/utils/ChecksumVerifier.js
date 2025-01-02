@@ -1,28 +1,39 @@
 const crypto = require('crypto');
 const { createLogger } = require('../../../utils/logger');
-
 const logger = createLogger('checksum-verifier');
 
 class ChecksumVerifier {
-  static calculateChunkChecksum(chunk) {
+  static calculateMD5(chunk) {
     try {
       return crypto
-        .createHash('sha256')
+        .createHash('md5')
         .update(chunk)
         .digest('hex');
     } catch (error) {
-      logger.error('Chunk checksum calculation error:', error);
+      logger.error('MD5 calculation error:', error);
       throw error;
     }
   }
 
-  static async verifyChunkChecksum(chunk, expectedChecksum) {
+  static calculateSHA256(buffer) {
     try {
-      const calculatedChecksum = this.calculateChunkChecksum(chunk);
+      return crypto
+        .createHash('sha256')
+        .update(buffer)
+        .digest('hex');
+    } catch (error) {
+      logger.error('SHA-256 calculation error:', error);
+      throw error;
+    }
+  }
+
+  static async verifyChunkMD5(chunk, expectedChecksum) {
+    try {
+      const calculatedChecksum = this.calculateMD5(chunk);
       const isValid = calculatedChecksum === expectedChecksum;
       
       if (!isValid) {
-        logger.warn('Chunk checksum verification failed', {
+        logger.warn('Chunk MD5 verification failed', {
           expected: expectedChecksum,
           calculated: calculatedChecksum
         });
@@ -35,25 +46,27 @@ class ChecksumVerifier {
     }
   }
 
-  static async calculateFileChecksum(filePath) {
+  static async verifyFileSHA256(filePath, expectedChecksum) {
     return new Promise((resolve, reject) => {
       const hash = crypto.createHash('sha256');
       const stream = require('fs').createReadStream(filePath);
       
       stream.on('data', data => hash.update(data));
-      stream.on('end', () => resolve(hash.digest('hex')));
+      stream.on('end', () => {
+        const calculatedChecksum = hash.digest('hex');
+        const isValid = calculatedChecksum === expectedChecksum;
+        
+        if (!isValid) {
+          logger.warn('File SHA-256 verification failed', {
+            expected: expectedChecksum,
+            calculated: calculatedChecksum
+          });
+        }
+        
+        resolve(isValid);
+      });
       stream.on('error', reject);
     });
-  }
-
-  static async verifyFileChecksum(filePath, expectedChecksum) {
-    try {
-      const calculatedChecksum = await this.calculateFileChecksum(filePath);
-      return calculatedChecksum === expectedChecksum;
-    } catch (error) {
-      logger.error('File checksum verification error:', error);
-      return false;
-    }
   }
 }
 

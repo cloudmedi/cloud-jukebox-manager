@@ -1,16 +1,17 @@
 const { createLogger } = require('../../../utils/logger');
-
 const logger = createLogger('network-error-handler');
 
 class NetworkErrorHandler {
+  static RETRY_DELAY = 5000; // 5 saniye
+  static MAX_RETRIES = 3;
+
   static isRetryableError(error) {
     const retryableErrors = [
       'ECONNRESET',
       'ETIMEDOUT',
       'ECONNREFUSED',
       'NETWORK_ERROR',
-      'CHUNK_DOWNLOAD_ERROR',
-      'CHECKSUM_VERIFICATION_FAILED'
+      'CHUNK_DOWNLOAD_ERROR'
     ];
 
     const retryableStatusCodes = [408, 429, 500, 502, 503, 504];
@@ -32,25 +33,7 @@ class NetworkErrorHandler {
     return isRetryable;
   }
 
-  static getRetryDelay(attempt, baseDelay = 1000) {
-    // Exponential backoff with jitter
-    const exponentialDelay = baseDelay * Math.pow(2, attempt - 1);
-    const jitter = Math.random() * 1000;
-    const maxDelay = 30000; // Maximum 30 seconds
-    const delay = Math.min(exponentialDelay + jitter, maxDelay);
-    
-    logger.debug('Calculated retry delay:', {
-      attempt,
-      baseDelay,
-      exponentialDelay,
-      jitter,
-      finalDelay: delay
-    });
-    
-    return delay;
-  }
-
-  static async handleWithRetry(operation, maxRetries = 3) {
+  static async handleWithRetry(operation, maxRetries = this.MAX_RETRIES) {
     let lastError;
     
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -65,9 +48,8 @@ class NetworkErrorHandler {
           throw error;
         }
         
-        const delay = this.getRetryDelay(attempt);
-        logger.info(`Retrying in ${delay}ms...`);
-        await new Promise(resolve => setTimeout(resolve, delay));
+        logger.info(`Waiting ${this.RETRY_DELAY}ms before retry...`);
+        await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY));
       }
     }
     

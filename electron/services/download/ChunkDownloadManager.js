@@ -12,6 +12,10 @@ const logger = createLogger('chunk-download-manager');
 class ChunkDownloadManager extends EventEmitter {
   constructor() {
     super();
+    this.MIN_CHUNK_SIZE = 256 * 1024; // 256KB
+    this.MAX_CHUNK_SIZE = 2 * 1024 * 1024; // 2MB
+    this.DEFAULT_CHUNK_SIZE = 1024 * 1024; // 1MB
+    
     this.activeDownloads = new Map();
     this.downloadQueue = [];
     this.maxConcurrentDownloads = 3;
@@ -20,9 +24,14 @@ class ChunkDownloadManager extends EventEmitter {
   }
 
   calculateChunkSize(fileSize) {
-    if (fileSize < 10 * 1024 * 1024) return 512 * 1024; // 512KB for files < 10MB
-    if (fileSize < 100 * 1024 * 1024) return 1024 * 1024; // 1MB for files < 100MB
-    return 2 * 1024 * 1024; // 2MB for larger files
+    // Küçük dosyalar için minimum chunk size
+    if (fileSize < 10 * 1024 * 1024) return this.MIN_CHUNK_SIZE;
+    
+    // Orta boy dosyalar için default chunk size
+    if (fileSize < 100 * 1024 * 1024) return this.DEFAULT_CHUNK_SIZE;
+    
+    // Büyük dosyalar için maximum chunk size
+    return this.MAX_CHUNK_SIZE;
   }
 
   async downloadChunk(url, start, end, songId) {
