@@ -2,11 +2,8 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const { EventEmitter } = require('events');
-const TimeoutManager = require('./utils/TimeoutManager');
-const NetworkErrorHandler = require('./utils/NetworkErrorHandler');
-const ChecksumVerifier = require('./utils/ChecksumVerifier');
-const downloadStateManager = require('./DownloadStateManager');
-const bandwidthManager = require('./BandwidthManager');
+const downloadStateManager = require('./managers/DownloadStateManager');
+const chunkManager = require('./managers/ChunkManager');
 const { createLogger } = require('../../utils/logger');
 
 const logger = createLogger('chunk-download-manager');
@@ -16,11 +13,9 @@ class ChunkDownloadManager extends EventEmitter {
     super();
     this.activeDownloads = new Map();
     this.downloadQueue = [];
-    this.maxConcurrentDownloads = bandwidthManager.maxConcurrentDownloads;
-    this.timeoutManager = new TimeoutManager();
+    this.maxConcurrentDownloads = 3;
     this.isProcessing = false;
-
-    logger.info('ChunkDownloadManager initialized');
+    
     this.resumeIncompleteDownloads();
   }
 
@@ -29,73 +24,34 @@ class ChunkDownloadManager extends EventEmitter {
     logger.info(`Found ${incompleteDownloads.length} incomplete downloads to resume`);
 
     for (const download of incompleteDownloads) {
-      for (const song of download.songs) {
-        if (song.status !== 'completed') {
-          const songState = downloadStateManager.getSongState(song.id);
-          if (songState.tempPath && fs.existsSync(songState.tempPath)) {
-            this.queueSongDownload(song, download.baseUrl, download.downloadPath, true);
-            logger.info(`Queued incomplete song for resume: ${song.name}`);
-          }
-        }
+      if (fs.existsSync(download.tempPath)) {
+        const stats = fs.statSync(download.tempPath);
+        const resumePosition = stats.size;
+
+        logger.info(`Resuming download for song ${download.songId} from position ${resumePosition}`);
+        
+        await this.resumeDownload(download, resumePosition);
       }
     }
   }
 
-  async downloadChunk(url, start, end, songId, playlistId, retryCount = 0) {
-    const chunkId = `${songId}-${start}`;
-    const downloadId = `${songId}-${Date.now()}`;
+  async resumeDownload(download, resumePosition) {
+    const chunks = chunkManager.initializeChunks(
+      download.songId,
+      download.totalSize,
+      this.calculateChunkSize(download.totalSize)
+    );
+
+    const completedChunks = Math.floor(resumePosition / this.calculateChunkSize(download.totalSize));
     
-    try {
-      if (!bandwidthManager.startDownload(downloadId)) {
-        logger.warn(`Download delayed due to bandwidth limits`, { chunkId });
-        return new Promise(resolve => setTimeout(() => resolve(
-          this.downloadChunk(url, start, end, songId, playlistId, retryCount)
-        ), 1000));
-      }
-
-      const chunk = await this._performChunkDownload(url, start, end, songId, downloadId);
-      bandwidthManager.finishDownload(downloadId);
-      return chunk;
-
-    } catch (error) {
-      bandwidthManager.finishDownload(downloadId);
-      throw error;
+    for (let i = 0; i < completedChunks; i++) {
+      chunkManager.markChunkAsDownloaded(download.songId, i);
     }
-  }
 
-  async _performChunkDownload(url, start, end, songId, downloadId) {
-    const startTime = Date.now();
-    let downloadedBytes = 0;
-    let lastLogTime = Date.now();
-
-    const response = await axios({
-      url,
-      method: 'GET',
-      responseType: 'arraybuffer',
-      headers: { 
-        Range: `bytes=${start}-${end}`
-      },
-      onDownloadProgress: async (progressEvent) => {
-        const newBytes = progressEvent.loaded - downloadedBytes;
-        downloadedBytes = progressEvent.loaded;
-        
-        await bandwidthManager.updateProgress(downloadId, newBytes);
-        
-        const now = Date.now();
-        if (now - lastLogTime >= 1000) {
-          const speed = (downloadedBytes / ((now - startTime) / 1000));
-          logger.debug(`Download progress:`, {
-            songId,
-            chunkId: `${start}-${end}`,
-            downloadedBytes: `${(downloadedBytes / (1024 * 1024)).toFixed(2)}MB`,
-            speed: `${(speed / (1024 * 1024)).toFixed(2)}MB/s`
-          });
-          lastLogTime = now;
-        }
-      }
-    });
-
-    return response.data;
+    this.queueSongDownload({
+      _id: download.songId,
+      ...download
+    }, download.baseUrl, path.dirname(download.tempPath), true);
   }
 
   async downloadSong(song, baseUrl, playlistDir, isResume = false) {
@@ -109,48 +65,46 @@ class ChunkDownloadManager extends EventEmitter {
       const { headers } = await axios.head(songUrl);
       const fileSize = parseInt(headers['content-length'], 10);
       const chunkSize = this.calculateChunkSize(fileSize);
-      
-      // Resume control
+
       let startByte = 0;
       if (isResume && fs.existsSync(tempPath)) {
         const stats = fs.statSync(tempPath);
         startByte = stats.size;
-        logger.info(`Resuming download from byte ${startByte}`);
       }
 
-      const chunks = Math.ceil((fileSize - startByte) / chunkSize);
-      const writer = fs.createWriteStream(tempPath, { flags: startByte ? 'a' : 'w' });
+      const downloadState = downloadStateManager.initializeDownload(song._id, fileSize, tempPath);
+      const chunks = chunkManager.initializeChunks(song._id, fileSize, chunkSize);
       
-      for (let i = 0; i < chunks; i++) {
-        const start = startByte + (i * chunkSize);
-        const end = Math.min(start + chunkSize - 1, fileSize - 1);
-        
-        const chunk = await this.downloadChunk(songUrl, start, end, song._id, playlistDir);
-        if (!chunk) throw new Error('Received null chunk data');
-        
-        writer.write(chunk);
+      const writer = fs.createWriteStream(tempPath, { flags: startByte ? 'a' : 'w' });
 
-        const progress = Math.round(((i + 1) / chunks) * 100);
+      for (const chunk of chunks) {
+        if (chunk.start < startByte) continue;
+
+        const chunkData = await this.downloadChunk(songUrl, chunk.start, chunk.end, song._id);
+        if (!chunkData) throw new Error('Received null chunk data');
+        
+        writer.write(chunkData);
+        
+        chunkManager.markChunkAsDownloaded(song._id, chunk.index);
+        downloadStateManager.updateDownloadProgress(song._id, chunkData.length, chunk.index);
+
+        const progress = chunkManager.getDownloadProgress(song._id);
         this.emit('progress', { 
           songId: song._id, 
           progress,
-          downloadedSize: start + chunk.length,
+          downloadedSize: chunk.end + 1,
           totalSize: fileSize,
-          currentChunk: i + 1,
-          totalChunks: chunks
+          currentChunk: chunk.index + 1,
+          totalChunks: chunks.length
         });
       }
 
       await new Promise((resolve) => writer.end(resolve));
       
-      if (song.checksum) {
-        const isValid = await ChecksumVerifier.verifyFileChecksum(tempPath, song.checksum);
-        if (!isValid) {
-          throw new Error('Final checksum verification failed');
-        }
-      }
-
       fs.renameSync(tempPath, songPath);
+      downloadStateManager.completeDownload(song._id);
+      chunkManager.clearSongChunks(song._id);
+      
       logger.info(`Download completed for ${song.name}`);
       return songPath;
 
@@ -159,6 +113,24 @@ class ChunkDownloadManager extends EventEmitter {
       if (fs.existsSync(tempPath)) {
         fs.unlinkSync(tempPath);
       }
+      throw error;
+    }
+  }
+
+  async downloadChunk(url, start, end, songId) {
+    try {
+      const response = await axios({
+        url,
+        method: 'GET',
+        responseType: 'arraybuffer',
+        headers: { 
+          Range: `bytes=${start}-${end}`
+        }
+      });
+
+      return response.data;
+    } catch (error) {
+      logger.error(`Error downloading chunk for song ${songId}:`, error);
       throw error;
     }
   }
