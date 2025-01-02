@@ -1,12 +1,12 @@
-const fs = require('fs');
 const path = require('path');
 const axios = require('axios');
 const { EventEmitter } = require('events');
 const { createLogger } = require('../../utils/logger');
-const ChecksumVerifier = require('./utils/ChecksumVerifier');
-const chunkManager = require('./managers/ChunkManager');
 const downloadStateManager = require('./managers/DownloadStateManager');
+const chunkManager = require('./managers/ChunkManager');
 const retryManager = require('./managers/RetryManager');
+const fileWriterService = require('./io/FileWriterService');
+const downloadVerificationService = require('./verification/DownloadVerificationService');
 
 const logger = createLogger('chunk-download-manager');
 
@@ -23,57 +23,31 @@ class ChunkDownloadManager extends EventEmitter {
     const tempSongPath = path.join(playlistDir, `${song._id}.mp3.temp`);
     const finalSongPath = path.join(playlistDir, `${song._id}.mp3`);
 
-    // Önce final dosyayı kontrol et
+    // Check existing final file
     if (fs.existsSync(finalSongPath)) {
-      try {
-        const isValid = await ChecksumVerifier.verifyFileChecksum(finalSongPath, song.checksum);
-        if (isValid) {
-          logger.info(`Song already exists and verified: ${song.name}`);
-          return finalSongPath;
-        }
-        logger.warn(`Invalid checksum for existing file: ${song.name}, re-downloading`);
-        fs.unlinkSync(finalSongPath);
-      } catch (error) {
-        logger.error(`Error verifying existing file: ${song.name}`, error);
-        fs.unlinkSync(finalSongPath);
+      const isValid = await downloadVerificationService.verifyFinalFile(
+        finalSongPath, 
+        song.checksum,
+        song.name
+      );
+      
+      if (isValid) {
+        logger.info(`Song already exists and verified: ${song.name}`);
+        return finalSongPath;
       }
+      
+      fileWriterService.cleanup(finalSongPath);
     }
 
     return await retryManager.executeWithRetry(async () => {
       try {
-        logger.info(`Starting download for song: ${song.name}`);
-        
         const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
         const { headers } = await axios.head(songUrl);
         const fileSize = parseInt(headers['content-length'], 10);
         const chunkSize = chunkManager.calculateChunkSize(fileSize);
         
-        // Temp dosyayı kontrol et
-        let startByte = 0;
-        const downloadState = downloadStateManager.getState(song._id, song.playlistId);
-        
-        if (downloadState && fs.existsSync(tempSongPath)) {
-          try {
-            const stats = fs.statSync(tempSongPath);
-            if (stats.size < fileSize) {
-              startByte = stats.size;
-              logger.info(`Resuming download from byte ${startByte}`);
-            } else {
-              // Temp dosya tam boyutta ama doğrulanamamış olabilir
-              fs.unlinkSync(tempSongPath);
-              startByte = 0;
-            }
-          } catch (error) {
-            logger.error(`Error checking temp file: ${tempSongPath}`, error);
-            if (fs.existsSync(tempSongPath)) {
-              fs.unlinkSync(tempSongPath);
-            }
-            startByte = 0;
-          }
-        }
-
+        let startByte = await this.determineStartByte(tempSongPath, fileSize, song);
         const chunks = Math.ceil((fileSize - startByte) / chunkSize);
-        const writer = fs.createWriteStream(tempSongPath, { flags: startByte ? 'a' : 'w' });
 
         for (let i = Math.floor(startByte / chunkSize); i < chunks; i++) {
           const start = i * chunkSize;
@@ -81,71 +55,89 @@ class ChunkDownloadManager extends EventEmitter {
           
           const chunk = await chunkManager.downloadChunk(songUrl, start, end, song._id);
           
-          // Her chunk için checksum kontrolü
-          const chunkChecksum = await ChecksumVerifier.calculateMD5(chunk);
-          if (!await ChecksumVerifier.verifyChunkChecksum(chunk, chunkChecksum)) {
-            throw new Error(`Chunk checksum verification failed for ${song.name} chunk ${i + 1}/${chunks}`);
+          const isChunkValid = await downloadVerificationService.verifyChunk(
+            chunk,
+            song.name,
+            i + 1,
+            chunks
+          );
+
+          if (!isChunkValid) {
+            throw new Error(`Chunk verification failed for ${song.name}`);
           }
 
-          await new Promise((resolve, reject) => {
-            writer.write(chunk, (error) => {
-              if (error) reject(error);
-              else resolve();
-            });
-          });
+          await fileWriterService.writeChunk(tempSongPath, chunk, startByte > 0 || i > 0);
 
-          downloadStateManager.saveState(song._id, song.playlistId, {
-            downloadedChunks: i + 1,
-            totalChunks: chunks,
-            tempPath: tempSongPath,
-            finalPath: finalSongPath,
-            completed: false
-          });
-
-          const progress = Math.round(((i + 1) / chunks) * 100);
-          this.emit('progress', { 
-            songId: song._id,
-            playlistId: song.playlistId, 
-            progress,
-            downloadedSize: start + chunk.length,
-            totalSize: fileSize,
-            currentChunk: i + 1,
-            totalChunks: chunks
-          });
+          await this.updateDownloadProgress(song, i, chunks, start, chunk.length, fileSize);
         }
 
-        await new Promise((resolve, reject) => {
-          writer.end((err) => {
-            if (err) reject(err);
-            else resolve();
-          });
-        });
-        
-        // Final checksum kontrolü
-        const isValid = await ChecksumVerifier.verifyFileChecksum(tempSongPath, song.checksum);
+        const isValid = await downloadVerificationService.verifyFinalFile(
+          tempSongPath,
+          song.checksum,
+          song.name
+        );
+
         if (!isValid) {
-          logger.warn(`Final checksum verification failed for ${song.name}, retrying...`);
-          if (fs.existsSync(tempSongPath)) {
-            fs.unlinkSync(tempSongPath);
-          }
-          throw new Error(`Final checksum verification failed for ${song.name}`);
+          fileWriterService.cleanup(tempSongPath);
+          throw new Error(`Final verification failed for ${song.name}`);
         }
 
-        // Temp dosyayı final dosyaya taşı
-        fs.renameSync(tempSongPath, finalSongPath);
+        const moved = await fileWriterService.moveFile(tempSongPath, finalSongPath);
+        if (!moved) {
+          throw new Error(`Failed to move file for ${song.name}`);
+        }
+
         downloadStateManager.saveState(song._id, song.playlistId, { completed: true });
         logger.info(`Download completed for ${song.name}`);
         
         return finalSongPath;
       } catch (error) {
         logger.error(`Error downloading song ${song.name}:`, error);
-        // Temp dosyayı temizle
-        if (fs.existsSync(tempSongPath)) {
-          fs.unlinkSync(tempSongPath);
-        }
+        fileWriterService.cleanup(tempSongPath);
         throw error;
       }
     }, `download song ${song.name}`);
+  }
+
+  async determineStartByte(tempSongPath, fileSize, song) {
+    let startByte = 0;
+    const downloadState = downloadStateManager.getState(song._id, song.playlistId);
+    
+    if (downloadState && fs.existsSync(tempSongPath)) {
+      try {
+        const stats = fs.statSync(tempSongPath);
+        if (stats.size < fileSize) {
+          startByte = stats.size;
+          logger.info(`Resuming download from byte ${startByte}`);
+        } else {
+          fileWriterService.cleanup(tempSongPath);
+        }
+      } catch (error) {
+        logger.error(`Error checking temp file: ${tempSongPath}`, error);
+        fileWriterService.cleanup(tempSongPath);
+      }
+    }
+    
+    return startByte;
+  }
+
+  async updateDownloadProgress(song, currentChunk, totalChunks, downloadedSize, chunkSize, totalSize) {
+    downloadStateManager.saveState(song._id, song.playlistId, {
+      downloadedChunks: currentChunk + 1,
+      totalChunks,
+      completed: false
+    });
+
+    const progress = Math.round(((currentChunk + 1) / totalChunks) * 100);
+    this.emit('progress', { 
+      songId: song._id,
+      playlistId: song.playlistId, 
+      progress,
+      downloadedSize: downloadedSize + chunkSize,
+      totalSize,
+      currentChunk: currentChunk + 1,
+      totalChunks
+    });
   }
 
   queueSongDownload(song, baseUrl, playlistDir) {

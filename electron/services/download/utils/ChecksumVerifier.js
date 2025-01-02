@@ -31,19 +31,24 @@ class ChecksumVerifier {
 
   static async calculateFileChecksum(filePath) {
     return new Promise((resolve, reject) => {
-      const hash = crypto.createHash('sha256');
-      const stream = fs.createReadStream(filePath);
-      
-      stream.on('data', data => hash.update(data));
-      stream.on('end', () => {
-        const checksum = hash.digest('hex');
-        logger.info(`Calculated checksum for ${filePath}: ${checksum}`);
-        resolve(checksum);
-      });
-      stream.on('error', error => {
-        logger.error(`Error calculating checksum for ${filePath}:`, error);
+      try {
+        const hash = crypto.createHash('sha256');
+        const stream = fs.createReadStream(filePath);
+        
+        stream.on('data', data => hash.update(data));
+        stream.on('end', () => {
+          const checksum = hash.digest('hex');
+          logger.info(`Calculated checksum for ${filePath}: ${checksum}`);
+          resolve(checksum);
+        });
+        stream.on('error', error => {
+          logger.error(`Stream error calculating checksum for ${filePath}:`, error);
+          reject(error);
+        });
+      } catch (error) {
+        logger.error(`Error initiating checksum calculation for ${filePath}:`, error);
         reject(error);
-      });
+      }
     });
   }
 
