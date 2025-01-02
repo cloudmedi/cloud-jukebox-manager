@@ -23,7 +23,7 @@ class ChunkDownloadManager extends EventEmitter {
     const tempSongPath = path.join(playlistDir, `${song._id}.mp3.temp`);
     const finalSongPath = path.join(playlistDir, `${song._id}.mp3`);
 
-    // Check if final file exists and is valid
+    // Önce final dosyayı kontrol et
     if (fs.existsSync(finalSongPath)) {
       try {
         const isValid = await ChecksumVerifier.verifyFileChecksum(finalSongPath, song.checksum);
@@ -48,7 +48,7 @@ class ChunkDownloadManager extends EventEmitter {
         const fileSize = parseInt(headers['content-length'], 10);
         const chunkSize = chunkManager.calculateChunkSize(fileSize);
         
-        // Check existing download state
+        // Temp dosyayı kontrol et
         let startByte = 0;
         const downloadState = downloadStateManager.getState(song._id, song.playlistId);
         
@@ -58,12 +58,17 @@ class ChunkDownloadManager extends EventEmitter {
             if (stats.size < fileSize) {
               startByte = stats.size;
               logger.info(`Resuming download from byte ${startByte}`);
+            } else {
+              // Temp dosya tam boyutta ama doğrulanamamış olabilir
+              fs.unlinkSync(tempSongPath);
+              startByte = 0;
             }
           } catch (error) {
             logger.error(`Error checking temp file: ${tempSongPath}`, error);
             if (fs.existsSync(tempSongPath)) {
               fs.unlinkSync(tempSongPath);
             }
+            startByte = 0;
           }
         }
 
@@ -76,13 +81,18 @@ class ChunkDownloadManager extends EventEmitter {
           
           const chunk = await chunkManager.downloadChunk(songUrl, start, end, song._id);
           
-          // Verify chunk checksum before writing
+          // Her chunk için checksum kontrolü
           const chunkChecksum = await ChecksumVerifier.calculateMD5(chunk);
           if (!await ChecksumVerifier.verifyChunkChecksum(chunk, chunkChecksum)) {
             throw new Error(`Chunk checksum verification failed for ${song.name} chunk ${i + 1}/${chunks}`);
           }
 
-          writer.write(chunk);
+          await new Promise((resolve, reject) => {
+            writer.write(chunk, (error) => {
+              if (error) reject(error);
+              else resolve();
+            });
+          });
 
           downloadStateManager.saveState(song._id, song.playlistId, {
             downloadedChunks: i + 1,
@@ -111,23 +121,17 @@ class ChunkDownloadManager extends EventEmitter {
           });
         });
         
-        // Final checksum verification with retry
-        const isValid = await retryManager.executeWithRetry(
-          async () => {
-            const result = await ChecksumVerifier.verifyFileChecksum(tempSongPath, song.checksum);
-            if (!result) {
-              logger.warn(`Final checksum verification failed for ${song.name}, retrying...`);
-            }
-            return result;
-          },
-          `final checksum verification for ${song.name}`
-        );
-
+        // Final checksum kontrolü
+        const isValid = await ChecksumVerifier.verifyFileChecksum(tempSongPath, song.checksum);
         if (!isValid) {
+          logger.warn(`Final checksum verification failed for ${song.name}, retrying...`);
+          if (fs.existsSync(tempSongPath)) {
+            fs.unlinkSync(tempSongPath);
+          }
           throw new Error(`Final checksum verification failed for ${song.name}`);
         }
 
-        // Rename temp file to final file
+        // Temp dosyayı final dosyaya taşı
         fs.renameSync(tempSongPath, finalSongPath);
         downloadStateManager.saveState(song._id, song.playlistId, { completed: true });
         logger.info(`Download completed for ${song.name}`);
@@ -135,7 +139,7 @@ class ChunkDownloadManager extends EventEmitter {
         return finalSongPath;
       } catch (error) {
         logger.error(`Error downloading song ${song.name}:`, error);
-        // Clean up temp file if exists
+        // Temp dosyayı temizle
         if (fs.existsSync(tempSongPath)) {
           fs.unlinkSync(tempSongPath);
         }

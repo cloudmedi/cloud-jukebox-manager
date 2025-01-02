@@ -6,7 +6,7 @@ const logger = createLogger('retry-manager');
 class RetryManager {
   constructor() {
     this.MAX_RETRIES = 3;
-    this.RETRY_DELAY = 5000; // 5 seconds
+    this.RETRY_DELAY = 5000; // 5 saniye
   }
 
   async executeWithRetry(operation, context) {
