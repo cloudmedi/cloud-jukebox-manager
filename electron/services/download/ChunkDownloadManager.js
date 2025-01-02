@@ -25,6 +25,15 @@ class ChunkDownloadManager extends EventEmitter {
     this.maxConcurrentDownloads = bandwidthManager.maxConcurrentDownloads;
     this.timeoutManager = new TimeoutManager();
     this.isProcessing = false;
+
+    logger.info('ChunkDownloadManager initialized with:', {
+      maxConcurrentDownloads: this.maxConcurrentDownloads,
+      minChunkSize: `${this.MIN_CHUNK_SIZE / 1024}KB`,
+      maxChunkSize: `${this.MAX_CHUNK_SIZE / (1024 * 1024)}MB`,
+      defaultChunkSize: `${this.DEFAULT_CHUNK_SIZE / 1024}KB`,
+      maxRetries: this.MAX_RETRIES,
+      retryDelay: `${this.RETRY_DELAY / 1000}s`
+    });
   }
 
   calculateChunkSize(fileSize) {
@@ -36,13 +45,38 @@ class ChunkDownloadManager extends EventEmitter {
   async downloadChunk(url, start, end, songId, retryCount = 0) {
     const chunkId = `${songId}-${start}`;
     let clearChunkTimeout;
+    const chunkSize = end - start + 1;
+
+    logger.info(`Starting chunk download:`, {
+      chunkId,
+      size: `${chunkSize / 1024}KB`,
+      retryCount,
+      maxSpeed: `${bandwidthManager.getThrottleSpeed() / (1024 * 1024)}MB/s`,
+      priority: bandwidthManager.downloadPriority
+    });
 
     try {
       clearChunkTimeout = this.timeoutManager.setChunkTimeout(chunkId);
 
-      // Hız sınırlaması uygula
+      let lastLogged = Date.now();
+      let lastBytes = 0;
+
       const throttledProgress = throttle((loaded) => {
-        logger.debug(`Chunk download progress: ${loaded} bytes`);
+        const now = Date.now();
+        const timeDiff = (now - lastLogged) / 1000; // seconds
+        const bytesDiff = loaded - lastBytes;
+        const speed = bytesDiff / timeDiff; // bytes per second
+
+        logger.debug(`Chunk download progress:`, {
+          chunkId,
+          loaded: `${loaded / 1024}KB`,
+          total: `${chunkSize / 1024}KB`,
+          speed: `${speed / (1024 * 1024)}MB/s`,
+          progress: `${Math.round((loaded / chunkSize) * 100)}%`
+        });
+
+        lastLogged = now;
+        lastBytes = loaded;
       }, 1000);
 
       const response = await axios({
@@ -62,6 +96,12 @@ class ChunkDownloadManager extends EventEmitter {
       const chunk = response.data;
       const chunkChecksum = ChecksumVerifier.calculateMD5(chunk);
       
+      logger.info(`Chunk download completed:`, {
+        chunkId,
+        size: `${chunk.length / 1024}KB`,
+        checksum: chunkChecksum
+      });
+
       if (!await ChecksumVerifier.verifyChunkChecksum(chunk, chunkChecksum)) {
         throw new Error('Chunk checksum verification failed');
       }
@@ -69,6 +109,13 @@ class ChunkDownloadManager extends EventEmitter {
       return chunk;
 
     } catch (error) {
+      logger.error(`Chunk download failed:`, {
+        chunkId,
+        error: error.message,
+        retryCount,
+        willRetry: retryCount < this.MAX_RETRIES && NetworkErrorHandler.isRetryableError(error)
+      });
+
       if (retryCount < this.MAX_RETRIES && NetworkErrorHandler.isRetryableError(error)) {
         logger.warn(`Retrying chunk download (${retryCount + 1}/${this.MAX_RETRIES}): ${chunkId}`);
         await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY));

@@ -1,4 +1,7 @@
 const { EventEmitter } = require('events');
+const { createLogger } = require('../../utils/logger');
+
+const logger = createLogger('bandwidth-manager');
 
 class BandwidthManager extends EventEmitter {
   constructor() {
@@ -8,7 +11,7 @@ class BandwidthManager extends EventEmitter {
     this.downloadPriority = 'low';
     this.activeDownloads = 0;
     
-    console.log('BandwidthManager initialized with:', {
+    logger.info('BandwidthManager initialized with:', {
       maxConcurrentDownloads: this.maxConcurrentDownloads,
       maxChunkSpeed: `${this.maxChunkSpeed / (1024 * 1024)}MB/s`,
       downloadPriority: this.downloadPriority
@@ -16,22 +19,35 @@ class BandwidthManager extends EventEmitter {
   }
 
   canStartNewDownload() {
-    return this.activeDownloads < this.maxConcurrentDownloads;
+    const canStart = this.activeDownloads < this.maxConcurrentDownloads;
+    logger.debug(`Checking if can start new download:`, {
+      activeDownloads: this.activeDownloads,
+      maxConcurrentDownloads: this.maxConcurrentDownloads,
+      canStart
+    });
+    return canStart;
   }
 
   startDownload() {
     if (this.canStartNewDownload()) {
       this.activeDownloads++;
-      console.log(`Starting new download. Active downloads: ${this.activeDownloads}`);
+      logger.info(`Starting new download:`, {
+        activeDownloads: this.activeDownloads,
+        remainingSlots: this.maxConcurrentDownloads - this.activeDownloads
+      });
       return true;
     }
+    logger.warn(`Cannot start new download: maximum concurrent downloads reached`);
     return false;
   }
 
   finishDownload() {
     if (this.activeDownloads > 0) {
       this.activeDownloads--;
-      console.log(`Finished download. Active downloads: ${this.activeDownloads}`);
+      logger.info(`Finished download:`, {
+        activeDownloads: this.activeDownloads,
+        availableSlots: this.maxConcurrentDownloads - this.activeDownloads
+      });
     }
   }
 
@@ -41,7 +57,7 @@ class BandwidthManager extends EventEmitter {
 
   setPriority(priority) {
     this.downloadPriority = priority;
-    console.log(`Download priority set to: ${priority}`);
+    logger.info(`Download priority changed:`, { priority });
   }
 }
 
