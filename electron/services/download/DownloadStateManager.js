@@ -1,46 +1,36 @@
-const { ipcMain } = require('electron');
-const EventEmitter = require('events');
+const Store = require('electron-store');
+const path = require('path');
+const fs = require('fs');
 
-class DownloadStateManager extends EventEmitter {
+class DownloadStateManager {
   constructor() {
-    super();
-    this.downloads = new Map();
-    this.setupListeners();
+    this.store = new Store();
   }
 
-  setupListeners() {
-    ipcMain.on('get-download-status', (event, songId) => {
-      const status = this.getDownloadStatus(songId);
-      event.reply('download-status-update', { songId, status });
-    });
-  }
-
-  updateDownloadStatus(songId, status, progress = 0, retryCount = 0) {
-    this.downloads.set(songId, { 
-      status, 
-      progress, 
-      retryCount,
+  saveDownloadState(playlistId, downloadedSongs, totalSongs) {
+    this.store.set(`download.${playlistId}`, {
+      downloadedSongs,
+      totalSongs,
       timestamp: Date.now()
     });
-    
-    this.emit('download-status-change', { 
-      songId, 
-      status, 
-      progress, 
-      retryCount 
-    });
   }
 
-  getDownloadStatus(songId) {
-    return this.downloads.get(songId) || { 
-      status: 'pending', 
-      progress: 0, 
-      retryCount: 0 
-    };
+  getDownloadState(playlistId) {
+    return this.store.get(`download.${playlistId}`);
   }
 
-  clearDownloadStatus(songId) {
-    this.downloads.delete(songId);
+  clearDownloadState(playlistId) {
+    this.store.delete(`download.${playlistId}`);
+  }
+
+  isDownloadComplete(playlistId) {
+    const state = this.getDownloadState(playlistId);
+    return state && state.downloadedSongs === state.totalSongs;
+  }
+
+  shouldResumeDownload(playlistId) {
+    const state = this.getDownloadState(playlistId);
+    return state && state.downloadedSongs < state.totalSongs;
   }
 }
 

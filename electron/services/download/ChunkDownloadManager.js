@@ -25,57 +25,20 @@ class ChunkDownloadManager extends EventEmitter {
     this.isProcessing = false;
   }
 
-  calculateChunkSize(fileSize) {
-    if (fileSize < 10 * 1024 * 1024) return this.MIN_CHUNK_SIZE;
-    if (fileSize < 100 * 1024 * 1024) return this.DEFAULT_CHUNK_SIZE;
-    return this.MAX_CHUNK_SIZE;
-  }
-
-  async downloadChunk(url, start, end, songId, retryCount = 0) {
-    const chunkId = `${songId}-${start}`;
-    let clearChunkTimeout;
-
-    try {
-      clearChunkTimeout = this.timeoutManager.setChunkTimeout(chunkId);
-
-      const response = await axios({
-        url,
-        method: 'GET',
-        responseType: 'arraybuffer',
-        headers: { Range: `bytes=${start}-${end}` }
-      });
-
-      const chunk = response.data;
-      const chunkChecksum = ChecksumVerifier.calculateMD5(chunk);
-      
-      if (!await ChecksumVerifier.verifyChunkChecksum(chunk, chunkChecksum)) {
-        throw new Error('Chunk checksum verification failed');
-      }
-
-      return chunk;
-
-    } catch (error) {
-      if (retryCount < this.MAX_RETRIES && NetworkErrorHandler.isRetryableError(error)) {
-        logger.warn(`Retrying chunk download (${retryCount + 1}/${this.MAX_RETRIES}): ${chunkId}`);
-        await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY));
-        return this.downloadChunk(url, start, end, songId, retryCount + 1);
-      }
-      throw error;
-    } finally {
-      if (clearChunkTimeout) {
-        clearChunkTimeout();
-      }
-    }
-  }
-
   async downloadSong(song, baseUrl, playlistDir) {
-    logger.info(`Starting download for song: ${song.name}`);
-    
-    try {
-      const songPath = path.join(playlistDir, `${song._id}.mp3`);
-      const tempSongPath = `${songPath}.temp`;
-      const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
+    const tempSongPath = path.join(playlistDir, `${song._id}.mp3.temp`);
+    const finalSongPath = path.join(playlistDir, `${song._id}.mp3`);
 
+    // Eğer final dosya zaten varsa, tekrar indirmeye gerek yok
+    if (fs.existsSync(finalSongPath)) {
+      console.log(`Song already exists: ${song.name}`);
+      return finalSongPath;
+    }
+
+    try {
+      logger.info(`Starting download for song: ${song.name}`);
+      
+      const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
       const { headers } = await axios.head(songUrl);
       const fileSize = parseInt(headers['content-length'], 10);
       const chunkSize = this.calculateChunkSize(fileSize);
@@ -122,9 +85,9 @@ class ChunkDownloadManager extends EventEmitter {
           }
         }
 
-        fs.renameSync(tempSongPath, songPath);
+        fs.renameSync(tempSongPath, finalSongPath);
         logger.info(`Download completed for ${song.name}`);
-        return songPath;
+        return finalSongPath;
 
       } finally {
         clearGlobalTimeout();
@@ -137,6 +100,49 @@ class ChunkDownloadManager extends EventEmitter {
         fs.unlinkSync(tempSongPath);
       }
       throw error;
+    }
+  }
+
+  calculateChunkSize(fileSize) {
+    if (fileSize < 10 * 1024 * 1024) return this.MIN_CHUNK_SIZE;
+    if (fileSize < 100 * 1024 * 1024) return this.DEFAULT_CHUNK_SIZE;
+    return this.MAX_CHUNK_SIZE;
+  }
+
+  async downloadChunk(url, start, end, songId, retryCount = 0) {
+    const chunkId = `${songId}-${start}`;
+    let clearChunkTimeout;
+
+    try {
+      clearChunkTimeout = this.timeoutManager.setChunkTimeout(chunkId);
+
+      const response = await axios({
+        url,
+        method: 'GET',
+        responseType: 'arraybuffer',
+        headers: { Range: `bytes=${start}-${end}` }
+      });
+
+      const chunk = response.data;
+      const chunkChecksum = ChecksumVerifier.calculateMD5(chunk);
+      
+      if (!await ChecksumVerifier.verifyChunkChecksum(chunk, chunkChecksum)) {
+        throw new Error('Chunk checksum verification failed');
+      }
+
+      return chunk;
+
+    } catch (error) {
+      if (retryCount < this.MAX_RETRIES && NetworkErrorHandler.isRetryableError(error)) {
+        logger.warn(`Retrying chunk download (${retryCount + 1}/${this.MAX_RETRIES}): ${chunkId}`);
+        await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY));
+        return this.downloadChunk(url, start, end, songId, retryCount + 1);
+      }
+      throw error;
+    } finally {
+      if (clearChunkTimeout) {
+        clearChunkTimeout();
+      }
     }
   }
 
@@ -178,12 +184,6 @@ class ChunkDownloadManager extends EventEmitter {
         this.processQueue();
       }
     }
-  }
-
-  clearDownload(songId) {
-    this.activeDownloads.delete(songId);
-    this.downloadQueue = this.downloadQueue.filter(item => item.song._id !== songId);
-    this.timeoutManager.clearAll();
   }
 }
 
