@@ -1,4 +1,5 @@
 const crypto = require('crypto');
+const fs = require('fs');
 
 class ChecksumUtils {
   static calculateMD5(buffer) {

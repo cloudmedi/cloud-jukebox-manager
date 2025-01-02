@@ -2,12 +2,15 @@ const { EventEmitter } = require('events');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-const retryManager = require('./RetryManager');
+const RetryManager = require('./RetryManager');
 const ChecksumUtils = require('./utils/checksumUtils');
 
 class ChunkDownloadManager extends EventEmitter {
   constructor() {
     super();
+    this.retryManager = new RetryManager();
+    this.setupRetryListener();
+    
     this.MIN_CHUNK_SIZE = 256 * 1024; // 256KB
     this.MAX_CHUNK_SIZE = 2 * 1024 * 1024; // 2MB
     this.DEFAULT_CHUNK_SIZE = 1024 * 1024; // 1MB
@@ -21,8 +24,49 @@ class ChunkDownloadManager extends EventEmitter {
     this.chunkBuffers = new Map();
     this.downloadedChunks = new Map();
     this.memoryUsage = 0;
+  }
 
-    setInterval(() => this.cleanupMemory(), 30000);
+  setupRetryListener() {
+    this.retryManager.on('retry', ({ attempt, maxAttempts, error, context }) => {
+      console.log(`Retry attempt ${attempt}/${maxAttempts} for ${context}: ${error}`);
+      this.emit('downloadRetry', {
+        attempt,
+        maxAttempts,
+        error,
+        context
+      });
+    });
+  }
+
+  async downloadChunk(url, start, end) {
+    const operation = async () => {
+      const response = await axios({
+        url,
+        method: 'GET',
+        responseType: 'arraybuffer',
+        headers: {
+          Range: `bytes=${start}-${end}`
+        },
+        timeout: 30000
+      });
+
+      const chunk = response.data;
+      const md5Checksum = response.headers['x-chunk-md5'];
+
+      if (md5Checksum) {
+        const isValid = await ChecksumUtils.verifyChunkChecksum(chunk, md5Checksum);
+        if (!isValid) {
+          throw new Error('Chunk MD5 verification failed');
+        }
+      }
+
+      return chunk;
+    };
+
+    return await this.retryManager.executeWithRetry(
+      operation,
+      `Chunk download: ${url} (${start}-${end})`
+    );
   }
 
   setChunkSize(size) {
@@ -83,52 +127,6 @@ class ChunkDownloadManager extends EventEmitter {
     return download.totalChunks === chunks.length;
   }
 
-  async downloadChunk(url, start, end) {
-    const operation = async () => {
-      try {
-        const response = await axios({
-          url,
-          method: 'GET',
-          responseType: 'arraybuffer',
-          headers: {
-            Range: `bytes=${start}-${end}`
-          },
-          timeout: 30000
-        });
-
-        const chunk = response.data;
-        const md5Checksum = response.headers['x-chunk-md5'] || '';
-
-        // MD5 kontrolü yap
-        if (md5Checksum && !(await ChecksumUtils.verifyChunkChecksum(chunk, md5Checksum))) {
-          throw new Error('Chunk MD5 verification failed');
-        }
-
-        return chunk;
-      } catch (error) {
-        error.code = 'CHUNK_DOWNLOAD_ERROR';
-        throw error;
-      }
-    };
-
-    let attempts = 0;
-    while (attempts < this.MAX_RETRY_ATTEMPTS) {
-      try {
-        return await retryManager.executeWithRetry(
-          operation,
-          `Chunk download: ${url} (${start}-${end})`
-        );
-      } catch (error) {
-        attempts++;
-        if (attempts === this.MAX_RETRY_ATTEMPTS) {
-          throw error;
-        }
-        console.log(`Retrying chunk download, attempt ${attempts + 1}/${this.MAX_RETRY_ATTEMPTS}`);
-        await new Promise(resolve => setTimeout(resolve, 1000 * attempts));
-      }
-    }
-  }
-
   async downloadSongInChunks(song, baseUrl, playlistDir) {
     try {
       console.log(`Starting chunked download for song: ${song.name}`);
@@ -138,41 +136,26 @@ class ChunkDownloadManager extends EventEmitter {
 
       // İlk chunk'ı indir
       const firstChunkSize = this.CHUNK_SIZE;
-      const firstChunkOperation = async () => {
-        const response = await axios({
-          url: songUrl,
-          method: 'GET',
-          responseType: 'arraybuffer',
-          headers: {
-            Range: `bytes=0-${firstChunkSize - 1}`
-          }
-        });
-        return response.data;
-      };
+      const firstChunk = await this.downloadChunk(songUrl, 0, firstChunkSize - 1);
 
-      const firstChunkResponse = await retryManager.executeWithRetry(
-        firstChunkOperation,
-        `First chunk download: ${song.name}`
-      );
-
-      this.trackMemoryUsage(firstChunkResponse.length, 'add');
+      this.trackMemoryUsage(firstChunk.length, 'add');
       if (!this.downloadedChunks.has(song._id)) {
         this.downloadedChunks.set(song._id, []);
       }
-      this.downloadedChunks.get(song._id).push(firstChunkResponse);
+      this.downloadedChunks.get(song._id).push(firstChunk);
 
-      fs.writeFileSync(songPath, Buffer.from(firstChunkResponse));
+      fs.writeFileSync(songPath, Buffer.from(firstChunk));
       
       this.emit('firstChunkReady', {
         songId: song._id,
         songPath,
-        buffer: firstChunkResponse
+        buffer: firstChunk
       });
 
       // Dosya boyutunu ve SHA-256 checksumunu al
       const response = await axios.head(songUrl);
       const fileSize = parseInt(response.headers['content-length'], 10);
-      const expectedSHA256 = response.headers['x-file-sha256'] || '';
+      const expectedSHA256 = response.headers['x-file-sha256'];
       const totalChunks = Math.ceil(fileSize / this.CHUNK_SIZE);
       
       this.activeDownloads.set(song._id, {
@@ -185,30 +168,24 @@ class ChunkDownloadManager extends EventEmitter {
       for (let start = firstChunkSize; start < fileSize; start += this.CHUNK_SIZE) {
         const end = Math.min(start + this.CHUNK_SIZE - 1, fileSize - 1);
         
-        try {
-          const chunk = await this.downloadChunk(songUrl, start, end);
-          
-          this.trackMemoryUsage(chunk.length, 'add');
-          this.downloadedChunks.get(song._id).push(chunk);
-          
-          fs.appendFileSync(songPath, Buffer.from(chunk));
+        const chunk = await this.downloadChunk(songUrl, start, end);
+        
+        this.trackMemoryUsage(chunk.length, 'add');
+        this.downloadedChunks.get(song._id).push(chunk);
+        
+        fs.appendFileSync(songPath, Buffer.from(chunk));
 
-          const download = this.activeDownloads.get(song._id);
-          if (download) {
-            download.lastActive = Date.now();
-          }
-
-          const progress = Math.floor((start + chunk.length) / fileSize * 100);
-          this.emit('progress', {
-            songId: song._id,
-            progress,
-            isComplete: progress === 100
-          });
-
-        } catch (error) {
-          console.error(`Error downloading chunk for ${song.name}:`, error);
-          throw error;
+        const download = this.activeDownloads.get(song._id);
+        if (download) {
+          download.lastActive = Date.now();
         }
+
+        const progress = Math.floor((start + chunk.length) / fileSize * 100);
+        this.emit('progress', {
+          songId: song._id,
+          progress,
+          isComplete: progress === 100
+        });
       }
 
       // Dosya tamamlandığında SHA-256 kontrolü yap

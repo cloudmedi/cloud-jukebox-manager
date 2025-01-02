@@ -1,32 +1,44 @@
-class RetryManager {
-  constructor() {
-    this.MAX_RETRIES = 3;
-    this.RETRY_DELAY = 5000; // 5 seconds
+const { EventEmitter } = require('events');
+
+class RetryManager extends EventEmitter {
+  constructor(maxRetries = 3, initialDelay = 1000) {
+    super();
+    this.MAX_RETRIES = maxRetries;
+    this.INITIAL_DELAY = initialDelay;
   }
 
   async executeWithRetry(operation, context) {
     let retryCount = 0;
-    
+    let lastError;
+
     while (retryCount < this.MAX_RETRIES) {
       try {
         return await operation();
       } catch (error) {
         retryCount++;
-        console.log(`Retry attempt ${retryCount} for ${context}`);
-        
-        // Sadece geçici hatalarda retry yap
+        lastError = error;
+
         if (!this.isRetryableError(error) || retryCount === this.MAX_RETRIES) {
           throw error;
         }
-        
-        // Exponential backoff ile bekle
-        await this.delay(this.RETRY_DELAY * retryCount);
+
+        const delay = this.calculateDelay(retryCount);
+        this.emit('retry', {
+          attempt: retryCount,
+          maxAttempts: this.MAX_RETRIES,
+          error: error.message,
+          context,
+          nextAttemptIn: delay
+        });
+
+        await this.delay(delay);
       }
     }
+
+    throw lastError;
   }
 
   isRetryableError(error) {
-    // Retry yapılabilecek hata tipleri
     const retryableErrors = [
       'ECONNRESET',
       'ETIMEDOUT',
@@ -37,7 +49,15 @@ class RetryManager {
 
     return retryableErrors.includes(error.code) || 
            error.message.includes('timeout') ||
-           error.message.includes('network error');
+           error.message.includes('network error') ||
+           error.message.includes('checksum verification failed');
+  }
+
+  calculateDelay(retryCount) {
+    // Exponential backoff with jitter
+    const baseDelay = this.INITIAL_DELAY * Math.pow(2, retryCount - 1);
+    const jitter = Math.random() * 1000;
+    return baseDelay + jitter;
   }
 
   delay(ms) {
@@ -45,4 +65,4 @@ class RetryManager {
   }
 }
 
-module.exports = new RetryManager();
+module.exports = RetryManager;
