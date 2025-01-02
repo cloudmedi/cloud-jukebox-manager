@@ -1,9 +1,8 @@
 const QueueManager = require('./QueueManager');
 const PlaybackState = require('./PlaybackState');
 const path = require('path');
-const EmergencyStateManager = require('../emergency/EmergencyStateManager');
-const Store = require('electron-store');
 const { Howl } = require('howler');
+const Store = require('electron-store');
 const store = new Store();
 
 class AudioPlayer {
@@ -13,8 +12,7 @@ class AudioPlayer {
     this.sound = null;
     this.playlist = null;
     this.isPlaying = false;
-    this.volume = 1.0;
-    this.pendingFirstChunk = null;
+    this.volume = store.get('volume', 100) / 100;
     this.readyToPlay = false;
 
     this.setupEventListeners();
@@ -85,6 +83,66 @@ class AudioPlayer {
     }
   }
 
+  loadPlaylist(playlist) {
+    console.log('Loading playlist:', playlist);
+    this.playlist = playlist;
+    this.queueManager.setQueue(playlist.songs);
+    
+    if (this.queueManager.getCurrentSong()) {
+      this.loadCurrentSong();
+    } else {
+      console.log('No playable songs in playlist');
+    }
+  }
+
+  loadCurrentSong() {
+    const song = this.queueManager.getCurrentSong();
+    if (!song) {
+      console.log('No song to load');
+      return;
+    }
+
+    console.log('Loading song:', song);
+
+    if (!song.localPath) {
+      console.error('Song localPath is missing:', song);
+      this.playNext();
+      return;
+    }
+
+    try {
+      const normalizedPath = path.normalize(song.localPath);
+      console.log('Playing file from:', normalizedPath);
+      
+      if (this.sound) {
+        this.sound.unload();
+      }
+      
+      this.sound = new Howl({
+        src: [normalizedPath],
+        html5: true,
+        volume: this.volume,
+        format: ['mp3'],
+        onload: () => {
+          console.log('Song loaded successfully');
+          if (this.isPlaying) {
+            this.sound.play();
+          }
+        },
+        onloaderror: (id, error) => {
+          console.error('Error loading song:', error);
+          this.playNext();
+        }
+      });
+      
+      this.setupEventListeners();
+      
+    } catch (error) {
+      console.error('Error loading song:', error);
+      this.playNext();
+    }
+  }
+
   play() {
     console.log('Play requested');
     if (this.sound) {
@@ -94,7 +152,7 @@ class AudioPlayer {
       console.log('No audio source loaded');
       const currentSong = this.queueManager.getCurrentSong();
       if (currentSong) {
-        this.loadSong(currentSong);
+        this.loadCurrentSong();
       }
     }
   }
@@ -118,7 +176,7 @@ class AudioPlayer {
     const nextSong = this.queueManager.next();
     if (nextSong) {
       console.log('Next song found:', nextSong.name);
-      this.loadSong(nextSong);
+      this.loadCurrentSong();
     } else {
       console.log('No more songs in queue');
       this.stop();
@@ -126,10 +184,13 @@ class AudioPlayer {
   }
 
   setVolume(volume) {
-    this.volume = volume / 100;
+    const normalizedVolume = Math.max(0, Math.min(100, volume));
+    this.volume = normalizedVolume / 100;
     if (this.sound) {
       this.sound.volume(this.volume);
     }
+    store.set('volume', normalizedVolume);
+    console.log('Volume set and saved:', normalizedVolume);
   }
 
   updatePlaybackState(state) {
@@ -157,12 +218,11 @@ class AudioPlayer {
       this.loadPlaylist(state.playlist);
       this.setVolume(state.volume);
       
-      // Eğer önceki durum 'playing' ise, otomatik başlat
       if (state.state === 'playing') {
         setTimeout(() => {
           console.log('Auto-playing restored playlist');
           this.play();
-        }, 1000); // Ses dosyasının yüklenmesi için kısa bir gecikme
+        }, 1000);
       }
     }
   }
