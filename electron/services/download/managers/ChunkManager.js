@@ -13,6 +13,13 @@ class ChunkManager {
     const maxBytesPerInterval = (bandwidthManager.maxChunkSpeed * this.throttleInterval) / 1000;
     let bytesInInterval = 0;
     let lastIntervalStart = Date.now();
+    let totalBytesProcessed = 0;
+    let throttleCount = 0;
+
+    logger.info('[THROTTLE CONFIG]', {
+      maxBytesPerInterval: `${(maxBytesPerInterval / 1024).toFixed(2)}KB per ${this.throttleInterval}ms`,
+      targetSpeed: `${(bandwidthManager.maxChunkSpeed / (1024 * 1024)).toFixed(2)}MB/s`
+    });
 
     return new Promise((resolve, reject) => {
       const processChunk = async () => {
@@ -20,26 +27,40 @@ class ChunkManager {
           const { done, value } = await reader.read();
           
           if (done) {
+            logger.info('[THROTTLE SUMMARY]', {
+              totalBytesProcessed: `${(totalBytesProcessed / (1024 * 1024)).toFixed(2)}MB`,
+              throttleCount,
+              averageSpeed: `${((totalBytesProcessed / 1024 / 1024) / (Date.now() - lastIntervalStart) * 1000).toFixed(2)}MB/s`
+            });
             resolve();
             return;
           }
 
           bytesInInterval += value.length;
+          totalBytesProcessed += value.length;
           const now = Date.now();
           const intervalElapsed = now - lastIntervalStart;
 
           if (intervalElapsed >= this.throttleInterval) {
             const currentSpeed = (bytesInInterval * 1000) / intervalElapsed;
             
+            logger.info('[THROTTLE INTERVAL]', {
+              currentBytes: `${(bytesInInterval / 1024).toFixed(2)}KB`,
+              elapsed: `${intervalElapsed}ms`,
+              currentSpeed: `${(currentSpeed / (1024 * 1024)).toFixed(2)}MB/s`
+            });
+
             if (currentSpeed > bandwidthManager.maxChunkSpeed) {
+              throttleCount++;
               const delay = Math.ceil(
                 (bytesInInterval - maxBytesPerInterval) * 1000 / bandwidthManager.maxChunkSpeed
               );
               
-              logger.info('[THROTTLE]', {
+              logger.warn('[THROTTLE ACTIVE]', {
                 currentSpeed: `${(currentSpeed / (1024 * 1024)).toFixed(2)}MB/s`,
                 maxSpeed: `${(bandwidthManager.maxChunkSpeed / (1024 * 1024)).toFixed(2)}MB/s`,
-                delay: `${delay}ms`
+                delay: `${delay}ms`,
+                throttleCount
               });
               
               await new Promise(resolve => setTimeout(resolve, delay));
@@ -51,6 +72,11 @@ class ChunkManager {
 
           processChunk();
         } catch (error) {
+          logger.error('[THROTTLE ERROR]', {
+            error: error.message,
+            bytesProcessed: `${(totalBytesProcessed / (1024 * 1024)).toFixed(2)}MB`,
+            throttleCount
+          });
           reject(error);
         }
       };
