@@ -25,12 +25,17 @@ class ThrottleController extends EventEmitter {
 
       if (requiredDelay > 0) {
         this.paused = true;
-        logger.debug(`Throttling download, waiting ${requiredDelay}ms`);
+        logger.debug(`[THROTTLE] Throttling download, waiting ${requiredDelay}ms, current speed: ${(currentSpeed / (1024 * 1024)).toFixed(2)}MB/s`);
         await new Promise(resolve => setTimeout(resolve, requiredDelay));
         this.paused = false;
+        
+        // Reset after throttling
+        this.bytesTransferred = 0;
+        this.lastCheck = Date.now();
       }
     }
 
+    // Her saniye başında sayaçları sıfırla
     if (duration >= 1) {
       this.bytesTransferred = 0;
       this.lastCheck = now;
@@ -43,7 +48,7 @@ class ThrottleController extends EventEmitter {
 
   setMaxSpeed(maxBytesPerSecond) {
     this.maxBytesPerSecond = maxBytesPerSecond;
-    logger.info(`Max speed updated to ${maxBytesPerSecond / (1024 * 1024)}MB/s`);
+    logger.info(`[THROTTLE] Max speed updated to ${maxBytesPerSecond / (1024 * 1024)}MB/s`);
   }
 }
 
