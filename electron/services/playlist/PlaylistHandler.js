@@ -4,11 +4,7 @@ const fs = require('fs');
 const Store = require('electron-store');
 const store = new Store();
 const chunkDownloadManager = require('../download/ChunkDownloadManager');
-const downloadStateManager = require('../download/managers/DownloadStateManager');
 const audioPlayer = require('../audio/AudioPlayer');
-const { createLogger } = require('../../utils/logger');
-
-const logger = createLogger('playlist-handler');
 
 class PlaylistHandler {
   constructor() {
@@ -25,17 +21,13 @@ class PlaylistHandler {
 
   setupDownloadListeners() {
     chunkDownloadManager.on('songDownloaded', (songId) => {
-      logger.info(`Song ${songId} downloaded successfully`);
-    });
-
-    chunkDownloadManager.on('progress', (progress) => {
-      logger.debug('Download progress:', progress);
+      console.log(`Song ${songId} downloaded successfully`);
     });
   }
 
   async handlePlaylist(playlist) {
     try {
-      logger.info('Handling playlist:', playlist.name);
+      console.log('Handling playlist:', playlist.name);
       
       const playlistDir = path.join(this.downloadPath, playlist._id);
       this.ensureDirectoryExists(playlistDir);
@@ -43,7 +35,7 @@ class PlaylistHandler {
       // İlk şarkıyı hemen indir
       const firstSong = playlist.songs[0];
       if (firstSong) {
-        logger.info('Starting download of first song:', firstSong.name);
+        console.log('Starting download of first song:', firstSong.name);
         const firstSongPath = await chunkDownloadManager.downloadSong(
           firstSong,
           playlist.baseUrl,
@@ -52,7 +44,7 @@ class PlaylistHandler {
 
         // İlk şarkı hazır olduğunda oynatıcıya bildir
         if (firstSongPath) {
-          logger.info('First song ready:', firstSongPath);
+          console.log('First song ready:', firstSongPath);
           firstSong.localPath = firstSongPath;
           if (audioPlayer && typeof audioPlayer.handleFirstSongReady === 'function') {
             audioPlayer.handleFirstSongReady(firstSong._id, firstSongPath);
@@ -61,10 +53,10 @@ class PlaylistHandler {
       }
 
       // Kalan şarkıları kuyruğa ekle
-      logger.info('Adding remaining songs to queue');
+      console.log('Adding remaining songs to queue');
       for (let i = 1; i < playlist.songs.length; i++) {
         const song = playlist.songs[i];
-        logger.info(`Adding song to queue: ${song.name}`);
+        console.log(`Adding song to queue: ${song.name}`);
         chunkDownloadManager.queueSongDownload(
           song,
           playlist.baseUrl,
@@ -92,7 +84,7 @@ class PlaylistHandler {
       
       return updatedPlaylist;
     } catch (error) {
-      logger.error('Error handling playlist:', error);
+      console.error('Error handling playlist:', error);
       throw error;
     }
   }
