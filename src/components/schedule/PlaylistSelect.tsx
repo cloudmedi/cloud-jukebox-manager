@@ -5,7 +5,6 @@ import { Music2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Control } from "react-hook-form";
 import { formatDuration } from "@/lib/utils";
-import { Card, CardContent } from "@/components/ui/card";
 
 interface PlaylistSelectProps {
   control: Control<any>;
@@ -31,11 +30,6 @@ export function PlaylistSelect({ control }: PlaylistSelectProps) {
       name="playlist"
       render={({ field }) => {
         console.log("Current field value:", field.value);
-        
-        // Seçili playlist'i bul
-        const selectedPlaylist = playlists.find(p => p._id === field.value);
-        console.log("Selected playlist:", selectedPlaylist);
-
         return (
           <FormItem className="space-y-4">
             <FormLabel>Playlist</FormLabel>
@@ -78,37 +72,6 @@ export function PlaylistSelect({ control }: PlaylistSelectProps) {
                 </ScrollArea>
               </SelectContent>
             </Select>
-
-            {selectedPlaylist && (
-              <Card className="mt-4">
-                <CardContent className="p-4">
-                  <div className="flex gap-4">
-                    {selectedPlaylist.artwork ? (
-                      <img 
-                        src={`http://localhost:5000${selectedPlaylist.artwork}`}
-                        alt={selectedPlaylist.name}
-                        className="h-24 w-24 rounded-lg object-cover"
-                        onError={(e) => {
-                          const target = e.target as HTMLImageElement;
-                          target.style.display = 'none';
-                        }}
-                      />
-                    ) : (
-                      <div className="flex h-24 w-24 items-center justify-center rounded-lg bg-muted">
-                        <Music2 className="h-12 w-12 text-muted-foreground" />
-                      </div>
-                    )}
-                    <div className="space-y-2">
-                      <h3 className="font-semibold">{selectedPlaylist.name}</h3>
-                      <div className="space-y-1 text-sm text-muted-foreground">
-                        <p>{selectedPlaylist.songs?.length || 0} şarkı</p>
-                        <p>Toplam süre: {formatDuration(selectedPlaylist.totalDuration || 0)}</p>
-                      </div>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
           </FormItem>
         );
       }}
