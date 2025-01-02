@@ -18,6 +18,14 @@ class ChunkDownloadManager extends EventEmitter {
     this.maxRetries = 3;
     this.retryDelays = [2000, 4000, 8000];
     this.isProcessing = false;
+    this.chunkSize = 1024 * 1024; // 1MB default chunk size
+  }
+
+  calculateChunkSize(fileSize) {
+    // Dosya boyutuna göre chunk size optimize et
+    if (fileSize < 10 * 1024 * 1024) return 256 * 1024; // 256KB for small files
+    if (fileSize < 100 * 1024 * 1024) return 1024 * 1024; // 1MB for medium files
+    return 2 * 1024 * 1024; // 2MB for large files
   }
 
   async downloadChunk(url, start, end, songId, retryCount = 0) {
@@ -48,16 +56,28 @@ class ChunkDownloadManager extends EventEmitter {
         }
       });
 
+      // Verify chunk integrity if checksum is available
+      if (response.headers['x-chunk-checksum']) {
+        const isValid = await ChecksumVerifier.verifyChunkChecksum(
+          response.data,
+          response.headers['x-chunk-checksum']
+        );
+        if (!isValid) {
+          throw new Error('Chunk checksum verification failed');
+        }
+      }
+
       bandwidthManager.finishDownload(downloadId);
       return response.data;
 
     } catch (error) {
       bandwidthManager.finishDownload(downloadId);
       
-      if (retryCount < this.maxRetries) {
+      if (NetworkErrorHandler.isRetryableError(error) && retryCount < this.maxRetries) {
         logger.warn(`Retrying chunk download: ${chunkId}`, {
           attempt: retryCount + 1,
-          maxRetries: this.maxRetries
+          maxRetries: this.maxRetries,
+          error: error.message
         });
 
         await new Promise(resolve => 
@@ -105,10 +125,11 @@ class ChunkDownloadManager extends EventEmitter {
 
       await new Promise((resolve) => writer.end(resolve));
 
+      // Verify final file checksum if available
       if (song.checksum) {
         const isValid = await ChecksumVerifier.verifyFileChecksum(tempPath, song.checksum);
         if (!isValid) {
-          throw new Error('Checksum verification failed');
+          throw new Error('File checksum verification failed');
         }
       }
 
@@ -124,12 +145,6 @@ class ChunkDownloadManager extends EventEmitter {
       }
       throw error;
     }
-  }
-
-  calculateChunkSize(fileSize) {
-    if (fileSize < 10 * 1024 * 1024) return 256 * 1024; // 256KB
-    if (fileSize < 100 * 1024 * 1024) return 1024 * 1024; // 1MB
-    return 2 * 1024 * 1024; // 2MB
   }
 }
 

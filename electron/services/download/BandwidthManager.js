@@ -21,6 +21,7 @@ class BandwidthManager extends EventEmitter {
   }
 
   setupCleanupInterval() {
+    // Her 30 saniyede bir temizlik yap
     setInterval(() => {
       this.cleanupStaleDownloads();
     }, 30000);
@@ -28,16 +29,32 @@ class BandwidthManager extends EventEmitter {
 
   cleanupStaleDownloads() {
     const now = Date.now();
+    let cleaned = 0;
+
     for (const [downloadId, download] of this.activeDownloads.entries()) {
-      if (now - download.lastActivity > 60000) { // 1 minute timeout
+      if (now - download.lastActivity > 60000) { // 1 dakika timeout
         logger.warn(`Cleaning up stale download: ${downloadId}`);
         this.activeDownloads.delete(downloadId);
+        cleaned++;
       }
+    }
+
+    if (cleaned > 0) {
+      logger.info(`Cleaned up ${cleaned} stale downloads`);
     }
   }
 
   canStartNewDownload() {
-    return this.activeDownloads.size < this.maxConcurrentDownloads;
+    const activeCount = this.activeDownloads.size;
+    const canStart = activeCount < this.maxConcurrentDownloads;
+
+    logger.debug('Download start check', {
+      activeDownloads: activeCount,
+      maxAllowed: this.maxConcurrentDownloads,
+      canStart: canStart
+    });
+
+    return canStart;
   }
 
   async startDownload(downloadId) {
@@ -50,7 +67,8 @@ class BandwidthManager extends EventEmitter {
       startTime: Date.now(),
       lastActivity: Date.now(),
       bytesDownloaded: 0,
-      currentSpeed: 0
+      currentSpeed: 0,
+      status: 'active'
     });
 
     logger.info(`Started download: ${downloadId}`, {
@@ -62,9 +80,13 @@ class BandwidthManager extends EventEmitter {
 
   async updateProgress(downloadId, bytes) {
     const download = this.activeDownloads.get(downloadId);
-    if (!download) return;
+    if (!download) {
+      logger.warn(`Attempted to update non-existent download: ${downloadId}`);
+      return;
+    }
 
     try {
+      // Throttle the chunk
       await this.throttleController.throttle(bytes);
       
       const now = Date.now();
@@ -76,6 +98,14 @@ class BandwidthManager extends EventEmitter {
 
       this.activeDownloads.set(downloadId, download);
 
+      // Emit progress event
+      this.emit('progress', {
+        downloadId,
+        bytesDownloaded: download.bytesDownloaded,
+        currentSpeed: download.currentSpeed,
+        timestamp: now
+      });
+
       logger.debug(`Download progress: ${downloadId}`, {
         bytesDownloaded: download.bytesDownloaded / (1024 * 1024),
         currentSpeed: download.currentSpeed / (1024 * 1024),
@@ -84,12 +114,16 @@ class BandwidthManager extends EventEmitter {
 
     } catch (error) {
       logger.error(`Error updating download progress: ${downloadId}`, error);
+      throw error;
     }
   }
 
   finishDownload(downloadId) {
     const download = this.activeDownloads.get(downloadId);
-    if (!download) return;
+    if (!download) {
+      logger.warn(`Attempted to finish non-existent download: ${downloadId}`);
+      return;
+    }
 
     const totalTime = (Date.now() - download.startTime) / 1000;
     const averageSpeed = download.bytesDownloaded / totalTime;
@@ -101,11 +135,43 @@ class BandwidthManager extends EventEmitter {
     });
 
     this.activeDownloads.delete(downloadId);
+    this.emit('finished', { downloadId, totalBytes: download.bytesDownloaded });
+  }
+
+  pauseDownload(downloadId) {
+    const download = this.activeDownloads.get(downloadId);
+    if (download) {
+      download.status = 'paused';
+      this.activeDownloads.set(downloadId, download);
+      logger.info(`Download paused: ${downloadId}`);
+    }
+  }
+
+  resumeDownload(downloadId) {
+    const download = this.activeDownloads.get(downloadId);
+    if (download) {
+      download.status = 'active';
+      download.lastActivity = Date.now();
+      this.activeDownloads.set(downloadId, download);
+      logger.info(`Download resumed: ${downloadId}`);
+    }
+  }
+
+  getDownloadStatus(downloadId) {
+    return this.activeDownloads.get(downloadId) || null;
+  }
+
+  getAllDownloads() {
+    return Array.from(this.activeDownloads.entries()).map(([id, download]) => ({
+      id,
+      ...download
+    }));
   }
 
   cleanup() {
     this.throttleController.cleanup();
     this.activeDownloads.clear();
+    logger.info('BandwidthManager cleaned up');
   }
 }
 
