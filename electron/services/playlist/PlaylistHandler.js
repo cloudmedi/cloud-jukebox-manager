@@ -4,6 +4,7 @@ const fs = require('fs');
 const Store = require('electron-store');
 const store = new Store();
 const { downloadQueueManager } = require('../download/managers/DownloadQueueManager');
+const audioPlayer = require('../audio/AudioPlayer');
 const { createLogger } = require('../../utils/logger');
 
 const logger = createLogger('playlist-handler');
@@ -24,11 +25,22 @@ class PlaylistHandler {
   setupDownloadListeners() {
     downloadQueueManager.on('songCompleted', (song) => {
       logger.info(`Song ${song._id} downloaded successfully`);
+      
+      // İlk şarkı indirildiğinde AudioPlayer'a bildir
+      if (this.isFirstSong(song._id)) {
+        audioPlayer.handleFirstSongReady(song._id, song.localPath);
+      }
     });
 
     downloadQueueManager.on('songError', ({ song, error }) => {
       logger.error(`Error downloading song ${song._id}:`, error);
     });
+  }
+
+  isFirstSong(songId) {
+    const playlists = store.get('playlists', []);
+    const lastPlaylist = playlists[playlists.length - 1];
+    return lastPlaylist && lastPlaylist.songs[0]._id === songId;
   }
 
   async handlePlaylist(playlist) {
@@ -46,7 +58,8 @@ class PlaylistHandler {
         downloadQueueManager.addToQueue({
           song: firstSong,
           baseUrl: playlist.baseUrl,
-          playlistId: playlist._id
+          playlistId: playlist._id,
+          priority: 'high'
         });
 
         // Şarkı yolunu güncelle
@@ -85,6 +98,9 @@ class PlaylistHandler {
       
       store.set('playlists', playlists);
       logger.info('Playlist info stored successfully');
+
+      // AudioPlayer'a playlist'i yükle
+      audioPlayer.loadPlaylist(updatedPlaylist);
       
       return updatedPlaylist;
 

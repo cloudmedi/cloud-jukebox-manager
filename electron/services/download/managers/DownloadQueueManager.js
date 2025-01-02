@@ -15,7 +15,11 @@ class DownloadQueueManager extends EventEmitter {
   }
 
   addToQueue(item) {
-    this.queue.push(item);
+    if (item.priority === 'high') {
+      this.queue.unshift(item);
+    } else {
+      this.queue.push(item);
+    }
     logger.info(`Added to queue: ${item.song.name}`);
     this.processQueue();
   }
