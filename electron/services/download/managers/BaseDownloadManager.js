@@ -8,6 +8,7 @@ class BaseDownloadManager extends EventEmitter {
     this.activeDownloads = new Map();
     this.downloadQueue = [];
     this.isProcessing = false;
+    this.maxConcurrentDownloads = 3;
   }
 
   async queueSongDownload(song, baseUrl, playlistDir, isResume = false) {
@@ -44,6 +45,12 @@ class BaseDownloadManager extends EventEmitter {
         this.processQueue();
       }
     }
+  }
+
+  calculateChunkSize(fileSize) {
+    if (fileSize < 10 * 1024 * 1024) return 256 * 1024; // 256KB
+    if (fileSize < 100 * 1024 * 1024) return 1024 * 1024; // 1MB
+    return 2 * 1024 * 1024; // 2MB
   }
 }
 

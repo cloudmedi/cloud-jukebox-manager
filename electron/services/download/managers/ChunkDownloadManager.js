@@ -2,19 +2,11 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const BaseDownloadManager = require('./BaseDownloadManager');
-const TimeoutManager = require('../utils/TimeoutManager');
-const NetworkErrorHandler = require('../utils/NetworkErrorHandler');
+const downloadProgressService = require('../DownloadProgressService');
 const ChecksumVerifier = require('../utils/ChecksumVerifier');
-const websocketService = require('../../websocketService');
 const bandwidthManager = require('../BandwidthManager');
 
 class ChunkDownloadManager extends BaseDownloadManager {
-  constructor() {
-    super();
-    this.timeoutManager = new TimeoutManager();
-    this.maxConcurrentDownloads = bandwidthManager.maxConcurrentDownloads;
-  }
-
   async downloadChunk(url, start, end, songId, playlistId) {
     const chunkId = `${songId}-${start}`;
     const downloadId = `${songId}-${Date.now()}`;
@@ -27,29 +19,14 @@ class ChunkDownloadManager extends BaseDownloadManager {
         ), 1000));
       }
 
-      // WebSocket üzerinden chunk başlangıç bildirimi
-      websocketService.sendMessage({
-        type: 'downloadProgress',
-        data: {
-          songId,
-          chunkId,
-          status: 'downloading',
-          startByte: start,
-          endByte: end
-        }
-      });
-
       const chunk = await this._performChunkDownload(url, start, end, songId, downloadId);
       
-      // WebSocket üzerinden chunk tamamlanma bildirimi
-      websocketService.sendMessage({
-        type: 'downloadProgress',
-        data: {
-          songId,
-          chunkId,
-          status: 'completed',
-          size: chunk.length
-        }
+      // İlerleme bilgisini güncelle
+      downloadProgressService.updateProgress(playlistId, {
+        songId,
+        chunkId,
+        size: chunk.length,
+        status: 'completed'
       });
 
       bandwidthManager.finishDownload(downloadId);
@@ -57,38 +34,17 @@ class ChunkDownloadManager extends BaseDownloadManager {
 
     } catch (error) {
       bandwidthManager.finishDownload(downloadId);
-      
-      // WebSocket üzerinden hata bildirimi
-      websocketService.sendMessage({
-        type: 'downloadProgress',
-        data: {
-          songId,
-          chunkId,
-          status: 'error',
-          error: error.message
-        }
-      });
-      
+      downloadProgressService.handleError(playlistId, error);
       throw error;
     }
   }
 
-  async downloadSong(song, baseUrl, playlistDir) {
+  async downloadSong(song, baseUrl, playlistDir, playlistId) {
     this.logger.info(`Starting download for song: ${song.name}`);
     
     const songPath = path.join(playlistDir, `${song._id}.mp3`);
     const tempSongPath = `${songPath}.temp`;
     const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
-
-    // WebSocket üzerinden şarkı indirme başlangıç bildirimi
-    websocketService.sendMessage({
-      type: 'downloadProgress',
-      data: {
-        songId: song._id,
-        status: 'started',
-        name: song.name
-      }
-    });
 
     try {
       const { headers } = await axios.head(songUrl);
@@ -109,23 +65,8 @@ class ChunkDownloadManager extends BaseDownloadManager {
         const start = startByte + (i * chunkSize);
         const end = Math.min(start + chunkSize - 1, fileSize - 1);
         
-        const chunk = await this.downloadChunk(songUrl, start, end, song._id, playlistDir);
+        const chunk = await this.downloadChunk(songUrl, start, end, song._id, playlistId);
         writer.write(chunk);
-
-        const progress = Math.round(((i + 1) / chunks) * 100);
-        
-        // WebSocket üzerinden ilerleme bildirimi
-        websocketService.sendMessage({
-          type: 'downloadProgress',
-          data: {
-            songId: song._id,
-            progress,
-            downloadedSize: start + chunk.length,
-            totalSize: fileSize,
-            currentChunk: i + 1,
-            totalChunks: chunks
-          }
-        });
       }
 
       await new Promise((resolve) => writer.end(resolve));
@@ -138,43 +79,15 @@ class ChunkDownloadManager extends BaseDownloadManager {
       }
 
       fs.renameSync(tempSongPath, songPath);
-      
-      // WebSocket üzerinden tamamlanma bildirimi
-      websocketService.sendMessage({
-        type: 'downloadProgress',
-        data: {
-          songId: song._id,
-          status: 'completed',
-          path: songPath
-        }
-      });
-
       return songPath;
 
     } catch (error) {
       this.logger.error(`Error downloading song ${song.name}:`, error);
-      
-      // WebSocket üzerinden hata bildirimi
-      websocketService.sendMessage({
-        type: 'downloadProgress',
-        data: {
-          songId: song._id,
-          status: 'error',
-          error: error.message
-        }
-      });
-
       if (fs.existsSync(tempSongPath)) {
         fs.unlinkSync(tempSongPath);
       }
       throw error;
     }
-  }
-
-  calculateChunkSize(fileSize) {
-    if (fileSize < 10 * 1024 * 1024) return 256 * 1024; // 256KB
-    if (fileSize < 100 * 1024 * 1024) return 1024 * 1024; // 1MB
-    return 2 * 1024 * 1024; // 2MB
   }
 }
 

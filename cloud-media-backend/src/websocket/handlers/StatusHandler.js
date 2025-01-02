@@ -1,4 +1,5 @@
 const Device = require('../../models/Device');
+const DownloadProgress = require('../../models/DownloadProgress');
 
 class StatusHandler {
   constructor(wss) {
@@ -13,9 +14,31 @@ class StatusHandler {
         return;
       }
 
-      // Playlist durumunu güncelle
+      // İndirme durumunu güncelle
+      const downloadProgress = await DownloadProgress.findOneAndUpdate(
+        { 
+          deviceToken: token,
+          playlistId: message.playlistId 
+        },
+        {
+          status: message.status,
+          progress: message.progress || 0,
+          downloadSpeed: message.speed || 0,
+          downloadedSongs: message.downloadedSongs || 0,
+          totalSongs: message.totalSongs || 0,
+          estimatedTimeRemaining: message.estimatedTimeRemaining || 0,
+          retryCount: message.retryCount || 0,
+          lastError: message.error
+        },
+        { 
+          new: true,
+          upsert: true 
+        }
+      );
+
+      // Cihaz durumunu güncelle
       await Device.findByIdAndUpdate(device._id, {
-        playlistStatus: message.status,
+        playlistStatus: message.status === 'completed' ? 'loaded' : message.status,
         downloadProgress: message.progress || 0,
         downloadSpeed: message.speed || 0,
         downloadedSongs: message.downloadedSongs || 0,
@@ -31,13 +54,13 @@ class StatusHandler {
         token: token,
         playlistStatus: message.status,
         playlistId: message.playlistId,
-        downloadProgress: message.progress || 0,
-        downloadSpeed: message.speed || 0,
-        downloadedSongs: message.downloadedSongs || 0,
-        totalSongs: message.totalSongs || 0,
-        estimatedTimeRemaining: message.estimatedTimeRemaining || 0,
-        retryCount: message.retryCount || 0,
-        lastError: message.error
+        downloadProgress: downloadProgress.progress,
+        downloadSpeed: downloadProgress.downloadSpeed,
+        downloadedSongs: downloadProgress.downloadedSongs,
+        totalSongs: downloadProgress.totalSongs,
+        estimatedTimeRemaining: downloadProgress.estimatedTimeRemaining,
+        retryCount: downloadProgress.retryCount,
+        lastError: downloadProgress.lastError
       });
 
       console.log(`Updated playlist status for device ${token} to ${message.status}`);
@@ -60,6 +83,43 @@ class StatusHandler {
       });
     } catch (error) {
       console.error('Error handling online status:', error);
+    }
+  }
+
+  async handleDownloadProgress(token, message) {
+    try {
+      const device = await Device.findOne({ token });
+      if (!device) return;
+
+      const downloadProgress = await DownloadProgress.findOneAndUpdate(
+        {
+          deviceToken: token,
+          playlistId: message.playlistId
+        },
+        {
+          status: 'downloading',
+          progress: message.progress,
+          downloadSpeed: message.downloadSpeed,
+          downloadedSongs: message.downloadedSongs,
+          totalSongs: message.totalSongs,
+          estimatedTimeRemaining: message.estimatedTimeRemaining,
+          completedChunks: message.completedChunks
+        },
+        { new: true, upsert: true }
+      );
+
+      this.wss.broadcastToAdmins({
+        type: 'downloadProgress',
+        token: token,
+        playlistId: message.playlistId,
+        progress: downloadProgress.progress,
+        downloadSpeed: downloadProgress.downloadSpeed,
+        downloadedSongs: downloadProgress.downloadedSongs,
+        totalSongs: downloadProgress.totalSongs,
+        estimatedTimeRemaining: downloadProgress.estimatedTimeRemaining
+      });
+    } catch (error) {
+      console.error('Error handling download progress:', error);
     }
   }
 }

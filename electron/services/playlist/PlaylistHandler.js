@@ -3,7 +3,8 @@ const path = require('path');
 const fs = require('fs');
 const Store = require('electron-store');
 const store = new Store();
-const chunkDownloadManager = require('../download/ChunkDownloadManager');
+const chunkDownloadManager = require('../download/managers/ChunkDownloadManager');
+const downloadProgressService = require('../download/DownloadProgressService');
 const audioPlayer = require('../audio/AudioPlayer');
 const websocketService = require('../websocketService');
 
@@ -33,13 +34,12 @@ class PlaylistHandler {
       const playlistDir = path.join(this.downloadPath, playlist._id);
       this.ensureDirectoryExists(playlistDir);
 
-      // İndirme durumunu kontrol et
-      try {
-        websocketService.requestDownloadState();
-      } catch (error) {
-        console.warn('Failed to request download state:', error);
-        // Hata durumunda devam et, kritik değil
-      }
+      // İndirme durumunu başlat
+      downloadProgressService.initializeDownload(
+        playlist.deviceToken,
+        playlist._id,
+        playlist.songs.length
+      );
 
       // İlk şarkıyı hemen indir
       const firstSong = playlist.songs[0];
@@ -48,7 +48,8 @@ class PlaylistHandler {
         const firstSongPath = await chunkDownloadManager.downloadSong(
           firstSong,
           playlist.baseUrl,
-          playlistDir
+          playlistDir,
+          playlist._id
         );
 
         if (firstSongPath) {
@@ -68,7 +69,8 @@ class PlaylistHandler {
         chunkDownloadManager.queueSongDownload(
           song,
           playlist.baseUrl,
-          playlistDir
+          playlistDir,
+          playlist._id
         );
         song.localPath = path.join(playlistDir, `${song._id}.mp3`);
       }
@@ -93,20 +95,8 @@ class PlaylistHandler {
       return updatedPlaylist;
     } catch (error) {
       console.error('Error handling playlist:', error);
+      downloadProgressService.handleError(playlist._id, error);
       throw error;
-    }
-  }
-
-  async resumeDownload(downloadState) {
-    try {
-      console.log('Resuming download from state:', downloadState);
-      
-      if (downloadState.downloadProgress > 0) {
-        // Resume from last known state
-        await chunkDownloadManager.resumeFromProgress(downloadState);
-      }
-    } catch (error) {
-      console.error('Error resuming download:', error);
     }
   }
 }
