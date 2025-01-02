@@ -1,6 +1,7 @@
 const WebSocket = require('ws');
 const Store = require('electron-store');
 const store = new Store();
+const PlaylistHandler = require('./playlist/PlaylistHandler');
 
 class WebSocketService {
   constructor() {
@@ -27,7 +28,13 @@ class WebSocketService {
       try {
         const message = JSON.parse(data);
         console.log('Received message:', message);
-        this.handleMessage(message);
+        
+        // Playlist mesajını direkt olarak handle et
+        if (message.type === 'playlist') {
+          PlaylistHandler.handlePlaylist(message.data);
+        } else {
+          this.handleMessage(message);
+        }
       } catch (error) {
         console.error('Error parsing message:', error);
       }
