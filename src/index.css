@@ -95,7 +95,7 @@
 }
 
 .main-layout[data-player-visible="true"] {
-  @apply pb-20;
+  padding-bottom: 5rem;
 }
 
 .main-layout[data-player-visible="true"] .player {
@@ -107,44 +107,4 @@
   transform: translateY(100%);
   opacity: 0;
   transition: all 0.3s ease-in-out;
-}
-
-/* Custom Calendar Styles */
-.fc .fc-timegrid-now-indicator-line {
-  @apply border-0;
-  height: 2px;
-  background: linear-gradient(
-    90deg,
-    transparent 0%,
-    theme('colors.blue.400') 2%,
-    theme('colors.purple.500') 37%,
-    theme('colors.pink.500') 100%
-  );
-  box-shadow: 
-    0 0 10px theme('colors.blue.400'),
-    0 0 20px theme('colors.purple.500'),
-    0 0 30px theme('colors.pink.500');
-  animation: glow 3s ease-in-out infinite;
-  opacity: 0.8;
-}
-
-.fc .fc-timegrid-now-indicator-arrow {
-  display: none;
-}
-
-@keyframes glow {
-  0%, 100% {
-    opacity: 0.8;
-    box-shadow: 
-      0 0 10px theme('colors.blue.400'),
-      0 0 20px theme('colors.purple.500'),
-      0 0 30px theme('colors.pink.500');
-  }
-  50% {
-    opacity: 0.6;
-    box-shadow: 
-      0 0 15px theme('colors.blue.400'),
-      0 0 25px theme('colors.purple.500'),
-      0 0 35px theme('colors.pink.500');
-  }
 }
