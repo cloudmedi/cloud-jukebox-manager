@@ -5,6 +5,7 @@ const store = new Store();
 class WebSocketService {
   constructor() {
     this.ws = null;
+    this.messageHandlers = new Map();
     this.connect();
   }
 
@@ -30,6 +31,8 @@ class WebSocketService {
         if (message.type === 'playlist') {
           const PlaylistHandler = require('./playlist/PlaylistHandler');
           PlaylistHandler.handlePlaylist(message.data);
+        } else {
+          this.handleMessage(message);
         }
       } catch (error) {
         console.error('Error parsing message:', error);
@@ -60,6 +63,34 @@ class WebSocketService {
       type: 'auth',
       token: token
     });
+  }
+
+  addMessageHandler(type, handler) {
+    console.log('Adding message handler for type:', type);
+    if (!this.messageHandlers.has(type)) {
+      this.messageHandlers.set(type, new Set());
+    }
+    this.messageHandlers.get(type).add(handler);
+  }
+
+  removeMessageHandler(type, handler) {
+    const handlers = this.messageHandlers.get(type);
+    if (handlers) {
+      handlers.delete(handler);
+    }
+  }
+
+  handleMessage(message) {
+    const handlers = this.messageHandlers.get(message.type);
+    if (handlers) {
+      handlers.forEach(handler => {
+        try {
+          handler(message);
+        } catch (error) {
+          console.error(`Handler error for message type ${message.type}:`, error);
+        }
+      });
+    }
   }
 }
 

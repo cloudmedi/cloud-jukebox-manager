@@ -20,6 +20,7 @@ class AudioService {
   }
 
   setupWebSocketHandlers() {
+    console.log('Setting up WebSocket handlers for AudioService');
     websocketService.addMessageHandler('command', async (message) => {
       console.log('Received command:', message);
       switch (message.command) {
