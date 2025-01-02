@@ -1,6 +1,6 @@
 const { EventEmitter } = require('events');
 const { createLogger } = require('../../utils/logger');
-const { downloadStateManager } = require('./managers/DownloadStateManager');
+const downloadStateManager = require('./managers/DownloadStateManager');
 const { chunkManager } = require('./managers/ChunkManager');
 const { downloadQueueManager } = require('./managers/DownloadQueueManager');
 
@@ -31,8 +31,6 @@ class ChunkDownloadManager extends EventEmitter {
   async resumeIncompleteDownloads() {
     const incomplete = downloadStateManager.getIncompleteDownloads();
     logger.info(`Found ${incomplete.length} incomplete downloads to resume`);
-    
-    // Resume logic will be implemented in the next iteration
   }
 
   async downloadSong(song, baseUrl, playlistId) {
@@ -44,11 +42,11 @@ class ChunkDownloadManager extends EventEmitter {
   }
 
   cancelDownload(songId) {
-    // Cancel logic will be implemented in the next iteration
+    downloadQueueManager.cancelDownload(songId);
   }
 
   getDownloadState(songId) {
-    return downloadStateManager.getState(songId);
+    return downloadStateManager.getDownloadState(songId);
   }
 }
 
