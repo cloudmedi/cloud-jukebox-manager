@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar, List } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PlaylistScheduleForm } from "@/components/schedule/PlaylistScheduleForm";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface Schedule {
@@ -15,7 +15,7 @@ interface Schedule {
   playlist: {
     _id: string;
     name: string;
-  };
+  } | null;
   startDate: string;
   endDate: string;
   status: 'active' | 'inactive';
@@ -33,8 +33,6 @@ const Schedule = () => {
     end: Date | null;
   }>({ start: null, end: null });
 
-  const queryClient = useQueryClient();
-
   const { data: schedules, isLoading, error } = useQuery({
     queryKey: ["playlist-schedules"],
     queryFn: async () => {
@@ -46,8 +44,6 @@ const Schedule = () => {
       console.log("Loaded schedules:", data);
       return data;
     },
-    refetchOnWindowFocus: true,
-    refetchInterval: 5000 // Her 5 saniyede bir yenile
   });
 
   const handleDateSelect = (selectInfo: any) => {
@@ -58,15 +54,8 @@ const Schedule = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDialogClose = () => {
-    setIsDialogOpen(false);
-    // Form kapandığında zamanlamaları yeniden yükle
-    queryClient.invalidateQueries({ queryKey: ["playlist-schedules"] });
-  };
-
-  const events = schedules?.map((schedule: Schedule) => {
+  const events = schedules?.map(schedule => {
     if (!schedule?.playlist) {
-      console.log("Invalid schedule data:", schedule);
       return null;
     }
 
@@ -149,13 +138,13 @@ const Schedule = () => {
         />
       </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={handleDialogClose}>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Playlist Zamanla</DialogTitle>
           </DialogHeader>
           <PlaylistScheduleForm 
-            onSuccess={handleDialogClose}
+            onSuccess={() => setIsDialogOpen(false)}
             initialStartDate={selectedDates.start}
             initialEndDate={selectedDates.end}
           />
