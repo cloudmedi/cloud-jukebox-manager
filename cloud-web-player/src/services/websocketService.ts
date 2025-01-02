@@ -1,17 +1,15 @@
-import { handleDeleteMessage } from './websocket/handlers/DeleteMessageHandler';
 import { handleDeviceStatusMessage } from './websocket/handlers/DeviceStatusHandler';
 import { handleInitialStateMessage } from './websocket/handlers/InitialStateHandler';
 import { handleDeviceDelete } from './websocket/handlers/DeviceDeleteHandler';
-import { toast } from 'sonner';
-
-type MessageHandler = (data: any) => void;
+import { MessageHandler } from './websocket/WebSocketConfig';
+import { playlistDownloadService } from './playlistDownloadService';
+import { toast } from "sonner";
 
 class WebSocketService {
   private static instance: WebSocketService;
-  private ws: WebSocket | null = null;
   private messageHandlers: Map<string, Set<MessageHandler>>;
-  private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
+  private ws: WebSocket | null = null;
+  private token: string | null = null;
 
   private constructor() {
     this.messageHandlers = new Map();
@@ -19,21 +17,10 @@ class WebSocketService {
   }
 
   private setupMessageHandlers() {
-    this.addMessageHandler('delete', handleDeleteMessage);
     this.addMessageHandler('delete', handleDeviceDelete);
     this.addMessageHandler('deviceStatus', handleDeviceStatusMessage);
     this.addMessageHandler('initialState', handleInitialStateMessage);
-    this.addMessageHandler('auth', this.handleAuthMessage.bind(this));
-  }
-
-  private handleAuthMessage(message: any) {
-    console.log('Auth message received:', message);
-    if (message.status === 'success') {
-      toast.success('Bağlantı başarılı');
-      this.reconnectAttempts = 0;
-    } else {
-      toast.error('Bağlantı başarısız: ' + message.message);
-    }
+    this.addMessageHandler('playlist', this.handlePlaylistMessage.bind(this));
   }
 
   public static getInstance(): WebSocketService {
@@ -45,14 +32,11 @@ class WebSocketService {
 
   public setToken(token: string) {
     console.log('Setting token:', token);
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.sendAuthMessage(token);
-    } else {
-      this.connect(token);
-    }
+    this.token = token;
+    this.connect();
   }
 
-  private connect(token: string) {
+  private connect() {
     if (this.ws?.readyState === WebSocket.OPEN) {
       console.log('WebSocket already connected');
       return;
@@ -63,40 +47,98 @@ class WebSocketService {
 
     this.ws.onopen = () => {
       console.log('WebSocket connected, sending auth message');
-      this.sendAuthMessage(token);
+      if (this.token) {
+        this.sendMessage({
+          type: 'auth',
+          token: this.token
+        });
+      }
+      toast.success('WebSocket bağlantısı kuruldu');
     };
 
     this.ws.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);
-        console.log('WebSocket message received:', message);
+        console.log('WebSocket message received:', {
+          type: message.type,
+          payload: message,
+          timestamp: new Date().toISOString()
+        });
         this.handleMessage(message);
       } catch (error) {
-        console.error('Message parsing error:', error);
+        console.error('Error handling message:', error);
       }
     };
 
     this.ws.onclose = () => {
       console.log('WebSocket disconnected, attempting to reconnect...');
-      if (this.reconnectAttempts < this.maxReconnectAttempts) {
-        this.reconnectAttempts++;
-        setTimeout(() => this.connect(token), 5000);
-      } else {
-        toast.error('Bağlantı kurulamadı. Lütfen sayfayı yenileyin.');
-      }
+      toast.error('WebSocket bağlantısı kesildi, yeniden bağlanılıyor...');
+      setTimeout(() => this.connect(), 5000);
     };
 
     this.ws.onerror = (error) => {
       console.error('WebSocket error:', error);
-      toast.error('Bağlantı hatası oluştu');
+      toast.error('WebSocket bağlantı hatası');
     };
   }
 
-  private sendAuthMessage(token: string) {
-    this.sendMessage({
-      type: 'auth',
-      token: token
-    });
+  private async handlePlaylistMessage(message: any) {
+    console.log('Handling playlist message:', message);
+    
+    if (!message.data) {
+      console.error('Invalid playlist message:', message);
+      toast.error('Geçersiz playlist mesajı');
+      return;
+    }
+
+    const playlist = message.data;
+    
+    try {
+      // Playlist indirme başladı bildirimi
+      toast.info(`"${playlist.name}" playlist'i indiriliyor...`);
+      
+      // Playlist durumunu güncelle
+      this.sendMessage({
+        type: 'playlistStatus',
+        status: 'loading',
+        playlistId: playlist._id
+      });
+
+      // Playlist'i kaydet ve şarkıları indir
+      await playlistDownloadService.storePlaylist(playlist);
+
+      // Başarılı indirme bildirimi
+      toast.success(`"${playlist.name}" playlist'i başarıyla indirildi`);
+      
+      // Playlist durumunu güncelle
+      this.sendMessage({
+        type: 'playlistStatus',
+        status: 'loaded',
+        playlistId: playlist._id
+      });
+
+    } catch (error) {
+      console.error('Error handling playlist:', error);
+      toast.error(`Playlist indirme hatası: ${error.message}`);
+      
+      // Hata durumunu bildir
+      this.sendMessage({
+        type: 'playlistStatus',
+        status: 'error',
+        playlistId: playlist._id,
+        error: error.message
+      });
+    }
+  }
+
+  public sendMessage(message: any) {
+    if (this.ws?.readyState === WebSocket.OPEN) {
+      console.log('Sending message:', message);
+      this.ws.send(JSON.stringify(message));
+    } else {
+      console.error('WebSocket not connected');
+      toast.error('WebSocket bağlantısı kurulamadı');
+    }
   }
 
   private handleMessage(message: any) {
@@ -128,15 +170,6 @@ class WebSocketService {
       if (handlers.size === 0) {
         this.messageHandlers.delete(type);
       }
-    }
-  }
-
-  public sendMessage(message: any) {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      console.log('Sending message:', message);
-      this.ws.send(JSON.stringify(message));
-    } else {
-      console.error('WebSocket not connected');
     }
   }
 
