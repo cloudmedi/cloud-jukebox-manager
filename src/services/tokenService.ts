@@ -1,4 +1,4 @@
-import type { Device, DeviceInfo } from '@/types/device';
+import type { DeviceInfo } from '@/types/device';
 
 const TOKEN_KEY = 'device_token';
 

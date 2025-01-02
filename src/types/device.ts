@@ -7,6 +7,13 @@ export interface DeviceInfo {
   freeMemory: string;
   networkInterfaces: string[];
   osVersion: string;
+  language: string;
+  screenResolution: string;
+  timeZone: string;
+  browserInfo: {
+    name: string;
+    version: string;
+  };
 }
 
 export interface Device {
