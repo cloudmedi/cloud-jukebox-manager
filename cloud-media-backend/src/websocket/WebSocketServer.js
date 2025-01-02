@@ -3,7 +3,6 @@ const MessageHandler = require('./handlers/MessageHandler');
 const StatusHandler = require('./handlers/StatusHandler');
 const AdminConnectionHandler = require('./handlers/AdminConnectionHandler');
 const DeviceConnectionHandler = require('./handlers/DeviceConnectionHandler');
-const DownloadProgressHandler = require('./handlers/DownloadProgressHandler');
 
 class WebSocketServer {
   constructor(server) {
@@ -13,7 +12,6 @@ class WebSocketServer {
     this.statusHandler = new StatusHandler(this);
     this.adminHandler = new AdminConnectionHandler(this);
     this.deviceHandler = new DeviceConnectionHandler(this);
-    this.downloadProgressHandler = new DownloadProgressHandler(this);
     this.initialize();
   }
 
@@ -62,31 +60,57 @@ class WebSocketServer {
         await this.statusHandler.handlePlaylistStatus(token, message);
         break;
 
-      case 'downloadProgress':
-        await this.downloadProgressHandler.handleDownloadProgress(token, message);
+      case 'playbackStatus':
+        this.broadcastToAdmins({
+          type: 'deviceStatus',
+          token: token,
+          isPlaying: message.status === 'playing'
+        });
         break;
 
-      case 'getDownloadState':
-        const state = await this.downloadProgressHandler.handleDownloadState(token);
-        if (state) {
-          this.sendToDevice(token, {
-            type: 'downloadState',
-            ...state
-          });
-        }
+      case 'volume':
+        const device = await Device.findOne({ token });
+        if (!device) return;
+
+        await device.setVolume(message.volume);
+        this.broadcastToAdmins({
+          type: 'deviceStatus',
+          token: token,
+          volume: message.volume
+        });
         break;
 
-      case 'resumeDownloadResponse':
-        console.log(`Device ${token} responded to resume request:`, message);
-        if (message.status === 'accepted') {
-          await this.downloadProgressHandler.handleDownloadResume(token, message);
-        }
+      case 'screenshot':
+        console.log('Screenshot received from device:', token);
+        this.broadcastToAdmins({
+          type: 'screenshot',
+          token: token,
+          data: message.data
+        });
+        break;
+
+      case 'error':
+        this.broadcastToAdmins({
+          type: 'deviceError',
+          token: token,
+          error: message.error
+        });
         break;
 
       default:
         console.log('Unknown message type:', message.type);
         break;
     }
+  }
+
+  broadcastToAdmins(message) {
+    console.log('Broadcasting to admins:', message);
+    this.wss.clients.forEach(client => {
+      if (client.readyState === WebSocket.OPEN && client.isAdmin) {
+        client.send(JSON.stringify(message));
+        console.log('Message sent to admin client');
+      }
+    });
   }
 
   sendToDevice(token, message) {
@@ -109,19 +133,6 @@ class WebSocketServer {
     }
     
     return sent;
-  }
-
-  broadcastToAdmins(message) {
-    console.log('Broadcasting to admins:', message);
-    this.wss.clients.forEach(client => {
-      if (client.isAdmin && client.readyState === WebSocket.OPEN) {
-        try {
-          client.send(JSON.stringify(message));
-        } catch (error) {
-          console.error('Error broadcasting to admin:', error);
-        }
-      }
-    });
   }
 
   findDeviceWebSocket(token) {

@@ -47,24 +47,19 @@ export const DeviceCard = ({ device, isSelected, onSelect }: DeviceCardProps) =>
             </div>
             
             <div className="space-y-1">
-              <Progress 
-                value={device.downloadProgress || 0} 
-                className="h-2 transition-all"
-              />
+              <Progress value={device.downloadProgress || 0} className="h-1.5" />
               <div className="grid grid-cols-2 text-xs text-muted-foreground">
                 <div>İlerleme: %{Math.round(device.downloadProgress || 0)}</div>
-                <div className="text-right">
-                  {device.downloadedSongs || 0}/{device.totalSongs || 0} şarkı
-                </div>
+                <div className="text-right">{device.downloadedSongs || 0}/{device.totalSongs || 0} şarkı</div>
               </div>
               
-              {device.downloadSpeed > 0 && (
+              {device.downloadSpeed && device.downloadSpeed > 0 && (
                 <div className="text-xs text-muted-foreground">
                   Hız: {formatBytes(device.downloadSpeed)}/s
                 </div>
               )}
               
-              {device.estimatedTimeRemaining > 0 && (
+              {device.estimatedTimeRemaining && device.estimatedTimeRemaining > 0 && (
                 <div className="text-xs text-muted-foreground">
                   Kalan süre: {formatDuration(device.estimatedTimeRemaining)}
                 </div>
@@ -85,7 +80,7 @@ export const DeviceCard = ({ device, isSelected, onSelect }: DeviceCardProps) =>
               </div>
             )}
             {device.lastError && (
-              <div className="text-xs text-red-500 break-words">
+              <div className="text-xs text-red-500">
                 {device.lastError}
               </div>
             )}
