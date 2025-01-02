@@ -59,30 +59,26 @@ class DownloadProgressService extends EventEmitter {
   emitProgress(downloadState) {
     console.log('Emitting download progress:', downloadState);
     
-    websocketService.send({
-      type: 'downloadProgress',
-      data: {
-        playlistId: downloadState.playlistId,
-        deviceToken: downloadState.deviceToken,
-        status: downloadState.status,
-        progress: downloadState.progress,
-        downloadSpeed: downloadState.downloadSpeed,
-        downloadedSongs: downloadState.downloadedSongs,
-        totalSongs: downloadState.totalSongs,
-        estimatedTimeRemaining: downloadState.estimatedTimeRemaining,
-        retryCount: downloadState.retryCount
-      }
-    });
-  }
-
-  completeDownload(playlistId) {
-    const download = this.activeDownloads.get(playlistId);
-    if (!download) return;
-
-    download.status = 'completed';
-    download.progress = 100;
-    this.emitProgress(download);
-    this.activeDownloads.delete(playlistId);
+    try {
+      websocketService.send({
+        type: 'downloadProgress',
+        data: {
+          playlistId: downloadState.playlistId,
+          deviceToken: downloadState.deviceToken,
+          status: downloadState.status,
+          progress: downloadState.progress,
+          downloadSpeed: downloadState.downloadSpeed,
+          downloadedSongs: downloadState.downloadedSongs,
+          totalSongs: downloadState.totalSongs,
+          estimatedTimeRemaining: downloadState.estimatedTimeRemaining,
+          retryCount: downloadState.retryCount,
+          completedChunks: downloadState.completedChunks,
+          lastError: downloadState.lastError
+        }
+      });
+    } catch (error) {
+      console.error('Error sending progress update:', error);
+    }
   }
 
   handleError(playlistId, error) {
@@ -92,7 +88,12 @@ class DownloadProgressService extends EventEmitter {
     download.status = 'error';
     download.lastError = error.message;
     download.retryCount++;
-    this.emitProgress(download);
+    
+    try {
+      this.emitProgress(download);
+    } catch (error) {
+      console.error('Error sending error update:', error);
+    }
   }
 
   getDownloadState(playlistId) {

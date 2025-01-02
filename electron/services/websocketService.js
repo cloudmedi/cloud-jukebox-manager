@@ -1,12 +1,10 @@
 const WebSocket = require('ws');
 const Store = require('electron-store');
 const store = new Store();
-const PlaylistHandler = require('./playlist/PlaylistHandler');
 
 class WebSocketService {
   constructor() {
     this.ws = null;
-    this.messageHandlers = new Map();
     this.connect();
   }
 
@@ -29,11 +27,9 @@ class WebSocketService {
         const message = JSON.parse(data);
         console.log('Received message:', message);
         
-        // Playlist mesajını direkt olarak handle et
         if (message.type === 'playlist') {
+          const PlaylistHandler = require('./playlist/PlaylistHandler');
           PlaylistHandler.handlePlaylist(message.data);
-        } else {
-          this.handleMessage(message);
         }
       } catch (error) {
         console.error('Error parsing message:', error);
@@ -59,43 +55,11 @@ class WebSocketService {
     }
   }
 
-  // Alias for send to maintain compatibility
-  sendMessage(message) {
-    this.send(message);
-  }
-
   sendAuth(token) {
     this.send({
       type: 'auth',
       token: token
     });
-  }
-
-  addMessageHandler(type, handler) {
-    if (!this.messageHandlers.has(type)) {
-      this.messageHandlers.set(type, new Set());
-    }
-    this.messageHandlers.get(type).add(handler);
-  }
-
-  removeMessageHandler(type, handler) {
-    const handlers = this.messageHandlers.get(type);
-    if (handlers) {
-      handlers.delete(handler);
-    }
-  }
-
-  handleMessage(message) {
-    const handlers = this.messageHandlers.get(message.type);
-    if (handlers) {
-      handlers.forEach(handler => {
-        try {
-          handler(message);
-        } catch (error) {
-          console.error(`Handler error for message type ${message.type}:`, error);
-        }
-      });
-    }
   }
 }
 
