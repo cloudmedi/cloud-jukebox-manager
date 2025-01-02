@@ -8,6 +8,7 @@ const ChecksumVerifier = require('./utils/ChecksumVerifier');
 const downloadStateManager = require('./DownloadStateManager');
 const { createLogger } = require('../../utils/logger');
 const bandwidthManager = require('./BandwidthManager');
+const websocketService = require('../websocketService');
 
 const logger = createLogger('chunk-download-manager');
 
@@ -66,6 +67,13 @@ class ChunkDownloadManager extends EventEmitter {
         size: chunk.length
       });
 
+      // Progress bilgisini WebSocket üzerinden gönder
+      this.sendProgressUpdate(songId, playlistId, {
+        chunkId,
+        size: chunk.length,
+        status: 'completed'
+      });
+
       bandwidthManager.finishDownload(downloadId);
       return chunk;
 
@@ -77,6 +85,30 @@ class ChunkDownloadManager extends EventEmitter {
       });
       throw error;
     }
+  }
+
+  sendProgressUpdate(songId, playlistId, chunkInfo) {
+    try {
+      const progress = this.calculateProgress(songId);
+      websocketService.send({
+        type: 'downloadProgress',
+        songId,
+        playlistId,
+        progress,
+        ...chunkInfo
+      });
+    } catch (error) {
+      logger.error('Error sending progress update:', error);
+    }
+  }
+
+  calculateProgress(songId) {
+    const state = downloadStateManager.getSongDownloadState(songId);
+    const totalChunks = Object.keys(state.chunks || {}).length;
+    const completedChunks = Object.values(state.chunks || {})
+      .filter(chunk => chunk.status === 'completed').length;
+    
+    return totalChunks > 0 ? (completedChunks / totalChunks) * 100 : 0;
   }
 
   async _performChunkDownload(url, start, end, songId, downloadId) {

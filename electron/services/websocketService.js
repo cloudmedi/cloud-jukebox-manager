@@ -43,7 +43,7 @@ class WebSocketService {
     });
   }
 
-  sendMessage(message) {
+  send(message) {
     if (this.ws && this.ws.readyState === WebSocket.OPEN) {
       console.log('Sending message:', message);
       this.ws.send(JSON.stringify(message));
@@ -53,7 +53,7 @@ class WebSocketService {
   }
 
   sendAuth(token) {
-    this.sendMessage({
+    this.send({
       type: 'auth',
       token: token
     });
@@ -87,4 +87,6 @@ class WebSocketService {
   }
 }
 
-module.exports = new WebSocketService();
+// Singleton instance
+const websocketService = new WebSocketService();
+module.exports = websocketService;

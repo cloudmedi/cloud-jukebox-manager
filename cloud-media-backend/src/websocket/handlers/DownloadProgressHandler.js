@@ -1,4 +1,5 @@
 const Device = require('../../models/Device');
+const DownloadProgress = require('../../models/DownloadProgress');
 
 class DownloadProgressHandler {
   constructor(wss) {
@@ -10,52 +11,38 @@ class DownloadProgressHandler {
       const device = await Device.findOne({ token });
       if (!device) return;
 
-      // Update device download progress
-      await Device.findByIdAndUpdate(device._id, {
-        downloadProgress: message.progress || 0,
-        downloadSpeed: message.speed || 0,
-        downloadedSongs: message.downloadedSongs || 0,
-        totalSongs: message.totalSongs || 0,
-        estimatedTimeRemaining: message.estimatedTimeRemaining || 0,
-        retryCount: message.retryCount || 0,
-        lastError: message.error
-      });
+      // Update download progress in database
+      const downloadProgress = await DownloadProgress.findOneAndUpdate(
+        {
+          deviceToken: token,
+          playlistId: message.playlistId
+        },
+        {
+          status: 'downloading',
+          progress: message.progress,
+          downloadSpeed: message.downloadSpeed,
+          downloadedSongs: message.downloadedSongs,
+          totalSongs: message.totalSongs,
+          estimatedTimeRemaining: message.estimatedTimeRemaining,
+          completedChunks: message.completedChunks
+        },
+        { new: true, upsert: true }
+      );
 
-      // Broadcast to admin clients
+      // Broadcast progress to admin clients
       this.wss.broadcastToAdmins({
-        type: 'deviceStatus',
+        type: 'downloadProgress',
         token: token,
-        downloadProgress: message.progress,
-        downloadSpeed: message.speed,
-        downloadedSongs: message.downloadedSongs,
-        totalSongs: message.totalSongs,
-        estimatedTimeRemaining: message.estimatedTimeRemaining,
-        retryCount: message.retryCount,
-        lastError: message.error
+        playlistId: message.playlistId,
+        progress: downloadProgress.progress,
+        downloadSpeed: downloadProgress.downloadSpeed,
+        downloadedSongs: downloadProgress.downloadedSongs,
+        totalSongs: downloadProgress.totalSongs,
+        estimatedTimeRemaining: downloadProgress.estimatedTimeRemaining
       });
 
     } catch (error) {
       console.error('Error handling download progress:', error);
-    }
-  }
-
-  async handleDownloadState(token) {
-    try {
-      const device = await Device.findOne({ token });
-      if (!device) return null;
-
-      return {
-        downloadProgress: device.downloadProgress,
-        downloadSpeed: device.downloadSpeed,
-        downloadedSongs: device.downloadedSongs,
-        totalSongs: device.totalSongs,
-        estimatedTimeRemaining: device.estimatedTimeRemaining,
-        retryCount: device.retryCount,
-        lastError: device.lastError
-      };
-    } catch (error) {
-      console.error('Error getting download state:', error);
-      return null;
     }
   }
 }
