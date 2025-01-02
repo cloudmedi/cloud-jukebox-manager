@@ -92,7 +92,6 @@ class ChunkDownloadManager extends EventEmitter {
     const fileSize = parseInt(headers['content-length'], 10);
     const chunkSize = this.calculateChunkSize(fileSize);
     
-    // Resume control
     let startByte = 0;
     if (fs.existsSync(tempSongPath)) {
       const stats = fs.statSync(tempSongPath);
@@ -124,7 +123,6 @@ class ChunkDownloadManager extends EventEmitter {
 
       await new Promise((resolve) => writer.end(resolve));
       
-      // Final checksum verification
       if (song.checksum) {
         const isValid = await ChecksumVerifier.verifyFileChecksum(tempSongPath, song.checksum);
         if (!isValid) {
