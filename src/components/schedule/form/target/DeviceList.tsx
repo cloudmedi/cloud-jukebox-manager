@@ -8,6 +8,7 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
+import { Button } from "@/components/ui/button";
 
 interface DeviceListProps {
   devices: any[];
@@ -56,14 +57,16 @@ export function DeviceList({ devices, searchQuery }: DeviceListProps) {
             </Tooltip>
           </TooltipProvider>
         </div>
-        <button
+        <Button
           type="button"
+          variant="ghost"
+          size="sm"
           onClick={handleSelectAll}
           className="flex items-center gap-1.5 text-sm text-muted-foreground hover:text-foreground"
         >
           {areAllSelected && <Check className="h-4 w-4" />}
           Tümü
-        </button>
+        </Button>
       </div>
 
       <div className="space-y-1">
