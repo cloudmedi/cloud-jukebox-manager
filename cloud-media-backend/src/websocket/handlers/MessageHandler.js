@@ -10,6 +10,24 @@ class MessageHandler {
     this.statusHandler = new StatusHandler(wss);
   }
 
+  async handleAdminMessage(message, ws) {
+    console.log('Handling admin message:', message);
+    
+    switch (message.type) {
+      case 'command':
+        await this.commandHandler.handleCommand(message);
+        break;
+
+      case 'playlist':
+        await this.playlistHandler.handleSendPlaylist(message);
+        break;
+
+      default:
+        console.log('Unknown admin message type:', message.type);
+        break;
+    }
+  }
+
   async handleMessage(message, deviceToken) {
     console.log('Handling message:', { type: message.type, deviceToken });
     
@@ -35,7 +53,7 @@ class MessageHandler {
         break;
 
       case 'playlistStatus':
-        await this.playlistHandler.handlePlaylistStatus(deviceToken, message);
+        await this.statusHandler.handlePlaylistStatus(deviceToken, message);
         break;
 
       case 'playbackStatus':

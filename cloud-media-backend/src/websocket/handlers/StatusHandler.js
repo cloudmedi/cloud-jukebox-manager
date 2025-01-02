@@ -69,6 +69,32 @@ class StatusHandler {
     }
   }
 
+  async handlePlaylistStatus(deviceToken, message) {
+    try {
+      console.log('Handling playlist status:', message);
+      const device = await Device.findOne({ token: deviceToken });
+      
+      if (!device) {
+        console.error('Device not found:', deviceToken);
+        return;
+      }
+
+      await Device.findByIdAndUpdate(device._id, {
+        playlistStatus: message.status
+      });
+
+      this.wss.broadcastToAdmins({
+        type: 'deviceStatus',
+        token: deviceToken,
+        playlistStatus: message.status
+      });
+
+      console.log(`Updated playlist status for device ${deviceToken} to ${message.status}`);
+    } catch (error) {
+      console.error('Error handling playlist status:', error);
+    }
+  }
+
   broadcastProgress(deviceToken, progress) {
     this.wss.broadcastToAdmins({
       type: 'deviceStatus',
