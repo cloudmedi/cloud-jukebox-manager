@@ -1,4 +1,3 @@
-const DeviceProgress = require('../../models/DeviceProgress');
 const Device = require('../../models/Device');
 
 class StatusHandler {
@@ -6,108 +5,62 @@ class StatusHandler {
     this.wss = wss;
   }
 
-  async handleDownloadProgress(deviceToken, message) {
+  async handlePlaylistStatus(token, message) {
     try {
-      const progress = await DeviceProgress.findOne({ deviceToken });
-      if (!progress) return;
-
-      await progress.updateProgress({
-        progress: message.progress,
-        downloadSpeed: message.speed,
-        downloadedSongs: message.downloadedSongs,
-        estimatedTimeRemaining: message.estimatedTimeRemaining
-      });
-
-      this.broadcastProgress(deviceToken, progress);
-    } catch (error) {
-      console.error('Error handling download progress:', error);
-    }
-  }
-
-  async handleChunkCompleted(deviceToken, message) {
-    try {
-      const progress = await DeviceProgress.findOne({ deviceToken });
-      if (!progress) return;
-
-      await progress.markChunkCompleted(message.chunkId);
-      this.broadcastProgress(deviceToken, progress);
-    } catch (error) {
-      console.error('Error handling chunk completion:', error);
-    }
-  }
-
-  async handleDownloadError(deviceToken, message) {
-    try {
-      const progress = await DeviceProgress.findOne({ deviceToken });
-      if (!progress) return;
-
-      await progress.updateProgress({
-        status: 'error',
-        lastError: message.error,
-        retryCount: (progress.retryCount || 0) + 1
-      });
-
-      this.broadcastProgress(deviceToken, progress);
-    } catch (error) {
-      console.error('Error handling download error:', error);
-    }
-  }
-
-  async handleDownloadComplete(deviceToken, message) {
-    try {
-      const progress = await DeviceProgress.findOne({ deviceToken });
-      if (!progress) return;
-
-      await progress.updateProgress({
-        status: 'completed',
-        progress: 1
-      });
-
-      this.broadcastProgress(deviceToken, progress);
-    } catch (error) {
-      console.error('Error handling download completion:', error);
-    }
-  }
-
-  async handlePlaylistStatus(deviceToken, message) {
-    try {
-      console.log('Handling playlist status:', message);
-      const device = await Device.findOne({ token: deviceToken });
-      
+      const device = await Device.findOne({ token });
       if (!device) {
-        console.error('Device not found:', deviceToken);
+        console.error('Device not found for token:', token);
         return;
       }
 
+      // Playlist durumunu güncelle
       await Device.findByIdAndUpdate(device._id, {
-        playlistStatus: message.status
+        playlistStatus: message.status,
+        downloadProgress: message.progress || 0,
+        downloadSpeed: message.speed || 0,
+        downloadedSongs: message.downloadedSongs || 0,
+        totalSongs: message.totalSongs || 0,
+        estimatedTimeRemaining: message.estimatedTimeRemaining || 0,
+        retryCount: message.retryCount || 0,
+        lastError: message.error
       });
 
+      // Admin paneline bildir
       this.wss.broadcastToAdmins({
         type: 'deviceStatus',
-        token: deviceToken,
-        playlistStatus: message.status
+        token: token,
+        playlistStatus: message.status,
+        playlistId: message.playlistId,
+        downloadProgress: message.progress || 0,
+        downloadSpeed: message.speed || 0,
+        downloadedSongs: message.downloadedSongs || 0,
+        totalSongs: message.totalSongs || 0,
+        estimatedTimeRemaining: message.estimatedTimeRemaining || 0,
+        retryCount: message.retryCount || 0,
+        lastError: message.error
       });
 
-      console.log(`Updated playlist status for device ${deviceToken} to ${message.status}`);
+      console.log(`Updated playlist status for device ${token} to ${message.status}`);
     } catch (error) {
       console.error('Error handling playlist status:', error);
     }
   }
 
-  broadcastProgress(deviceToken, progress) {
-    this.wss.broadcastToAdmins({
-      type: 'deviceStatus',
-      token: deviceToken,
-      playlistStatus: progress.status,
-      downloadProgress: progress.progress,
-      downloadSpeed: progress.downloadSpeed,
-      downloadedSongs: progress.downloadedSongs,
-      totalSongs: progress.totalSongs,
-      estimatedTimeRemaining: progress.estimatedTimeRemaining,
-      retryCount: progress.retryCount,
-      lastError: progress.lastError
-    });
+  async handleOnlineStatus(token, isOnline) {
+    try {
+      const device = await Device.findOne({ token });
+      if (!device) return;
+
+      await device.updateStatus(isOnline);
+      
+      this.wss.broadcastToAdmins({
+        type: 'deviceStatus',
+        token: token,
+        isOnline: isOnline
+      });
+    } catch (error) {
+      console.error('Error handling online status:', error);
+    }
   }
 }
 

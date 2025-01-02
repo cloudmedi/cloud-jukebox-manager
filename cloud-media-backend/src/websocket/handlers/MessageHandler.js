@@ -1,100 +1,51 @@
 const PlaylistHandler = require('./PlaylistHandler');
 const CommandHandler = require('./CommandHandler');
-const StatusHandler = require('./StatusHandler');
 
 class MessageHandler {
   constructor(wss) {
-    this.wss = wss;
     this.playlistHandler = new PlaylistHandler(wss);
     this.commandHandler = new CommandHandler(wss);
-    this.statusHandler = new StatusHandler(wss);
   }
 
-  async handleAdminMessage(message, ws) {
-    console.log('Handling admin message:', message);
-    
-    switch (message.type) {
-      case 'command':
-        await this.commandHandler.handleCommand(message);
-        break;
+  async handleAdminMessage(data, ws) {
+    console.log('Admin message received:', data);
 
+    switch (data.type) {
       case 'playlist':
-        await this.playlistHandler.handleSendPlaylist(message);
+        switch (data.action) {
+          case 'send':
+            const success = await this.playlistHandler.handleSendPlaylist(data);
+            ws.send(JSON.stringify({
+              type: 'playlistSent',
+              success
+            }));
+            break;
+          default:
+            console.log('Unknown playlist action:', data.action);
+            break;
+        }
         break;
 
-      default:
-        console.log('Unknown admin message type:', message.type);
-        break;
-    }
-  }
-
-  async handleMessage(message, deviceToken) {
-    console.log('Handling message:', { type: message.type, deviceToken });
-    
-    switch (message.type) {
-      case 'downloadProgress':
-        await this.statusHandler.handleDownloadProgress(deviceToken, message);
-        break;
-
-      case 'chunkCompleted':
-        await this.statusHandler.handleChunkCompleted(deviceToken, message);
-        break;
-
-      case 'downloadError':
-        await this.statusHandler.handleDownloadError(deviceToken, message);
-        break;
-
-      case 'downloadComplete':
-        await this.statusHandler.handleDownloadComplete(deviceToken, message);
-        break;
-
-      case 'status':
-        await this.statusHandler.handleOnlineStatus(deviceToken, message.isOnline);
+      case 'command':
+        // token değerini kullanarak komutu gönder
+        const success = await this.commandHandler.handleCommand({
+          ...data,
+          token: data.token // deviceId yerine token kullanıyoruz
+        });
+        ws.send(JSON.stringify({
+          type: 'commandStatus',
+          token: data.token,
+          command: data.command,
+          success
+        }));
         break;
 
       case 'playlistStatus':
-        await this.statusHandler.handlePlaylistStatus(deviceToken, message);
-        break;
-
-      case 'playbackStatus':
-        this.wss.broadcastToAdmins({
-          type: 'deviceStatus',
-          token: deviceToken,
-          isPlaying: message.status === 'playing'
-        });
-        break;
-
-      case 'volume':
-        const device = await Device.findOne({ token: deviceToken });
-        if (!device) return;
-
-        await device.setVolume(message.volume);
-        this.wss.broadcastToAdmins({
-          type: 'deviceStatus',
-          token: deviceToken,
-          volume: message.volume
-        });
-        break;
-
-      case 'screenshot':
-        console.log('Screenshot received from device:', deviceToken);
-        this.wss.broadcastToAdmins({
-          type: 'screenshot',
-          token: deviceToken,
-          data: message.data
-        });
-        break;
-
-      case 'error':
-        this.wss.broadcastToAdmins({
-          type: 'deviceError',
-          token: deviceToken,
-          error: message.error
-        });
+        await this.playlistHandler.handlePlaylistStatus(data, ws.deviceToken);
         break;
 
       default:
-        console.log('Unknown message type:', message.type);
+        console.log('Unknown message type:', data.type);
         break;
     }
   }
