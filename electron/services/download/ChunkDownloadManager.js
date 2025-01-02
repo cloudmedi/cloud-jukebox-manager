@@ -8,8 +8,10 @@ const ChecksumVerifier = require('./utils/ChecksumVerifier');
 const downloadStateManager = require('./DownloadStateManager');
 const { createLogger } = require('../../utils/logger');
 const bandwidthManager = require('./BandwidthManager');
+const Store = require('electron-store');
 
 const logger = createLogger('chunk-download-manager');
+const store = new Store();
 
 class ChunkDownloadManager extends EventEmitter {
   constructor() {
@@ -19,8 +21,21 @@ class ChunkDownloadManager extends EventEmitter {
     this.maxConcurrentDownloads = bandwidthManager.maxConcurrentDownloads;
     this.timeoutManager = new TimeoutManager();
     this.isProcessing = false;
+    this.downloadPath = store.get('downloadPath');
 
+    if (!this.downloadPath) {
+      this.downloadPath = path.join(process.env.APPDATA || process.env.HOME, 'cloud-media-player', 'downloads');
+      store.set('downloadPath', this.downloadPath);
+    }
+
+    this.ensureDirectoryExists(this.downloadPath);
     this.resumeIncompleteDownloads();
+  }
+
+  ensureDirectoryExists(dir) {
+    if (!fs.existsSync(dir)) {
+      fs.mkdirSync(dir, { recursive: true });
+    }
   }
 
   async resumeIncompleteDownloads() {
@@ -32,7 +47,7 @@ class ChunkDownloadManager extends EventEmitter {
         if (song.status !== 'completed') {
           const downloadState = downloadStateManager.getSongDownloadState(song.id);
           if (downloadState.chunks) {
-            this.queueSongDownload(song, playlist.baseUrl, playlist.downloadPath, true);
+            this.queueSongDownload(song, playlist.baseUrl, playlist._id, true);
           }
         }
       }
@@ -81,8 +96,11 @@ class ChunkDownloadManager extends EventEmitter {
     return response.data;
   }
 
-  async downloadSong(song, baseUrl, playlistDir, isResume = false) {
+  async downloadSong(song, baseUrl, playlistId) {
     logger.info(`Starting download for song: ${song.name}`);
+    
+    const playlistDir = path.join(this.downloadPath, playlistId);
+    this.ensureDirectoryExists(playlistDir);
     
     const songPath = path.join(playlistDir, `${song._id}.mp3`);
     const tempSongPath = `${songPath}.temp`;
@@ -107,7 +125,7 @@ class ChunkDownloadManager extends EventEmitter {
         const start = startByte + (i * chunkSize);
         const end = Math.min(start + chunkSize - 1, fileSize - 1);
         
-        const chunk = await this.downloadChunk(songUrl, start, end, song._id, playlistDir);
+        const chunk = await this.downloadChunk(songUrl, start, end, song._id, playlistId);
         writer.write(chunk);
 
         const progress = Math.round(((i + 1) / chunks) * 100);
@@ -143,9 +161,9 @@ class ChunkDownloadManager extends EventEmitter {
     }
   }
 
-  queueSongDownload(song, baseUrl, playlistDir, isResume = false) {
+  queueSongDownload(song, baseUrl, playlistId, isResume = false) {
     logger.info(`Adding song to queue: ${song.name}`);
-    this.downloadQueue.push({ song, baseUrl, playlistDir, isResume });
+    this.downloadQueue.push({ song, baseUrl, playlistId, isResume });
     this.processQueue();
   }
 
@@ -163,11 +181,11 @@ class ChunkDownloadManager extends EventEmitter {
       ) {
         const download = this.downloadQueue.shift();
         if (download) {
-          const { song, baseUrl, playlistDir } = download;
+          const { song, baseUrl, playlistId } = download;
           this.activeDownloads.set(song._id, download);
           
           try {
-            await this.downloadSong(song, baseUrl, playlistDir);
+            await this.downloadSong(song, baseUrl, playlistId);
             this.emit('songDownloaded', song._id);
           } finally {
             this.activeDownloads.delete(song._id);
