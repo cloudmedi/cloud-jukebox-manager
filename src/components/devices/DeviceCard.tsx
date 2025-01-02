@@ -56,7 +56,7 @@ export const DeviceCard = ({ device, isSelected, onSelect }: DeviceCardProps) =>
               
               {device.downloadSpeed > 0 && (
                 <div className="text-xs text-muted-foreground">
-                  Hız: {formatBytes(device.downloadSpeed)}
+                  Hız: {formatBytes(device.downloadSpeed)}/s
                 </div>
               )}
               

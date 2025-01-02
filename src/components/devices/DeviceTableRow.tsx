@@ -8,6 +8,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Volume2, Play, Loader2, AlertCircle, MapPin, CheckCircle2, XCircle } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
+import { formatBytes, formatDuration } from "@/lib/utils";
 
 interface DeviceTableRowProps {
   device: Device;
@@ -16,8 +17,7 @@ interface DeviceTableRowProps {
 }
 
 export const DeviceTableRow = ({ device, isSelected, onSelect }: DeviceTableRowProps) => {
-
-const renderPlaylistStatus = () => {
+  const renderPlaylistStatus = () => {
     if (!device.playlistStatus) return "-";
 
     switch (device.playlistStatus) {
@@ -33,9 +33,19 @@ const renderPlaylistStatus = () => {
           <div className="space-y-2">
             <div className="flex items-center gap-2 text-orange-500">
               <Loader2 className="h-4 w-4 animate-spin" />
-              <span>İndiriliyor %{device.downloadProgress || 0}</span>
+              <span>İndiriliyor</span>
             </div>
             <Progress value={device.downloadProgress || 0} className="h-1.5 w-32" />
+            <div className="space-y-1 text-xs text-muted-foreground">
+              <div>İlerleme: %{device.downloadProgress || 0}</div>
+              <div>{device.downloadedSongs || 0}/{device.totalSongs || 0} şarkı</div>
+              {device.downloadSpeed > 0 && (
+                <div>Hız: {formatBytes(device.downloadSpeed)}/s</div>
+              )}
+              {device.estimatedTimeRemaining > 0 && (
+                <div>Kalan: {formatDuration(device.estimatedTimeRemaining)}</div>
+              )}
+            </div>
           </div>
         );
       case "error":
@@ -43,6 +53,9 @@ const renderPlaylistStatus = () => {
           <div className="flex items-center gap-2 text-red-500">
             <AlertCircle className="h-4 w-4" />
             <span>Yükleme Hatası</span>
+            {device.retryCount > 0 && (
+              <span className="text-xs">({device.retryCount}/3)</span>
+            )}
           </div>
         );
       default:
