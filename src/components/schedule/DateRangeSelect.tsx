@@ -1,10 +1,11 @@
 import { FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
-import { Calendar as CalendarIcon } from "lucide-react";
+import { tr } from "date-fns/locale";
+import { CalendarIcon } from "lucide-react";
 import { Control } from "react-hook-form";
 
 interface DateRangeSelectProps {
@@ -13,12 +14,12 @@ interface DateRangeSelectProps {
 
 export function DateRangeSelect({ control }: DateRangeSelectProps) {
   return (
-    <div className="flex flex-col space-y-4 sm:flex-row sm:space-x-4 sm:space-y-0">
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
       <FormField
         control={control}
         name="startDate"
         render={({ field }) => (
-          <FormItem className="flex-1">
+          <FormItem className="flex flex-col">
             <FormLabel>Başlangıç Tarihi</FormLabel>
             <Popover>
               <PopoverTrigger asChild>
@@ -30,14 +31,21 @@ export function DateRangeSelect({ control }: DateRangeSelectProps) {
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {field.value ? format(field.value, "PPP") : "Tarih seçin"}
+                  {field.value ? (
+                    format(field.value, "PPP", { locale: tr })
+                  ) : (
+                    <span>Tarih seçin</span>
+                  )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
+              <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
                   selected={field.value}
                   onSelect={field.onChange}
+                  disabled={(date) =>
+                    date < new Date(new Date().setHours(0, 0, 0, 0))
+                  }
                   initialFocus
                 />
               </PopoverContent>
@@ -50,7 +58,7 @@ export function DateRangeSelect({ control }: DateRangeSelectProps) {
         control={control}
         name="endDate"
         render={({ field }) => (
-          <FormItem className="flex-1">
+          <FormItem className="flex flex-col">
             <FormLabel>Bitiş Tarihi</FormLabel>
             <Popover>
               <PopoverTrigger asChild>
@@ -62,14 +70,22 @@ export function DateRangeSelect({ control }: DateRangeSelectProps) {
                   )}
                 >
                   <CalendarIcon className="mr-2 h-4 w-4" />
-                  {field.value ? format(field.value, "PPP") : "Tarih seçin"}
+                  {field.value ? (
+                    format(field.value, "PPP", { locale: tr })
+                  ) : (
+                    <span>Tarih seçin</span>
+                  )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
+              <PopoverContent className="w-auto p-0" align="start">
                 <Calendar
                   mode="single"
                   selected={field.value}
                   onSelect={field.onChange}
+                  disabled={(date) =>
+                    date < new Date(new Date().setHours(0, 0, 0, 0)) ||
+                    (field.value && date < field.value)
+                  }
                   initialFocus
                 />
               </PopoverContent>
