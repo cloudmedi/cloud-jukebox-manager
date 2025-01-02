@@ -5,7 +5,7 @@ const { EventEmitter } = require('events');
 const TimeoutManager = require('./utils/TimeoutManager');
 const NetworkErrorHandler = require('./utils/NetworkErrorHandler');
 const ChecksumVerifier = require('./utils/ChecksumVerifier');
-const { createLogger } = require('../utils/logger');
+const { createLogger } = require('../../utils/logger');
 
 const logger = createLogger('chunk-download-manager');
 
