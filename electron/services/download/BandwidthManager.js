@@ -1,6 +1,6 @@
 const { EventEmitter } = require('events');
 const { createLogger } = require('../../utils/logger');
-const ThrottleController = require('./utils/ThrottleController');
+const speedLimiter = require('./throttling/SpeedLimiter');
 
 const logger = createLogger('bandwidth-manager');
 
@@ -12,7 +12,6 @@ class BandwidthManager extends EventEmitter {
     this.downloadPriority = 'low';
     this.activeDownloads = 0;
     this.downloadStats = new Map();
-    this.throttleController = new ThrottleController(this.maxChunkSpeed);
     
     logger.info('BandwidthManager initialized with:', {
       maxConcurrentDownloads: this.maxConcurrentDownloads,
@@ -61,30 +60,14 @@ class BandwidthManager extends EventEmitter {
   }
 
   async updateProgress(downloadId, bytes) {
+    await speedLimiter.throttle(downloadId, bytes);
     const stats = this.downloadStats.get(downloadId);
+    
     if (stats) {
       const now = Date.now();
-      const timeDiff = (now - stats.lastUpdate) / 1000;
-      
-      // Throttling uygula
-      await this.throttleController.throttle(bytes);
-
-      const currentSpeed = bytes / timeDiff;
-      
-      if (currentSpeed > this.maxChunkSpeed) {
-        logger.warn(`[SPEED LIMIT] Download speed exceeds limit:`, {
-          downloadId,
-          currentSpeed: `${(currentSpeed / (1024 * 1024)).toFixed(2)}MB/s`,
-          maxSpeed: `${(this.maxChunkSpeed / (1024 * 1024)).toFixed(2)}MB/s`
-        });
-      }
-      
-      this.downloadStats.set(downloadId, {
-        ...stats,
-        bytesDownloaded: stats.bytesDownloaded + bytes,
-        currentSpeed,
-        lastUpdate: now
-      });
+      stats.bytesDownloaded += bytes;
+      stats.lastUpdate = now;
+      this.downloadStats.set(downloadId, stats);
     }
   }
 
@@ -92,6 +75,7 @@ class BandwidthManager extends EventEmitter {
     if (this.activeDownloads > 0) {
       this.activeDownloads--;
       const stats = this.downloadStats.get(downloadId);
+      
       if (stats) {
         const totalTime = (Date.now() - stats.startTime) / 1000;
         const averageSpeed = stats.bytesDownloaded / totalTime;
@@ -105,6 +89,7 @@ class BandwidthManager extends EventEmitter {
         });
         
         this.downloadStats.delete(downloadId);
+        speedLimiter.clearDownload(downloadId);
       }
     }
   }
@@ -124,10 +109,6 @@ class BandwidthManager extends EventEmitter {
         downloads: stats
       });
     }
-  }
-
-  getThrottleSpeed() {
-    return this.maxChunkSpeed;
   }
 
   setPriority(priority) {
