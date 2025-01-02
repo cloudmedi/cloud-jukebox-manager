@@ -46,6 +46,13 @@ class WebSocketService {
       console.log('Delete message received:', message);
       await this.deleteMessageHandler.handleMessage(message);
     });
+
+    this.addMessageHandler('downloadState', (message) => {
+      console.log('Download state received:', message);
+      if (message.downloadProgress > 0) {
+        playlistHandler.resumeDownload(message);
+      }
+    });
   }
 
   connect() {
@@ -142,12 +149,6 @@ class WebSocketService {
       this.ws.close();
       this.ws = null;
     }
-    if (this.reconnectTimeout) {
-      clearTimeout(this.reconnectTimeout);
-      this.reconnectTimeout = null;
-    }
-    this.messageHandlers.clear();
-    this.isConnecting = false;
   }
 }
 

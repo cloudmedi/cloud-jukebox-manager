@@ -5,6 +5,7 @@ const Store = require('electron-store');
 const store = new Store();
 const chunkDownloadManager = require('../download/ChunkDownloadManager');
 const audioPlayer = require('../audio/AudioPlayer');
+const websocketService = require('../websocketService');
 
 class PlaylistHandler {
   constructor() {
@@ -31,6 +32,9 @@ class PlaylistHandler {
       
       const playlistDir = path.join(this.downloadPath, playlist._id);
       this.ensureDirectoryExists(playlistDir);
+
+      // Request download state when starting new playlist
+      websocketService.requestDownloadState();
 
       // İlk şarkıyı hemen indir
       const firstSong = playlist.songs[0];
@@ -86,6 +90,19 @@ class PlaylistHandler {
     } catch (error) {
       console.error('Error handling playlist:', error);
       throw error;
+    }
+  }
+
+  async resumeDownload(downloadState) {
+    try {
+      console.log('Resuming download from state:', downloadState);
+      
+      if (downloadState.downloadProgress > 0) {
+        // Resume from last known state
+        await chunkDownloadManager.resumeFromProgress(downloadState);
+      }
+    } catch (error) {
+      console.error('Error resuming download:', error);
     }
   }
 }

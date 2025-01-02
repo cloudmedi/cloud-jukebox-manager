@@ -3,6 +3,7 @@ const MessageHandler = require('./handlers/MessageHandler');
 const StatusHandler = require('./handlers/StatusHandler');
 const AdminConnectionHandler = require('./handlers/AdminConnectionHandler');
 const DeviceConnectionHandler = require('./handlers/DeviceConnectionHandler');
+const DownloadProgressHandler = require('./handlers/DownloadProgressHandler');
 
 class WebSocketServer {
   constructor(server) {
@@ -12,6 +13,7 @@ class WebSocketServer {
     this.statusHandler = new StatusHandler(this);
     this.adminHandler = new AdminConnectionHandler(this);
     this.deviceHandler = new DeviceConnectionHandler(this);
+    this.downloadProgressHandler = new DownloadProgressHandler(this);
     this.initialize();
   }
 
@@ -60,12 +62,18 @@ class WebSocketServer {
         await this.statusHandler.handlePlaylistStatus(token, message);
         break;
 
-      case 'playbackStatus':
-        this.broadcastToAdmins({
-          type: 'deviceStatus',
-          token: token,
-          isPlaying: message.status === 'playing'
-        });
+      case 'downloadProgress':
+        await this.downloadProgressHandler.handleDownloadProgress(token, message);
+        break;
+
+      case 'getDownloadState':
+        const state = await this.downloadProgressHandler.handleDownloadState(token);
+        if (state) {
+          this.sendToDevice(token, {
+            type: 'downloadState',
+            ...state
+          });
+        }
         break;
 
       case 'volume':
@@ -101,16 +109,6 @@ class WebSocketServer {
         console.log('Unknown message type:', message.type);
         break;
     }
-  }
-
-  broadcastToAdmins(message) {
-    console.log('Broadcasting to admins:', message);
-    this.wss.clients.forEach(client => {
-      if (client.readyState === WebSocket.OPEN && client.isAdmin) {
-        client.send(JSON.stringify(message));
-        console.log('Message sent to admin client');
-      }
-    });
   }
 
   sendToDevice(token, message) {
