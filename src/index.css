@@ -95,7 +95,7 @@
 }
 
 .main-layout[data-player-visible="true"] {
-  padding-bottom: 5rem;
+  @apply pb-20;
 }
 
 .main-layout[data-player-visible="true"] .player {
@@ -107,4 +107,37 @@
   transform: translateY(100%);
   opacity: 0;
   transition: all 0.3s ease-in-out;
+}
+
+/* Custom Calendar Styles */
+.fc .fc-timegrid-now-indicator-line {
+  @apply border-0 h-0.5 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500;
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
+  animation: pulse 2s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+}
+
+.fc .fc-timegrid-now-indicator-arrow {
+  @apply border-0 w-3 h-3 -ml-1.5 rounded-full bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500;
+  box-shadow: 0 0 8px rgba(99, 102, 241, 0.4);
+  animation: bounce 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: .5;
+  }
+}
+
+@keyframes bounce {
+  0%, 100% {
+    transform: translateY(-25%);
+    animation-timing-function: cubic-bezier(0.8, 0, 1, 1);
+  }
+  50% {
+    transform: translateY(0);
+    animation-timing-function: cubic-bezier(0, 0, 0.2, 1);
+  }
 }
