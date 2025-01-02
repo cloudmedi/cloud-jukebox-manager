@@ -8,9 +8,7 @@ class NetworkErrorHandler {
       'ETIMEDOUT',
       'ECONNREFUSED',
       'NETWORK_ERROR',
-      'CHUNK_DOWNLOAD_ERROR',
-      'ENOTFOUND',
-      'CHUNK_VERIFICATION_FAILED'
+      'CHUNK_DOWNLOAD_ERROR'
     ];
 
     const retryableStatusCodes = [408, 429, 500, 502, 503, 504];
@@ -31,22 +29,6 @@ class NetworkErrorHandler {
     });
 
     return isRetryable;
-  }
-
-  static handleDownloadError(error, context) {
-    logger.error('Download error occurred:', {
-      message: error.message,
-      code: error.code,
-      status: error.response?.status,
-      context
-    });
-
-    return {
-      isRetryable: this.isRetryableError(error),
-      error: error.message,
-      code: error.code,
-      status: error.response?.status
-    };
   }
 }
 

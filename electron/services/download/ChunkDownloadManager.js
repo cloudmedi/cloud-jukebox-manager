@@ -1,144 +1,143 @@
+const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-const axios = require('axios');
 const { EventEmitter } = require('events');
+const TimeoutManager = require('./utils/TimeoutManager');
+const NetworkErrorHandler = require('./utils/NetworkErrorHandler');
+const ChecksumVerifier = require('./utils/ChecksumVerifier');
 const { createLogger } = require('../../utils/logger');
-const downloadStateManager = require('./managers/DownloadStateManager');
-const chunkManager = require('./managers/ChunkManager');
-const retryManager = require('./managers/RetryManager');
-const fileWriterService = require('./io/FileWriterService');
-const downloadVerificationService = require('./verification/DownloadVerificationService');
 
 const logger = createLogger('chunk-download-manager');
 
 class ChunkDownloadManager extends EventEmitter {
   constructor() {
     super();
+    this.MIN_CHUNK_SIZE = 256 * 1024; // 256KB
+    this.MAX_CHUNK_SIZE = 2 * 1024 * 1024; // 2MB
+    this.DEFAULT_CHUNK_SIZE = 1024 * 1024; // 1MB
+    this.MAX_RETRIES = 3;
+    this.RETRY_DELAY = 5000; // 5 seconds
+    
     this.activeDownloads = new Map();
     this.downloadQueue = [];
     this.maxConcurrentDownloads = 3;
+    this.timeoutManager = new TimeoutManager();
     this.isProcessing = false;
   }
 
-  async downloadSong(song, baseUrl, playlistDir) {
-    const tempSongPath = path.join(playlistDir, `${song._id}.mp3.temp`);
-    const finalSongPath = path.join(playlistDir, `${song._id}.mp3`);
+  calculateChunkSize(fileSize) {
+    if (fileSize < 10 * 1024 * 1024) return this.MIN_CHUNK_SIZE;
+    if (fileSize < 100 * 1024 * 1024) return this.DEFAULT_CHUNK_SIZE;
+    return this.MAX_CHUNK_SIZE;
+  }
 
-    // Check existing final file
-    if (fs.existsSync(finalSongPath)) {
-      const isValid = await downloadVerificationService.verifyFinalFile(
-        finalSongPath, 
-        song.checksum,
-        song.name
-      );
+  async downloadChunk(url, start, end, songId, retryCount = 0) {
+    const chunkId = `${songId}-${start}`;
+    let clearChunkTimeout;
+
+    try {
+      clearChunkTimeout = this.timeoutManager.setChunkTimeout(chunkId);
+
+      const response = await axios({
+        url,
+        method: 'GET',
+        responseType: 'arraybuffer',
+        headers: { Range: `bytes=${start}-${end}` }
+      });
+
+      const chunk = response.data;
+      const chunkChecksum = ChecksumVerifier.calculateMD5(chunk);
       
-      if (isValid) {
-        logger.info(`Song already exists and verified: ${song.name}`);
-        return finalSongPath;
+      if (!await ChecksumVerifier.verifyChunkChecksum(chunk, chunkChecksum)) {
+        throw new Error('Chunk checksum verification failed');
       }
-      
-      fileWriterService.cleanup(finalSongPath);
+
+      return chunk;
+
+    } catch (error) {
+      if (retryCount < this.MAX_RETRIES && NetworkErrorHandler.isRetryableError(error)) {
+        logger.warn(`Retrying chunk download (${retryCount + 1}/${this.MAX_RETRIES}): ${chunkId}`);
+        await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY));
+        return this.downloadChunk(url, start, end, songId, retryCount + 1);
+      }
+      throw error;
+    } finally {
+      if (clearChunkTimeout) {
+        clearChunkTimeout();
+      }
     }
+  }
 
-    return await retryManager.executeWithRetry(async () => {
+  async downloadSong(song, baseUrl, playlistDir) {
+    logger.info(`Starting download for song: ${song.name}`);
+    
+    try {
+      const songPath = path.join(playlistDir, `${song._id}.mp3`);
+      const tempSongPath = `${songPath}.temp`;
+      const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
+
+      const { headers } = await axios.head(songUrl);
+      const fileSize = parseInt(headers['content-length'], 10);
+      const chunkSize = this.calculateChunkSize(fileSize);
+      
+      // Resume kontrolü
+      let startByte = 0;
+      if (fs.existsSync(tempSongPath)) {
+        const stats = fs.statSync(tempSongPath);
+        startByte = stats.size;
+        logger.info(`Resuming download from byte ${startByte}`);
+      }
+
+      const chunks = Math.ceil((fileSize - startByte) / chunkSize);
+      const writer = fs.createWriteStream(tempSongPath, { flags: startByte ? 'a' : 'w' });
+      
+      const clearGlobalTimeout = this.timeoutManager.setGlobalTimeout();
+
       try {
-        const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
-        const { headers } = await axios.head(songUrl);
-        const fileSize = parseInt(headers['content-length'], 10);
-        const chunkSize = chunkManager.calculateChunkSize(fileSize);
-        
-        let startByte = await this.determineStartByte(tempSongPath, fileSize, song);
-        const chunks = Math.ceil((fileSize - startByte) / chunkSize);
-
-        for (let i = Math.floor(startByte / chunkSize); i < chunks; i++) {
-          const start = i * chunkSize;
+        for (let i = 0; i < chunks; i++) {
+          const start = startByte + (i * chunkSize);
           const end = Math.min(start + chunkSize - 1, fileSize - 1);
           
-          const chunk = await chunkManager.downloadChunk(songUrl, start, end, song._id);
-          
-          const isChunkValid = await downloadVerificationService.verifyChunk(
-            chunk,
-            song.name,
-            i + 1,
-            chunks
-          );
+          const chunk = await this.downloadChunk(songUrl, start, end, song._id);
+          writer.write(chunk);
 
-          if (!isChunkValid) {
-            throw new Error(`Chunk verification failed for ${song.name}`);
-          }
-
-          await fileWriterService.writeChunk(tempSongPath, chunk, startByte > 0 || i > 0);
-
-          await this.updateDownloadProgress(song, i, chunks, start, chunk.length, fileSize);
+          const progress = Math.round(((i + 1) / chunks) * 100);
+          this.emit('progress', { 
+            songId: song._id, 
+            progress,
+            downloadedSize: start + chunk.length,
+            totalSize: fileSize,
+            currentChunk: i + 1,
+            totalChunks: chunks
+          });
         }
 
-        const isValid = await downloadVerificationService.verifyFinalFile(
-          tempSongPath,
-          song.checksum,
-          song.name
-        );
-
-        if (!isValid) {
-          fileWriterService.cleanup(tempSongPath);
-          throw new Error(`Final verification failed for ${song.name}`);
-        }
-
-        const moved = await fileWriterService.moveFile(tempSongPath, finalSongPath);
-        if (!moved) {
-          throw new Error(`Failed to move file for ${song.name}`);
-        }
-
-        downloadStateManager.saveState(song._id, song.playlistId, { completed: true });
-        logger.info(`Download completed for ${song.name}`);
+        await new Promise((resolve) => writer.end(resolve));
         
-        return finalSongPath;
-      } catch (error) {
-        logger.error(`Error downloading song ${song.name}:`, error);
-        fileWriterService.cleanup(tempSongPath);
-        throw error;
-      }
-    }, `download song ${song.name}`);
-  }
-
-  async determineStartByte(tempSongPath, fileSize, song) {
-    let startByte = 0;
-    const downloadState = downloadStateManager.getState(song._id, song.playlistId);
-    
-    if (downloadState && fs.existsSync(tempSongPath)) {
-      try {
-        const stats = fs.statSync(tempSongPath);
-        if (stats.size < fileSize) {
-          startByte = stats.size;
-          logger.info(`Resuming download from byte ${startByte}`);
-        } else {
-          fileWriterService.cleanup(tempSongPath);
+        // Final checksum verification
+        if (song.checksum) {
+          const isValid = await ChecksumVerifier.verifyFileChecksum(tempSongPath, song.checksum);
+          if (!isValid) {
+            throw new Error('Final checksum verification failed');
+          }
         }
-      } catch (error) {
-        logger.error(`Error checking temp file: ${tempSongPath}`, error);
-        fileWriterService.cleanup(tempSongPath);
+
+        fs.renameSync(tempSongPath, songPath);
+        logger.info(`Download completed for ${song.name}`);
+        return songPath;
+
+      } finally {
+        clearGlobalTimeout();
+        this.timeoutManager.clearAll();
       }
+
+    } catch (error) {
+      logger.error(`Error downloading song ${song.name}:`, error);
+      if (fs.existsSync(tempSongPath)) {
+        fs.unlinkSync(tempSongPath);
+      }
+      throw error;
     }
-    
-    return startByte;
-  }
-
-  async updateDownloadProgress(song, currentChunk, totalChunks, downloadedSize, chunkSize, totalSize) {
-    downloadStateManager.saveState(song._id, song.playlistId, {
-      downloadedChunks: currentChunk + 1,
-      totalChunks,
-      completed: false
-    });
-
-    const progress = Math.round(((currentChunk + 1) / totalChunks) * 100);
-    this.emit('progress', { 
-      songId: song._id,
-      playlistId: song.playlistId, 
-      progress,
-      downloadedSize: downloadedSize + chunkSize,
-      totalSize,
-      currentChunk: currentChunk + 1,
-      totalChunks
-    });
   }
 
   queueSongDownload(song, baseUrl, playlistDir) {
@@ -167,9 +166,6 @@ class ChunkDownloadManager extends EventEmitter {
           try {
             await this.downloadSong(song, baseUrl, playlistDir);
             this.emit('songDownloaded', song._id);
-          } catch (error) {
-            logger.error(`Failed to download song ${song.name}:`, error);
-            this.emit('songError', { songId: song._id, error });
           } finally {
             this.activeDownloads.delete(song._id);
           }
@@ -184,11 +180,10 @@ class ChunkDownloadManager extends EventEmitter {
     }
   }
 
-  resumeIncompleteDownloads(playlistId, baseUrl, playlistDir) {
-    const incompleteDownloads = downloadStateManager.getIncompleteDownloads(playlistId);
-    for (const download of incompleteDownloads) {
-      this.queueSongDownload(download.song, baseUrl, playlistDir);
-    }
+  clearDownload(songId) {
+    this.activeDownloads.delete(songId);
+    this.downloadQueue = this.downloadQueue.filter(item => item.song._id !== songId);
+    this.timeoutManager.clearAll();
   }
 }
 
