@@ -2,6 +2,7 @@ const Song = require('../models/Song');
 const songService = require('../services/songService');
 const DeleteService = require('../services/DeleteService');
 const NotificationService = require('../services/NotificationService');
+const ChecksumUtils = require('../utils/checksumUtils');
 const fs = require('fs');
 const path = require('path');
 const { createLogger } = require('../utils/logger');
@@ -23,8 +24,26 @@ const getSongById = async (req, res) => {
     if (!song) {
       return res.status(404).json({ message: 'Şarkı bulunamadı' });
     }
-    res.json(song);
+
+    // Dosya stream'i oluştur
+    const fileStream = fs.createReadStream(song.filePath);
+    
+    // Stream üzerinden checksumları hesapla
+    const md5Promise = ChecksumUtils.calculateStreamMD5(fileStream);
+    const sha256Promise = ChecksumUtils.calculateStreamSHA256(fileStream);
+
+    const [md5, sha256] = await Promise.all([md5Promise, sha256Promise]);
+
+    // Header'ları ayarla
+    res.setHeader('Content-Type', 'audio/mpeg');
+    res.setHeader('x-file-md5', md5);
+    res.setHeader('x-file-sha256', sha256);
+
+    // Dosyayı gönder
+    fileStream.pipe(res);
+
   } catch (error) {
+    logger.error('Error in getSongById:', error);
     res.status(500).json({ message: error.message });
   }
 };
