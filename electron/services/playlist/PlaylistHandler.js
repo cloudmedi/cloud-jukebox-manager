@@ -4,7 +4,7 @@ const fs = require('fs');
 const Store = require('electron-store');
 const store = new Store();
 const chunkDownloadManager = require('../download/ChunkDownloadManager');
-const downloadStateManager = require('../download/DownloadStateManager');
+const downloadStateManager = require('../download/managers/DownloadStateManager');
 const audioPlayer = require('../audio/AudioPlayer');
 const { createLogger } = require('../../utils/logger');
 
@@ -39,9 +39,6 @@ class PlaylistHandler {
       
       const playlistDir = path.join(this.downloadPath, playlist._id);
       this.ensureDirectoryExists(playlistDir);
-
-      // Initialize download state
-      downloadStateManager.initializeDownload(playlist);
 
       // İlk şarkıyı hemen indir
       const firstSong = playlist.songs[0];

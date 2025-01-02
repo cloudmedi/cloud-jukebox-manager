@@ -20,7 +20,11 @@ class DownloadStateManager {
 
   saveSongDetails(songId, details) {
     try {
-      logger.info(`Saving song details for ${songId}:`, details);
+      if (!songId || !details) {
+        throw new Error('Invalid song details provided');
+      }
+
+      logger.info(`Saving song details for ${songId}`);
       this.store.set(`songDetails.${songId}`, {
         ...details,
         timestamp: Date.now()
