@@ -44,7 +44,7 @@ export function PlaylistSelect({ control }: PlaylistSelectProps) {
                 <ScrollArea className="h-[300px]">
                   {playlists.map((playlist) => (
                     <SelectItem key={playlist._id} value={playlist._id}>
-                      <div className="flex items-center gap-2">
+                      <div className="flex items-start gap-2">
                         {playlist.artwork ? (
                           <img 
                             src={`http://localhost:5000${playlist.artwork}`}
@@ -60,9 +60,9 @@ export function PlaylistSelect({ control }: PlaylistSelectProps) {
                             <Music2 className="h-4 w-4 text-muted-foreground" />
                           </div>
                         )}
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0 flex-1 flex flex-col">
                           <p className="text-sm font-medium truncate">{playlist.name}</p>
-                          <p className="text-xs text-muted-foreground">
+                          <p className="text-xs text-muted-foreground truncate">
                             {playlist.songs?.length || 0} şarkı • {formatDuration(playlist.totalDuration || 0)}
                           </p>
                         </div>
