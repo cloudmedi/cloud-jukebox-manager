@@ -7,24 +7,9 @@ import { Button } from "@/components/ui/button";
 import { Calendar, List } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PlaylistScheduleForm } from "@/components/schedule/PlaylistScheduleForm";
-import { useQuery, useQueryClient } from "@tanstack/react-query";
+import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 import { EventDetailDialog } from "@/components/schedule/EventDetailDialog";
-
-interface Schedule {
-  _id: string;
-  playlist: {
-    _id: string;
-    name: string;
-  } | null;
-  startDate: string;
-  endDate: string;
-  status: 'active' | 'inactive';
-  targets: {
-    devices: string[];
-    groups: string[];
-  };
-}
 
 // Sadece pastel renklerden oluşan palet
 const colorPalette = [
@@ -42,6 +27,21 @@ const colorPalette = [
   '#F5F5DC',   // Pastel Bej
 ];
 
+interface Schedule {
+  _id: string;
+  playlist: {
+    _id: string;
+    name: string;
+  } | null;
+  startDate: string;
+  endDate: string;
+  status: 'active' | 'inactive';
+  targets: {
+    devices: string[];
+    groups: string[];
+  };
+}
+
 const Schedule = () => {
   const [view, setView] = useState<"timeGridWeek" | "dayGridMonth">("timeGridWeek");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -51,8 +51,6 @@ const Schedule = () => {
   }>({ start: null, end: null });
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [isEventDetailOpen, setIsEventDetailOpen] = useState(false);
-
-  const queryClient = useQueryClient();
 
   const { data: schedules, isLoading, error } = useQuery({
     queryKey: ["playlist-schedules"],
@@ -82,7 +80,6 @@ const Schedule = () => {
 
   const handleScheduleCreated = () => {
     setIsDialogOpen(false);
-    queryClient.invalidateQueries({ queryKey: ["playlist-schedules"] });
   };
 
   const getScheduleColor = (index: number) => {
