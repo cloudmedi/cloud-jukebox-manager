@@ -1,5 +1,5 @@
 const crypto = require('crypto');
-const { createLogger } = require('../../utils/logger');
+const { createLogger } = require('../../../utils/logger');
 
 const logger = createLogger('checksum-verifier');
 
