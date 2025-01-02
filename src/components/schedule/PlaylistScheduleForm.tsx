@@ -18,7 +18,11 @@ interface ScheduleFormData {
   targetGroups: string[];
 }
 
-export function PlaylistScheduleForm() {
+interface PlaylistScheduleFormProps {
+  onSuccess: () => void;
+}
+
+export function PlaylistScheduleForm({ onSuccess }: PlaylistScheduleFormProps) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const queryClient = useQueryClient();
   
@@ -52,6 +56,7 @@ export function PlaylistScheduleForm() {
       toast.success("Zamanlama başarıyla oluşturuldu");
       queryClient.invalidateQueries({ queryKey: ["schedules"] });
       form.reset();
+      onSuccess();
       
     } catch (error) {
       console.error("Schedule creation error:", error);
