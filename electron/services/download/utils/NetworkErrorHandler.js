@@ -38,7 +38,7 @@ class NetworkErrorHandler {
       throw error;
     }
 
-    const delay = Math.pow(2, context.retryCount) * 1000;
+    const delay = Math.pow(2, context.retryCount) * 1000; // Exponential backoff
     logger.info(`Retrying operation in ${delay}ms (attempt ${context.retryCount + 1}/${maxRetries})`);
     
     await new Promise(resolve => setTimeout(resolve, delay));

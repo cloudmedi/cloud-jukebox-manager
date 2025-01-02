@@ -54,6 +54,7 @@ class RetryManager extends EventEmitter {
   }
 
   calculateDelay(retryCount) {
+    // Exponential backoff with jitter
     const baseDelay = this.INITIAL_DELAY * Math.pow(2, retryCount - 1);
     const jitter = Math.random() * 1000;
     return baseDelay + jitter;
