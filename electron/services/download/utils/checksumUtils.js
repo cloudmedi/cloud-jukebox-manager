@@ -16,15 +16,35 @@ class ChecksumUtils {
       .digest('hex');
   }
 
-  static async verifyChunkChecksum(chunk, expectedMD5) {
-    const calculatedMD5 = this.calculateMD5(chunk);
-    return calculatedMD5 === expectedMD5;
+  static async calculateFileChecksum(filePath) {
+    return new Promise((resolve, reject) => {
+      const hash = crypto.createHash('sha256');
+      const stream = fs.createReadStream(filePath);
+      
+      stream.on('data', data => hash.update(data));
+      stream.on('end', () => resolve(hash.digest('hex')));
+      stream.on('error', reject);
+    });
   }
 
-  static async verifyFileChecksum(filePath, expectedSHA256) {
-    const fileBuffer = await fs.promises.readFile(filePath);
-    const calculatedSHA256 = this.calculateSHA256(fileBuffer);
-    return calculatedSHA256 === expectedSHA256;
+  static async verifyFileChecksum(filePath, expectedChecksum) {
+    try {
+      const actualChecksum = await this.calculateFileChecksum(filePath);
+      return actualChecksum === expectedChecksum;
+    } catch (error) {
+      console.error('Checksum verification error:', error);
+      return false;
+    }
+  }
+
+  static async verifyChunkChecksum(chunk, expectedChecksum) {
+    try {
+      const calculatedChecksum = this.calculateSHA256(chunk);
+      return calculatedChecksum === expectedChecksum;
+    } catch (error) {
+      console.error('Chunk checksum verification error:', error);
+      return false;
+    }
   }
 }
 
