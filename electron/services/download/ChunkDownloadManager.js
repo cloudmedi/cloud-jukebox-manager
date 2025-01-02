@@ -24,13 +24,8 @@ class ChunkDownloadManager extends EventEmitter {
   }
 
   calculateChunkSize(fileSize) {
-    // Küçük dosyalar için minimum chunk size
     if (fileSize < 10 * 1024 * 1024) return this.MIN_CHUNK_SIZE;
-    
-    // Orta boy dosyalar için default chunk size
     if (fileSize < 100 * 1024 * 1024) return this.DEFAULT_CHUNK_SIZE;
-    
-    // Büyük dosyalar için maximum chunk size
     return this.MAX_CHUNK_SIZE;
   }
 
@@ -73,7 +68,7 @@ class ChunkDownloadManager extends EventEmitter {
     
     try {
       const songPath = path.join(playlistDir, `${song._id}.mp3`);
-      const tempPath = `${songPath}.temp`;
+      const tempSongPath = `${songPath}.temp`;
       const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
 
       const { headers } = await axios.head(songUrl);
@@ -82,14 +77,14 @@ class ChunkDownloadManager extends EventEmitter {
       
       // Resume kontrolü
       let startByte = 0;
-      if (fs.existsSync(tempPath)) {
-        const stats = fs.statSync(tempPath);
+      if (fs.existsSync(tempSongPath)) {
+        const stats = fs.statSync(tempSongPath);
         startByte = stats.size;
         logger.info(`Resuming download from byte ${startByte}`);
       }
 
       const chunks = Math.ceil((fileSize - startByte) / chunkSize);
-      const writer = fs.createWriteStream(tempPath, { flags: startByte ? 'a' : 'w' });
+      const writer = fs.createWriteStream(tempSongPath, { flags: startByte ? 'a' : 'w' });
       
       const clearGlobalTimeout = this.timeoutManager.setGlobalTimeout((error) => {
         writer.end();
@@ -119,13 +114,13 @@ class ChunkDownloadManager extends EventEmitter {
         
         // Final checksum verification
         if (song.checksum) {
-          const isValid = await ChecksumVerifier.verifyFileChecksum(tempPath, song.checksum);
+          const isValid = await ChecksumVerifier.verifyFileChecksum(tempSongPath, song.checksum);
           if (!isValid) {
             throw new Error('Final checksum verification failed');
           }
         }
 
-        fs.renameSync(tempPath, songPath);
+        fs.renameSync(tempSongPath, songPath);
         logger.info(`Download completed for ${song.name}`);
         return songPath;
 
@@ -136,8 +131,8 @@ class ChunkDownloadManager extends EventEmitter {
 
     } catch (error) {
       logger.error(`Error downloading song ${song.name}:`, error);
-      if (fs.existsSync(tempPath)) {
-        fs.unlinkSync(tempPath);
+      if (fs.existsSync(tempSongPath)) {
+        fs.unlinkSync(tempSongPath);
       }
       throw error;
     }
