@@ -23,7 +23,6 @@ class PlaylistHandler {
   setupChunkDownloadListeners() {
     chunkDownloadManager.on('firstChunkReady', ({ songId, songPath }) => {
       console.log(`First chunk ready for song ${songId}, path: ${songPath}`);
-      // Notify audio player that first chunk is ready
       audioPlayer.handleFirstChunkReady(songId, songPath);
     });
 
@@ -42,9 +41,10 @@ class PlaylistHandler {
       const playlistDir = path.join(this.downloadPath, playlist._id);
       this.ensureDirectoryExists(playlistDir);
 
-      // Start downloading first song immediately
+      // İlk şarkıyı hemen indir
       const firstSong = playlist.songs[0];
       if (firstSong) {
+        console.log('Starting download of first song:', firstSong.name);
         await chunkDownloadManager.downloadSongInChunks(
           firstSong,
           playlist.baseUrl,
@@ -52,8 +52,10 @@ class PlaylistHandler {
         );
       }
 
-      // Queue remaining songs for download
+      // Kalan şarkıları kuyruğa ekle
+      console.log('Adding remaining songs to queue');
       for (let i = 1; i < playlist.songs.length; i++) {
+        console.log(`Adding song to queue: ${playlist.songs[i].name}`);
         chunkDownloadManager.addToQueue(
           playlist.songs[i],
           playlist.baseUrl,

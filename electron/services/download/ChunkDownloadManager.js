@@ -4,23 +4,24 @@ const fs = require('fs');
 const path = require('path');
 const RetryManager = require('./RetryManager');
 const ChecksumUtils = require('./utils/checksumUtils');
+const DownloadQueue = require('./DownloadQueue');
 
 class ChunkDownloadManager extends EventEmitter {
   constructor() {
     super();
     this.retryManager = new RetryManager();
+    this.downloadQueue = new DownloadQueue();
     this.setupRetryListener();
     
     this.MIN_CHUNK_SIZE = 256 * 1024; // 256KB
     this.MAX_CHUNK_SIZE = 2 * 1024 * 1024; // 2MB
     this.DEFAULT_CHUNK_SIZE = 1024 * 1024; // 1MB
     this.CHUNK_SIZE = this.DEFAULT_CHUNK_SIZE;
-    this.MAX_CONCURRENT_DOWNLOADS = 10;
+    this.MAX_CONCURRENT_DOWNLOADS = 3;
     this.BUFFER_SIZE = 5 * 1024 * 1024; // 5MB buffer
     this.MAX_MEMORY_USAGE = 100 * 1024 * 1024; // 100MB max memory
     this.MAX_RETRY_ATTEMPTS = 3;
     this.activeDownloads = new Map();
-    this.downloadQueue = [];
     this.chunkBuffers = new Map();
     this.downloadedChunks = new Map();
     this.memoryUsage = 0;
@@ -69,64 +70,6 @@ class ChunkDownloadManager extends EventEmitter {
     );
   }
 
-  setChunkSize(size) {
-    // Chunk boyutunu sınırlar içinde tut
-    this.CHUNK_SIZE = Math.min(
-      Math.max(size, this.MIN_CHUNK_SIZE),
-      this.MAX_CHUNK_SIZE
-    );
-    console.log(`Chunk size set to: ${this.CHUNK_SIZE / 1024}KB`);
-  }
-
-  getMemoryUsage() {
-    return this.memoryUsage;
-  }
-
-  trackMemoryUsage(size, operation = 'add') {
-    if (operation === 'add') {
-      this.memoryUsage += size;
-    } else {
-      this.memoryUsage -= size;
-    }
-    
-    if (this.memoryUsage > this.MAX_MEMORY_USAGE) {
-      console.warn('High memory usage detected:', this.memoryUsage);
-      this.emit('high-memory-usage', this.memoryUsage);
-      this.cleanupMemory(true); // Force cleanup
-    }
-  }
-
-  cleanupMemory(force = false) {
-    console.log('Running memory cleanup...');
-    
-    for (const [songId, chunks] of this.downloadedChunks.entries()) {
-      if (force || this.isDownloadComplete(songId)) {
-        const totalSize = chunks.reduce((acc, chunk) => acc + chunk.length, 0);
-        this.trackMemoryUsage(totalSize, 'subtract');
-        this.downloadedChunks.delete(songId);
-        this.chunkBuffers.delete(songId);
-        console.log(`Cleaned up chunks for song: ${songId}`);
-      }
-    }
-
-    for (const [songId, download] of this.activeDownloads.entries()) {
-      if (!download.isActive && (force || Date.now() - download.lastActive > 300000)) {
-        this.activeDownloads.delete(songId);
-        console.log(`Cleaned up inactive download: ${songId}`);
-      }
-    }
-  }
-
-  isDownloadComplete(songId) {
-    const chunks = this.downloadedChunks.get(songId);
-    if (!chunks) return false;
-    
-    const download = this.activeDownloads.get(songId);
-    if (!download) return true;
-    
-    return download.totalChunks === chunks.length;
-  }
-
   async downloadSongInChunks(song, baseUrl, playlistDir) {
     try {
       console.log(`Starting chunked download for song: ${song.name}`);
@@ -161,7 +104,8 @@ class ChunkDownloadManager extends EventEmitter {
       this.activeDownloads.set(song._id, {
         isActive: true,
         lastActive: Date.now(),
-        totalChunks
+        totalChunks,
+        progress: 0
       });
       
       // Kalan chunk'ları indir
@@ -178,13 +122,13 @@ class ChunkDownloadManager extends EventEmitter {
         const download = this.activeDownloads.get(song._id);
         if (download) {
           download.lastActive = Date.now();
+          download.progress = Math.floor((start + chunk.length) / fileSize * 100);
         }
 
-        const progress = Math.floor((start + chunk.length) / fileSize * 100);
         this.emit('progress', {
           songId: song._id,
-          progress,
-          isComplete: progress === 100
+          progress: download.progress,
+          isComplete: download.progress === 100
         });
       }
 
@@ -199,6 +143,7 @@ class ChunkDownloadManager extends EventEmitter {
       const download = this.activeDownloads.get(song._id);
       if (download) {
         download.isActive = false;
+        download.progress = 100;
       }
 
       console.log(`Download completed for ${song.name}`);
@@ -211,20 +156,33 @@ class ChunkDownloadManager extends EventEmitter {
   }
 
   addToQueue(song, baseUrl, playlistDir) {
-    this.downloadQueue.push({ song, baseUrl, playlistDir });
+    console.log(`Adding song to queue: ${song.name}`);
+    this.downloadQueue.add({
+      song,
+      baseUrl,
+      playlistDir
+    });
     this.processQueue();
   }
 
   async processQueue() {
-    if (this.downloadQueue.length === 0) return;
+    if (this.downloadQueue.isEmpty()) {
+      console.log('Download queue is empty');
+      return;
+    }
 
     while (
       this.activeDownloads.size < this.MAX_CONCURRENT_DOWNLOADS && 
-      this.downloadQueue.length > 0
+      !this.downloadQueue.isEmpty()
     ) {
-      const download = this.downloadQueue.shift();
+      const download = this.downloadQueue.next();
       if (download) {
-        this.activeDownloads.set(download.song._id, download);
+        console.log(`Processing download for: ${download.song.name}`);
+        this.activeDownloads.set(download.song._id, {
+          isActive: true,
+          lastActive: Date.now(),
+          progress: 0
+        });
         
         try {
           await this.downloadSongInChunks(
@@ -232,6 +190,9 @@ class ChunkDownloadManager extends EventEmitter {
             download.baseUrl,
             download.playlistDir
           );
+          console.log(`Download completed for: ${download.song.name}`);
+        } catch (error) {
+          console.error(`Download failed for: ${download.song.name}`, error);
         } finally {
           this.activeDownloads.delete(download.song._id);
           this.processQueue();
