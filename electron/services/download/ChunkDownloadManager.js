@@ -1,174 +1,82 @@
-const { EventEmitter } = require('events');
-const axios = require('axios');
-const fs = require('fs');
+const { app } = require('electron');
 const path = require('path');
-const TimeoutManager = require('./utils/TimeoutManager');
-const NetworkErrorHandler = require('./utils/NetworkErrorHandler');
-const ChecksumVerifier = require('./utils/ChecksumVerifier');
-const downloadStateManager = require('./DownloadStateManager');
-const { createLogger } = require('../../utils/logger');
-const bandwidthManager = require('./BandwidthManager');
+const fs = require('fs');
+const axios = require('axios');
 const Store = require('electron-store');
-
-const logger = createLogger('chunk-download-manager');
 const store = new Store();
 
-class ChunkDownloadManager extends EventEmitter {
+class ChunkDownloadManager {
   constructor() {
-    super();
     this.activeDownloads = new Map();
     this.downloadQueue = [];
-    this.maxConcurrentDownloads = bandwidthManager.maxConcurrentDownloads;
-    this.timeoutManager = new TimeoutManager();
+    this.maxConcurrentDownloads = 3;
     this.isProcessing = false;
     
     // Temel indirme dizinini ayarla
-    const appData = process.env.APPDATA || process.env.HOME;
-    this.downloadPath = path.join(appData, 'cloud-media-player', 'downloads');
-    store.set('downloadPath', this.downloadPath);
-    
+    this.downloadPath = path.join(app.getPath('userData'), 'downloads');
     this.ensureDirectoryExists(this.downloadPath);
-    this.resumeIncompleteDownloads();
   }
 
-  ensureDirectoryExists(dir) {
+  ensureDirectoryExists(dirPath) {
     try {
-      if (!fs.existsSync(dir)) {
-        fs.mkdirSync(dir, { recursive: true });
+      if (!fs.existsSync(dirPath)) {
+        fs.mkdirSync(dirPath, { recursive: true });
       }
     } catch (error) {
-      logger.error(`Directory creation error: ${error.message}`);
+      console.error(`Directory creation error for path ${dirPath}:`, error);
       throw error;
     }
-  }
-
-  async resumeIncompleteDownloads() {
-    const incompleteDownloads = downloadStateManager.getIncompleteDownloads();
-    logger.info(`Found ${incompleteDownloads.length} incomplete downloads to resume`);
-
-    for (const playlist of incompleteDownloads) {
-      for (const song of playlist.songs) {
-        if (song.status !== 'completed') {
-          const downloadState = downloadStateManager.getSongDownloadState(song.id);
-          if (downloadState.chunks) {
-            this.queueSongDownload(song, playlist.baseUrl, playlist._id, true);
-          }
-        }
-      }
-    }
-  }
-
-  async downloadChunk(url, start, end, songId, playlistId, retryCount = 0) {
-    const chunkId = `${songId}-${start}`;
-    
-    try {
-      downloadStateManager.updateChunkState(songId, chunkId, {
-        status: 'downloading',
-        startByte: start,
-        endByte: end,
-        retryCount
-      });
-
-      const chunk = await this._performChunkDownload(url, start, end, songId);
-      
-      downloadStateManager.updateChunkState(songId, chunkId, {
-        status: 'completed',
-        size: chunk.length
-      });
-
-      return chunk;
-
-    } catch (error) {
-      downloadStateManager.updateChunkState(songId, chunkId, {
-        status: 'failed',
-        error: error.message
-      });
-      throw error;
-    }
-  }
-
-  async _performChunkDownload(url, start, end, songId) {
-    const response = await axios({
-      url,
-      method: 'GET',
-      responseType: 'arraybuffer',
-      headers: { 
-        Range: `bytes=${start}-${end}`
-      }
-    });
-
-    return response.data;
   }
 
   async downloadSong(song, baseUrl, playlistId) {
-    logger.info(`Starting download for song: ${song.name}`);
-    
-    // Playlist dizinini oluştur
-    const playlistDir = path.join(this.downloadPath, playlistId);
-    this.ensureDirectoryExists(playlistDir);
-    
-    const songPath = path.join(playlistDir, `${song._id}.mp3`);
-    const tempSongPath = `${songPath}.temp`;
-    const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
-
-    const { headers } = await axios.head(songUrl);
-    const fileSize = parseInt(headers['content-length'], 10);
-    const chunkSize = this.calculateChunkSize(fileSize);
-    
-    let startByte = 0;
-    if (fs.existsSync(tempSongPath)) {
-      const stats = fs.statSync(tempSongPath);
-      startByte = stats.size;
-      logger.info(`Resuming download from byte ${startByte}`);
-    }
-
-    const chunks = Math.ceil((fileSize - startByte) / chunkSize);
-    const writer = fs.createWriteStream(tempSongPath, { flags: startByte ? 'a' : 'w' });
-    
     try {
-      for (let i = 0; i < chunks; i++) {
-        const start = startByte + (i * chunkSize);
-        const end = Math.min(start + chunkSize - 1, fileSize - 1);
-        
-        const chunk = await this.downloadChunk(songUrl, start, end, song._id, playlistId);
-        writer.write(chunk);
-
-        const progress = Math.round(((i + 1) / chunks) * 100);
-        this.emit('progress', { 
-          songId: song._id, 
-          progress,
-          downloadedSize: start + chunk.length,
-          totalSize: fileSize,
-          currentChunk: i + 1,
-          totalChunks: chunks
-        });
-      }
-
-      await new Promise((resolve) => writer.end(resolve));
+      console.log(`Starting download for song: ${song.name}`);
       
-      if (song.checksum) {
-        const isValid = await ChecksumVerifier.verifyFileChecksum(tempSongPath, song.checksum);
-        if (!isValid) {
-          throw new Error('Final checksum verification failed');
-        }
+      // Playlist için dizin oluştur
+      const playlistDir = path.join(this.downloadPath, playlistId);
+      this.ensureDirectoryExists(playlistDir);
+      
+      // Şarkı dosya yolunu oluştur
+      const songPath = path.join(playlistDir, `${song._id}.mp3`);
+      const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
+
+      // Şarkı zaten var mı kontrol et
+      if (fs.existsSync(songPath)) {
+        console.log(`Song already exists: ${song.name}`);
+        return songPath;
       }
 
-      fs.renameSync(tempSongPath, songPath);
-      logger.info(`Download completed for ${song.name}`);
-      return songPath;
+      const response = await axios({
+        url: songUrl,
+        method: 'GET',
+        responseType: 'stream'
+      });
+
+      const writer = fs.createWriteStream(songPath);
+
+      response.data.pipe(writer);
+
+      return new Promise((resolve, reject) => {
+        writer.on('finish', () => {
+          console.log(`Download completed: ${song.name}`);
+          resolve(songPath);
+        });
+        
+        writer.on('error', (error) => {
+          console.error(`Error downloading song ${song.name}:`, error);
+          reject(error);
+        });
+      });
 
     } catch (error) {
-      logger.error(`Error downloading song ${song.name}:`, error);
-      if (fs.existsSync(tempSongPath)) {
-        fs.unlinkSync(tempSongPath);
-      }
+      console.error(`Error downloading song ${song.name}:`, error);
       throw error;
     }
   }
 
-  queueSongDownload(song, baseUrl, playlistId, isResume = false) {
-    logger.info(`Adding song to queue: ${song.name}`);
-    this.downloadQueue.push({ song, baseUrl, playlistId, isResume });
+  queueSongDownload(song, baseUrl, playlistId) {
+    console.log(`Adding song to queue: ${song.name}`);
+    this.downloadQueue.push({ song, baseUrl, playlistId });
     this.processQueue();
   }
 
@@ -190,7 +98,8 @@ class ChunkDownloadManager extends EventEmitter {
           this.activeDownloads.set(song._id, download);
           
           try {
-            await this.downloadSong(song, baseUrl, playlistId);
+            const songPath = await this.downloadSong(song, baseUrl, playlistId);
+            song.localPath = songPath;
             this.emit('songDownloaded', song._id);
           } finally {
             this.activeDownloads.delete(song._id);
