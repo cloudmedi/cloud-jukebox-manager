@@ -1,58 +1,86 @@
 const QueueManager = require('./QueueManager');
 const PlaybackState = require('./PlaybackState');
 const path = require('path');
-const { ipcRenderer } = require('electron');
+const { Howl } = require('howler');
+const Store = require('electron-store');
+const store = new Store();
 
 class AudioPlayer {
   constructor() {
     this.queueManager = new QueueManager();
     this.playbackState = new PlaybackState();
-    // Create an HTML5 audio element
-    this.audio = document.createElement('audio');
-    this.audio.id = 'audioPlayer';
-    document.body.appendChild(this.audio);
-    
+    this.sound = null;
     this.playlist = null;
     this.isPlaying = false;
-    this.volume = 1.0;
-    
+    this.volume = store.get('volume', 100) / 100;
+    this.readyToPlay = false;
+
     this.setupEventListeners();
-    this.restoreState();
   }
 
   setupEventListeners() {
-    this.audio.addEventListener('ended', () => {
-      console.log('Song ended, playing next');
-      this.playNext();
-    });
+    if (this.sound) {
+      this.sound.on('end', () => {
+        console.log('Song ended, playing next');
+        this.playNext();
+      });
 
-    this.audio.addEventListener('error', (e) => {
-      console.error('Audio error:', e);
-      this.playNext();
-    });
+      this.sound.on('play', () => {
+        console.log('Audio started playing');
+        this.isPlaying = true;
+        this.updatePlaybackState('playing');
+      });
 
-    this.audio.addEventListener('play', () => {
-      console.log('Audio started playing');
-      this.isPlaying = true;
-      this.updatePlaybackState('playing');
-    });
+      this.sound.on('pause', () => {
+        console.log('Audio paused');
+        this.isPlaying = false;
+        this.updatePlaybackState('paused');
+      });
 
-    this.audio.addEventListener('pause', () => {
-      console.log('Audio paused');
-      this.isPlaying = false;
-      this.updatePlaybackState('paused');
-    });
+      this.sound.on('loaderror', (id, err) => {
+        console.error('Audio loading error:', err);
+        this.playNext();
+      });
+    }
+  }
 
-    this.audio.addEventListener('timeupdate', () => {
-      if (this.audio.duration > 0 && 
-          this.audio.currentTime >= this.audio.duration - 0.5) {
-        console.log('Song near end, preparing next');
-        const nextSong = this.queueManager.peekNext();
-        if (nextSong) {
-          console.log('Preloading next song:', nextSong.name);
-        }
+  handleFirstSongReady(songId, songPath) {
+    console.log('First song ready handler called:', { songId, songPath });
+    
+    try {
+      if (!songPath) {
+        console.error('No song path provided to handleFirstSongReady');
+        return;
       }
-    });
+
+      // Create a new Howl instance for the song
+      if (this.sound) {
+        this.sound.unload();
+      }
+
+      this.sound = new Howl({
+        src: [songPath],
+        html5: true,
+        volume: this.volume,
+        format: ['mp3'],
+        onload: () => {
+          console.log('First song loaded successfully');
+          this.readyToPlay = true;
+          if (this.isPlaying) {
+            this.sound.play();
+          }
+        },
+        onloaderror: (id, error) => {
+          console.error('Error loading first song:', error);
+        }
+      });
+
+      this.setupEventListeners();
+      
+      console.log('First song initialized successfully');
+    } catch (error) {
+      console.error('Error in handleFirstSongReady:', error);
+    }
   }
 
   loadPlaylist(playlist) {
@@ -86,18 +114,28 @@ class AudioPlayer {
       const normalizedPath = path.normalize(song.localPath);
       console.log('Playing file from:', normalizedPath);
       
-      this.audio.pause();
-      this.audio.currentTime = 0;
-      
-      this.audio.src = normalizedPath;
-      this.audio.volume = this.volume;
-      
-      if (this.isPlaying) {
-        this.audio.play().catch(error => {
-          console.error('Error playing audio:', error);
-          this.playNext();
-        });
+      if (this.sound) {
+        this.sound.unload();
       }
+      
+      this.sound = new Howl({
+        src: [normalizedPath],
+        html5: true,
+        volume: this.volume,
+        format: ['mp3'],
+        onload: () => {
+          console.log('Song loaded successfully');
+          if (this.isPlaying) {
+            this.sound.play();
+          }
+        },
+        onloaderror: (id, error) => {
+          console.error('Error loading song:', error);
+          this.playNext();
+        }
+      });
+      
+      this.setupEventListeners();
       
     } catch (error) {
       console.error('Error loading song:', error);
@@ -107,27 +145,30 @@ class AudioPlayer {
 
   play() {
     console.log('Play requested');
-    if (this.audio.src) {
-      this.audio.play().catch(error => {
-        console.error('Error playing audio:', error);
-        this.playNext();
-      });
+    if (this.sound) {
+      this.sound.play();
       this.isPlaying = true;
     } else {
       console.log('No audio source loaded');
-      this.loadCurrentSong();
+      const currentSong = this.queueManager.getCurrentSong();
+      if (currentSong) {
+        this.loadCurrentSong();
+      }
     }
   }
 
   pause() {
-    this.audio.pause();
-    this.isPlaying = false;
+    if (this.sound) {
+      this.sound.pause();
+      this.isPlaying = false;
+    }
   }
 
   stop() {
-    this.audio.pause();
-    this.audio.currentTime = 0;
-    this.isPlaying = false;
+    if (this.sound) {
+      this.sound.stop();
+      this.isPlaying = false;
+    }
   }
 
   playNext() {
@@ -142,18 +183,14 @@ class AudioPlayer {
     }
   }
 
-  playPrevious() {
-    console.log('Playing previous song');
-    const prevSong = this.queueManager.previous();
-    if (prevSong) {
-      console.log('Previous song found:', prevSong.name);
-      this.loadCurrentSong();
-    }
-  }
-
   setVolume(volume) {
-    this.volume = volume / 100;
-    this.audio.volume = this.volume;
+    const normalizedVolume = Math.max(0, Math.min(100, volume));
+    this.volume = normalizedVolume / 100;
+    if (this.sound) {
+      this.sound.volume(this.volume);
+    }
+    store.set('volume', normalizedVolume);
+    console.log('Volume set and saved:', normalizedVolume);
   }
 
   updatePlaybackState(state) {

@@ -1,13 +1,10 @@
-const fs = require('fs');
+const { app } = require('electron');
 const path = require('path');
+const fs = require('fs');
 const Store = require('electron-store');
 const store = new Store();
-const downloadQueueManager = require('../download/managers/DownloadQueueManager');
+const chunkDownloadManager = require('../download/ChunkDownloadManager');
 const audioPlayer = require('../audio/AudioPlayer');
-const { createLogger } = require('../../utils/logger');
-const { app } = require('electron');
-
-const logger = createLogger('playlist-handler');
 
 class PlaylistHandler {
   constructor() {
@@ -16,75 +13,59 @@ class PlaylistHandler {
     this.setupDownloadListeners();
   }
 
-  setupDownloadListeners() {
-    try {
-      downloadQueueManager.on('songCompleted', (song) => {
-        logger.info(`Song ${song.name} downloaded successfully`);
-        if (this.isFirstSong(song._id)) {
-          audioPlayer.loadCurrentSong();
-        }
-      });
-
-      downloadQueueManager.on('songError', ({ song, error }) => {
-        logger.error(`Error downloading song ${song.name}:`, error);
-      });
-
-      logger.info('Download listeners setup completed');
-    } catch (error) {
-      logger.error('Error setting up download listeners:', error);
-    }
-  }
-
   ensureDirectoryExists(dir) {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
-      logger.info(`Created directory: ${dir}`);
     }
   }
 
-  isFirstSong(songId) {
-    const playlists = store.get('playlists', []);
-    const lastPlaylist = playlists[playlists.length - 1];
-    return lastPlaylist && lastPlaylist.songs[0]._id === songId;
+  setupDownloadListeners() {
+    chunkDownloadManager.on('songDownloaded', (songId) => {
+      console.log(`Song ${songId} downloaded successfully`);
+    });
   }
 
   async handlePlaylist(playlist) {
     try {
-      logger.info('Handling playlist:', playlist.name);
+      console.log('Handling playlist:', playlist.name);
       
       const playlistDir = path.join(this.downloadPath, playlist._id);
       this.ensureDirectoryExists(playlistDir);
-      logger.info(`Created playlist directory: ${playlistDir}`);
 
+      // İlk şarkıyı hemen indir
       const firstSong = playlist.songs[0];
       if (firstSong) {
-        logger.info('Starting download of first song:', firstSong.name);
-        
-        downloadQueueManager.addToQueue({
-          song: firstSong,
-          baseUrl: playlist.baseUrl,
-          playlistId: playlist._id,
-          priority: 'high'
-        });
+        console.log('Starting download of first song:', firstSong.name);
+        const firstSongPath = await chunkDownloadManager.downloadSong(
+          firstSong,
+          playlist.baseUrl,
+          playlistDir
+        );
 
-        firstSong.localPath = path.join(playlistDir, `${firstSong._id}.mp3`);
-        logger.info(`First song local path set to: ${firstSong.localPath}`);
+        // İlk şarkı hazır olduğunda oynatıcıya bildir
+        if (firstSongPath) {
+          console.log('First song ready:', firstSongPath);
+          firstSong.localPath = firstSongPath;
+          if (audioPlayer && typeof audioPlayer.handleFirstSongReady === 'function') {
+            audioPlayer.handleFirstSongReady(firstSong._id, firstSongPath);
+          }
+        }
       }
 
-      logger.info(`Adding ${playlist.songs.length - 1} remaining songs to queue`);
+      // Kalan şarkıları kuyruğa ekle
+      console.log('Adding remaining songs to queue');
       for (let i = 1; i < playlist.songs.length; i++) {
         const song = playlist.songs[i];
-        logger.info(`Adding song to queue: ${song.name}`);
-        
-        downloadQueueManager.addToQueue({
+        console.log(`Adding song to queue: ${song.name}`);
+        chunkDownloadManager.queueSongDownload(
           song,
-          baseUrl: playlist.baseUrl,
-          playlistId: playlist._id
-        });
-
+          playlist.baseUrl,
+          playlistDir
+        );
         song.localPath = path.join(playlistDir, `${song._id}.mp3`);
       }
 
+      // Store playlist info
       const updatedPlaylist = {
         ...playlist,
         songs: playlist.songs
@@ -100,14 +81,10 @@ class PlaylistHandler {
       }
       
       store.set('playlists', playlists);
-      logger.info('Playlist info stored successfully');
-
-      audioPlayer.loadPlaylist(updatedPlaylist);
       
       return updatedPlaylist;
-
     } catch (error) {
-      logger.error('Error handling playlist:', error);
+      console.error('Error handling playlist:', error);
       throw error;
     }
   }
