@@ -17,7 +17,7 @@ interface DeviceListProps {
 
 export function DeviceList({ devices, searchQuery }: DeviceListProps) {
   const form = useFormContext();
-  const selectedDevices = form.watch("targetDevices") || [];
+  const selectedDevices = form.watch("targets.devices") || [];
 
   const filteredDevices = devices.filter((device) =>
     device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
@@ -35,7 +35,7 @@ export function DeviceList({ devices, searchQuery }: DeviceListProps) {
         )
       : [...new Set([...selectedDevices, ...filteredDevices.map((d) => d._id)])];
     
-    form.setValue("targetDevices", newValue);
+    form.setValue("targets.devices", newValue);
   };
 
   const areAllSelected = filteredDevices.length > 0 && 
@@ -73,7 +73,7 @@ export function DeviceList({ devices, searchQuery }: DeviceListProps) {
         {filteredDevices.map((device) => (
           <FormField
             key={device._id}
-            name="targetDevices"
+            name="targets.devices"
             render={({ field }) => (
               <label className="flex items-center p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors">
                 <Checkbox

@@ -17,7 +17,7 @@ interface GroupListProps {
 
 export function GroupList({ groups, searchQuery }: GroupListProps) {
   const form = useFormContext();
-  const selectedGroups = form.watch("targetGroups") || [];
+  const selectedGroups = form.watch("targets.groups") || [];
 
   const filteredGroups = groups.filter((group) =>
     group.name.toLowerCase().includes(searchQuery.toLowerCase())
@@ -34,7 +34,7 @@ export function GroupList({ groups, searchQuery }: GroupListProps) {
         )
       : [...new Set([...selectedGroups, ...filteredGroups.map((g) => g._id)])];
     
-    form.setValue("targetGroups", newValue);
+    form.setValue("targets.groups", newValue);
   };
 
   const areAllSelected = filteredGroups.length > 0 && 
@@ -72,7 +72,7 @@ export function GroupList({ groups, searchQuery }: GroupListProps) {
         {filteredGroups.map((group) => (
           <FormField
             key={group._id}
-            name="targetGroups"
+            name="targets.groups"
             render={({ field }) => (
               <label className="flex items-center p-2 rounded-lg hover:bg-accent cursor-pointer transition-colors">
                 <Checkbox
