@@ -47,6 +47,14 @@ const deviceSchema = new mongoose.Schema({
     enum: ['loaded', 'loading', 'error', 'emergency-stopped', null],
     default: null
   },
+  downloadStatus: {
+    currentSong: String,
+    totalSongs: Number,
+    downloadedSongs: Number,
+    progress: Number,
+    lastUpdated: Date,
+    error: String
+  },
   groupId: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'DeviceGroup',
@@ -88,6 +96,16 @@ deviceSchema.methods.setVolume = function(volume) {
     throw new Error('Ses seviyesi 0-100 arasında olmalıdır');
   }
   this.volume = volume;
+  return this.save();
+};
+
+// İndirme durumunu güncelleme methodu
+deviceSchema.methods.updateDownloadStatus = async function(status) {
+  this.downloadStatus = {
+    ...this.downloadStatus,
+    ...status,
+    lastUpdated: new Date()
+  };
   return this.save();
 };
 
