@@ -115,7 +115,7 @@ class WebSocketService {
   requestDownloadState() {
     console.log('Requesting download state from server');
     this.sendMessage({
-      type: 'downloadState',
+      type: 'getDownloadState',
       action: 'getState'
     });
   }
