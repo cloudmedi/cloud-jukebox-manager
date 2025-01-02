@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { Button } from "@/components/ui/button";
-import { Form } from "@/components/ui/form";
+import { Form, FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { PlaylistSelect } from "./PlaylistSelect";
@@ -24,12 +24,14 @@ export function PlaylistScheduleForm({ onSuccess }: PlaylistScheduleFormProps) {
   const form = useForm<ScheduleFormData>({
     defaultValues: {
       name: "",
-      playlistId: "",
+      playlist: "",
       startDate: new Date(),
       endDate: new Date(),
       repeatType: "once",
-      targetDevices: [],
-      targetGroups: []
+      targets: {
+        devices: [],
+        groups: []
+      }
     }
   });
 
@@ -39,12 +41,12 @@ export function PlaylistScheduleForm({ onSuccess }: PlaylistScheduleFormProps) {
       return;
     }
 
-    if (!data.playlistId) {
+    if (!data.playlist) {
       toast.error("Playlist seçimi zorunludur");
       return;
     }
 
-    if (data.targetDevices.length === 0 && data.targetGroups.length === 0) {
+    if (data.targets.devices.length === 0 && data.targets.groups.length === 0) {
       toast.error("En az bir cihaz veya grup seçmelisiniz");
       return;
     }
@@ -59,14 +61,12 @@ export function PlaylistScheduleForm({ onSuccess }: PlaylistScheduleFormProps) {
         },
         body: JSON.stringify({
           name: data.name,
-          playlist: data.playlistId,
+          playlist: data.playlist,
           startDate: data.startDate,
           endDate: data.endDate,
           repeatType: data.repeatType,
-          targets: {
-            devices: data.targetDevices,
-            groups: data.targetGroups
-          }
+          targets: data.targets,
+          createdBy: "Admin" // Bu kısmı auth sisteminden almalıyız
         })
       });
 
@@ -107,10 +107,18 @@ export function PlaylistScheduleForm({ onSuccess }: PlaylistScheduleFormProps) {
                   <ListMusic className="h-5 w-5" />
                   <span>Playlist Bilgileri</span>
                 </div>
-                <Input 
-                  placeholder="Zamanlama Adı" 
-                  {...form.register("name")}
-                  className="w-full"
+                <FormField
+                  control={form.control}
+                  name="name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Zamanlama Adı</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Örn: Sabah Müzikleri" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
                 />
                 <PlaylistSelect control={form.control} />
               </div>

@@ -1,4 +1,5 @@
 export interface ScheduleFormData {
+  name: string;
   playlist: string;
   startDate: Date;
   endDate: Date;
