@@ -1,82 +1,89 @@
-import { useState } from "react";
-import { FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Button } from "@/components/ui/button";
+import { FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useQuery } from "@tanstack/react-query";
-import { UseFormReturn } from "react-hook-form";
-import { ScheduleFormData } from "./types";
+import { Control } from "react-hook-form";
 
 interface TargetSelectProps {
-  form: UseFormReturn<ScheduleFormData>;
+  control: Control<any>;
 }
 
-export const TargetSelect = ({ form }: TargetSelectProps) => {
-  const [selectedType, setSelectedType] = useState<"device" | "group">("device");
-
-  const { data: devices } = useQuery({
+export function TargetSelect({ control }: TargetSelectProps) {
+  const { data: devices = [] } = useQuery({
     queryKey: ["devices"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/devices");
+      if (!response.ok) throw new Error("Cihazlar yüklenemedi");
       return response.json();
-    },
+    }
   });
 
-  const { data: groups } = useQuery({
-    queryKey: ["device-groups"],
+  const { data: groups = [] } = useQuery({
+    queryKey: ["groups"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/device-groups");
+      if (!response.ok) throw new Error("Gruplar yüklenemedi");
       return response.json();
-    },
+    }
   });
 
   return (
     <div className="space-y-4">
-      <div className="flex items-center gap-2">
-        <Button
-          type="button"
-          variant={selectedType === "device" ? "default" : "outline"}
-          onClick={() => setSelectedType("device")}
-        >
-          Cihazlar
-        </Button>
-        <Button
-          type="button"
-          variant={selectedType === "group" ? "default" : "outline"}
-          onClick={() => setSelectedType("group")}
-        >
-          Gruplar
-        </Button>
-      </div>
-
       <FormField
-        control={form.control}
-        name={selectedType === "device" ? "targets.devices" : "targets.groups"}
+        control={control}
+        name="targetDevices"
         render={({ field }) => (
           <FormItem>
-            <FormLabel>{selectedType === "device" ? "Cihazlar" : "Gruplar"}</FormLabel>
-            <Select onValueChange={(value) => field.onChange([value])} defaultValue={field.value?.[0]}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder={`${selectedType === "device" ? "Cihaz" : "Grup"} seçin`} />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                {selectedType === "device"
-                  ? devices?.map((device: any) => (
-                      <SelectItem key={device._id} value={device._id}>
-                        {device.name}
-                      </SelectItem>
-                    ))
-                  : groups?.map((group: any) => (
-                      <SelectItem key={group._id} value={group._id}>
-                        {group.name}
-                      </SelectItem>
-                    ))}
-              </SelectContent>
-            </Select>
+            <FormLabel>Hedef Cihazlar</FormLabel>
+            <ScrollArea className="h-[200px] rounded-md border p-4">
+              <div className="space-y-2">
+                {devices.map((device: any) => (
+                  <div key={device._id} className="flex items-center space-x-2">
+                    <Checkbox
+                      checked={field.value?.includes(device._id)}
+                      onCheckedChange={(checked) => {
+                        const newValue = checked
+                          ? [...(field.value || []), device._id]
+                          : field.value?.filter((id: string) => id !== device._id);
+                        field.onChange(newValue);
+                      }}
+                    />
+                    <span>{device.name}</span>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          </FormItem>
+        )}
+      />
+
+      <FormField
+        control={control}
+        name="targetGroups"
+        render={({ field }) => (
+          <FormItem>
+            <FormLabel>Hedef Gruplar</FormLabel>
+            <ScrollArea className="h-[200px] rounded-md border p-4">
+              <div className="space-y-2">
+                {groups.map((group: any) => (
+                  <div key={group._id} className="flex items-center space-x-2">
+                    <Checkbox
+                      checked={field.value?.includes(group._id)}
+                      onCheckedChange={(checked) => {
+                        const newValue = checked
+                          ? [...(field.value || []), group._id]
+                          : field.value?.filter((id: string) => id !== group._id);
+                        field.onChange(newValue);
+                      }}
+                    />
+                    <span>{group.name}</span>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
           </FormItem>
         )}
       />
     </div>
   );
-};
+}

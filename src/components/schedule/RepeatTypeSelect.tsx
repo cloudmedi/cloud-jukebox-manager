@@ -1,28 +1,25 @@
-import { FormControl, FormField, FormItem, FormLabel } from "@/components/ui/form";
+import { FormField, FormItem, FormLabel } from "@/components/ui/form";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { UseFormReturn } from "react-hook-form";
-import { ScheduleFormData } from "./types";
+import { Control } from "react-hook-form";
 
 interface RepeatTypeSelectProps {
-  form: UseFormReturn<ScheduleFormData>;
+  control: Control<any>;
 }
 
-export const RepeatTypeSelect = ({ form }: RepeatTypeSelectProps) => {
+export function RepeatTypeSelect({ control }: RepeatTypeSelectProps) {
   return (
     <FormField
-      control={form.control}
+      control={control}
       name="repeatType"
       render={({ field }) => (
         <FormItem>
           <FormLabel>Tekrar Tipi</FormLabel>
-          <Select onValueChange={field.onChange} defaultValue={field.value}>
-            <FormControl>
-              <SelectTrigger>
-                <SelectValue placeholder="Tekrar tipini seçin" />
-              </SelectTrigger>
-            </FormControl>
+          <Select onValueChange={field.onChange} value={field.value}>
+            <SelectTrigger>
+              <SelectValue placeholder="Tekrar tipini seçin" />
+            </SelectTrigger>
             <SelectContent>
-              <SelectItem value="once">Bir Kez</SelectItem>
+              <SelectItem value="once">Tek Seferlik</SelectItem>
               <SelectItem value="daily">Günlük</SelectItem>
               <SelectItem value="weekly">Haftalık</SelectItem>
               <SelectItem value="monthly">Aylık</SelectItem>
@@ -32,4 +29,4 @@ export const RepeatTypeSelect = ({ form }: RepeatTypeSelectProps) => {
       )}
     />
   );
-};
+}
