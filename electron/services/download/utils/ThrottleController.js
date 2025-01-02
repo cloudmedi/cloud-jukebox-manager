@@ -10,9 +10,25 @@ class ThrottleController extends EventEmitter {
     this.bytesTransferred = 0;
     this.lastCheck = Date.now();
     this.paused = false;
+    this.throttleQueue = Promise.resolve();
   }
 
   async throttle(bytes) {
+    // Queue'ya ekle ve sırayla işle
+    return new Promise((resolve) => {
+      this.throttleQueue = this.throttleQueue.then(async () => {
+        try {
+          await this._applyThrottle(bytes);
+          resolve();
+        } catch (error) {
+          logger.error('[THROTTLE] Error during throttling:', error);
+          resolve(); // Hata durumunda bile devam et
+        }
+      });
+    });
+  }
+
+  async _applyThrottle(bytes) {
     this.bytesTransferred += bytes;
     const now = Date.now();
     const duration = (now - this.lastCheck) / 1000;
@@ -25,18 +41,28 @@ class ThrottleController extends EventEmitter {
 
       if (requiredDelay > 0) {
         this.paused = true;
-        logger.debug(`[THROTTLE] Throttling download, waiting ${requiredDelay}ms, current speed: ${(currentSpeed / (1024 * 1024)).toFixed(2)}MB/s`);
-        await new Promise(resolve => setTimeout(resolve, requiredDelay));
-        this.paused = false;
+        logger.debug(`[THROTTLE] Applying throttle:`, {
+          currentSpeed: `${(currentSpeed / (1024 * 1024)).toFixed(2)}MB/s`,
+          maxSpeed: `${(this.maxBytesPerSecond / (1024 * 1024)).toFixed(2)}MB/s`,
+          delay: `${requiredDelay}ms`,
+          bytesTransferred: `${(this.bytesTransferred / 1024).toFixed(2)}KB`
+        });
+
+        // Progressive delay - hız aşımı arttıkça delay'i artır
+        const progressiveDelay = requiredDelay * (currentSpeed / this.maxBytesPerSecond);
         
-        // Reset after throttling
+        await new Promise(resolve => setTimeout(resolve, progressiveDelay));
+        
+        this.paused = false;
         this.bytesTransferred = 0;
         this.lastCheck = Date.now();
+        
+        logger.debug(`[THROTTLE] Throttle released after ${progressiveDelay}ms delay`);
       }
     }
 
-    // Her saniye başında sayaçları sıfırla
-    if (duration >= 1) {
+    // Her saniye başında veya büyük gecikme sonrası sayaçları sıfırla
+    if (duration >= 1 || this.bytesTransferred >= this.maxBytesPerSecond) {
       this.bytesTransferred = 0;
       this.lastCheck = now;
     }
@@ -48,7 +74,7 @@ class ThrottleController extends EventEmitter {
 
   setMaxSpeed(maxBytesPerSecond) {
     this.maxBytesPerSecond = maxBytesPerSecond;
-    logger.info(`[THROTTLE] Max speed updated to ${maxBytesPerSecond / (1024 * 1024)}MB/s`);
+    logger.info(`[THROTTLE] Max speed updated to ${(maxBytesPerSecond / (1024 * 1024)).toFixed(2)}MB/s`);
   }
 }
 
