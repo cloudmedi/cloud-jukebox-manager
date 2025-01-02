@@ -91,11 +91,13 @@ class ChunkDownloadManager extends EventEmitter {
       headers: { 
         Range: `bytes=${start}-${end}`
       },
-      onDownloadProgress: (progressEvent) => {
+      onDownloadProgress: async (progressEvent) => {
+        const newBytes = progressEvent.loaded - downloadedBytes;
         downloadedBytes = progressEvent.loaded;
-        bandwidthManager.updateProgress(downloadId, downloadedBytes);
         
-        // Her saniyede bir hız logla
+        // Throttling kontrolü
+        await bandwidthManager.updateProgress(downloadId, newBytes);
+        
         const now = Date.now();
         if (now - lastLogTime >= 1000) {
           const speed = (downloadedBytes / ((now - startTime) / 1000));

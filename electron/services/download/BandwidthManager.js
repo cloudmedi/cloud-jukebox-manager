@@ -1,5 +1,6 @@
 const { EventEmitter } = require('events');
 const { createLogger } = require('../../utils/logger');
+const ThrottleController = require('./utils/ThrottleController');
 
 const logger = createLogger('bandwidth-manager');
 
@@ -10,7 +11,8 @@ class BandwidthManager extends EventEmitter {
     this.maxChunkSpeed = 2 * 1024 * 1024; // 2MB/s
     this.downloadPriority = 'low';
     this.activeDownloads = 0;
-    this.downloadStats = new Map(); // Track download speeds
+    this.downloadStats = new Map();
+    this.throttleController = new ThrottleController(this.maxChunkSpeed);
     
     logger.info('BandwidthManager initialized with:', {
       maxConcurrentDownloads: this.maxConcurrentDownloads,
@@ -18,7 +20,6 @@ class BandwidthManager extends EventEmitter {
       downloadPriority: this.downloadPriority
     });
 
-    // Log stats every 5 seconds
     setInterval(() => this.logStats(), 5000);
   }
 
@@ -32,7 +33,7 @@ class BandwidthManager extends EventEmitter {
     return canStart;
   }
 
-  startDownload(downloadId) {
+  async startDownload(downloadId) {
     if (this.canStartNewDownload()) {
       this.activeDownloads++;
       this.downloadStats.set(downloadId, {
@@ -59,15 +60,17 @@ class BandwidthManager extends EventEmitter {
     return false;
   }
 
-  updateProgress(downloadId, bytesDownloaded) {
+  async updateProgress(downloadId, bytesDownloaded) {
     const stats = this.downloadStats.get(downloadId);
     if (stats) {
       const now = Date.now();
-      const timeDiff = (now - stats.lastUpdate) / 1000; // Convert to seconds
+      const timeDiff = (now - stats.lastUpdate) / 1000;
       const bytesDiff = bytesDownloaded - stats.bytesDownloaded;
       const currentSpeed = bytesDiff / timeDiff;
+
+      // Throttling uygula
+      await this.throttleController.throttle(bytesDiff);
       
-      // Check if speed exceeds limit
       if (currentSpeed > this.maxChunkSpeed) {
         logger.warn(`[SPEED LIMIT] Download speed exceeds limit:`, {
           downloadId,
@@ -83,7 +86,6 @@ class BandwidthManager extends EventEmitter {
         lastUpdate: now
       });
 
-      // Log progress every 1MB
       if (Math.floor(bytesDownloaded / (1024 * 1024)) > Math.floor(stats.bytesDownloaded / (1024 * 1024))) {
         logger.info(`[DOWNLOAD PROGRESS] Download progress update:`, {
           downloadId,
