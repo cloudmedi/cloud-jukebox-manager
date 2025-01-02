@@ -28,7 +28,8 @@ class StatusHandler {
           totalSongs: message.totalSongs || 0,
           estimatedTimeRemaining: message.estimatedTimeRemaining || 0,
           retryCount: message.retryCount || 0,
-          lastError: message.error
+          lastError: message.error,
+          lastUpdated: new Date()
         },
         { 
           new: true,
@@ -74,6 +75,27 @@ class StatusHandler {
       const device = await Device.findOne({ token });
       if (!device) return;
 
+      // Check for active downloads when device comes online
+      if (isOnline) {
+        const activeDownload = await DownloadProgress.findOne({
+          deviceToken: token,
+          status: 'downloading',
+          lastUpdated: { $gte: new Date(Date.now() - 5 * 60 * 1000) }
+        });
+
+        if (activeDownload) {
+          console.log(`Found active download for device ${token}, resuming...`);
+          this.wss.sendToDevice(token, {
+            type: 'resumeDownload',
+            data: {
+              playlistId: activeDownload.playlistId,
+              progress: activeDownload.progress,
+              completedChunks: activeDownload.completedChunks
+            }
+          });
+        }
+      }
+
       await device.updateStatus(isOnline);
       
       this.wss.broadcastToAdmins({
@@ -103,7 +125,8 @@ class StatusHandler {
           downloadedSongs: message.downloadedSongs,
           totalSongs: message.totalSongs,
           estimatedTimeRemaining: message.estimatedTimeRemaining,
-          completedChunks: message.completedChunks
+          completedChunks: message.completedChunks,
+          lastUpdated: new Date()
         },
         { new: true, upsert: true }
       );

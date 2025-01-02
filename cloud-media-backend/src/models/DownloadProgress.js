@@ -43,7 +43,11 @@ const downloadProgressSchema = new mongoose.Schema({
     songId: String,
     chunkId: String,
     size: Number
-  }]
+  }],
+  lastUpdated: {
+    type: Date,
+    default: Date.now
+  }
 }, {
   timestamps: true
 });
