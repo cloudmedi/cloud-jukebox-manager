@@ -7,7 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Calendar, List } from "lucide-react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { PlaylistScheduleForm } from "@/components/schedule/PlaylistScheduleForm";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 
 interface Schedule {
@@ -33,6 +33,8 @@ const Schedule = () => {
     end: Date | null;
   }>({ start: null, end: null });
 
+  const queryClient = useQueryClient();
+
   const { data: schedules, isLoading, error } = useQuery({
     queryKey: ["playlist-schedules"],
     queryFn: async () => {
@@ -52,6 +54,12 @@ const Schedule = () => {
       end: selectInfo.end
     });
     setIsDialogOpen(true);
+  };
+
+  const handleScheduleCreated = () => {
+    setIsDialogOpen(false);
+    // Zamanlamaları yenile
+    queryClient.invalidateQueries({ queryKey: ["playlist-schedules"] });
   };
 
   const events = schedules?.map(schedule => {
@@ -144,7 +152,7 @@ const Schedule = () => {
             <DialogTitle>Playlist Zamanla</DialogTitle>
           </DialogHeader>
           <PlaylistScheduleForm 
-            onSuccess={() => setIsDialogOpen(false)}
+            onSuccess={handleScheduleCreated}
             initialStartDate={selectedDates.start}
             initialEndDate={selectedDates.end}
           />
