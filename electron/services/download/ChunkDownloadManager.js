@@ -4,11 +4,13 @@ const fs = require('fs');
 const { createLogger } = require('../../utils/logger');
 const Store = require('electron-store');
 const store = new Store();
+const EventEmitter = require('events');
 
 const logger = createLogger('chunk-download-manager');
 
-class ChunkDownloadManager {
+class ChunkDownloadManager extends EventEmitter {
   constructor() {
+    super();
     this.downloadQueue = [];
     this.activeDownloads = 0;
     this.maxConcurrentDownloads = 3;
@@ -48,6 +50,7 @@ class ChunkDownloadManager {
         const stats = fs.statSync(songPath);
         if (stats.size > 0) {
           logger.info(`Song already exists: ${song.name}`);
+          this.emit('songDownloaded', { song, path: songPath });
           return songPath;
         }
       }
@@ -58,10 +61,12 @@ class ChunkDownloadManager {
       await this.downloadWithRetry(songUrl, songPath, song);
       
       logger.info(`Successfully downloaded song: ${song.name}`);
+      this.emit('songDownloaded', { song, path: songPath });
       return songPath;
 
     } catch (error) {
       logger.error(`Error downloading song ${song.name}:`, error);
+      this.emit('downloadError', { song, error });
       throw error;
     }
   }
@@ -73,11 +78,20 @@ class ChunkDownloadManager {
       
       const fileStream = fs.createWriteStream(filePath);
       const reader = response.body.getReader();
+      let downloadedSize = 0;
       
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
+        downloadedSize += value.length;
         fileStream.write(Buffer.from(value));
+        
+        // İndirme ilerlemesini bildir
+        this.emit('downloadProgress', {
+          song,
+          downloaded: downloadedSize,
+          total: parseInt(response.headers.get('content-length') || '0')
+        });
       }
       
       fileStream.end();
