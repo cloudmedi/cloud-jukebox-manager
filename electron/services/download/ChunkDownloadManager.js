@@ -5,37 +5,30 @@ const path = require('path');
 const RetryManager = require('./RetryManager');
 const ChecksumUtils = require('./utils/checksumUtils');
 const DownloadQueue = require('./DownloadQueue');
+const ChunkStorage = require('./ChunkStorage');
+const DownloadProgress = require('./DownloadProgress');
 
 class ChunkDownloadManager extends EventEmitter {
   constructor() {
     super();
     this.retryManager = new RetryManager();
     this.downloadQueue = new DownloadQueue();
+    this.chunkStorage = new ChunkStorage();
+    this.downloadProgress = new DownloadProgress();
+    
     this.setupRetryListener();
     
-    this.MIN_CHUNK_SIZE = 256 * 1024; // 256KB
-    this.MAX_CHUNK_SIZE = 2 * 1024 * 1024; // 2MB
-    this.DEFAULT_CHUNK_SIZE = 1024 * 1024; // 1MB
+    this.MIN_CHUNK_SIZE = 256 * 1024;
+    this.MAX_CHUNK_SIZE = 2 * 1024 * 1024;
+    this.DEFAULT_CHUNK_SIZE = 1024 * 1024;
     this.CHUNK_SIZE = this.DEFAULT_CHUNK_SIZE;
     this.MAX_CONCURRENT_DOWNLOADS = 3;
-    this.BUFFER_SIZE = 5 * 1024 * 1024; // 5MB buffer
-    this.MAX_MEMORY_USAGE = 100 * 1024 * 1024; // 100MB max memory
-    this.MAX_RETRY_ATTEMPTS = 3;
-    this.activeDownloads = new Map();
-    this.chunkBuffers = new Map();
-    this.downloadedChunks = new Map();
-    this.memoryUsage = 0;
   }
 
   setupRetryListener() {
     this.retryManager.on('retry', ({ attempt, maxAttempts, error, context }) => {
       console.log(`Retry attempt ${attempt}/${maxAttempts} for ${context}: ${error}`);
-      this.emit('downloadRetry', {
-        attempt,
-        maxAttempts,
-        error,
-        context
-      });
+      this.emit('downloadRetry', { attempt, maxAttempts, error, context });
     });
   }
 
@@ -81,11 +74,9 @@ class ChunkDownloadManager extends EventEmitter {
       const firstChunkSize = this.CHUNK_SIZE;
       const firstChunk = await this.downloadChunk(songUrl, 0, firstChunkSize - 1);
 
-      this.trackMemoryUsage(firstChunk.length, 'add');
-      if (!this.downloadedChunks.has(song._id)) {
-        this.downloadedChunks.set(song._id, []);
-      }
-      this.downloadedChunks.get(song._id).push(firstChunk);
+      // Initialize storage for this song
+      this.chunkStorage.initializeForSong(song._id);
+      this.chunkStorage.addChunk(song._id, firstChunk);
 
       fs.writeFileSync(songPath, Buffer.from(firstChunk));
       
@@ -95,44 +86,33 @@ class ChunkDownloadManager extends EventEmitter {
         buffer: firstChunk
       });
 
-      // Dosya boyutunu ve SHA-256 checksumunu al
+      // Get file size and checksum
       const response = await axios.head(songUrl);
       const fileSize = parseInt(response.headers['content-length'], 10);
       const expectedSHA256 = response.headers['x-file-sha256'];
       const totalChunks = Math.ceil(fileSize / this.CHUNK_SIZE);
       
-      this.activeDownloads.set(song._id, {
-        isActive: true,
-        lastActive: Date.now(),
-        totalChunks,
-        progress: 0
-      });
+      this.downloadProgress.initializeDownload(song._id, totalChunks);
       
-      // Kalan chunk'ları indir
+      // Download remaining chunks
       for (let start = firstChunkSize; start < fileSize; start += this.CHUNK_SIZE) {
         const end = Math.min(start + this.CHUNK_SIZE - 1, fileSize - 1);
         
         const chunk = await this.downloadChunk(songUrl, start, end);
-        
-        this.trackMemoryUsage(chunk.length, 'add');
-        this.downloadedChunks.get(song._id).push(chunk);
+        this.chunkStorage.addChunk(song._id, chunk);
         
         fs.appendFileSync(songPath, Buffer.from(chunk));
 
-        const download = this.activeDownloads.get(song._id);
-        if (download) {
-          download.lastActive = Date.now();
-          download.progress = Math.floor((start + chunk.length) / fileSize * 100);
-        }
+        const progress = Math.floor((start + chunk.length) / fileSize * 100);
+        this.downloadProgress.updateProgress(song._id, progress);
 
         this.emit('progress', {
           songId: song._id,
-          progress: download.progress,
-          isComplete: download.progress === 100
+          progress,
+          isComplete: progress === 100
         });
       }
 
-      // Dosya tamamlandığında SHA-256 kontrolü yap
       if (expectedSHA256) {
         const isValid = await ChecksumUtils.verifyFileChecksum(songPath, expectedSHA256);
         if (!isValid) {
@@ -140,11 +120,8 @@ class ChunkDownloadManager extends EventEmitter {
         }
       }
 
-      const download = this.activeDownloads.get(song._id);
-      if (download) {
-        download.isActive = false;
-        download.progress = 100;
-      }
+      this.downloadProgress.completeDownload(song._id);
+      this.chunkStorage.clearSong(song._id);
 
       console.log(`Download completed for ${song.name}`);
       return songPath;
@@ -172,17 +149,12 @@ class ChunkDownloadManager extends EventEmitter {
     }
 
     while (
-      this.activeDownloads.size < this.MAX_CONCURRENT_DOWNLOADS && 
+      this.downloadProgress.activeDownloads.size < this.MAX_CONCURRENT_DOWNLOADS && 
       !this.downloadQueue.isEmpty()
     ) {
       const download = this.downloadQueue.next();
       if (download) {
         console.log(`Processing download for: ${download.song.name}`);
-        this.activeDownloads.set(download.song._id, {
-          isActive: true,
-          lastActive: Date.now(),
-          progress: 0
-        });
         
         try {
           await this.downloadSongInChunks(
@@ -194,7 +166,6 @@ class ChunkDownloadManager extends EventEmitter {
         } catch (error) {
           console.error(`Download failed for: ${download.song.name}`, error);
         } finally {
-          this.activeDownloads.delete(download.song._id);
           this.processQueue();
         }
       }
