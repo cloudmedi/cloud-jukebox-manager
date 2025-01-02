@@ -19,7 +19,7 @@ interface ScheduleFormData {
 }
 
 interface PlaylistScheduleFormProps {
-  onSuccess: () => void;
+  onSuccess?: () => void;
 }
 
 export function PlaylistScheduleForm({ onSuccess }: PlaylistScheduleFormProps) {
@@ -46,7 +46,16 @@ export function PlaylistScheduleForm({ onSuccess }: PlaylistScheduleFormProps) {
         headers: {
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(data)
+        body: JSON.stringify({
+          playlist: data.playlistId,
+          startDate: data.startDate,
+          endDate: data.endDate,
+          repeatType: data.repeatType,
+          targets: {
+            devices: data.targetDevices,
+            groups: data.targetGroups
+          }
+        })
       });
 
       if (!response.ok) {
@@ -56,7 +65,10 @@ export function PlaylistScheduleForm({ onSuccess }: PlaylistScheduleFormProps) {
       toast.success("Zamanlama başarıyla oluşturuldu");
       queryClient.invalidateQueries({ queryKey: ["schedules"] });
       form.reset();
-      onSuccess();
+      
+      if (onSuccess) {
+        onSuccess();
+      }
       
     } catch (error) {
       console.error("Schedule creation error:", error);
@@ -74,7 +86,7 @@ export function PlaylistScheduleForm({ onSuccess }: PlaylistScheduleFormProps) {
         <RepeatTypeSelect control={form.control} />
         <TargetSelect control={form.control} />
         
-        <Button type="submit" disabled={isSubmitting}>
+        <Button type="submit" disabled={isSubmitting} className="w-full">
           {isSubmitting ? "Oluşturuluyor..." : "Zamanlama Oluştur"}
         </Button>
       </form>
