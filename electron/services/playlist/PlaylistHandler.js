@@ -10,7 +10,7 @@ class PlaylistHandler {
   constructor() {
     this.downloadPath = path.join(app.getPath('userData'), 'downloads');
     this.ensureDirectoryExists(this.downloadPath);
-    this.setupChunkDownloadListeners();
+    this.setupDownloadListeners();
   }
 
   ensureDirectoryExists(dir) {
@@ -19,12 +19,9 @@ class PlaylistHandler {
     }
   }
 
-  setupChunkDownloadListeners() {
-    chunkDownloadManager.on('progress', ({ songId, progress, isComplete }) => {
-      console.log(`Download progress for ${songId}: ${progress}%`);
-      if (isComplete) {
-        console.log(`Download completed for song ${songId}`);
-      }
+  setupDownloadListeners() {
+    chunkDownloadManager.on('songDownloaded', (songId) => {
+      console.log(`Song ${songId} downloaded successfully`);
     });
   }
 
@@ -39,7 +36,7 @@ class PlaylistHandler {
       const firstSong = playlist.songs[0];
       if (firstSong) {
         console.log('Starting download of first song:', firstSong.name);
-        const firstSongPath = await chunkDownloadManager.downloadSongInChunks(
+        const firstSongPath = await chunkDownloadManager.downloadSong(
           firstSong,
           playlist.baseUrl,
           playlistDir
@@ -48,6 +45,7 @@ class PlaylistHandler {
         // İlk şarkı hazır olduğunda oynatıcıya bildir
         if (firstSongPath) {
           console.log('First song ready:', firstSongPath);
+          firstSong.localPath = firstSongPath;
           audioPlayer.handleFirstSongReady(firstSong._id, firstSongPath);
         }
       }
@@ -55,21 +53,20 @@ class PlaylistHandler {
       // Kalan şarkıları kuyruğa ekle
       console.log('Adding remaining songs to queue');
       for (let i = 1; i < playlist.songs.length; i++) {
-        console.log(`Adding song to queue: ${playlist.songs[i].name}`);
+        const song = playlist.songs[i];
+        console.log(`Adding song to queue: ${song.name}`);
         chunkDownloadManager.addToQueue(
-          playlist.songs[i],
+          song,
           playlist.baseUrl,
           playlistDir
         );
+        song.localPath = path.join(playlistDir, `${song._id}.mp3`);
       }
 
       // Store playlist info
       const updatedPlaylist = {
         ...playlist,
-        songs: playlist.songs.map(song => ({
-          ...song,
-          localPath: path.join(playlistDir, `${song._id}.mp3`)
-        }))
+        songs: playlist.songs
       };
 
       const playlists = store.get('playlists', []);
