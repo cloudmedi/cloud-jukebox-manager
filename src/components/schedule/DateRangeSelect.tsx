@@ -7,6 +7,7 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { Control } from "react-hook-form";
+import { useEffect } from "react";
 
 interface DateRangeSelectProps {
   control: Control<any>;
@@ -44,7 +45,10 @@ export function DateRangeSelect({ control }: DateRangeSelectProps) {
                 <Calendar
                   mode="single"
                   selected={field.value}
-                  onSelect={field.onChange}
+                  onSelect={(date) => {
+                    field.onChange(date);
+                    console.log("Selected start date:", date);
+                  }}
                   disabled={(date) =>
                     date < new Date(new Date().setHours(0, 0, 0, 0))
                   }
@@ -86,9 +90,13 @@ export function DateRangeSelect({ control }: DateRangeSelectProps) {
                 <Calendar
                   mode="single"
                   selected={field.value}
-                  onSelect={field.onChange}
+                  onSelect={(date) => {
+                    field.onChange(date);
+                    console.log("Selected end date:", date);
+                  }}
                   disabled={(date) =>
-                    date < new Date(new Date().setHours(0, 0, 0, 0))
+                    date < new Date(new Date().setHours(0, 0, 0, 0)) ||
+                    (field.value && date < field.value)
                   }
                   initialFocus
                 />

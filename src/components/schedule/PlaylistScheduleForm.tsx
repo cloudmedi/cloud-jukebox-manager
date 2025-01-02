@@ -6,18 +6,28 @@ import { DateRangeSelect } from "./DateRangeSelect";
 import { RepeatTypeSelect } from "./RepeatTypeSelect";
 import { TargetSelect } from "./TargetSelect";
 import { ScheduleFormData } from "./types";
+import { useToast } from "@/components/ui/use-toast";
+import { useMutation } from "@tanstack/react-query";
 
 interface PlaylistScheduleFormProps {
   onSuccess?: () => void;
+  initialStartDate?: Date;
+  initialEndDate?: Date;
 }
 
-export function PlaylistScheduleForm({ onSuccess }: PlaylistScheduleFormProps) {
+export function PlaylistScheduleForm({ 
+  onSuccess,
+  initialStartDate,
+  initialEndDate 
+}: PlaylistScheduleFormProps) {
+  const { toast } = useToast();
+  
   const form = useForm<ScheduleFormData>({
     defaultValues: {
       name: "",
       playlist: "",
-      startDate: new Date(),
-      endDate: new Date(),
+      startDate: initialStartDate || new Date(),
+      endDate: initialEndDate || new Date(),
       repeatType: "once",
       targets: {
         devices: [],
@@ -26,12 +36,11 @@ export function PlaylistScheduleForm({ onSuccess }: PlaylistScheduleFormProps) {
     }
   });
 
-  console.log("Form values:", form.watch()); // Form değerlerini izle
+  console.log("Form values:", form.watch());
 
-  const onSubmit = async (data: ScheduleFormData) => {
-    try {
-      console.log("Submitting form with data:", data);
-      const response = await fetch("http://localhost:5000/api/playlist-schedules", {
+  const mutation = useMutation({
+    mutationFn: async (data: ScheduleFormData) => {
+      const response = await fetch("/api/playlist-schedules", {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -43,10 +52,27 @@ export function PlaylistScheduleForm({ onSuccess }: PlaylistScheduleFormProps) {
         throw new Error("Zamanlama oluşturulamadı");
       }
 
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Başarılı",
+        description: "Zamanlama başarıyla oluşturuldu",
+      });
       onSuccess?.();
-    } catch (error) {
-      console.error("Error submitting form:", error);
-    }
+    },
+    onError: (error) => {
+      toast({
+        title: "Hata",
+        description: error.message,
+        variant: "destructive",
+      });
+    },
+  });
+
+  const onSubmit = (data: ScheduleFormData) => {
+    console.log("Submitting form with data:", data);
+    mutation.mutate(data);
   };
 
   return (
@@ -58,8 +84,8 @@ export function PlaylistScheduleForm({ onSuccess }: PlaylistScheduleFormProps) {
         <TargetSelect control={form.control} />
         
         <div className="flex justify-end">
-          <Button type="submit">
-            Oluştur
+          <Button type="submit" disabled={mutation.isPending}>
+            {mutation.isPending ? "Oluşturuluyor..." : "Oluştur"}
           </Button>
         </div>
       </form>
