@@ -5,7 +5,7 @@ const { createLogger } = require('../../../utils/logger');
 const logger = createLogger('checksum-verifier');
 
 class ChecksumVerifier {
-  static calculateMD5(buffer) {
+  static async calculateMD5(buffer) {
     try {
       return crypto
         .createHash('md5')
@@ -17,7 +17,7 @@ class ChecksumVerifier {
     }
   }
 
-  static calculateSHA256(buffer) {
+  static async calculateSHA256(buffer) {
     try {
       return crypto
         .createHash('sha256')
@@ -35,14 +35,21 @@ class ChecksumVerifier {
       const stream = fs.createReadStream(filePath);
       
       stream.on('data', data => hash.update(data));
-      stream.on('end', () => resolve(hash.digest('hex')));
-      stream.on('error', reject);
+      stream.on('end', () => {
+        const checksum = hash.digest('hex');
+        logger.info(`Calculated checksum for ${filePath}: ${checksum}`);
+        resolve(checksum);
+      });
+      stream.on('error', error => {
+        logger.error(`Error calculating checksum for ${filePath}:`, error);
+        reject(error);
+      });
     });
   }
 
   static async verifyChunkChecksum(chunk, expectedChecksum) {
     try {
-      const calculatedChecksum = this.calculateMD5(chunk);
+      const calculatedChecksum = await this.calculateMD5(chunk);
       const isValid = calculatedChecksum === expectedChecksum;
       
       if (!isValid) {
