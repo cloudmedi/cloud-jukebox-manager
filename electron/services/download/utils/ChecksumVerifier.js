@@ -5,19 +5,31 @@ const { createLogger } = require('../../../utils/logger');
 const logger = createLogger('checksum-verifier');
 
 class ChecksumVerifier {
-  static calculateChunkChecksum(chunk) {
+  static calculateMD5(buffer) {
     try {
       return crypto
         .createHash('md5')
-        .update(chunk)
+        .update(buffer)
         .digest('hex');
     } catch (error) {
-      logger.error('Chunk checksum calculation error:', error);
+      logger.error('MD5 calculation error:', error);
       throw error;
     }
   }
 
-  static calculateFileChecksum(filePath) {
+  static calculateSHA256(buffer) {
+    try {
+      return crypto
+        .createHash('sha256')
+        .update(buffer)
+        .digest('hex');
+    } catch (error) {
+      logger.error('SHA-256 calculation error:', error);
+      throw error;
+    }
+  }
+
+  static async calculateFileChecksum(filePath) {
     return new Promise((resolve, reject) => {
       const hash = crypto.createHash('sha256');
       const stream = fs.createReadStream(filePath);
@@ -30,7 +42,7 @@ class ChecksumVerifier {
 
   static async verifyChunkChecksum(chunk, expectedChecksum) {
     try {
-      const calculatedChecksum = this.calculateChunkChecksum(chunk);
+      const calculatedChecksum = this.calculateMD5(chunk);
       return calculatedChecksum === expectedChecksum;
     } catch (error) {
       logger.error('Chunk verification error:', error);

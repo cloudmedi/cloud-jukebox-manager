@@ -15,6 +15,8 @@ class ChunkDownloadManager extends EventEmitter {
     this.MIN_CHUNK_SIZE = 256 * 1024; // 256KB
     this.MAX_CHUNK_SIZE = 2 * 1024 * 1024; // 2MB
     this.DEFAULT_CHUNK_SIZE = 1024 * 1024; // 1MB
+    this.MAX_RETRIES = 3;
+    this.RETRY_DELAY = 5000; // 5 seconds
     
     this.activeDownloads = new Map();
     this.downloadQueue = [];
@@ -29,26 +31,22 @@ class ChunkDownloadManager extends EventEmitter {
     return this.MAX_CHUNK_SIZE;
   }
 
-  async downloadChunk(url, start, end, songId) {
+  async downloadChunk(url, start, end, songId, retryCount = 0) {
     const chunkId = `${songId}-${start}`;
     let clearChunkTimeout;
 
     try {
-      clearChunkTimeout = this.timeoutManager.setChunkTimeout(chunkId, (error) => {
-        throw error;
-      });
+      clearChunkTimeout = this.timeoutManager.setChunkTimeout(chunkId);
 
-      const response = await NetworkErrorHandler.handleWithRetry(async () => {
-        return await axios({
-          url,
-          method: 'GET',
-          responseType: 'arraybuffer',
-          headers: { Range: `bytes=${start}-${end}` }
-        });
+      const response = await axios({
+        url,
+        method: 'GET',
+        responseType: 'arraybuffer',
+        headers: { Range: `bytes=${start}-${end}` }
       });
 
       const chunk = response.data;
-      const chunkChecksum = ChecksumVerifier.calculateChunkChecksum(chunk);
+      const chunkChecksum = ChecksumVerifier.calculateMD5(chunk);
       
       if (!await ChecksumVerifier.verifyChunkChecksum(chunk, chunkChecksum)) {
         throw new Error('Chunk checksum verification failed');
@@ -56,6 +54,13 @@ class ChunkDownloadManager extends EventEmitter {
 
       return chunk;
 
+    } catch (error) {
+      if (retryCount < this.MAX_RETRIES && NetworkErrorHandler.isRetryableError(error)) {
+        logger.warn(`Retrying chunk download (${retryCount + 1}/${this.MAX_RETRIES}): ${chunkId}`);
+        await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY));
+        return this.downloadChunk(url, start, end, songId, retryCount + 1);
+      }
+      throw error;
     } finally {
       if (clearChunkTimeout) {
         clearChunkTimeout();
@@ -86,10 +91,7 @@ class ChunkDownloadManager extends EventEmitter {
       const chunks = Math.ceil((fileSize - startByte) / chunkSize);
       const writer = fs.createWriteStream(tempSongPath, { flags: startByte ? 'a' : 'w' });
       
-      const clearGlobalTimeout = this.timeoutManager.setGlobalTimeout((error) => {
-        writer.end();
-        throw error;
-      });
+      const clearGlobalTimeout = this.timeoutManager.setGlobalTimeout();
 
       try {
         for (let i = 0; i < chunks; i++) {
