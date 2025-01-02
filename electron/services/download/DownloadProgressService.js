@@ -59,7 +59,7 @@ class DownloadProgressService extends EventEmitter {
   emitProgress(downloadState) {
     console.log('Emitting download progress:', downloadState);
     
-    websocketService.sendMessage({
+    websocketService.send({
       type: 'downloadProgress',
       data: {
         playlistId: downloadState.playlistId,

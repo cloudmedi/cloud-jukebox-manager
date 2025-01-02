@@ -59,6 +59,11 @@ class WebSocketService {
     }
   }
 
+  // Alias for send to maintain compatibility
+  sendMessage(message) {
+    this.send(message);
+  }
+
   sendAuth(token) {
     this.send({
       type: 'auth',
