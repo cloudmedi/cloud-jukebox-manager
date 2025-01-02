@@ -2,7 +2,7 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/comp
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { useQuery } from "@tanstack/react-query";
-import { Music } from "lucide-react";
+import { Music, ListMusic } from "lucide-react";
 
 export function BasicInfo() {
   const { data: playlists = [] } = useQuery({
@@ -17,8 +17,8 @@ export function BasicInfo() {
   return (
     <div className="space-y-4">
       <div className="flex items-center gap-2 text-lg font-semibold text-primary">
-        <Music className="h-5 w-5" />
-        <span>Playlist Bilgileri</span>
+        <ListMusic className="h-5 w-5" />
+        <span>Temel Bilgiler</span>
       </div>
       
       <FormField
