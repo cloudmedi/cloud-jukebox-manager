@@ -1,5 +1,6 @@
 const Device = require('../models/Device');
 const Token = require('../models/Token');
+const DeviceProgress = require('../models/DeviceProgress');
 const DeleteMessage = require('../websocket/messages/DeleteMessage');
 
 const getDevices = async (req, res) => {
@@ -180,9 +181,83 @@ const deleteDevice = async (req, res) => {
   }
 };
 
+const initializeDownload = async (req, res) => {
+  try {
+    const { deviceToken, playlistId, totalSongs } = req.body;
+
+    // Önceki yarım kalan indirmeyi kontrol et
+    const existingProgress = await DeviceProgress.findActiveDownload(deviceToken);
+    if (existingProgress) {
+      return res.json(existingProgress);
+    }
+
+    // Yeni indirme başlat
+    const progress = new DeviceProgress({
+      deviceToken,
+      playlistId,
+      totalSongs,
+      status: 'initializing'
+    });
+
+    await progress.save();
+    res.status(201).json(progress);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const updateDownloadProgress = async (req, res) => {
+  try {
+    const { deviceToken } = req.params;
+    const updates = req.body;
+
+    const progress = await DeviceProgress.findOne({
+      deviceToken,
+      status: { $ne: 'completed' }
+    });
+
+    if (!progress) {
+      return res.status(404).json({ message: 'İndirme kaydı bulunamadı' });
+    }
+
+    await progress.updateProgress(updates);
+
+    // WebSocket üzerinden diğer admin'lere bildir
+    if (req.wss) {
+      req.wss.broadcastToAdmins({
+        type: 'downloadProgress',
+        deviceToken,
+        progress: updates
+      });
+    }
+
+    res.json(progress);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
+const getDeviceProgress = async (req, res) => {
+  try {
+    const { deviceToken } = req.params;
+    const progress = await DeviceProgress.findActiveDownload(deviceToken);
+    
+    if (!progress) {
+      return res.status(404).json({ message: 'Aktif indirme bulunamadı' });
+    }
+
+    res.json(progress);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+};
+
 module.exports = {
   getDevices,
   createDevice,
   updateDevice,
-  deleteDevice
+  deleteDevice,
+  initializeDownload,
+  updateDownloadProgress,
+  getDeviceProgress
 };
