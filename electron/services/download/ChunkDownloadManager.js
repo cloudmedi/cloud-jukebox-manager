@@ -138,9 +138,16 @@ class ChunkDownloadManager extends EventEmitter {
   }
 
   calculateChunkSize(fileSize) {
-    if (fileSize < 10 * 1024 * 1024) return 256 * 1024; // 256KB
-    if (fileSize < 100 * 1024 * 1024) return 1024 * 1024; // 1MB
-    return 2 * 1024 * 1024; // 2MB
+    // Dosya boyutuna göre dinamik chunk boyutu
+    if (fileSize < 10 * 1024 * 1024) { // 10MB'dan küçük
+      return 256 * 1024; // 256KB
+    } else if (fileSize < 50 * 1024 * 1024) { // 50MB'dan küçük
+      return 512 * 1024; // 512KB
+    } else if (fileSize < 100 * 1024 * 1024) { // 100MB'dan küçük
+      return 1024 * 1024; // 1MB
+    } else {
+      return 2 * 1024 * 1024; // 2MB
+    }
   }
 }
 

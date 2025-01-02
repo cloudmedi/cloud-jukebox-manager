@@ -6,6 +6,57 @@ const logger = createLogger('chunk-manager');
 class ChunkManager {
   constructor() {
     this.activeChunks = new Map();
+    this.throttleInterval = 100; // 100ms kontrol aralığı
+  }
+
+  async throttleTransfer(reader, downloadId, chunkSize) {
+    const maxBytesPerInterval = (bandwidthManager.maxChunkSpeed * this.throttleInterval) / 1000;
+    let bytesInInterval = 0;
+    let lastIntervalStart = Date.now();
+
+    return new Promise((resolve, reject) => {
+      const processChunk = async () => {
+        try {
+          const { done, value } = await reader.read();
+          
+          if (done) {
+            resolve();
+            return;
+          }
+
+          bytesInInterval += value.length;
+          const now = Date.now();
+          const intervalElapsed = now - lastIntervalStart;
+
+          if (intervalElapsed >= this.throttleInterval) {
+            const currentSpeed = (bytesInInterval * 1000) / intervalElapsed;
+            
+            if (currentSpeed > bandwidthManager.maxChunkSpeed) {
+              const delay = Math.ceil(
+                (bytesInInterval - maxBytesPerInterval) * 1000 / bandwidthManager.maxChunkSpeed
+              );
+              
+              logger.info('[THROTTLE]', {
+                currentSpeed: `${(currentSpeed / (1024 * 1024)).toFixed(2)}MB/s`,
+                maxSpeed: `${(bandwidthManager.maxChunkSpeed / (1024 * 1024)).toFixed(2)}MB/s`,
+                delay: `${delay}ms`
+              });
+              
+              await new Promise(resolve => setTimeout(resolve, delay));
+            }
+
+            bytesInInterval = 0;
+            lastIntervalStart = Date.now();
+          }
+
+          processChunk();
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      processChunk();
+    });
   }
 
   async downloadChunk(url, start, end, songId, downloadId) {
@@ -27,6 +78,9 @@ class ChunkManager {
 
       const reader = response.body.getReader();
       const chunks = [];
+
+      // Throttling işlemi başlat
+      await this.throttleTransfer(reader, downloadId, end - start);
 
       while (true) {
         const { done, value } = await reader.read();
@@ -73,6 +127,17 @@ class ChunkManager {
         error: error.message
       });
       throw error;
+    }
+  }
+
+  calculateOptimalChunkSize(fileSize) {
+    // Dosya boyutuna göre optimal chunk boyutu hesapla
+    if (fileSize < 10 * 1024 * 1024) { // 10MB'dan küçük
+      return 256 * 1024; // 256KB chunks
+    } else if (fileSize < 100 * 1024 * 1024) { // 100MB'dan küçük
+      return 512 * 1024; // 512KB chunks
+    } else {
+      return 1024 * 1024; // 1MB chunks
     }
   }
 }
