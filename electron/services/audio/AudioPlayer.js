@@ -1,115 +1,121 @@
 const QueueManager = require('./QueueManager');
 const PlaybackState = require('./PlaybackState');
 const path = require('path');
-const Store = require('electron-store');
-const store = new Store();
-const { createLogger } = require('../../utils/logger');
-
-const logger = createLogger('audio-player');
+const { ipcRenderer } = require('electron');
 
 class AudioPlayer {
   constructor() {
     this.queueManager = new QueueManager();
     this.playbackState = new PlaybackState();
-    this.audio = new Audio();
+    // Create an HTML5 audio element
+    this.audio = document.createElement('audio');
+    this.audio.id = 'audioPlayer';
+    document.body.appendChild(this.audio);
+    
     this.playlist = null;
     this.isPlaying = false;
-    this.volume = store.get('volume', 100) / 100;
-    this.readyToPlay = false;
-
+    this.volume = 1.0;
+    
     this.setupEventListeners();
-    logger.info('AudioPlayer initialized');
+    this.restoreState();
   }
 
   setupEventListeners() {
     this.audio.addEventListener('ended', () => {
-      logger.info('Song ended, playing next');
+      console.log('Song ended, playing next');
       this.playNext();
     });
 
-    this.audio.addEventListener('error', (error) => {
-      logger.error('Audio error:', error);
+    this.audio.addEventListener('error', (e) => {
+      console.error('Audio error:', e);
       this.playNext();
     });
 
     this.audio.addEventListener('play', () => {
-      logger.info('Audio started playing');
+      console.log('Audio started playing');
       this.isPlaying = true;
       this.updatePlaybackState('playing');
     });
 
     this.audio.addEventListener('pause', () => {
-      logger.info('Audio paused');
+      console.log('Audio paused');
       this.isPlaying = false;
       this.updatePlaybackState('paused');
     });
 
-    this.audio.addEventListener('loadeddata', () => {
-      logger.info('Audio data loaded successfully');
-      if (this.isPlaying) {
-        this.audio.play().catch(err => {
-          logger.error('Error playing audio:', err);
-          this.playNext();
-        });
+    this.audio.addEventListener('timeupdate', () => {
+      if (this.audio.duration > 0 && 
+          this.audio.currentTime >= this.audio.duration - 0.5) {
+        console.log('Song near end, preparing next');
+        const nextSong = this.queueManager.peekNext();
+        if (nextSong) {
+          console.log('Preloading next song:', nextSong.name);
+        }
       }
     });
   }
 
   loadPlaylist(playlist) {
-    logger.info('Loading playlist:', playlist.name);
+    console.log('Loading playlist:', playlist);
     this.playlist = playlist;
     this.queueManager.setQueue(playlist.songs);
     
     if (this.queueManager.getCurrentSong()) {
       this.loadCurrentSong();
     } else {
-      logger.warn('No playable songs in playlist');
+      console.log('No playable songs in playlist');
     }
   }
 
   loadCurrentSong() {
     const song = this.queueManager.getCurrentSong();
     if (!song) {
-      logger.warn('No song to load');
+      console.log('No song to load');
       return;
     }
 
-    logger.info('Loading song:', song.name);
+    console.log('Loading song:', song);
 
     if (!song.localPath) {
-      logger.error('Song localPath is missing:', song);
+      console.error('Song localPath is missing:', song);
       this.playNext();
       return;
     }
 
     try {
       const normalizedPath = path.normalize(song.localPath);
-      logger.info('Playing file from:', normalizedPath);
+      console.log('Playing file from:', normalizedPath);
+      
+      this.audio.pause();
+      this.audio.currentTime = 0;
       
       this.audio.src = normalizedPath;
       this.audio.volume = this.volume;
       
-      logger.info('Song loaded successfully');
+      if (this.isPlaying) {
+        this.audio.play().catch(error => {
+          console.error('Error playing audio:', error);
+          this.playNext();
+        });
+      }
+      
     } catch (error) {
-      logger.error('Error loading song:', error);
+      console.error('Error loading song:', error);
       this.playNext();
     }
   }
 
   play() {
-    logger.info('Play requested');
+    console.log('Play requested');
     if (this.audio.src) {
       this.audio.play().catch(error => {
-        logger.error('Error playing audio:', error);
+        console.error('Error playing audio:', error);
         this.playNext();
       });
       this.isPlaying = true;
     } else {
-      logger.info('No audio source loaded');
-      const currentSong = this.queueManager.getCurrentSong();
-      if (currentSong) {
-        this.loadCurrentSong();
-      }
+      console.log('No audio source loaded');
+      this.loadCurrentSong();
     }
   }
 
@@ -125,23 +131,29 @@ class AudioPlayer {
   }
 
   playNext() {
-    logger.info('Playing next song');
+    console.log('Playing next song');
     const nextSong = this.queueManager.next();
     if (nextSong) {
-      logger.info('Next song found:', nextSong.name);
+      console.log('Next song found:', nextSong.name);
       this.loadCurrentSong();
     } else {
-      logger.info('No more songs in queue');
+      console.log('No more songs in queue');
       this.stop();
     }
   }
 
+  playPrevious() {
+    console.log('Playing previous song');
+    const prevSong = this.queueManager.previous();
+    if (prevSong) {
+      console.log('Previous song found:', prevSong.name);
+      this.loadCurrentSong();
+    }
+  }
+
   setVolume(volume) {
-    const normalizedVolume = Math.max(0, Math.min(100, volume));
-    this.volume = normalizedVolume / 100;
+    this.volume = volume / 100;
     this.audio.volume = this.volume;
-    store.set('volume', normalizedVolume);
-    logger.info('Volume set and saved:', normalizedVolume);
   }
 
   updatePlaybackState(state) {
@@ -165,13 +177,13 @@ class AudioPlayer {
   restoreState() {
     const state = this.playbackState.restore();
     if (state && state.playlist) {
-      logger.info('Restoring previous state:', state);
+      console.log('Restoring previous state:', state);
       this.loadPlaylist(state.playlist);
       this.setVolume(state.volume);
       
       if (state.state === 'playing') {
         setTimeout(() => {
-          logger.info('Auto-playing restored playlist');
+          console.log('Auto-playing restored playlist');
           this.play();
         }, 1000);
       }
