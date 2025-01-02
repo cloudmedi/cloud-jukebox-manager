@@ -60,9 +60,9 @@ export function PlaylistSelect({ control }: PlaylistSelectProps) {
                             <Music2 className="h-4 w-4 text-muted-foreground" />
                           </div>
                         )}
-                        <div className="min-w-0 flex-1 flex flex-col">
-                          <p className="text-sm font-medium truncate">{playlist.name}</p>
-                          <p className="text-xs text-muted-foreground truncate">
+                        <div className="flex flex-col justify-start">
+                          <p className="text-sm font-medium leading-none">{playlist.name}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
                             {playlist.songs?.length || 0} şarkı • {formatDuration(playlist.totalDuration || 0)}
                           </p>
                         </div>
