@@ -1,90 +1,49 @@
-const { app } = require('electron');
 const path = require('path');
-const fs = require('fs');
-const Store = require('electron-store');
-const store = new Store();
-const chunkDownloadManager = require('../download/ChunkDownloadManager');
+const { createLogger } = require('../../utils/logger');
+const batchDownloadManager = require('../download/managers/BatchDownloadManager');
 const audioPlayer = require('../audio/AudioPlayer');
+
+const logger = createLogger('playlist-handler');
 
 class PlaylistHandler {
   constructor() {
-    this.downloadPath = path.join(app.getPath('userData'), 'downloads');
-    this.ensureDirectoryExists(this.downloadPath);
-    this.setupDownloadListeners();
-  }
-
-  ensureDirectoryExists(dir) {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
-    }
-  }
-
-  setupDownloadListeners() {
-    chunkDownloadManager.on('songDownloaded', (songId) => {
-      console.log(`Song ${songId} downloaded successfully`);
-    });
+    this.downloadPath = path.join(process.env.APPDATA || process.env.HOME, 'cloud-media-player', 'downloads');
   }
 
   async handlePlaylist(playlist) {
     try {
-      console.log('Handling playlist:', playlist.name);
+      logger.info(`Handling playlist: ${playlist.name}`);
       
       const playlistDir = path.join(this.downloadPath, playlist._id);
-      this.ensureDirectoryExists(playlistDir);
-
-      // İlk şarkıyı hemen indir
-      const firstSong = playlist.songs[0];
-      if (firstSong) {
-        console.log('Starting download of first song:', firstSong.name);
-        const firstSongPath = await chunkDownloadManager.downloadSong(
+      
+      // İlk şarkıyı hemen indir ve çalmaya başla
+      if (playlist.songs.length > 0) {
+        const firstSong = playlist.songs[0];
+        logger.info(`Starting download of first song: ${firstSong.name}`);
+        
+        await batchDownloadManager.downloadSong(
           firstSong,
           playlist.baseUrl,
-          playlistDir
+          playlistDir,
+          playlist._id
         );
 
-        // İlk şarkı hazır olduğunda oynatıcıya bildir
-        if (firstSongPath) {
-          console.log('First song ready:', firstSongPath);
-          firstSong.localPath = firstSongPath;
-          if (audioPlayer && typeof audioPlayer.handleFirstSongReady === 'function') {
-            audioPlayer.handleFirstSongReady(firstSong._id, firstSongPath);
-          }
+        firstSong.localPath = path.join(playlistDir, `${firstSong._id}.mp3`);
+        
+        if (audioPlayer) {
+          audioPlayer.handleFirstSongReady(firstSong._id, firstSong.localPath);
         }
       }
 
-      // Kalan şarkıları kuyruğa ekle
-      console.log('Adding remaining songs to queue');
-      for (let i = 1; i < playlist.songs.length; i++) {
-        const song = playlist.songs[i];
-        console.log(`Adding song to queue: ${song.name}`);
-        chunkDownloadManager.queueSongDownload(
-          song,
-          playlist.baseUrl,
-          playlistDir
-        );
-        song.localPath = path.join(playlistDir, `${song._id}.mp3`);
-      }
+      // Kalan şarkıları batch olarak indir
+      batchDownloadManager.startBatchDownload(playlist, playlist.baseUrl, playlistDir)
+        .catch(error => {
+          logger.error('Error in batch download:', error);
+        });
 
-      // Store playlist info
-      const updatedPlaylist = {
-        ...playlist,
-        songs: playlist.songs
-      };
-
-      const playlists = store.get('playlists', []);
-      const existingIndex = playlists.findIndex(p => p._id === playlist._id);
-      
-      if (existingIndex !== -1) {
-        playlists[existingIndex] = updatedPlaylist;
-      } else {
-        playlists.push(updatedPlaylist);
-      }
-      
-      store.set('playlists', playlists);
-      
-      return updatedPlaylist;
+      return true;
     } catch (error) {
-      console.error('Error handling playlist:', error);
+      logger.error('Error handling playlist:', error);
       throw error;
     }
   }
