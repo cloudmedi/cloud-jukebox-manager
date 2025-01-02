@@ -9,7 +9,6 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { PlaylistScheduleForm } from "@/components/schedule/PlaylistScheduleForm";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
-import { format } from "date-fns";
 
 interface Schedule {
   _id: string;
@@ -29,13 +28,6 @@ interface Schedule {
 const Schedule = () => {
   const [view, setView] = useState<"timeGridWeek" | "dayGridMonth">("timeGridWeek");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [selectedDates, setSelectedDates] = useState<{
-    start: Date | null;
-    end: Date | null;
-  }>({
-    start: null,
-    end: null
-  });
 
   const { data: schedules, isLoading, error } = useQuery<Schedule[]>({
     queryKey: ["playlist-schedules"],
@@ -49,17 +41,11 @@ const Schedule = () => {
   });
 
   const handleDateSelect = (selectInfo: any) => {
-    const { start, end } = selectInfo;
-    setSelectedDates({ start, end });
     setIsDialogOpen(true);
   };
 
-  const handleCloseDialog = () => {
-    setIsDialogOpen(false);
-    setSelectedDates({ start: null, end: null });
-  };
-
   const events = schedules?.map(schedule => {
+    // Skip if schedule or playlist is null/undefined
     if (!schedule?.playlist) {
       return null;
     }
@@ -137,20 +123,15 @@ const Schedule = () => {
           select={handleDateSelect}
           height="auto"
           locale="tr"
-          editable={true}
-          droppable={true}
         />
       </div>
 
-      <Dialog open={isDialogOpen} onOpenChange={handleCloseDialog}>
+      <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
         <DialogContent className="sm:max-w-[600px]">
           <DialogHeader>
             <DialogTitle>Playlist Zamanla</DialogTitle>
           </DialogHeader>
-          <PlaylistScheduleForm 
-            onSuccess={handleCloseDialog} 
-            initialDates={selectedDates}
-          />
+          <PlaylistScheduleForm onSuccess={() => setIsDialogOpen(false)} />
         </DialogContent>
       </Dialog>
     </div>
