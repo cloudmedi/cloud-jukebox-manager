@@ -4,136 +4,99 @@ const { createLogger } = require('../../../utils/logger');
 const logger = createLogger('throttle-controller');
 
 class ThrottleController extends EventEmitter {
-  constructor(maxBytesPerSecond = 2 * 1024 * 1024) { // 2MB/s default
+  constructor(maxBytesPerSecond) {
     super();
     this.maxBytesPerSecond = maxBytesPerSecond;
     this.tokens = maxBytesPerSecond;
     this.lastRefill = Date.now();
-    this.queue = [];
+    this.bytesTransferred = 0;
+    this.paused = false;
+    this.throttleQueue = [];
     this.processing = false;
-    this.paused = false;
 
-    // Her 10ms'de bir token yenileme (daha hassas kontrol için)
-    this.interval = setInterval(() => this.refillTokens(), 10);
-    
-    logger.info(`ThrottleController initialized with max speed: ${maxBytesPerSecond / (1024 * 1024)}MB/s`);
-  }
-
-  pause() {
-    this.paused = true;
-    logger.info('Throttling paused');
-  }
-
-  resume() {
-    this.paused = false;
-    this.processQueue();
-    logger.info('Throttling resumed');
+    // Her 100ms'de bir token'ları yenile
+    setInterval(() => this.refillTokens(), 100);
   }
 
   refillTokens() {
-    if (this.paused) return;
-
     const now = Date.now();
     const timePassed = (now - this.lastRefill) / 1000;
-    const tokensToAdd = Math.floor(timePassed * this.maxBytesPerSecond);
-    
-    this.tokens = Math.min(this.maxBytesPerSecond, this.tokens + tokensToAdd);
+    this.tokens = Math.min(
+      this.maxBytesPerSecond,
+      this.tokens + (timePassed * this.maxBytesPerSecond * 0.1) // 100ms için token miktarı
+    );
     this.lastRefill = now;
 
-    if (this.tokens > 0 && this.queue.length > 0 && !this.processing) {
+    if (this.tokens > 0 && this.throttleQueue.length > 0 && !this.processing) {
       this.processQueue();
     }
-
-    // Log token refill details for debugging
-    logger.debug('Tokens refilled', {
-      tokensAdded: tokensToAdd,
-      currentTokens: this.tokens,
-      queueLength: this.queue.length
-    });
   }
 
   async processQueue() {
-    if (this.processing || this.queue.length === 0 || this.paused) return;
+    if (this.processing || this.throttleQueue.length === 0) return;
+
     this.processing = true;
+    const { bytes, resolve } = this.throttleQueue.shift();
 
     try {
-      while (this.queue.length > 0 && !this.paused) {
-        const { bytes, resolve, reject, timestamp } = this.queue[0];
-        
-        // Timeout check - 30 saniye
-        if (Date.now() - timestamp > 30000) {
-          this.queue.shift();
-          reject(new Error('Throttle request timeout'));
-          continue;
-        }
-
-        if (this.tokens < bytes) {
-          // Yeterli token yoksa bekle
-          await new Promise(resolve => setTimeout(resolve, 10));
-          break;
-        }
-
-        this.tokens -= bytes;
-        this.queue.shift();
-        
-        // Log successful throttle
-        logger.debug('Chunk processed', {
-          bytes: bytes,
-          remainingTokens: this.tokens,
-          queueLength: this.queue.length
-        });
-
-        resolve();
-      }
+      await this._applyThrottle(bytes);
+      resolve();
     } catch (error) {
-      logger.error('Error processing throttle queue:', error);
+      logger.error('[THROTTLE] Error processing queue:', error);
+      resolve(); // Hata durumunda da devam et
     } finally {
       this.processing = false;
-      if (this.queue.length > 0 && !this.paused) {
-        setImmediate(() => this.processQueue());
+      if (this.throttleQueue.length > 0) {
+        setTimeout(() => this.processQueue(), 50); // 50ms bekle ve devam et
       }
     }
   }
 
   async throttle(bytes) {
-    if (bytes <= 0) return Promise.resolve();
-
-    return new Promise((resolve, reject) => {
-      this.queue.push({
-        bytes,
-        resolve,
-        reject,
-        timestamp: Date.now()
-      });
-
-      logger.debug('Added to throttle queue', {
-        bytes: bytes,
-        queueLength: this.queue.length
-      });
-
-      if (!this.processing && !this.paused) {
+    return new Promise((resolve) => {
+      this.throttleQueue.push({ bytes, resolve });
+      if (!this.processing) {
         this.processQueue();
       }
     });
   }
 
-  getStatus() {
-    return {
-      currentTokens: this.tokens,
-      queueLength: this.queue.length,
-      isProcessing: this.processing,
-      isPaused: this.paused,
-      maxBytesPerSecond: this.maxBytesPerSecond
-    };
+  async _applyThrottle(bytes) {
+    if (bytes <= 0) return;
+
+    // Eğer token'lar yetersizse bekle
+    while (this.tokens < bytes) {
+      const required = bytes - this.tokens;
+      const waitTime = (required / this.maxBytesPerSecond) * 1000;
+      
+      logger.debug(`[THROTTLE] Waiting for tokens:`, {
+        requiredBytes: bytes,
+        availableTokens: this.tokens,
+        waitTime: `${waitTime}ms`
+      });
+
+      await new Promise(resolve => setTimeout(resolve, Math.min(waitTime, 100)));
+      
+      if (this.tokens >= bytes) break;
+    }
+
+    this.tokens -= bytes;
+    this.bytesTransferred += bytes;
+
+    logger.debug(`[THROTTLE] Bytes processed:`, {
+      bytes,
+      remainingTokens: this.tokens,
+      totalTransferred: this.bytesTransferred
+    });
   }
 
-  cleanup() {
-    if (this.interval) {
-      clearInterval(this.interval);
-    }
-    this.queue = [];
-    this.processing = false;
-    logger.info('ThrottleController cleaned up');
+  isPaused() {
+    return this.paused;
+  }
+
+  setMaxSpeed(maxBytesPerSecond) {
+    this.maxBytesPerSecond = maxBytesPerSecond;
+    logger.info(`[THROTTLE] Max speed updated to ${(maxBytesPerSecond / (1024 * 1024)).toFixed(2)}MB/s`);
   }
 }
 

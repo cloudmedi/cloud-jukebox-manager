@@ -9,169 +9,130 @@ class BandwidthManager extends EventEmitter {
     super();
     this.maxConcurrentDownloads = 3;
     this.maxChunkSpeed = 2 * 1024 * 1024; // 2MB/s
-    this.activeDownloads = new Map();
+    this.downloadPriority = 'low';
+    this.activeDownloads = 0;
+    this.downloadStats = new Map();
     this.throttleController = new ThrottleController(this.maxChunkSpeed);
     
-    logger.info('BandwidthManager initialized', {
+    logger.info('BandwidthManager initialized with:', {
       maxConcurrentDownloads: this.maxConcurrentDownloads,
-      maxChunkSpeed: `${this.maxChunkSpeed / (1024 * 1024)}MB/s`
+      maxChunkSpeed: `${this.maxChunkSpeed / (1024 * 1024)}MB/s`,
+      downloadPriority: this.downloadPriority
     });
 
-    this.setupCleanupInterval();
-  }
-
-  setupCleanupInterval() {
-    // Her 30 saniyede bir temizlik yap
-    setInterval(() => {
-      this.cleanupStaleDownloads();
-    }, 30000);
-  }
-
-  cleanupStaleDownloads() {
-    const now = Date.now();
-    let cleaned = 0;
-
-    for (const [downloadId, download] of this.activeDownloads.entries()) {
-      if (now - download.lastActivity > 60000) { // 1 dakika timeout
-        logger.warn(`Cleaning up stale download: ${downloadId}`);
-        this.activeDownloads.delete(downloadId);
-        cleaned++;
-      }
-    }
-
-    if (cleaned > 0) {
-      logger.info(`Cleaned up ${cleaned} stale downloads`);
-    }
+    setInterval(() => this.logStats(), 5000);
   }
 
   canStartNewDownload() {
-    const activeCount = this.activeDownloads.size;
-    const canStart = activeCount < this.maxConcurrentDownloads;
-
-    logger.debug('Download start check', {
-      activeDownloads: activeCount,
-      maxAllowed: this.maxConcurrentDownloads,
-      canStart: canStart
+    const canStart = this.activeDownloads < this.maxConcurrentDownloads;
+    logger.debug(`[BANDWIDTH CHECK] Can start new download:`, {
+      activeDownloads: this.activeDownloads,
+      maxConcurrentDownloads: this.maxConcurrentDownloads,
+      canStart
     });
-
     return canStart;
   }
 
   async startDownload(downloadId) {
-    if (!this.canStartNewDownload()) {
-      logger.warn('Maximum concurrent downloads reached');
-      return false;
+    if (this.canStartNewDownload()) {
+      this.activeDownloads++;
+      this.downloadStats.set(downloadId, {
+        startTime: Date.now(),
+        bytesDownloaded: 0,
+        currentSpeed: 0,
+        lastUpdate: Date.now()
+      });
+      
+      logger.info(`[DOWNLOAD START] New download started:`, {
+        downloadId,
+        activeDownloads: this.activeDownloads,
+        remainingSlots: this.maxConcurrentDownloads - this.activeDownloads,
+        priority: this.downloadPriority
+      });
+      return true;
     }
-
-    this.activeDownloads.set(downloadId, {
-      startTime: Date.now(),
-      lastActivity: Date.now(),
-      bytesDownloaded: 0,
-      currentSpeed: 0,
-      status: 'active'
+    
+    logger.warn(`[BANDWIDTH LIMIT] Cannot start new download: maximum concurrent downloads reached`, {
+      downloadId,
+      activeDownloads: this.activeDownloads,
+      maxLimit: this.maxConcurrentDownloads
     });
-
-    logger.info(`Started download: ${downloadId}`, {
-      activeDownloads: this.activeDownloads.size
-    });
-
-    return true;
+    return false;
   }
 
   async updateProgress(downloadId, bytes) {
-    const download = this.activeDownloads.get(downloadId);
-    if (!download) {
-      logger.warn(`Attempted to update non-existent download: ${downloadId}`);
-      return;
-    }
-
-    try {
-      // Throttle the chunk
-      await this.throttleController.throttle(bytes);
-      
+    const stats = this.downloadStats.get(downloadId);
+    if (stats) {
       const now = Date.now();
-      const timeDiff = (now - download.lastActivity) / 1000;
+      const timeDiff = (now - stats.lastUpdate) / 1000;
       
-      download.bytesDownloaded += bytes;
-      download.currentSpeed = bytes / timeDiff;
-      download.lastActivity = now;
+      // Throttling uygula
+      await this.throttleController.throttle(bytes);
 
-      this.activeDownloads.set(downloadId, download);
-
-      // Emit progress event
-      this.emit('progress', {
-        downloadId,
-        bytesDownloaded: download.bytesDownloaded,
-        currentSpeed: download.currentSpeed,
-        timestamp: now
+      const currentSpeed = bytes / timeDiff;
+      
+      if (currentSpeed > this.maxChunkSpeed) {
+        logger.warn(`[SPEED LIMIT] Download speed exceeds limit:`, {
+          downloadId,
+          currentSpeed: `${(currentSpeed / (1024 * 1024)).toFixed(2)}MB/s`,
+          maxSpeed: `${(this.maxChunkSpeed / (1024 * 1024)).toFixed(2)}MB/s`
+        });
+      }
+      
+      this.downloadStats.set(downloadId, {
+        ...stats,
+        bytesDownloaded: stats.bytesDownloaded + bytes,
+        currentSpeed,
+        lastUpdate: now
       });
-
-      logger.debug(`Download progress: ${downloadId}`, {
-        bytesDownloaded: download.bytesDownloaded / (1024 * 1024),
-        currentSpeed: download.currentSpeed / (1024 * 1024),
-        activeDownloads: this.activeDownloads.size
-      });
-
-    } catch (error) {
-      logger.error(`Error updating download progress: ${downloadId}`, error);
-      throw error;
     }
   }
 
   finishDownload(downloadId) {
-    const download = this.activeDownloads.get(downloadId);
-    if (!download) {
-      logger.warn(`Attempted to finish non-existent download: ${downloadId}`);
-      return;
-    }
-
-    const totalTime = (Date.now() - download.startTime) / 1000;
-    const averageSpeed = download.bytesDownloaded / totalTime;
-
-    logger.info(`Download finished: ${downloadId}`, {
-      totalBytes: download.bytesDownloaded / (1024 * 1024),
-      totalTime,
-      averageSpeed: averageSpeed / (1024 * 1024)
-    });
-
-    this.activeDownloads.delete(downloadId);
-    this.emit('finished', { downloadId, totalBytes: download.bytesDownloaded });
-  }
-
-  pauseDownload(downloadId) {
-    const download = this.activeDownloads.get(downloadId);
-    if (download) {
-      download.status = 'paused';
-      this.activeDownloads.set(downloadId, download);
-      logger.info(`Download paused: ${downloadId}`);
+    if (this.activeDownloads > 0) {
+      this.activeDownloads--;
+      const stats = this.downloadStats.get(downloadId);
+      if (stats) {
+        const totalTime = (Date.now() - stats.startTime) / 1000;
+        const averageSpeed = stats.bytesDownloaded / totalTime;
+        
+        logger.info(`[DOWNLOAD COMPLETE] Download finished:`, {
+          downloadId,
+          totalBytes: `${(stats.bytesDownloaded / (1024 * 1024)).toFixed(2)}MB`,
+          totalTime: `${totalTime.toFixed(2)}s`,
+          averageSpeed: `${(averageSpeed / (1024 * 1024)).toFixed(2)}MB/s`,
+          remainingActiveDownloads: this.activeDownloads
+        });
+        
+        this.downloadStats.delete(downloadId);
+      }
     }
   }
 
-  resumeDownload(downloadId) {
-    const download = this.activeDownloads.get(downloadId);
-    if (download) {
-      download.status = 'active';
-      download.lastActivity = Date.now();
-      this.activeDownloads.set(downloadId, download);
-      logger.info(`Download resumed: ${downloadId}`);
+  logStats() {
+    if (this.activeDownloads > 0) {
+      const stats = Array.from(this.downloadStats.entries()).map(([id, stat]) => ({
+        downloadId: id,
+        downloaded: `${(stat.bytesDownloaded / (1024 * 1024)).toFixed(2)}MB`,
+        speed: `${(stat.currentSpeed / (1024 * 1024)).toFixed(2)}MB/s`
+      }));
+      
+      logger.info(`[BANDWIDTH STATUS] Current download stats:`, {
+        activeDownloads: this.activeDownloads,
+        maxConcurrentDownloads: this.maxConcurrentDownloads,
+        priority: this.downloadPriority,
+        downloads: stats
+      });
     }
   }
 
-  getDownloadStatus(downloadId) {
-    return this.activeDownloads.get(downloadId) || null;
+  getThrottleSpeed() {
+    return this.maxChunkSpeed;
   }
 
-  getAllDownloads() {
-    return Array.from(this.activeDownloads.entries()).map(([id, download]) => ({
-      id,
-      ...download
-    }));
-  }
-
-  cleanup() {
-    this.throttleController.cleanup();
-    this.activeDownloads.clear();
-    logger.info('BandwidthManager cleaned up');
+  setPriority(priority) {
+    this.downloadPriority = priority;
+    logger.info(`[PRIORITY CHANGE] Download priority changed:`, { priority });
   }
 }
 
