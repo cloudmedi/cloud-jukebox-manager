@@ -1,5 +1,4 @@
 const Device = require('../../models/Device');
-const DownloadProgress = require('../../models/DownloadProgress');
 
 class AdminConnectionHandler {
   constructor(wss) {
@@ -11,7 +10,6 @@ class AdminConnectionHandler {
     ws.isAdmin = true;
 
     try {
-      // Mevcut cihaz durumlarını gönder
       const devices = await Device.find({});
       const deviceStatuses = devices.map(device => ({
         type: 'deviceStatus',
@@ -20,20 +18,13 @@ class AdminConnectionHandler {
         volume: device.volume
       }));
 
-      // Aktif indirmelerin durumunu gönder
-      const activeDownloads = await DownloadProgress.find({ 
-        status: { $in: ['downloading', 'paused'] } 
-      }).populate('deviceId', 'name token');
-
       ws.send(JSON.stringify({
         type: 'initialState',
-        devices: deviceStatuses,
-        downloads: activeDownloads
+        devices: deviceStatuses
       }));
-
       console.log('Initial state sent to admin');
     } catch (error) {
-      console.error('Error fetching initial states:', error);
+      console.error('Error fetching initial device states:', error);
     }
 
     ws.on('message', async (message) => {
@@ -52,18 +43,6 @@ class AdminConnectionHandler {
 
     ws.on('close', () => {
       console.log('Admin client disconnected');
-    });
-  }
-
-  // İndirme durumu güncellemelerini admin'e gönder
-  broadcastDownloadProgress(progress) {
-    this.wss.clients.forEach(client => {
-      if (client.isAdmin) {
-        client.send(JSON.stringify({
-          type: 'downloadProgress',
-          data: progress
-        }));
-      }
     });
   }
 }
