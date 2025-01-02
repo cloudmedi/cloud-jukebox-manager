@@ -11,83 +11,90 @@ class DownloadStateManager {
       name: 'download-state',
       defaults: {
         downloads: {},
+        songDetails: {},
         chunks: {},
         playlists: {}
       }
     });
   }
 
-  initializeDownload(playlist) {
+  saveSongDetails(songId, details) {
+    this.store.set(`songDetails.${songId}`, details);
+    logger.info(`Saved details for song: ${songId}`);
+  }
+
+  getSongDetails(songId) {
+    return this.store.get(`songDetails.${songId}`);
+  }
+
+  initializeDownload(songId, totalSize, tempPath) {
     const downloadState = {
-      id: playlist._id,
-      status: 'initializing',
-      songs: playlist.songs.map(song => ({
-        id: song._id,
-        name: song.name,
-        status: 'pending',
-        downloadedChunks: [],
-        totalChunks: 0,
-        tempPath: path.join(this.getTempDir(), `${song._id}.temp`),
-        error: null
-      })),
-      startedAt: Date.now(),
-      lastUpdated: Date.now()
+      songId,
+      totalSize,
+      downloadedSize: 0,
+      chunks: [],
+      tempPath,
+      status: 'initialized',
+      timestamp: Date.now(),
+      resumePosition: 0
     };
 
-    this.store.set(`downloads.${playlist._id}`, downloadState);
-    logger.info(`Initialized download state for playlist: ${playlist._id}`);
+    this.store.set(`downloads.${songId}`, downloadState);
+    logger.info(`Initialized download state for song: ${songId}`);
     return downloadState;
   }
 
-  updateSongProgress(playlistId, songId, progress) {
-    const downloadPath = `downloads.${playlistId}.songs`;
-    const songs = this.store.get(downloadPath, []);
-    const updatedSongs = songs.map(song => 
-      song.id === songId 
-        ? { ...song, ...progress, lastUpdated: Date.now() }
-        : song
-    );
-    
-    this.store.set(downloadPath, updatedSongs);
-    logger.debug(`Updated progress for song ${songId} in playlist ${playlistId}`);
+  updateDownloadProgress(songId, chunkSize, chunkIndex) {
+    const download = this.getDownloadState(songId);
+    if (!download) return;
+
+    download.downloadedSize += chunkSize;
+    download.chunks.push(chunkIndex);
+    download.resumePosition = download.downloadedSize;
+    download.lastUpdate = Date.now();
+
+    this.store.set(`downloads.${songId}`, download);
+    logger.debug(`Updated progress for song ${songId}`);
   }
 
-  getTempDir() {
-    const tempDir = path.join(require('electron').app.getPath('userData'), 'temp');
-    if (!fs.existsSync(tempDir)) {
-      fs.mkdirSync(tempDir, { recursive: true });
-    }
-    return tempDir;
+  getDownloadState(songId) {
+    return this.store.get(`downloads.${songId}`);
   }
 
   getIncompleteDownloads() {
     const downloads = this.store.get('downloads', {});
-    return Object.values(downloads).filter(download => 
-      download.status !== 'completed' && download.status !== 'failed'
-    );
+    return Object.entries(downloads)
+      .filter(([_, download]) => download.status !== 'completed')
+      .map(([songId, download]) => ({
+        songId,
+        ...download,
+        ...this.getSongDetails(songId)
+      }));
   }
 
-  getSongState(songId) {
-    return this.store.get(`chunks.${songId}`, {
-      downloadedChunks: [],
-      tempPath: null,
-      status: 'pending'
-    });
+  completeDownload(songId) {
+    const download = this.getDownloadState(songId);
+    if (!download) return;
+
+    download.status = 'completed';
+    download.completedAt = Date.now();
+    
+    this.store.set(`downloads.${songId}`, download);
+    logger.info(`Marked download as completed for song: ${songId}`);
   }
 
   cleanupTempFiles() {
-    const tempDir = this.getTempDir();
-    if (fs.existsSync(tempDir)) {
-      fs.readdirSync(tempDir).forEach(file => {
-        const filePath = path.join(tempDir, file);
+    const downloads = this.store.get('downloads', {});
+    Object.values(downloads).forEach(download => {
+      if (download.tempPath && fs.existsSync(download.tempPath)) {
         try {
-          fs.unlinkSync(filePath);
-          logger.info(`Cleaned up temp file: ${filePath}`);
+          fs.unlinkSync(download.tempPath);
+          logger.info(`Cleaned up temp file: ${download.tempPath}`);
         } catch (error) {
-          logger.error(`Error cleaning up temp file: ${filePath}`, error);
+          logger.error(`Error cleaning up temp file: ${download.tempPath}`, error);
         }
-      });
-    }
+      }
+    });
   }
 }
 

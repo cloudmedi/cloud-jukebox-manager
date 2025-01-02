@@ -2,8 +2,8 @@ const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
 const { EventEmitter } = require('events');
-const downloadStateManager = require('./managers/DownloadStateManager');
-const chunkManager = require('./managers/ChunkManager');
+const downloadStateManager = require('./DownloadStateManager');
+const chunkManager = require('./ChunkManager');
 const { createLogger } = require('../../utils/logger');
 
 const logger = createLogger('chunk-download-manager');
@@ -20,43 +20,77 @@ class ChunkDownloadManager extends EventEmitter {
   }
 
   async resumeIncompleteDownloads() {
-    const incompleteDownloads = downloadStateManager.getIncompleteDownloads();
-    logger.info(`Found ${incompleteDownloads.length} incomplete downloads to resume`);
+    try {
+      const incompleteDownloads = downloadStateManager.getIncompleteDownloads();
+      logger.info(`Found ${incompleteDownloads.length} incomplete downloads to resume`);
 
-    for (const download of incompleteDownloads) {
-      if (fs.existsSync(download.tempPath)) {
-        const stats = fs.statSync(download.tempPath);
-        const resumePosition = stats.size;
+      for (const download of incompleteDownloads) {
+        if (!download || !download.tempPath) {
+          logger.warn('Invalid download state found:', download);
+          continue;
+        }
 
-        logger.info(`Resuming download for song ${download.songId} from position ${resumePosition}`);
-        
-        await this.resumeDownload(download, resumePosition);
+        if (fs.existsSync(download.tempPath)) {
+          const stats = fs.statSync(download.tempPath);
+          const resumePosition = stats.size;
+
+          logger.info(`Resuming download for song ${download.songId} from position ${resumePosition}`);
+          
+          await this.resumeDownload(download, resumePosition);
+        } else {
+          logger.warn(`Temp file not found for song ${download.songId}: ${download.tempPath}`);
+          // Temp dosya yoksa indirmeyi baştan başlat
+          await this.resumeDownload(download, 0);
+        }
       }
+    } catch (error) {
+      logger.error('Error resuming downloads:', error);
     }
   }
 
   async resumeDownload(download, resumePosition) {
-    const chunks = chunkManager.initializeChunks(
-      download.songId,
-      download.totalSize,
-      this.calculateChunkSize(download.totalSize)
-    );
+    try {
+      if (!download || !download.songId) {
+        logger.warn('Invalid download state:', download);
+        return;
+      }
 
-    const completedChunks = Math.floor(resumePosition / this.calculateChunkSize(download.totalSize));
-    
-    for (let i = 0; i < completedChunks; i++) {
-      chunkManager.markChunkAsDownloaded(download.songId, i);
+      const chunks = chunkManager.initializeChunks(
+        download.songId,
+        download.totalSize || 0,
+        this.calculateChunkSize(download.totalSize || 0)
+      );
+
+      const completedChunks = Math.floor(resumePosition / this.calculateChunkSize(download.totalSize || 0));
+      
+      for (let i = 0; i < completedChunks; i++) {
+        chunkManager.markChunkAsDownloaded(download.songId, i);
+      }
+
+      // Şarkı bilgilerini store'dan al
+      const songDetails = downloadStateManager.getSongDetails(download.songId);
+      if (!songDetails || !songDetails.filePath) {
+        logger.error(`Missing song details for ${download.songId}`);
+        return;
+      }
+
+      this.queueSongDownload({
+        _id: download.songId,
+        filePath: songDetails.filePath,
+        ...download
+      }, download.baseUrl, path.dirname(download.tempPath), true);
+    } catch (error) {
+      logger.error(`Error resuming download for song ${download?.songId}:`, error);
     }
-
-    this.queueSongDownload({
-      _id: download.songId,
-      ...download
-    }, download.baseUrl, path.dirname(download.tempPath), true);
   }
 
   async downloadSong(song, baseUrl, playlistDir, isResume = false) {
-    logger.info(`Starting download for song: ${song.name}`);
+    logger.info(`Starting download for song: ${song._id}`);
     
+    if (!song.filePath) {
+      throw new Error(`Missing filePath for song: ${song._id}`);
+    }
+
     const songPath = path.join(playlistDir, `${song._id}.mp3`);
     const tempPath = `${songPath}.temp`;
     const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
@@ -72,7 +106,13 @@ class ChunkDownloadManager extends EventEmitter {
         startByte = stats.size;
       }
 
-      const downloadState = downloadStateManager.initializeDownload(song._id, fileSize, tempPath);
+      // Song detaylarını kaydet
+      downloadStateManager.saveSongDetails(song._id, {
+        filePath: song.filePath,
+        totalSize: fileSize,
+        tempPath
+      });
+
       const chunks = chunkManager.initializeChunks(song._id, fileSize, chunkSize);
       
       const writer = fs.createWriteStream(tempPath, { flags: startByte ? 'a' : 'w' });
@@ -81,7 +121,10 @@ class ChunkDownloadManager extends EventEmitter {
         if (chunk.start < startByte) continue;
 
         const chunkData = await this.downloadChunk(songUrl, chunk.start, chunk.end, song._id);
-        if (!chunkData) throw new Error('Received null chunk data');
+        if (!chunkData) {
+          logger.error(`Received null chunk data for song ${song._id}`);
+          throw new Error('Received null chunk data');
+        }
         
         writer.write(chunkData);
         
@@ -105,11 +148,11 @@ class ChunkDownloadManager extends EventEmitter {
       downloadStateManager.completeDownload(song._id);
       chunkManager.clearSongChunks(song._id);
       
-      logger.info(`Download completed for ${song.name}`);
+      logger.info(`Download completed for ${song._id}`);
       return songPath;
 
     } catch (error) {
-      logger.error(`Error downloading song ${song.name}:`, error);
+      logger.error(`Error downloading song ${song._id}:`, error);
       if (fs.existsSync(tempPath)) {
         fs.unlinkSync(tempPath);
       }
