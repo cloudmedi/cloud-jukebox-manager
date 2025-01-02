@@ -16,16 +16,13 @@ class AudioPlayer {
     this.volume = 1.0;
     this.pendingFirstChunk = null;
     this.readyToPlay = false;
-    this.autoPlayNext = true;
   }
 
   setupEventListeners() {
     if (this.sound) {
       this.sound.on('end', () => {
         console.log('Song ended, playing next');
-        if (this.autoPlayNext) {
-          this.playNext();
-        }
+        this.playNext();
       });
 
       this.sound.on('play', () => {
@@ -42,9 +39,7 @@ class AudioPlayer {
 
       this.sound.on('loaderror', (id, err) => {
         console.error('Audio loading error:', err);
-        if (this.autoPlayNext) {
-          this.playNext();
-        }
+        this.playNext();
       });
     }
   }
@@ -75,6 +70,7 @@ class AudioPlayer {
         this.sound.unload();
       }
 
+      // Buffer'dan blob oluştur
       const blob = new Blob([buffer], { type: 'audio/mpeg' });
       const url = URL.createObjectURL(blob);
 
@@ -89,12 +85,6 @@ class AudioPlayer {
           if (this.isPlaying) {
             this.sound.play();
           }
-        },
-        onend: () => {
-          console.log('Song ended naturally');
-          if (this.autoPlayNext) {
-            this.playNext();
-          }
         }
       });
 
@@ -102,19 +92,7 @@ class AudioPlayer {
       
     } catch (error) {
       console.error('Error loading song:', error);
-      if (this.autoPlayNext) {
-        this.playNext();
-      }
-    }
-  }
-
-  loadPlaylist(playlist) {
-    console.log('Loading playlist:', playlist.name);
-    this.playlist = playlist;
-    this.queueManager.setQueue(playlist.songs);
-    const firstSong = this.queueManager.getCurrentSong();
-    if (firstSong) {
-      this.loadSong(firstSong);
+      this.playNext();
     }
   }
 
@@ -157,9 +135,6 @@ class AudioPlayer {
     if (nextSong) {
       console.log('Next song found:', nextSong.name);
       this.loadSong(nextSong);
-      if (this.isPlaying) {
-        this.play();
-      }
     } else {
       console.log('No more songs in queue');
       this.stop();
