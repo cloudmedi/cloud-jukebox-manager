@@ -1,4 +1,7 @@
 const websocketService = require('../websocketService');
+const { createLogger } = require('../../utils/logger');
+
+const logger = createLogger('download-progress-service');
 
 class DownloadProgressService {
   constructor() {
@@ -6,6 +9,8 @@ class DownloadProgressService {
   }
 
   initializeDownload(token, playlistId, totalSongs) {
+    logger.info('Initializing download:', { token, playlistId, totalSongs });
+    
     this.activeDownloads.set(playlistId, {
       token,
       totalSongs,
@@ -13,11 +18,16 @@ class DownloadProgressService {
       progress: 0,
       status: 'downloading'
     });
+
+    this.broadcastProgress(this.activeDownloads.get(playlistId), playlistId);
   }
 
   updateChunkProgress(playlistId, chunkInfo) {
     const download = this.activeDownloads.get(playlistId);
-    if (!download) return;
+    if (!download) {
+      logger.warn('No active download found for playlist:', playlistId);
+      return;
+    }
 
     const { completedChunks, totalChunks } = chunkInfo;
     const progress = (completedChunks / totalChunks) * 100;
@@ -35,15 +45,19 @@ class DownloadProgressService {
   }
 
   broadcastProgress(download, playlistId) {
-    websocketService.send({
-      type: 'downloadProgress',
-      token: download.token,
-      playlistId,
-      totalSongs: download.totalSongs,
-      downloadedSongs: download.downloadedSongs,
-      progress: download.progress,
-      status: download.status
-    });
+    try {
+      websocketService.send({
+        type: 'downloadProgress',
+        token: download.token,
+        playlistId,
+        totalSongs: download.totalSongs,
+        downloadedSongs: download.downloadedSongs,
+        progress: download.progress,
+        status: download.status
+      });
+    } catch (error) {
+      logger.error('Error broadcasting progress:', error);
+    }
   }
 
   handleError(playlistId, error) {
@@ -52,6 +66,16 @@ class DownloadProgressService {
       download.status = 'error';
       download.error = error.message;
       this.broadcastProgress(download, playlistId);
+    }
+  }
+
+  completeDownload(playlistId) {
+    const download = this.activeDownloads.get(playlistId);
+    if (download) {
+      download.status = 'completed';
+      download.progress = 100;
+      this.broadcastProgress(download, playlistId);
+      this.activeDownloads.delete(playlistId);
     }
   }
 }

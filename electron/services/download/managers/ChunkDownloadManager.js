@@ -23,7 +23,7 @@ class ChunkDownloadManager extends EventEmitter {
     
     try {
       if (!bandwidthManager.startDownload(downloadId)) {
-        logger.warn(`Download delayed due to bandwidth limits`, { chunkId });
+        logger.warn('Download delayed due to bandwidth limits', { chunkId });
         return new Promise(resolve => setTimeout(() => resolve(
           this.downloadChunk(url, start, end, songId, playlistId)
         ), 1000));
@@ -32,15 +32,20 @@ class ChunkDownloadManager extends EventEmitter {
       const chunk = await this._performChunkDownload(url, start, end, downloadId);
       
       // İlerleme bilgisini güncelle
-      downloadProgressService.updateChunkProgress(playlistId, {
-        completedChunks: this.activeDownloads.get(playlistId)?.completedChunks?.length || 0,
-        totalChunks: this.activeDownloads.get(playlistId)?.totalChunks || 0
-      });
+      const downloadInfo = this.activeDownloads.get(playlistId);
+      if (downloadInfo) {
+        downloadInfo.completedChunks = (downloadInfo.completedChunks || 0) + 1;
+        downloadProgressService.updateChunkProgress(playlistId, {
+          completedChunks: downloadInfo.completedChunks,
+          totalChunks: downloadInfo.totalChunks
+        });
+      }
 
       bandwidthManager.finishDownload(downloadId);
       return chunk;
 
     } catch (error) {
+      logger.error('Error downloading chunk:', error);
       bandwidthManager.finishDownload(downloadId);
       downloadProgressService.handleError(playlistId, error);
       throw error;
@@ -64,7 +69,7 @@ class ChunkDownloadManager extends EventEmitter {
   }
 
   async downloadSong(song, baseUrl, playlistDir) {
-    logger.info(`Starting download for song: ${song.name}`);
+    logger.info('Starting download for song:', song.name);
     
     const songPath = path.join(playlistDir, `${song._id}.mp3`);
     const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
@@ -76,12 +81,10 @@ class ChunkDownloadManager extends EventEmitter {
       const chunks = Math.ceil(fileSize / chunkSize);
       
       // İndirme durumunu başlat
-      if (!this.activeDownloads.has(song.playlistId)) {
-        this.activeDownloads.set(song.playlistId, {
-          completedChunks: [],
-          totalChunks: chunks
-        });
-      }
+      this.activeDownloads.set(song.playlistId, {
+        completedChunks: 0,
+        totalChunks: chunks
+      });
 
       const writer = fs.createWriteStream(songPath);
 
@@ -91,20 +94,14 @@ class ChunkDownloadManager extends EventEmitter {
         
         const chunk = await this.downloadChunk(songUrl, start, end, song._id, song.playlistId);
         writer.write(chunk);
-
-        // Chunk'ı tamamlandı olarak işaretle
-        const download = this.activeDownloads.get(song.playlistId);
-        if (download) {
-          download.completedChunks.push(chunkId);
-        }
       }
 
       await new Promise((resolve) => writer.end(resolve));
-      logger.info(`Download completed for ${song.name}`);
+      logger.info('Download completed for:', song.name);
       return songPath;
 
     } catch (error) {
-      logger.error(`Error downloading song ${song.name}:`, error);
+      logger.error('Error downloading song:', error);
       throw error;
     }
   }
