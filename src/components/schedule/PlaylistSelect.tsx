@@ -16,21 +16,33 @@ export function PlaylistSelect({ control }: PlaylistSelectProps) {
     queryKey: ["playlists"],
     queryFn: async () => {
       const response = await fetch("http://localhost:5000/api/playlists");
-      if (!response.ok) throw new Error("Playlistler yüklenemedi");
-      return response.json();
+      if (!response.ok) {
+        throw new Error("Playlistler yüklenemedi");
+      }
+      const data = await response.json();
+      console.log("Loaded playlists:", data); // Debug için
+      return data;
     }
   });
 
   return (
     <FormField
       control={control}
-      name="playlistId"
+      name="playlist" // playlistId yerine playlist olarak değiştirildi
       render={({ field }) => (
         <FormItem className="space-y-4">
           <FormLabel>Playlist</FormLabel>
-          <Select onValueChange={field.onChange} value={field.value}>
+          <Select 
+            onValueChange={(value) => {
+              console.log("Selected playlist:", value); // Debug için
+              field.onChange(value);
+            }} 
+            value={field.value?._id || field.value}
+          >
             <SelectTrigger>
-              <SelectValue placeholder="Playlist seçin" />
+              <SelectValue placeholder="Playlist seçin">
+                {field.value?.name || playlists.find(p => p._id === field.value)?.name}
+              </SelectValue>
             </SelectTrigger>
             <SelectContent>
               <ScrollArea className="h-[300px]">
@@ -42,6 +54,11 @@ export function PlaylistSelect({ control }: PlaylistSelectProps) {
                           src={`http://localhost:5000${playlist.artwork}`}
                           alt={playlist.name}
                           className="h-10 w-10 rounded object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = ""; // Hata durumunda boş div göster
+                            target.onerror = null;
+                          }}
                         />
                       ) : (
                         <div className="flex h-10 w-10 items-center justify-center rounded bg-muted">
@@ -64,33 +81,41 @@ export function PlaylistSelect({ control }: PlaylistSelectProps) {
           {field.value && (
             <Card className="mt-4">
               <CardContent className="p-4">
-                {playlists.map((playlist: any) => {
-                  if (playlist._id === field.value) {
-                    return (
-                      <div key={playlist._id} className="flex gap-4">
-                        {playlist.artwork ? (
-                          <img 
-                            src={`http://localhost:5000${playlist.artwork}`}
-                            alt={playlist.name}
-                            className="h-24 w-24 rounded-lg object-cover"
-                          />
-                        ) : (
-                          <div className="flex h-24 w-24 items-center justify-center rounded-lg bg-muted">
-                            <Music2 className="h-12 w-12 text-muted-foreground" />
-                          </div>
-                        )}
-                        <div className="space-y-2">
-                          <h3 className="font-semibold">{playlist.name}</h3>
-                          <div className="space-y-1 text-sm text-muted-foreground">
-                            <p>{playlist.songs?.length || 0} şarkı</p>
-                            <p>Toplam süre: {formatDuration(playlist.totalDuration || 0)}</p>
-                          </div>
+                {(() => {
+                  const selectedPlaylist = typeof field.value === 'string' 
+                    ? playlists.find(p => p._id === field.value)
+                    : field.value;
+
+                  if (!selectedPlaylist) return null;
+
+                  return (
+                    <div className="flex gap-4">
+                      {selectedPlaylist.artwork ? (
+                        <img 
+                          src={`http://localhost:5000${selectedPlaylist.artwork}`}
+                          alt={selectedPlaylist.name}
+                          className="h-24 w-24 rounded-lg object-cover"
+                          onError={(e) => {
+                            const target = e.target as HTMLImageElement;
+                            target.src = ""; // Hata durumunda boş div göster
+                            target.onerror = null;
+                          }}
+                        />
+                      ) : (
+                        <div className="flex h-24 w-24 items-center justify-center rounded-lg bg-muted">
+                          <Music2 className="h-12 w-12 text-muted-foreground" />
+                        </div>
+                      )}
+                      <div className="space-y-2">
+                        <h3 className="font-semibold">{selectedPlaylist.name}</h3>
+                        <div className="space-y-1 text-sm text-muted-foreground">
+                          <p>{selectedPlaylist.songs?.length || 0} şarkı</p>
+                          <p>Toplam süre: {formatDuration(selectedPlaylist.totalDuration || 0)}</p>
                         </div>
                       </div>
-                    );
-                  }
-                  return null;
-                })}
+                    </div>
+                  );
+                })()}
               </CardContent>
             </Card>
           )}
