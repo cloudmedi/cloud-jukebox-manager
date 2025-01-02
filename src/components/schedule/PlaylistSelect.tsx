@@ -30,24 +30,18 @@ export function PlaylistSelect({ control }: PlaylistSelectProps) {
       control={control}
       name="playlist"
       render={({ field }) => {
-        // Seçili playlist'i bul
-        const selectedPlaylist = playlists.find(p => 
-          p._id === (typeof field.value === 'string' ? field.value : field.value?._id)
-        );
-
         console.log("Current field value:", field.value);
+        
+        // Seçili playlist'i bul
+        const selectedPlaylist = playlists.find(p => p._id === field.value);
         console.log("Selected playlist:", selectedPlaylist);
 
         return (
           <FormItem className="space-y-4">
             <FormLabel>Playlist</FormLabel>
             <Select 
-              onValueChange={(value) => {
-                console.log("Selected value:", value);
-                const playlist = playlists.find(p => p._id === value);
-                field.onChange(playlist?._id || value);
-              }}
-              value={typeof field.value === 'string' ? field.value : field.value?._id}
+              onValueChange={field.onChange}
+              value={field.value || ""}
             >
               <SelectTrigger>
                 <SelectValue placeholder="Playlist seçin" />
