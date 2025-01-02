@@ -28,11 +28,15 @@ interface Schedule {
 const Schedule = () => {
   const [view, setView] = useState<"timeGridWeek" | "dayGridMonth">("timeGridWeek");
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedDates, setSelectedDates] = useState<{
+    start: Date | null;
+    end: Date | null;
+  }>({ start: null, end: null });
 
   const { data: schedules, isLoading, error } = useQuery<Schedule[]>({
     queryKey: ["playlist-schedules"],
     queryFn: async () => {
-      const response = await fetch("http://localhost:5000/api/playlist-schedules");
+      const response = await fetch("/api/playlist-schedules");
       if (!response.ok) {
         throw new Error("Failed to fetch schedules");
       }
@@ -41,11 +45,14 @@ const Schedule = () => {
   });
 
   const handleDateSelect = (selectInfo: any) => {
+    setSelectedDates({
+      start: selectInfo.start,
+      end: selectInfo.end
+    });
     setIsDialogOpen(true);
   };
 
   const events = schedules?.map(schedule => {
-    // Skip if schedule or playlist is null/undefined
     if (!schedule?.playlist) {
       return null;
     }
@@ -131,7 +138,11 @@ const Schedule = () => {
           <DialogHeader>
             <DialogTitle>Playlist Zamanla</DialogTitle>
           </DialogHeader>
-          <PlaylistScheduleForm onSuccess={() => setIsDialogOpen(false)} />
+          <PlaylistScheduleForm 
+            onSuccess={() => setIsDialogOpen(false)}
+            initialStartDate={selectedDates.start}
+            initialEndDate={selectedDates.end}
+          />
         </DialogContent>
       </Dialog>
     </div>

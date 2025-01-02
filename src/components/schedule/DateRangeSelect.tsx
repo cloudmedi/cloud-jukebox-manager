@@ -7,7 +7,6 @@ import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
 import { Control } from "react-hook-form";
-import { useEffect } from "react";
 
 interface DateRangeSelectProps {
   control: Control<any>;
@@ -46,8 +45,12 @@ export function DateRangeSelect({ control }: DateRangeSelectProps) {
                   mode="single"
                   selected={field.value}
                   onSelect={(date) => {
-                    field.onChange(date);
-                    console.log("Selected start date:", date);
+                    if (date) {
+                      const newDate = new Date(date);
+                      newDate.setHours(0, 0, 0, 0);
+                      field.onChange(newDate);
+                      console.log("Selected start date:", newDate);
+                    }
                   }}
                   disabled={(date) =>
                     date < new Date(new Date().setHours(0, 0, 0, 0))
@@ -91,13 +94,18 @@ export function DateRangeSelect({ control }: DateRangeSelectProps) {
                   mode="single"
                   selected={field.value}
                   onSelect={(date) => {
-                    field.onChange(date);
-                    console.log("Selected end date:", date);
+                    if (date) {
+                      const newDate = new Date(date);
+                      newDate.setHours(23, 59, 59, 999);
+                      field.onChange(newDate);
+                      console.log("Selected end date:", newDate);
+                    }
                   }}
-                  disabled={(date) =>
-                    date < new Date(new Date().setHours(0, 0, 0, 0)) ||
-                    (field.value && date < field.value)
-                  }
+                  disabled={(date) => {
+                    const today = new Date();
+                    today.setHours(0, 0, 0, 0);
+                    return date < today;
+                  }}
                   initialFocus
                 />
               </PopoverContent>
