@@ -1,7 +1,5 @@
 const { createLogger } = require('../../../utils/logger');
 const bandwidthManager = require('./BandwidthManager');
-const path = require('path');
-const fetch = require('node-fetch');
 
 const logger = createLogger('chunk-manager');
 
@@ -9,6 +7,56 @@ class ChunkManager {
   constructor() {
     this.activeChunks = new Map();
     this.throttleInterval = 100; // 100ms kontrol aralığı
+  }
+
+  async throttleTransfer(reader, downloadId, chunkSize) {
+    const maxBytesPerInterval = (bandwidthManager.maxChunkSpeed * this.throttleInterval) / 1000;
+    let bytesInInterval = 0;
+    let lastIntervalStart = Date.now();
+
+    return new Promise((resolve, reject) => {
+      const processChunk = async () => {
+        try {
+          const { done, value } = await reader.read();
+          
+          if (done) {
+            resolve();
+            return;
+          }
+
+          bytesInInterval += value.length;
+          const now = Date.now();
+          const intervalElapsed = now - lastIntervalStart;
+
+          if (intervalElapsed >= this.throttleInterval) {
+            const currentSpeed = (bytesInInterval * 1000) / intervalElapsed;
+            
+            if (currentSpeed > bandwidthManager.maxChunkSpeed) {
+              const delay = Math.ceil(
+                (bytesInInterval - maxBytesPerInterval) * 1000 / bandwidthManager.maxChunkSpeed
+              );
+              
+              logger.info('[THROTTLE]', {
+                currentSpeed: `${(currentSpeed / (1024 * 1024)).toFixed(2)}MB/s`,
+                maxSpeed: `${(bandwidthManager.maxChunkSpeed / (1024 * 1024)).toFixed(2)}MB/s`,
+                delay: `${delay}ms`
+              });
+              
+              await new Promise(resolve => setTimeout(resolve, delay));
+            }
+
+            bytesInInterval = 0;
+            lastIntervalStart = Date.now();
+          }
+
+          processChunk();
+        } catch (error) {
+          reject(error);
+        }
+      };
+
+      processChunk();
+    });
   }
 
   async downloadChunk(url, start, end, songId, downloadId) {
@@ -31,11 +79,8 @@ class ChunkManager {
       const reader = response.body.getReader();
       const chunks = [];
 
-      // Throttling konfigürasyonu logla
-      logger.info('[THROTTLE CONFIG]', {
-        maxBytesPerInterval: `${(bandwidthManager.maxChunkSpeed * this.throttleInterval / 1000 / 1024).toFixed(2)}KB per ${this.throttleInterval}ms`,
-        targetSpeed: `${(bandwidthManager.maxChunkSpeed / (1024 * 1024)).toFixed(2)}MB/s`
-      });
+      // Throttling işlemi başlat
+      await this.throttleTransfer(reader, downloadId, end - start);
 
       while (true) {
         const { done, value } = await reader.read();
@@ -46,24 +91,13 @@ class ChunkManager {
         
         const now = Date.now();
         const elapsed = (now - startTime) / 1000;
-        const currentSpeed = downloadedBytes / elapsed;
+        const speed = downloadedBytes / elapsed;
 
-        // Her interval'da hız kontrolü
-        logger.info('[THROTTLE INTERVAL]', {
+        logger.info('[CHUNK DOWNLOAD]', {
           chunkId,
-          currentSpeed: `${(currentSpeed / (1024 * 1024)).toFixed(2)}MB/s`,
-          downloadedBytes: `${(downloadedBytes / 1024).toFixed(2)}KB`,
-          elapsed: `${elapsed.toFixed(2)}s`
+          speed: `${(speed / (1024 * 1024)).toFixed(2)}MB/s`,
+          progress: `${((downloadedBytes / (end - start)) * 100).toFixed(1)}%`
         });
-
-        // Hız limiti aşıldıysa log
-        if (currentSpeed > bandwidthManager.maxChunkSpeed) {
-          logger.warn('[THROTTLE LIMIT EXCEEDED]', {
-            chunkId,
-            currentSpeed: `${(currentSpeed / (1024 * 1024)).toFixed(2)}MB/s`,
-            maxSpeed: `${(bandwidthManager.maxChunkSpeed / (1024 * 1024)).toFixed(2)}MB/s`
-          });
-        }
 
         bandwidthManager.updateProgress(downloadId, downloadedBytes);
       }
@@ -72,12 +106,11 @@ class ChunkManager {
       const duration = (endTime - startTime) / 1000;
       const averageSpeed = downloadedBytes / duration;
 
-      // İndirme tamamlandığında özet log
       logger.info('[CHUNK COMPLETE]', {
         chunkId,
         size: `${(downloadedBytes / (1024 * 1024)).toFixed(2)}MB`,
         duration: `${duration.toFixed(2)}s`,
-        averageSpeed: `${(averageSpeed / (1024 * 1024)).toFixed(2)}MB/s`
+        speed: `${(averageSpeed / (1024 * 1024)).toFixed(2)}MB/s`
       });
 
       const concatenated = new Uint8Array(downloadedBytes);
@@ -91,9 +124,7 @@ class ChunkManager {
     } catch (error) {
       logger.error('[CHUNK ERROR]', {
         chunkId,
-        error: error.message,
-        downloadedBytes: `${(downloadedBytes / 1024).toFixed(2)}KB`,
-        elapsed: `${((Date.now() - startTime) / 1000).toFixed(2)}s`
+        error: error.message
       });
       throw error;
     }
