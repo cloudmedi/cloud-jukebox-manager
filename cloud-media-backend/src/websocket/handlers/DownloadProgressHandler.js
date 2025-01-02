@@ -17,7 +17,7 @@ class DownloadProgressHandler {
       console.log('Processing download progress for device:', token, message);
 
       // Update download progress in database
-      const downloadProgress = await DownloadProgress.findOneAndUpdate(
+      await DownloadProgress.findOneAndUpdate(
         {
           deviceToken: token,
           playlistId: message.data.playlistId
@@ -34,7 +34,7 @@ class DownloadProgressHandler {
         { new: true, upsert: true }
       );
 
-      // Broadcast progress to admin clients with correct data mapping
+      // Single broadcast to admin clients with complete data
       this.wss.broadcastToAdmins({
         type: 'downloadProgress',
         token: token,
@@ -45,12 +45,6 @@ class DownloadProgressHandler {
         totalSongs: message.data.totalSongs,
         estimatedTimeRemaining: message.data.estimatedTimeRemaining,
         status: message.data.status
-      });
-
-      console.log('Broadcast download progress to admins:', {
-        token,
-        playlistId: message.data.playlistId,
-        progress: message.data.progress
       });
 
     } catch (error) {
