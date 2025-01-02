@@ -23,14 +23,20 @@ class ChunkDownloadManager extends EventEmitter {
     const tempSongPath = path.join(playlistDir, `${song._id}.mp3.temp`);
     const finalSongPath = path.join(playlistDir, `${song._id}.mp3`);
 
-    // Eğer final dosya zaten varsa ve checksum doğruysa, tekrar indirmeye gerek yok
+    // Check if final file exists and is valid
     if (fs.existsSync(finalSongPath)) {
-      const isValid = await ChecksumVerifier.verifyFileChecksum(finalSongPath, song.checksum);
-      if (isValid) {
-        logger.info(`Song already exists and verified: ${song.name}`);
-        return finalSongPath;
+      try {
+        const isValid = await ChecksumVerifier.verifyFileChecksum(finalSongPath, song.checksum);
+        if (isValid) {
+          logger.info(`Song already exists and verified: ${song.name}`);
+          return finalSongPath;
+        }
+        logger.warn(`Invalid checksum for existing file: ${song.name}, re-downloading`);
+        fs.unlinkSync(finalSongPath);
+      } catch (error) {
+        logger.error(`Error verifying existing file: ${song.name}`, error);
+        fs.unlinkSync(finalSongPath);
       }
-      fs.unlinkSync(finalSongPath);
     }
 
     return await retryManager.executeWithRetry(async () => {
@@ -42,15 +48,22 @@ class ChunkDownloadManager extends EventEmitter {
         const fileSize = parseInt(headers['content-length'], 10);
         const chunkSize = chunkManager.calculateChunkSize(fileSize);
         
-        // Mevcut indirme durumunu kontrol et
+        // Check existing download state
         let startByte = 0;
         const downloadState = downloadStateManager.getState(song._id, song.playlistId);
         
         if (downloadState && fs.existsSync(tempSongPath)) {
-          const stats = fs.statSync(tempSongPath);
-          if (stats.size < fileSize) {
-            startByte = stats.size;
-            logger.info(`Resuming download from byte ${startByte}`);
+          try {
+            const stats = fs.statSync(tempSongPath);
+            if (stats.size < fileSize) {
+              startByte = stats.size;
+              logger.info(`Resuming download from byte ${startByte}`);
+            }
+          } catch (error) {
+            logger.error(`Error checking temp file: ${tempSongPath}`, error);
+            if (fs.existsSync(tempSongPath)) {
+              fs.unlinkSync(tempSongPath);
+            }
           }
         }
 
@@ -62,6 +75,13 @@ class ChunkDownloadManager extends EventEmitter {
           const end = Math.min(start + chunkSize - 1, fileSize - 1);
           
           const chunk = await chunkManager.downloadChunk(songUrl, start, end, song._id);
+          
+          // Verify chunk checksum before writing
+          const chunkChecksum = await ChecksumVerifier.calculateMD5(chunk);
+          if (!await ChecksumVerifier.verifyChunkChecksum(chunk, chunkChecksum)) {
+            throw new Error(`Chunk checksum verification failed for ${song.name} chunk ${i + 1}/${chunks}`);
+          }
+
           writer.write(chunk);
 
           downloadStateManager.saveState(song._id, song.playlistId, {
@@ -84,18 +104,30 @@ class ChunkDownloadManager extends EventEmitter {
           });
         }
 
-        await new Promise((resolve) => writer.end(resolve));
+        await new Promise((resolve, reject) => {
+          writer.end((err) => {
+            if (err) reject(err);
+            else resolve();
+          });
+        });
         
         // Final checksum verification with retry
         const isValid = await retryManager.executeWithRetry(
-          async () => await ChecksumVerifier.verifyFileChecksum(tempSongPath, song.checksum),
+          async () => {
+            const result = await ChecksumVerifier.verifyFileChecksum(tempSongPath, song.checksum);
+            if (!result) {
+              logger.warn(`Final checksum verification failed for ${song.name}, retrying...`);
+            }
+            return result;
+          },
           `final checksum verification for ${song.name}`
         );
 
         if (!isValid) {
-          throw new Error('Final checksum verification failed');
+          throw new Error(`Final checksum verification failed for ${song.name}`);
         }
 
+        // Rename temp file to final file
         fs.renameSync(tempSongPath, finalSongPath);
         downloadStateManager.saveState(song._id, song.playlistId, { completed: true });
         logger.info(`Download completed for ${song.name}`);
@@ -103,6 +135,10 @@ class ChunkDownloadManager extends EventEmitter {
         return finalSongPath;
       } catch (error) {
         logger.error(`Error downloading song ${song.name}:`, error);
+        // Clean up temp file if exists
+        if (fs.existsSync(tempSongPath)) {
+          fs.unlinkSync(tempSongPath);
+        }
         throw error;
       }
     }, `download song ${song.name}`);
@@ -134,6 +170,9 @@ class ChunkDownloadManager extends EventEmitter {
           try {
             await this.downloadSong(song, baseUrl, playlistDir);
             this.emit('songDownloaded', song._id);
+          } catch (error) {
+            logger.error(`Failed to download song ${song.name}:`, error);
+            this.emit('songError', { songId: song._id, error });
           } finally {
             this.activeDownloads.delete(song._id);
           }

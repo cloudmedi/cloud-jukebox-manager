@@ -11,12 +11,14 @@ class RetryManager {
 
   async executeWithRetry(operation, context) {
     let retryCount = 0;
+    let lastError;
     
     while (retryCount < this.MAX_RETRIES) {
       try {
         return await operation();
       } catch (error) {
         retryCount++;
+        lastError = error;
         
         if (retryCount === this.MAX_RETRIES || !NetworkErrorHandler.isRetryableError(error)) {
           logger.error(`Max retries reached or non-retryable error for ${context}:`, error);
@@ -27,6 +29,8 @@ class RetryManager {
         await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY));
       }
     }
+
+    throw lastError;
   }
 }
 

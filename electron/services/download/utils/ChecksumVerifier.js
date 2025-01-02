@@ -68,6 +68,11 @@ class ChecksumVerifier {
 
   static async verifyFileChecksum(filePath, expectedChecksum) {
     try {
+      if (!fs.existsSync(filePath)) {
+        logger.error(`File not found: ${filePath}`);
+        return false;
+      }
+
       const calculatedChecksum = await this.calculateFileChecksum(filePath);
       const isValid = calculatedChecksum === expectedChecksum;
       
@@ -77,6 +82,8 @@ class ChecksumVerifier {
           expected: expectedChecksum,
           calculated: calculatedChecksum
         });
+      } else {
+        logger.info(`File checksum verified successfully: ${filePath}`);
       }
       
       return isValid;
