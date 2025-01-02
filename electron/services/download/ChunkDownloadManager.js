@@ -106,7 +106,6 @@ class ChunkDownloadManager extends EventEmitter {
         startByte = stats.size;
       }
 
-      // Song detaylarını kaydet
       downloadStateManager.saveSongDetails(song._id, {
         filePath: song.filePath,
         totalSize: fileSize,

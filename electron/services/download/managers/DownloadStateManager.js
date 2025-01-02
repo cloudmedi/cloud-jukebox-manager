@@ -11,10 +11,20 @@ class DownloadStateManager {
       name: 'download-state',
       defaults: {
         downloads: {},
-        activeDownloads: [],
-        completedDownloads: []
+        songDetails: {},
+        chunks: {},
+        playlists: {}
       }
     });
+  }
+
+  saveSongDetails(songId, details) {
+    this.store.set(`songDetails.${songId}`, details);
+    logger.info(`Saved details for song: ${songId}`);
+  }
+
+  getSongDetails(songId) {
+    return this.store.get(`songDetails.${songId}`);
   }
 
   initializeDownload(songId, totalSize, tempPath) {
@@ -30,8 +40,7 @@ class DownloadStateManager {
     };
 
     this.store.set(`downloads.${songId}`, downloadState);
-    this.addToActiveDownloads(songId);
-    logger.info(`Download initialized for song: ${songId}`);
+    logger.info(`Initialized download state for song: ${songId}`);
     return downloadState;
   }
 
@@ -45,7 +54,22 @@ class DownloadStateManager {
     download.lastUpdate = Date.now();
 
     this.store.set(`downloads.${songId}`, download);
-    logger.debug(`Download progress updated for song: ${songId}, progress: ${Math.round((download.downloadedSize / download.totalSize) * 100)}%`);
+    logger.debug(`Updated progress for song ${songId}`);
+  }
+
+  getDownloadState(songId) {
+    return this.store.get(`downloads.${songId}`);
+  }
+
+  getIncompleteDownloads() {
+    const downloads = this.store.get('downloads', {});
+    return Object.entries(downloads)
+      .filter(([_, download]) => download.status !== 'completed')
+      .map(([songId, download]) => ({
+        songId,
+        ...download,
+        ...this.getSongDetails(songId)
+      }));
   }
 
   completeDownload(songId) {
@@ -56,45 +80,7 @@ class DownloadStateManager {
     download.completedAt = Date.now();
     
     this.store.set(`downloads.${songId}`, download);
-    this.removeFromActiveDownloads(songId);
-    this.addToCompletedDownloads(songId);
-    
-    logger.info(`Download completed for song: ${songId}`);
-  }
-
-  getDownloadState(songId) {
-    return this.store.get(`downloads.${songId}`);
-  }
-
-  getIncompleteDownloads() {
-    const downloads = this.store.get('downloads');
-    return Object.entries(downloads)
-      .filter(([_, download]) => download.status !== 'completed')
-      .map(([songId, download]) => ({
-        songId,
-        ...download
-      }));
-  }
-
-  addToActiveDownloads(songId) {
-    const activeDownloads = this.store.get('activeDownloads', []);
-    if (!activeDownloads.includes(songId)) {
-      activeDownloads.push(songId);
-      this.store.set('activeDownloads', activeDownloads);
-    }
-  }
-
-  removeFromActiveDownloads(songId) {
-    const activeDownloads = this.store.get('activeDownloads', []);
-    this.store.set('activeDownloads', activeDownloads.filter(id => id !== songId));
-  }
-
-  addToCompletedDownloads(songId) {
-    const completedDownloads = this.store.get('completedDownloads', []);
-    if (!completedDownloads.includes(songId)) {
-      completedDownloads.push(songId);
-      this.store.set('completedDownloads', completedDownloads);
-    }
+    logger.info(`Marked download as completed for song: ${songId}`);
   }
 
   cleanupTempFiles() {

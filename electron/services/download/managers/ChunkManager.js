@@ -1,4 +1,5 @@
 const { createLogger } = require('../../../utils/logger');
+
 const logger = createLogger('chunk-manager');
 
 class ChunkManager {
@@ -6,48 +7,40 @@ class ChunkManager {
     this.chunks = new Map();
   }
 
-  initializeChunks(songId, totalSize, chunkSize) {
-    const totalChunks = Math.ceil(totalSize / chunkSize);
-    const chunkRanges = [];
+  initializeChunks(songId, fileSize, chunkSize) {
+    const chunks = [];
+    let start = 0;
 
-    for (let i = 0; i < totalChunks; i++) {
-      const start = i * chunkSize;
-      const end = Math.min(start + chunkSize - 1, totalSize - 1);
-      chunkRanges.push({ start, end, index: i });
+    while (start < fileSize) {
+      const end = Math.min(start + chunkSize - 1, fileSize - 1);
+      chunks.push({
+        index: chunks.length,
+        start,
+        end,
+        downloaded: false
+      });
+      start = end + 1;
     }
 
-    this.chunks.set(songId, {
-      ranges: chunkRanges,
-      downloaded: new Set(),
-      total: totalChunks
-    });
-
-    logger.info(`Initialized ${totalChunks} chunks for song: ${songId}`);
-    return chunkRanges;
+    this.chunks.set(songId, chunks);
+    logger.info(`Initialized ${chunks.length} chunks for song: ${songId}`);
+    return chunks;
   }
 
   markChunkAsDownloaded(songId, chunkIndex) {
     const songChunks = this.chunks.get(songId);
-    if (songChunks) {
-      songChunks.downloaded.add(chunkIndex);
-      logger.debug(`Chunk ${chunkIndex} marked as downloaded for song: ${songId}`);
+    if (songChunks && songChunks[chunkIndex]) {
+      songChunks[chunkIndex].downloaded = true;
+      logger.debug(`Marked chunk ${chunkIndex} as downloaded for song: ${songId}`);
     }
-  }
-
-  getRemainingChunks(songId) {
-    const songChunks = this.chunks.get(songId);
-    if (!songChunks) return [];
-
-    return songChunks.ranges.filter(chunk => 
-      !songChunks.downloaded.has(chunk.index)
-    );
   }
 
   getDownloadProgress(songId) {
     const songChunks = this.chunks.get(songId);
     if (!songChunks) return 0;
 
-    return (songChunks.downloaded.size / songChunks.total) * 100;
+    const downloadedChunks = songChunks.filter(chunk => chunk.downloaded).length;
+    return Math.round((downloadedChunks / songChunks.length) * 100);
   }
 
   clearSongChunks(songId) {
