@@ -15,6 +15,7 @@ class ChunkDownloadManager extends EventEmitter {
     this.downloadQueue = [];
     this.maxConcurrentDownloads = 3;
     this.isProcessing = false;
+    this.maxRetries = 3;
     
     this.resumeIncompleteDownloads();
   }
@@ -30,17 +31,20 @@ class ChunkDownloadManager extends EventEmitter {
           continue;
         }
 
+        const songDetails = downloadStateManager.getSongDetails(download.songId);
+        if (!songDetails || !songDetails.filePath) {
+          logger.warn(`Missing song details for ${download.songId}`);
+          continue;
+        }
+
         if (fs.existsSync(download.tempPath)) {
           const stats = fs.statSync(download.tempPath);
           const resumePosition = stats.size;
-
           logger.info(`Resuming download for song ${download.songId} from position ${resumePosition}`);
-          
-          await this.resumeDownload(download, resumePosition);
+          await this.resumeDownload(download, resumePosition, songDetails);
         } else {
           logger.warn(`Temp file not found for song ${download.songId}: ${download.tempPath}`);
-          // Temp dosya yoksa indirmeyi baştan başlat
-          await this.resumeDownload(download, 0);
+          await this.resumeDownload(download, 0, songDetails);
         }
       }
     } catch (error) {
@@ -48,13 +52,8 @@ class ChunkDownloadManager extends EventEmitter {
     }
   }
 
-  async resumeDownload(download, resumePosition) {
+  async resumeDownload(download, resumePosition, songDetails) {
     try {
-      if (!download || !download.songId) {
-        logger.warn('Invalid download state:', download);
-        return;
-      }
-
       const chunks = chunkManager.initializeChunks(
         download.songId,
         download.totalSize || 0,
@@ -65,13 +64,6 @@ class ChunkDownloadManager extends EventEmitter {
       
       for (let i = 0; i < completedChunks; i++) {
         chunkManager.markChunkAsDownloaded(download.songId, i);
-      }
-
-      // Şarkı bilgilerini store'dan al
-      const songDetails = downloadStateManager.getSongDetails(download.songId);
-      if (!songDetails || !songDetails.filePath) {
-        logger.error(`Missing song details for ${download.songId}`);
-        return;
       }
 
       this.queueSongDownload({
@@ -85,17 +77,17 @@ class ChunkDownloadManager extends EventEmitter {
   }
 
   async downloadSong(song, baseUrl, playlistDir, isResume = false) {
-    logger.info(`Starting download for song: ${song._id}`);
-    
-    if (!song.filePath) {
-      throw new Error(`Missing filePath for song: ${song._id}`);
-    }
-
-    const songPath = path.join(playlistDir, `${song._id}.mp3`);
-    const tempPath = `${songPath}.temp`;
-    const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
-
     try {
+      logger.info(`Starting download for song: ${song._id}`);
+      
+      if (!song.filePath) {
+        throw new Error(`Missing filePath for song: ${song._id}`);
+      }
+
+      const songPath = path.join(playlistDir, `${song._id}.mp3`);
+      const tempPath = `${songPath}.temp`;
+      const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
+
       const { headers } = await axios.head(songUrl);
       const fileSize = parseInt(headers['content-length'], 10);
       const chunkSize = this.calculateChunkSize(fileSize);
@@ -109,11 +101,11 @@ class ChunkDownloadManager extends EventEmitter {
       downloadStateManager.saveSongDetails(song._id, {
         filePath: song.filePath,
         totalSize: fileSize,
-        tempPath
+        tempPath,
+        baseUrl
       });
 
       const chunks = chunkManager.initializeChunks(song._id, fileSize, chunkSize);
-      
       const writer = fs.createWriteStream(tempPath, { flags: startByte ? 'a' : 'w' });
 
       for (const chunk of chunks) {
@@ -121,12 +113,10 @@ class ChunkDownloadManager extends EventEmitter {
 
         const chunkData = await this.downloadChunk(songUrl, chunk.start, chunk.end, song._id);
         if (!chunkData) {
-          logger.error(`Received null chunk data for song ${song._id}`);
           throw new Error('Received null chunk data');
         }
         
         writer.write(chunkData);
-        
         chunkManager.markChunkAsDownloaded(song._id, chunk.index);
         downloadStateManager.updateDownloadProgress(song._id, chunkData.length, chunk.index);
 
@@ -142,14 +132,12 @@ class ChunkDownloadManager extends EventEmitter {
       }
 
       await new Promise((resolve) => writer.end(resolve));
-      
       fs.renameSync(tempPath, songPath);
       downloadStateManager.completeDownload(song._id);
       chunkManager.clearSongChunks(song._id);
       
       logger.info(`Download completed for ${song._id}`);
       return songPath;
-
     } catch (error) {
       logger.error(`Error downloading song ${song._id}:`, error);
       if (fs.existsSync(tempPath)) {
@@ -178,7 +166,7 @@ class ChunkDownloadManager extends EventEmitter {
   }
 
   queueSongDownload(song, baseUrl, playlistDir, isResume = false) {
-    logger.info(`Adding song to queue: ${song.name}`);
+    logger.info(`Adding song to queue: ${song._id}`);
     this.downloadQueue.push({ song, baseUrl, playlistDir, isResume });
     this.processQueue();
   }
