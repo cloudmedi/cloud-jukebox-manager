@@ -1,4 +1,3 @@
-const DownloadStateManager = require('./DownloadStateManager');
 const websocketService = require('../websocketService');
 
 class DownloadProgressService {
@@ -16,32 +15,34 @@ class DownloadProgressService {
     });
   }
 
-  updateProgress(playlistId, progress) {
+  updateChunkProgress(playlistId, chunkInfo) {
     const download = this.activeDownloads.get(playlistId);
-    if (download) {
-      download.progress = progress;
-      this.saveState(playlistId, download);
-      this.broadcastProgress(download);
-    }
+    if (!download) return;
+
+    const { completedChunks, totalChunks } = chunkInfo;
+    const progress = (completedChunks / totalChunks) * 100;
+
+    download.progress = progress;
+    this.broadcastProgress(download, playlistId);
   }
 
   updateDownloadedSongs(playlistId, downloadedSongs) {
     const download = this.activeDownloads.get(playlistId);
     if (download) {
       download.downloadedSongs = downloadedSongs;
-      this.saveState(playlistId, download);
-      this.broadcastProgress(download);
+      this.broadcastProgress(download, playlistId);
     }
   }
 
-  saveState(playlistId, state) {
-    DownloadStateManager.saveDownloadState(playlistId, state);
-  }
-
-  broadcastProgress(download) {
-    websocketService.sendMessage({
+  broadcastProgress(download, playlistId) {
+    websocketService.send({
       type: 'downloadProgress',
-      ...download
+      token: download.token,
+      playlistId,
+      totalSongs: download.totalSongs,
+      downloadedSongs: download.downloadedSongs,
+      progress: download.progress,
+      status: download.status
     });
   }
 
@@ -50,8 +51,7 @@ class DownloadProgressService {
     if (download) {
       download.status = 'error';
       download.error = error.message;
-      this.saveState(playlistId, download);
-      this.broadcastProgress(download);
+      this.broadcastProgress(download, playlistId);
     }
   }
 }

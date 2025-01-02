@@ -25,19 +25,22 @@ class PlaylistHandler {
       const playlistDir = path.join(this.downloadPath, playlist._id);
       this.ensureDirectoryExists(playlistDir);
 
+      // İndirme durumunu başlat
       downloadProgressService.initializeDownload(
         playlist.deviceToken,
         playlist._id,
         playlist.songs.length
       );
 
+      let downloadedSongs = 0;
       for (const song of playlist.songs) {
         song.playlistId = playlist._id;
         try {
           await chunkDownloadManager.downloadSong(song, playlist.baseUrl, playlistDir);
+          downloadedSongs++;
+          downloadProgressService.updateDownloadedSongs(playlist._id, downloadedSongs);
         } catch (error) {
           logger.error(`Error downloading song ${song.name}:`, error);
-          downloadProgressService.handleError(playlist._id, error);
           throw error;
         }
       }
@@ -45,7 +48,6 @@ class PlaylistHandler {
       return true;
     } catch (error) {
       logger.error('Error handling playlist:', error);
-      downloadProgressService.handleError(playlist._id, error);
       throw error;
     }
   }
