@@ -5,6 +5,7 @@ const { EventEmitter } = require('events');
 const TimeoutManager = require('./utils/TimeoutManager');
 const NetworkErrorHandler = require('./utils/NetworkErrorHandler');
 const ChecksumVerifier = require('./utils/ChecksumVerifier');
+const downloadStateManager = require('./DownloadStateManager');
 const { createLogger } = require('../../utils/logger');
 
 const logger = createLogger('chunk-download-manager');
@@ -29,10 +30,15 @@ class ChunkDownloadManager extends EventEmitter {
     const tempSongPath = path.join(playlistDir, `${song._id}.mp3.temp`);
     const finalSongPath = path.join(playlistDir, `${song._id}.mp3`);
 
-    // Eğer final dosya zaten varsa, tekrar indirmeye gerek yok
+    // Eğer final dosya zaten varsa ve checksum doğruysa, tekrar indirmeye gerek yok
     if (fs.existsSync(finalSongPath)) {
-      console.log(`Song already exists: ${song.name}`);
-      return finalSongPath;
+      const isValid = await ChecksumVerifier.verifyFileChecksum(finalSongPath, song.checksum);
+      if (isValid) {
+        logger.info(`Song already exists and verified: ${song.name}`);
+        return finalSongPath;
+      }
+      // Checksum hatalıysa dosyayı sil ve yeniden indir
+      fs.unlinkSync(finalSongPath);
     }
 
     try {
@@ -43,12 +49,16 @@ class ChunkDownloadManager extends EventEmitter {
       const fileSize = parseInt(headers['content-length'], 10);
       const chunkSize = this.calculateChunkSize(fileSize);
       
-      // Resume kontrolü
+      // Mevcut indirme durumunu kontrol et
       let startByte = 0;
-      if (fs.existsSync(tempSongPath)) {
+      let downloadState = downloadStateManager.getDownloadState(song.playlistId, song._id);
+      
+      if (downloadState && fs.existsSync(tempSongPath)) {
         const stats = fs.statSync(tempSongPath);
-        startByte = stats.size;
-        logger.info(`Resuming download from byte ${startByte}`);
+        if (stats.size < fileSize) {
+          startByte = stats.size;
+          logger.info(`Resuming download from byte ${startByte}`);
+        }
       }
 
       const chunks = Math.ceil((fileSize - startByte) / chunkSize);
@@ -57,16 +67,26 @@ class ChunkDownloadManager extends EventEmitter {
       const clearGlobalTimeout = this.timeoutManager.setGlobalTimeout();
 
       try {
-        for (let i = 0; i < chunks; i++) {
-          const start = startByte + (i * chunkSize);
+        for (let i = Math.floor(startByte / chunkSize); i < chunks; i++) {
+          const start = i * chunkSize;
           const end = Math.min(start + chunkSize - 1, fileSize - 1);
           
           const chunk = await this.downloadChunk(songUrl, start, end, song._id);
           writer.write(chunk);
 
+          // İndirme durumunu kaydet
+          downloadStateManager.saveDownloadState(song.playlistId, song._id, {
+            downloadedChunks: i + 1,
+            totalChunks: chunks,
+            tempPath: tempSongPath,
+            finalPath: finalSongPath,
+            checksum: song.checksum
+          });
+
           const progress = Math.round(((i + 1) / chunks) * 100);
           this.emit('progress', { 
-            songId: song._id, 
+            songId: song._id,
+            playlistId: song.playlistId, 
             progress,
             downloadedSize: start + chunk.length,
             totalSize: fileSize,
@@ -78,14 +98,13 @@ class ChunkDownloadManager extends EventEmitter {
         await new Promise((resolve) => writer.end(resolve));
         
         // Final checksum verification
-        if (song.checksum) {
-          const isValid = await ChecksumVerifier.verifyFileChecksum(tempSongPath, song.checksum);
-          if (!isValid) {
-            throw new Error('Final checksum verification failed');
-          }
+        const isValid = await ChecksumVerifier.verifyFileChecksum(tempSongPath, song.checksum);
+        if (!isValid) {
+          throw new Error('Final checksum verification failed');
         }
 
         fs.renameSync(tempSongPath, finalSongPath);
+        downloadStateManager.clearDownloadState(song.playlistId, song._id);
         logger.info(`Download completed for ${song.name}`);
         return finalSongPath;
 
@@ -96,6 +115,22 @@ class ChunkDownloadManager extends EventEmitter {
 
     } catch (error) {
       logger.error(`Error downloading song ${song.name}:`, error);
+      
+      const downloadState = downloadStateManager.getDownloadState(song.playlistId, song._id);
+      const retryCount = (downloadState?.retryCount || 0) + 1;
+      
+      if (retryCount < this.MAX_RETRIES && NetworkErrorHandler.isRetryableError(error)) {
+        downloadStateManager.saveDownloadState(song.playlistId, song._id, {
+          ...downloadState,
+          retryCount,
+          lastError: error.message
+        });
+        
+        logger.info(`Retrying download for ${song.name} (attempt ${retryCount}/${this.MAX_RETRIES})`);
+        await new Promise(resolve => setTimeout(resolve, this.RETRY_DELAY));
+        return this.downloadSong(song, baseUrl, playlistDir);
+      }
+      
       if (fs.existsSync(tempSongPath)) {
         fs.unlinkSync(tempSongPath);
       }
@@ -120,7 +155,8 @@ class ChunkDownloadManager extends EventEmitter {
         url,
         method: 'GET',
         responseType: 'arraybuffer',
-        headers: { Range: `bytes=${start}-${end}` }
+        headers: { Range: `bytes=${start}-${end}` },
+        timeout: 30000 // 30 saniye timeout
       });
 
       const chunk = response.data;
@@ -183,6 +219,13 @@ class ChunkDownloadManager extends EventEmitter {
       if (this.downloadQueue.length > 0) {
         this.processQueue();
       }
+    }
+  }
+
+  resumeIncompleteDownloads(playlistId, baseUrl, playlistDir) {
+    const incompleteDownloads = downloadStateManager.getIncompleteDownloads(playlistId);
+    for (const download of incompleteDownloads) {
+      this.queueSongDownload(download.song, baseUrl, playlistDir);
     }
   }
 }

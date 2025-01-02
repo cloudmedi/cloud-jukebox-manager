@@ -43,7 +43,16 @@ class ChecksumVerifier {
   static async verifyChunkChecksum(chunk, expectedChecksum) {
     try {
       const calculatedChecksum = this.calculateMD5(chunk);
-      return calculatedChecksum === expectedChecksum;
+      const isValid = calculatedChecksum === expectedChecksum;
+      
+      if (!isValid) {
+        logger.warn('Chunk checksum verification failed', {
+          expected: expectedChecksum,
+          calculated: calculatedChecksum
+        });
+      }
+      
+      return isValid;
     } catch (error) {
       logger.error('Chunk verification error:', error);
       return false;
@@ -53,7 +62,17 @@ class ChecksumVerifier {
   static async verifyFileChecksum(filePath, expectedChecksum) {
     try {
       const calculatedChecksum = await this.calculateFileChecksum(filePath);
-      return calculatedChecksum === expectedChecksum;
+      const isValid = calculatedChecksum === expectedChecksum;
+      
+      if (!isValid) {
+        logger.warn('File checksum verification failed', {
+          filePath,
+          expected: expectedChecksum,
+          calculated: calculatedChecksum
+        });
+      }
+      
+      return isValid;
     } catch (error) {
       logger.error('File checksum verification error:', error);
       return false;
