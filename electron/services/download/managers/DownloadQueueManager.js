@@ -112,6 +112,5 @@ class DownloadQueueManager extends EventEmitter {
   }
 }
 
-// Create and export a single instance
 const downloadQueueManager = new DownloadQueueManager();
 module.exports = downloadQueueManager;

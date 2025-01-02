@@ -13,26 +13,20 @@ class PlaylistHandler {
   constructor() {
     this.downloadPath = path.join(app.getPath('userData'), 'downloads');
     this.ensureDirectoryExists(this.downloadPath);
-    
-    if (downloadQueueManager && typeof downloadQueueManager.on === 'function') {
-      this.setupDownloadListeners();
-    } else {
-      logger.error('DownloadQueueManager not properly initialized');
-    }
+    this.setupDownloadListeners();
   }
 
   setupDownloadListeners() {
     try {
       downloadQueueManager.on('songCompleted', (song) => {
-        logger.info(`Song ${song._id} downloaded successfully`);
-        
+        logger.info(`Song ${song.name} downloaded successfully`);
         if (this.isFirstSong(song._id)) {
-          audioPlayer.handleFirstSongReady(song._id, song.localPath);
+          audioPlayer.loadCurrentSong();
         }
       });
 
       downloadQueueManager.on('songError', ({ song, error }) => {
-        logger.error(`Error downloading song ${song._id}:`, error);
+        logger.error(`Error downloading song ${song.name}:`, error);
       });
 
       logger.info('Download listeners setup completed');
@@ -44,6 +38,7 @@ class PlaylistHandler {
   ensureDirectoryExists(dir) {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
+      logger.info(`Created directory: ${dir}`);
     }
   }
 

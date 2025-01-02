@@ -1,155 +1,111 @@
 const QueueManager = require('./QueueManager');
 const PlaybackState = require('./PlaybackState');
 const path = require('path');
-const { Howl } = require('howler');
 const Store = require('electron-store');
 const store = new Store();
+const { createLogger } = require('../../utils/logger');
+
+const logger = createLogger('audio-player');
 
 class AudioPlayer {
   constructor() {
     this.queueManager = new QueueManager();
     this.playbackState = new PlaybackState();
-    this.sound = null;
+    this.audio = new Audio();
     this.playlist = null;
     this.isPlaying = false;
     this.volume = store.get('volume', 100) / 100;
     this.readyToPlay = false;
 
     this.setupEventListeners();
+    logger.info('AudioPlayer initialized');
   }
 
   setupEventListeners() {
-    if (this.sound) {
-      this.sound.on('end', () => {
-        console.log('Song ended, playing next');
-        this.playNext();
-      });
+    this.audio.addEventListener('ended', () => {
+      logger.info('Song ended, playing next');
+      this.playNext();
+    });
 
-      this.sound.on('play', () => {
-        console.log('Audio started playing');
-        this.isPlaying = true;
-        this.updatePlaybackState('playing');
-      });
+    this.audio.addEventListener('error', (error) => {
+      logger.error('Audio error:', error);
+      this.playNext();
+    });
 
-      this.sound.on('pause', () => {
-        console.log('Audio paused');
-        this.isPlaying = false;
-        this.updatePlaybackState('paused');
-      });
+    this.audio.addEventListener('play', () => {
+      logger.info('Audio started playing');
+      this.isPlaying = true;
+      this.updatePlaybackState('playing');
+    });
 
-      this.sound.on('loaderror', (id, err) => {
-        console.error('Audio loading error:', err);
-        this.playNext();
-      });
-    }
-  }
+    this.audio.addEventListener('pause', () => {
+      logger.info('Audio paused');
+      this.isPlaying = false;
+      this.updatePlaybackState('paused');
+    });
 
-  handleFirstSongReady(songId, songPath) {
-    console.log('First song ready handler called:', { songId, songPath });
-    
-    try {
-      if (!songPath) {
-        console.error('No song path provided to handleFirstSongReady');
-        return;
+    this.audio.addEventListener('loadeddata', () => {
+      logger.info('Audio data loaded successfully');
+      if (this.isPlaying) {
+        this.audio.play().catch(err => {
+          logger.error('Error playing audio:', err);
+          this.playNext();
+        });
       }
-
-      // Create a new Howl instance for the song
-      if (this.sound) {
-        this.sound.unload();
-      }
-
-      this.sound = new Howl({
-        src: [songPath],
-        html5: true,
-        volume: this.volume,
-        format: ['mp3'],
-        onload: () => {
-          console.log('First song loaded successfully');
-          this.readyToPlay = true;
-          if (this.isPlaying) {
-            this.sound.play();
-          }
-        },
-        onloaderror: (id, error) => {
-          console.error('Error loading first song:', error);
-        }
-      });
-
-      this.setupEventListeners();
-      
-      console.log('First song initialized successfully');
-    } catch (error) {
-      console.error('Error in handleFirstSongReady:', error);
-    }
+    });
   }
 
   loadPlaylist(playlist) {
-    console.log('Loading playlist:', playlist);
+    logger.info('Loading playlist:', playlist.name);
     this.playlist = playlist;
     this.queueManager.setQueue(playlist.songs);
     
     if (this.queueManager.getCurrentSong()) {
       this.loadCurrentSong();
     } else {
-      console.log('No playable songs in playlist');
+      logger.warn('No playable songs in playlist');
     }
   }
 
   loadCurrentSong() {
     const song = this.queueManager.getCurrentSong();
     if (!song) {
-      console.log('No song to load');
+      logger.warn('No song to load');
       return;
     }
 
-    console.log('Loading song:', song);
+    logger.info('Loading song:', song.name);
 
     if (!song.localPath) {
-      console.error('Song localPath is missing:', song);
+      logger.error('Song localPath is missing:', song);
       this.playNext();
       return;
     }
 
     try {
       const normalizedPath = path.normalize(song.localPath);
-      console.log('Playing file from:', normalizedPath);
+      logger.info('Playing file from:', normalizedPath);
       
-      if (this.sound) {
-        this.sound.unload();
-      }
+      this.audio.src = normalizedPath;
+      this.audio.volume = this.volume;
       
-      this.sound = new Howl({
-        src: [normalizedPath],
-        html5: true,
-        volume: this.volume,
-        format: ['mp3'],
-        onload: () => {
-          console.log('Song loaded successfully');
-          if (this.isPlaying) {
-            this.sound.play();
-          }
-        },
-        onloaderror: (id, error) => {
-          console.error('Error loading song:', error);
-          this.playNext();
-        }
-      });
-      
-      this.setupEventListeners();
-      
+      logger.info('Song loaded successfully');
     } catch (error) {
-      console.error('Error loading song:', error);
+      logger.error('Error loading song:', error);
       this.playNext();
     }
   }
 
   play() {
-    console.log('Play requested');
-    if (this.sound) {
-      this.sound.play();
+    logger.info('Play requested');
+    if (this.audio.src) {
+      this.audio.play().catch(error => {
+        logger.error('Error playing audio:', error);
+        this.playNext();
+      });
       this.isPlaying = true;
     } else {
-      console.log('No audio source loaded');
+      logger.info('No audio source loaded');
       const currentSong = this.queueManager.getCurrentSong();
       if (currentSong) {
         this.loadCurrentSong();
@@ -158,27 +114,24 @@ class AudioPlayer {
   }
 
   pause() {
-    if (this.sound) {
-      this.sound.pause();
-      this.isPlaying = false;
-    }
+    this.audio.pause();
+    this.isPlaying = false;
   }
 
   stop() {
-    if (this.sound) {
-      this.sound.stop();
-      this.isPlaying = false;
-    }
+    this.audio.pause();
+    this.audio.currentTime = 0;
+    this.isPlaying = false;
   }
 
   playNext() {
-    console.log('Playing next song');
+    logger.info('Playing next song');
     const nextSong = this.queueManager.next();
     if (nextSong) {
-      console.log('Next song found:', nextSong.name);
+      logger.info('Next song found:', nextSong.name);
       this.loadCurrentSong();
     } else {
-      console.log('No more songs in queue');
+      logger.info('No more songs in queue');
       this.stop();
     }
   }
@@ -186,11 +139,9 @@ class AudioPlayer {
   setVolume(volume) {
     const normalizedVolume = Math.max(0, Math.min(100, volume));
     this.volume = normalizedVolume / 100;
-    if (this.sound) {
-      this.sound.volume(this.volume);
-    }
+    this.audio.volume = this.volume;
     store.set('volume', normalizedVolume);
-    console.log('Volume set and saved:', normalizedVolume);
+    logger.info('Volume set and saved:', normalizedVolume);
   }
 
   updatePlaybackState(state) {
@@ -214,13 +165,13 @@ class AudioPlayer {
   restoreState() {
     const state = this.playbackState.restore();
     if (state && state.playlist) {
-      console.log('Restoring previous state:', state);
+      logger.info('Restoring previous state:', state);
       this.loadPlaylist(state.playlist);
       this.setVolume(state.volume);
       
       if (state.state === 'playing') {
         setTimeout(() => {
-          console.log('Auto-playing restored playlist');
+          logger.info('Auto-playing restored playlist');
           this.play();
         }, 1000);
       }
