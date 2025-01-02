@@ -8,6 +8,7 @@ class ChunkDownloadManager extends EventEmitter {
     super();
     this.downloadQueue = [];
     this.isDownloading = false;
+    this.chunkSize = 1024 * 1024; // 1MB chunks
   }
 
   async downloadSong(song, baseUrl, downloadDir) {
@@ -15,15 +16,22 @@ class ChunkDownloadManager extends EventEmitter {
       console.log(`Starting download for song: ${song.name}`);
       const songPath = path.join(downloadDir, `${song._id}.mp3`);
       
-      // Endpoint düzeltildi
+      // Önce yarım kalan indirme var mı kontrol et
+      const resumePosition = await this.checkIncompleteDownload(songPath);
+      
       const response = await axios({
         method: 'get',
-        url: `${baseUrl}/api/songs/${song._id}`,
-        responseType: 'stream'
+        url: `${baseUrl}/songs/${song._id}/download`,
+        responseType: 'stream',
+        headers: resumePosition ? {
+          Range: `bytes=${resumePosition}-`
+        } : {}
       });
 
       return new Promise((resolve, reject) => {
-        const writer = fs.createWriteStream(songPath);
+        const writer = fs.createWriteStream(songPath, {
+          flags: resumePosition ? 'a' : 'w'
+        });
         
         response.data.pipe(writer);
         
@@ -41,6 +49,19 @@ class ChunkDownloadManager extends EventEmitter {
     } catch (error) {
       console.error(`Failed to download song ${song.name}:`, error);
       throw error;
+    }
+  }
+
+  async checkIncompleteDownload(filePath) {
+    try {
+      if (fs.existsSync(filePath)) {
+        const stats = fs.statSync(filePath);
+        return stats.size;
+      }
+      return 0;
+    } catch (error) {
+      console.error('Error checking incomplete download:', error);
+      return 0;
     }
   }
 
