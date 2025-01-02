@@ -6,25 +6,17 @@ const store = new Store();
 const chunkDownloadManager = require('../download/managers/ChunkDownloadManager');
 const downloadProgressService = require('../download/DownloadProgressService');
 const audioPlayer = require('../audio/AudioPlayer');
-const websocketService = require('../websocketService');
 
 class PlaylistHandler {
   constructor() {
     this.downloadPath = path.join(app.getPath('userData'), 'downloads');
     this.ensureDirectoryExists(this.downloadPath);
-    this.setupDownloadListeners();
   }
 
   ensureDirectoryExists(dir) {
     if (!fs.existsSync(dir)) {
       fs.mkdirSync(dir, { recursive: true });
     }
-  }
-
-  setupDownloadListeners() {
-    chunkDownloadManager.on('songDownloaded', (songId) => {
-      console.log(`Song ${songId} downloaded successfully`);
-    });
   }
 
   async handlePlaylist(playlist) {
@@ -41,7 +33,7 @@ class PlaylistHandler {
         playlist.songs.length
       );
 
-      // İlk şarkıyı hemen indir
+      // İlk şarkıyı indir
       const firstSong = playlist.songs[0];
       if (firstSong) {
         console.log('Starting download of first song:', firstSong.name);

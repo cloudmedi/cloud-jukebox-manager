@@ -8,6 +8,8 @@ class DownloadProgressService extends EventEmitter {
   }
 
   initializeDownload(deviceToken, playlistId, totalSongs) {
+    console.log('Initializing download:', { deviceToken, playlistId, totalSongs });
+    
     const downloadState = {
       deviceToken,
       playlistId,
@@ -28,28 +30,26 @@ class DownloadProgressService extends EventEmitter {
 
   updateProgress(playlistId, chunkInfo) {
     const download = this.activeDownloads.get(playlistId);
-    if (!download) return;
+    if (!download) {
+      console.log('No active download found for playlist:', playlistId);
+      return;
+    }
 
     const now = Date.now();
     const elapsed = (now - download.startTime) / 1000;
 
-    // Chunk bilgilerini güncelle
     download.completedChunks.push(chunkInfo);
     
-    // İlerleme hesapla
-    const totalChunks = download.totalSongs * 100; // Varsayılan chunk sayısı
+    const totalChunks = download.totalSongs * 100;
     download.progress = (download.completedChunks.length / totalChunks) * 100;
     
-    // İndirme hızı hesapla (bytes/second)
     const totalBytes = download.completedChunks.reduce((sum, chunk) => sum + chunk.size, 0);
     download.downloadSpeed = totalBytes / elapsed;
     
-    // Kalan süreyi hesapla
     const remainingChunks = totalChunks - download.completedChunks.length;
     const avgChunkTime = elapsed / download.completedChunks.length;
     download.estimatedTimeRemaining = remainingChunks * avgChunkTime;
 
-    // İndirilen şarkı sayısını güncelle
     const uniqueSongs = new Set(download.completedChunks.map(c => c.songId));
     download.downloadedSongs = uniqueSongs.size;
 
@@ -57,7 +57,8 @@ class DownloadProgressService extends EventEmitter {
   }
 
   emitProgress(downloadState) {
-    // WebSocket üzerinden ilerleme bilgisini gönder
+    console.log('Emitting download progress:', downloadState);
+    
     websocketService.sendMessage({
       type: 'downloadProgress',
       data: {
