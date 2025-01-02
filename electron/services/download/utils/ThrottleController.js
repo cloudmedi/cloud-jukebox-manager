@@ -1,71 +1,80 @@
 const { EventEmitter } = require('events');
 const { createLogger } = require('../../../utils/logger');
 
+const logger = createLogger('throttle-controller');
+
 class ThrottleController extends EventEmitter {
   constructor(maxBytesPerSecond) {
     super();
     this.maxBytesPerSecond = maxBytesPerSecond;
-    this.logger = createLogger('throttle-controller');
-    this.tokens = maxBytesPerSecond;
-    this.lastRefill = Date.now();
-    this.tokenBucketSize = maxBytesPerSecond * 2; // 2 saniyelik buffer
-    this.downloadQueue = [];
-    
-    // Token bucket'ı düzenli olarak doldur
-    setInterval(() => this.refillTokens(), 100); // Her 100ms'de bir
+    this.bytesTransferred = 0;
+    this.lastCheck = Date.now();
+    this.paused = false;
+    this.throttleQueue = Promise.resolve();
   }
 
-  refillTokens() {
-    const now = Date.now();
-    const timePassed = (now - this.lastRefill) / 1000;
-    const newTokens = Math.floor(this.maxBytesPerSecond * timePassed);
-    
-    this.tokens = Math.min(this.tokenBucketSize, this.tokens + newTokens);
-    this.lastRefill = now;
-
-    // Bekleyen indirmeleri kontrol et
-    this.processQueue();
-  }
-
-  async acquireToken(bytes) {
+  async throttle(bytes) {
+    // Queue'ya ekle ve sırayla işle
     return new Promise((resolve) => {
-      this.downloadQueue.push({ bytes, resolve });
-      this.processQueue();
+      this.throttleQueue = this.throttleQueue.then(async () => {
+        try {
+          await this._applyThrottle(bytes);
+          resolve();
+        } catch (error) {
+          logger.error('[THROTTLE] Error during throttling:', error);
+          resolve(); // Hata durumunda bile devam et
+        }
+      });
     });
   }
 
-  processQueue() {
-    while (this.downloadQueue.length > 0) {
-      const { bytes, resolve } = this.downloadQueue[0];
-      
-      if (this.tokens >= bytes) {
-        this.downloadQueue.shift();
-        this.tokens -= bytes;
-        resolve();
-      } else {
-        break;
+  async _applyThrottle(bytes) {
+    this.bytesTransferred += bytes;
+    const now = Date.now();
+    const duration = (now - this.lastCheck) / 1000;
+    const currentSpeed = this.bytesTransferred / duration;
+
+    if (currentSpeed > this.maxBytesPerSecond) {
+      const requiredDelay = Math.ceil(
+        (this.bytesTransferred / this.maxBytesPerSecond) * 1000 - (now - this.lastCheck)
+      );
+
+      if (requiredDelay > 0) {
+        this.paused = true;
+        logger.debug(`[THROTTLE] Applying throttle:`, {
+          currentSpeed: `${(currentSpeed / (1024 * 1024)).toFixed(2)}MB/s`,
+          maxSpeed: `${(this.maxBytesPerSecond / (1024 * 1024)).toFixed(2)}MB/s`,
+          delay: `${requiredDelay}ms`,
+          bytesTransferred: `${(this.bytesTransferred / 1024).toFixed(2)}KB`
+        });
+
+        // Progressive delay - hız aşımı arttıkça delay'i artır
+        const progressiveDelay = requiredDelay * (currentSpeed / this.maxBytesPerSecond);
+        
+        await new Promise(resolve => setTimeout(resolve, progressiveDelay));
+        
+        this.paused = false;
+        this.bytesTransferred = 0;
+        this.lastCheck = Date.now();
+        
+        logger.debug(`[THROTTLE] Throttle released after ${progressiveDelay}ms delay`);
       }
+    }
+
+    // Her saniye başında veya büyük gecikme sonrası sayaçları sıfırla
+    if (duration >= 1 || this.bytesTransferred >= this.maxBytesPerSecond) {
+      this.bytesTransferred = 0;
+      this.lastCheck = now;
     }
   }
 
-  async updateProgress(downloadId, bytesDownloaded) {
-    const now = Date.now();
-    const speed = bytesDownloaded / ((now - this.lastRefill) / 1000);
+  isPaused() {
+    return this.paused;
+  }
 
-    if (speed > this.maxBytesPerSecond) {
-      const delay = Math.ceil((bytesDownloaded / this.maxBytesPerSecond) * 1000) - (now - this.lastRefill);
-      
-      if (delay > 0) {
-        this.logger.warn(`Throttling download:`, {
-          downloadId,
-          currentSpeed: `${(speed / (1024 * 1024)).toFixed(2)}MB/s`,
-          maxSpeed: `${(this.maxBytesPerSecond / (1024 * 1024)).toFixed(2)}MB/s`,
-          delay: `${delay}ms`
-        });
-
-        await new Promise(resolve => setTimeout(resolve, delay));
-      }
-    }
+  setMaxSpeed(maxBytesPerSecond) {
+    this.maxBytesPerSecond = maxBytesPerSecond;
+    logger.info(`[THROTTLE] Max speed updated to ${(maxBytesPerSecond / (1024 * 1024)).toFixed(2)}MB/s`);
   }
 }
 
