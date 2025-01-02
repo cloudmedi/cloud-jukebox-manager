@@ -1,7 +1,8 @@
 const { EventEmitter } = require('events');
+const axios = require('axios');
+const fs = require('fs');
+const path = require('path');
 const { createLogger } = require('../../../utils/logger');
-const downloadStateManager = require('./DownloadStateManager');
-const { chunkManager } = require('./ChunkManager');
 
 const logger = createLogger('download-queue-manager');
 
@@ -12,24 +13,31 @@ class DownloadQueueManager extends EventEmitter {
     this.processing = false;
     this.maxConcurrent = 3;
     this.activeDownloads = 0;
+    logger.info('DownloadQueueManager initialized');
   }
 
   addToQueue(item) {
+    logger.info(`Adding to queue: ${item.song.name}`);
+    
     if (item.priority === 'high') {
       this.queue.unshift(item);
+      logger.info('Added with high priority');
     } else {
       this.queue.push(item);
+      logger.info('Added with normal priority');
     }
-    logger.info(`Added to queue: ${item.song.name}`);
+    
     this.processQueue();
   }
 
   async processQueue() {
     if (this.processing || this.activeDownloads >= this.maxConcurrent) {
+      logger.info('Queue processing skipped - already processing or max concurrent reached');
       return;
     }
 
     this.processing = true;
+    logger.info('Starting queue processing');
 
     try {
       while (this.queue.length > 0 && this.activeDownloads < this.maxConcurrent) {
@@ -37,42 +45,63 @@ class DownloadQueueManager extends EventEmitter {
         if (!item) continue;
 
         this.activeDownloads++;
-        this.downloadSong(item).finally(() => {
+        logger.info(`Processing download for: ${item.song.name}`);
+        
+        try {
+          await this.downloadSong(item);
+        } catch (error) {
+          logger.error(`Error downloading song: ${item.song.name}`, error);
+        } finally {
           this.activeDownloads--;
           this.processQueue();
-        });
+        }
       }
     } finally {
       this.processing = false;
+      logger.info('Queue processing completed');
     }
   }
 
   async downloadSong({ song, baseUrl, playlistId }) {
     const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
+    logger.info(`Starting download: ${songUrl}`);
     
     try {
-      const response = await fetch(songUrl, { method: 'HEAD' });
-      const fileSize = parseInt(response.headers.get('content-length') || '0', 10);
-      
-      if (!fileSize) {
-        throw new Error('Could not determine file size');
+      const response = await axios({
+        url: songUrl,
+        method: 'GET',
+        responseType: 'stream'
+      });
+
+      const downloadDir = path.join(require('electron').app.getPath('userData'), 'downloads', playlistId);
+      if (!fs.existsSync(downloadDir)) {
+        fs.mkdirSync(downloadDir, { recursive: true });
       }
 
-      const chunks = chunkManager.calculateChunks(fileSize);
-      downloadStateManager.initializeDownload(song._id, playlistId, chunks.length);
+      const filePath = path.join(downloadDir, `${song._id}.mp3`);
+      const writer = fs.createWriteStream(filePath);
 
-      const downloadPromises = chunks.map(({ start, end }) =>
-        chunkManager.downloadChunk(songUrl, start, end, song._id)
-      );
+      response.data.pipe(writer);
 
-      await Promise.all(downloadPromises);
-      downloadStateManager.markAsCompleted(song._id);
-      this.emit('songCompleted', song);
+      return new Promise((resolve, reject) => {
+        writer.on('finish', () => {
+          logger.info(`Download completed: ${song.name}`);
+          song.localPath = filePath;
+          this.emit('songCompleted', song);
+          resolve();
+        });
+
+        writer.on('error', (error) => {
+          logger.error(`Download error for ${song.name}:`, error);
+          this.emit('songError', { song, error });
+          reject(error);
+        });
+      });
 
     } catch (error) {
-      logger.error(`Error downloading song ${song.name}:`, error);
-      downloadStateManager.markAsError(song._id, error.message);
+      logger.error(`Download failed for ${song.name}:`, error);
       this.emit('songError', { song, error });
+      throw error;
     }
   }
 
@@ -82,5 +111,4 @@ class DownloadQueueManager extends EventEmitter {
   }
 }
 
-const downloadQueueManager = new DownloadQueueManager();
-module.exports = { downloadQueueManager };
+module.exports = new DownloadQueueManager();

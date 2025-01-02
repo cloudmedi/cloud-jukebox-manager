@@ -26,7 +26,6 @@ class PlaylistHandler {
     downloadQueueManager.on('songCompleted', (song) => {
       logger.info(`Song ${song._id} downloaded successfully`);
       
-      // İlk şarkı indirildiğinde AudioPlayer'a bildir
       if (this.isFirstSong(song._id)) {
         audioPlayer.handleFirstSongReady(song._id, song.localPath);
       }
@@ -47,14 +46,17 @@ class PlaylistHandler {
     try {
       logger.info('Handling playlist:', playlist.name);
       
+      // Playlist için klasör oluştur
       const playlistDir = path.join(this.downloadPath, playlist._id);
       this.ensureDirectoryExists(playlistDir);
+      logger.info(`Created playlist directory: ${playlistDir}`);
 
       // İlk şarkıyı hemen indir
       const firstSong = playlist.songs[0];
       if (firstSong) {
         logger.info('Starting download of first song:', firstSong.name);
         
+        // İlk şarkıyı yüksek öncelikle kuyruğa ekle
         downloadQueueManager.addToQueue({
           song: firstSong,
           baseUrl: playlist.baseUrl,
@@ -64,10 +66,11 @@ class PlaylistHandler {
 
         // Şarkı yolunu güncelle
         firstSong.localPath = path.join(playlistDir, `${firstSong._id}.mp3`);
+        logger.info(`First song local path set to: ${firstSong.localPath}`);
       }
 
       // Kalan şarkıları kuyruğa ekle
-      logger.info('Adding remaining songs to queue');
+      logger.info(`Adding ${playlist.songs.length - 1} remaining songs to queue`);
       for (let i = 1; i < playlist.songs.length; i++) {
         const song = playlist.songs[i];
         logger.info(`Adding song to queue: ${song.name}`);
@@ -81,7 +84,7 @@ class PlaylistHandler {
         song.localPath = path.join(playlistDir, `${song._id}.mp3`);
       }
 
-      // Store playlist info
+      // Store'a playlist bilgisini kaydet
       const updatedPlaylist = {
         ...playlist,
         songs: playlist.songs
