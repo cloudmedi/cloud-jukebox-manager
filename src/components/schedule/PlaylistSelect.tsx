@@ -44,25 +44,25 @@ export function PlaylistSelect({ control }: PlaylistSelectProps) {
                 <ScrollArea className="h-[300px]">
                   {playlists.map((playlist) => (
                     <SelectItem key={playlist._id} value={playlist._id}>
-                      <div className="flex items-start gap-2">
+                      <div className="flex items-center gap-3">
                         {playlist.artwork ? (
                           <img 
                             src={`http://localhost:5000${playlist.artwork}`}
                             alt={playlist.name}
-                            className="h-8 w-8 rounded-sm object-cover flex-shrink-0"
+                            className="h-10 w-10 rounded-sm object-cover flex-shrink-0"
                             onError={(e) => {
                               const target = e.target as HTMLImageElement;
                               target.style.display = 'none';
                             }}
                           />
                         ) : (
-                          <div className="flex h-8 w-8 items-center justify-center rounded-sm bg-muted flex-shrink-0">
-                            <Music2 className="h-4 w-4 text-muted-foreground" />
+                          <div className="flex h-10 w-10 items-center justify-center rounded-sm bg-muted flex-shrink-0">
+                            <Music2 className="h-5 w-5 text-muted-foreground" />
                           </div>
                         )}
-                        <div className="flex flex-col justify-start">
-                          <p className="text-sm font-medium leading-none">{playlist.name}</p>
-                          <p className="text-xs text-muted-foreground mt-1">
+                        <div className="flex flex-col space-y-1 min-w-0">
+                          <p className="text-sm font-medium leading-none truncate">{playlist.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">
                             {playlist.songs?.length || 0} şarkı • {formatDuration(playlist.totalDuration || 0)}
                           </p>
                         </div>
