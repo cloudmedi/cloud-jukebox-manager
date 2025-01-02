@@ -133,6 +133,19 @@ class WebSocketServer {
     return sent;
   }
 
+  broadcastToAdmins(message) {
+    console.log('Broadcasting to admins:', message);
+    this.wss.clients.forEach(client => {
+      if (client.isAdmin && client.readyState === WebSocket.OPEN) {
+        try {
+          client.send(JSON.stringify(message));
+        } catch (error) {
+          console.error('Error broadcasting to admin:', error);
+        }
+      }
+    });
+  }
+
   findDeviceWebSocket(token) {
     let targetWs = null;
     this.wss.clients.forEach(client => {
