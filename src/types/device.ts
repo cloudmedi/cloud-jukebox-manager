@@ -32,7 +32,7 @@ export interface Device {
   deviceInfo?: DeviceInfo;
   
   // Playlist ve indirme durumu
-  playlistStatus?: 'loaded' | 'loading' | 'error';
+  playlistStatus?: 'loaded' | 'loading' | 'error' | null;
   downloadProgress?: number;
   downloadSpeed?: number;
   downloadedSongs?: number;
