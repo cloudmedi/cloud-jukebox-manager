@@ -1,7 +1,7 @@
+const { EventEmitter } = require('events');
 const axios = require('axios');
 const fs = require('fs');
 const path = require('path');
-const { EventEmitter } = require('events');
 const TimeoutManager = require('./utils/TimeoutManager');
 const NetworkErrorHandler = require('./utils/NetworkErrorHandler');
 const ChecksumVerifier = require('./utils/ChecksumVerifier');
@@ -21,20 +21,24 @@ class ChunkDownloadManager extends EventEmitter {
     this.maxConcurrentDownloads = bandwidthManager.maxConcurrentDownloads;
     this.timeoutManager = new TimeoutManager();
     this.isProcessing = false;
-    this.downloadPath = store.get('downloadPath');
-
-    if (!this.downloadPath) {
-      this.downloadPath = path.join(process.env.APPDATA || process.env.HOME, 'cloud-media-player', 'downloads');
-      store.set('downloadPath', this.downloadPath);
-    }
-
+    
+    // Temel indirme dizinini ayarla
+    const appData = process.env.APPDATA || process.env.HOME;
+    this.downloadPath = path.join(appData, 'cloud-media-player', 'downloads');
+    store.set('downloadPath', this.downloadPath);
+    
     this.ensureDirectoryExists(this.downloadPath);
     this.resumeIncompleteDownloads();
   }
 
   ensureDirectoryExists(dir) {
-    if (!fs.existsSync(dir)) {
-      fs.mkdirSync(dir, { recursive: true });
+    try {
+      if (!fs.existsSync(dir)) {
+        fs.mkdirSync(dir, { recursive: true });
+      }
+    } catch (error) {
+      logger.error(`Directory creation error: ${error.message}`);
+      throw error;
     }
   }
 
@@ -99,6 +103,7 @@ class ChunkDownloadManager extends EventEmitter {
   async downloadSong(song, baseUrl, playlistId) {
     logger.info(`Starting download for song: ${song.name}`);
     
+    // Playlist dizinini oluştur
     const playlistDir = path.join(this.downloadPath, playlistId);
     this.ensureDirectoryExists(playlistDir);
     
