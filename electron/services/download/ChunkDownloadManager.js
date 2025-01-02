@@ -1,5 +1,7 @@
 const { EventEmitter } = require('events');
 const axios = require('axios');
+const path = require('path');
+const fs = require('fs');
 const { createLogger } = require('../../utils/logger');
 const tempFileManager = require('./managers/TempFileManager');
 const chunkOrderManager = require('./managers/ChunkOrderManager');
