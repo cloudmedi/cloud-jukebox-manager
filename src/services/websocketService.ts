@@ -24,6 +24,12 @@ class WebSocketService {
     this.addMessageHandler('playlist', this.handlePlaylistMessage.bind(this));
   }
 
+  private handlePlaylistMessage(message: any) {
+    console.log('Handling playlist message:', message);
+    // Add any specific playlist message handling logic here
+    toast.success('Playlist güncellendi');
+  }
+
   public static getInstance(): WebSocketService {
     if (!WebSocketService.instance) {
       WebSocketService.instance = new WebSocketService();
