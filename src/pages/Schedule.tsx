@@ -9,6 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { PlaylistScheduleForm } from "@/components/schedule/PlaylistScheduleForm";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import { cn } from "@/lib/utils";
 
 interface Schedule {
   _id: string;
@@ -69,12 +70,15 @@ const Schedule = () => {
       start: schedule.startDate,
       end: schedule.endDate,
       backgroundColor: schedule.status === 'active' ? '#10b981' : '#6b7280',
+      borderColor: schedule.status === 'active' ? '#059669' : '#4b5563',
+      textColor: '#ffffff',
+      classNames: ['rounded-md', 'shadow-sm', 'border', 'hover:opacity-90', 'transition-opacity'],
     };
   }).filter(Boolean) || [];
 
   if (isLoading) {
     return (
-      <div className="space-y-6">
+      <div className="space-y-6 p-6">
         <div className="flex items-center justify-between">
           <Skeleton className="h-8 w-48" />
           <div className="flex items-center gap-2">
@@ -89,21 +93,25 @@ const Schedule = () => {
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-[600px]">
-        <p className="text-destructive">Failed to load schedules. Please try again later.</p>
+      <div className="flex items-center justify-center h-[600px] text-destructive">
+        <p>Failed to load schedules. Please try again later.</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
-        <h2 className="text-3xl font-bold tracking-tight">Zamanlama</h2>
+        <h2 className="text-2xl font-semibold tracking-tight">Zamanlama</h2>
         <div className="flex items-center gap-2">
           <Button
             variant={view === "timeGridWeek" ? "default" : "outline"}
             size="sm"
             onClick={() => setView("timeGridWeek")}
+            className={cn(
+              "transition-colors",
+              view === "timeGridWeek" && "bg-primary text-primary-foreground shadow-sm"
+            )}
           >
             <List className="h-4 w-4 mr-2" />
             Haftalık
@@ -112,6 +120,10 @@ const Schedule = () => {
             variant={view === "dayGridMonth" ? "default" : "outline"}
             size="sm"
             onClick={() => setView("dayGridMonth")}
+            className={cn(
+              "transition-colors",
+              view === "dayGridMonth" && "bg-primary text-primary-foreground shadow-sm"
+            )}
           >
             <Calendar className="h-4 w-4 mr-2" />
             Aylık
@@ -119,23 +131,33 @@ const Schedule = () => {
         </div>
       </div>
 
-      <div className="bg-background rounded-lg border p-4">
-        <FullCalendar
-          plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
-          initialView={view}
-          headerToolbar={false}
-          selectable={true}
-          selectMirror={true}
-          dayMaxEvents={true}
-          weekends={true}
-          events={events}
-          select={handleDateSelect}
-          height="auto"
-          locale="tr"
-          nowIndicator={true}
-          slotMinTime="00:00:00"
-          slotMaxTime="24:00:00"
-        />
+      <div className="bg-card rounded-lg border shadow-sm">
+        <div className="p-4">
+          <FullCalendar
+            plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
+            initialView={view}
+            headerToolbar={false}
+            selectable={true}
+            selectMirror={true}
+            dayMaxEvents={true}
+            weekends={true}
+            events={events}
+            select={handleDateSelect}
+            height="auto"
+            locale="tr"
+            nowIndicator={true}
+            slotMinTime="00:00:00"
+            slotMaxTime="24:00:00"
+            allDaySlot={false}
+            slotEventOverlap={false}
+            eventDisplay="block"
+            slotLaneClassNames="bg-background hover:bg-muted/50 transition-colors"
+            dayHeaderClassNames="text-sm font-medium text-muted-foreground"
+            slotLabelClassNames="text-sm text-muted-foreground"
+            dayCellClassNames="hover:bg-muted/50 transition-colors"
+            eventClassNames="rounded-md shadow-sm border hover:opacity-90 transition-opacity"
+          />
+        </div>
       </div>
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
