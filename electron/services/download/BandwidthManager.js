@@ -24,7 +24,7 @@ class BandwidthManager extends EventEmitter {
 
   canStartNewDownload() {
     const canStart = this.activeDownloads < this.maxConcurrentDownloads;
-    logger.debug(`Checking if can start new download:`, {
+    logger.debug(`[BANDWIDTH CHECK] Can start new download:`, {
       activeDownloads: this.activeDownloads,
       maxConcurrentDownloads: this.maxConcurrentDownloads,
       canStart
@@ -38,20 +38,23 @@ class BandwidthManager extends EventEmitter {
       this.downloadStats.set(downloadId, {
         startTime: Date.now(),
         bytesDownloaded: 0,
-        currentSpeed: 0
+        currentSpeed: 0,
+        lastUpdate: Date.now()
       });
       
-      logger.info(`Starting new download:`, {
+      logger.info(`[DOWNLOAD START] New download started:`, {
         downloadId,
         activeDownloads: this.activeDownloads,
-        remainingSlots: this.maxConcurrentDownloads - this.activeDownloads
+        remainingSlots: this.maxConcurrentDownloads - this.activeDownloads,
+        priority: this.downloadPriority
       });
       return true;
     }
     
-    logger.warn(`Cannot start new download: maximum concurrent downloads reached`, {
+    logger.warn(`[BANDWIDTH LIMIT] Cannot start new download: maximum concurrent downloads reached`, {
       downloadId,
-      activeDownloads: this.activeDownloads
+      activeDownloads: this.activeDownloads,
+      maxLimit: this.maxConcurrentDownloads
     });
     return false;
   }
@@ -60,14 +63,34 @@ class BandwidthManager extends EventEmitter {
     const stats = this.downloadStats.get(downloadId);
     if (stats) {
       const now = Date.now();
-      const timeDiff = (now - stats.startTime) / 1000; // Convert to seconds
-      const speed = bytesDownloaded / timeDiff;
+      const timeDiff = (now - stats.lastUpdate) / 1000; // Convert to seconds
+      const bytesDiff = bytesDownloaded - stats.bytesDownloaded;
+      const currentSpeed = bytesDiff / timeDiff;
+      
+      // Check if speed exceeds limit
+      if (currentSpeed > this.maxChunkSpeed) {
+        logger.warn(`[SPEED LIMIT] Download speed exceeds limit:`, {
+          downloadId,
+          currentSpeed: `${(currentSpeed / (1024 * 1024)).toFixed(2)}MB/s`,
+          maxSpeed: `${(this.maxChunkSpeed / (1024 * 1024)).toFixed(2)}MB/s`
+        });
+      }
       
       this.downloadStats.set(downloadId, {
         ...stats,
         bytesDownloaded,
-        currentSpeed: speed
+        currentSpeed,
+        lastUpdate: now
       });
+
+      // Log progress every 1MB
+      if (Math.floor(bytesDownloaded / (1024 * 1024)) > Math.floor(stats.bytesDownloaded / (1024 * 1024))) {
+        logger.info(`[DOWNLOAD PROGRESS] Download progress update:`, {
+          downloadId,
+          totalDownloaded: `${(bytesDownloaded / (1024 * 1024)).toFixed(2)}MB`,
+          currentSpeed: `${(currentSpeed / (1024 * 1024)).toFixed(2)}MB/s`
+        });
+      }
     }
   }
 
@@ -79,11 +102,12 @@ class BandwidthManager extends EventEmitter {
         const totalTime = (Date.now() - stats.startTime) / 1000;
         const averageSpeed = stats.bytesDownloaded / totalTime;
         
-        logger.info(`Download finished:`, {
+        logger.info(`[DOWNLOAD COMPLETE] Download finished:`, {
           downloadId,
-          totalBytes: stats.bytesDownloaded,
+          totalBytes: `${(stats.bytesDownloaded / (1024 * 1024)).toFixed(2)}MB`,
           totalTime: `${totalTime.toFixed(2)}s`,
-          averageSpeed: `${(averageSpeed / (1024 * 1024)).toFixed(2)}MB/s`
+          averageSpeed: `${(averageSpeed / (1024 * 1024)).toFixed(2)}MB/s`,
+          remainingActiveDownloads: this.activeDownloads
         });
         
         this.downloadStats.delete(downloadId);
@@ -99,9 +123,11 @@ class BandwidthManager extends EventEmitter {
         downloaded: `${(stat.bytesDownloaded / (1024 * 1024)).toFixed(2)}MB`
       }));
       
-      logger.info(`Current download stats:`, {
+      logger.info(`[BANDWIDTH STATUS] Current download stats:`, {
         activeDownloads: this.activeDownloads,
-        stats
+        maxConcurrentDownloads: this.maxConcurrentDownloads,
+        priority: this.downloadPriority,
+        downloads: stats
       });
     }
   }
@@ -112,7 +138,7 @@ class BandwidthManager extends EventEmitter {
 
   setPriority(priority) {
     this.downloadPriority = priority;
-    logger.info(`Download priority changed:`, { priority });
+    logger.info(`[PRIORITY CHANGE] Download priority changed:`, { priority });
   }
 }
 

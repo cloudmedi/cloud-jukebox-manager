@@ -82,6 +82,7 @@ class ChunkDownloadManager extends EventEmitter {
   async _performChunkDownload(url, start, end, songId, downloadId) {
     const startTime = Date.now();
     let downloadedBytes = 0;
+    let lastLogTime = Date.now();
 
     const response = await axios({
       url,
@@ -93,6 +94,19 @@ class ChunkDownloadManager extends EventEmitter {
       onDownloadProgress: (progressEvent) => {
         downloadedBytes = progressEvent.loaded;
         bandwidthManager.updateProgress(downloadId, downloadedBytes);
+        
+        // Her saniyede bir hız logla
+        const now = Date.now();
+        if (now - lastLogTime >= 1000) {
+          const speed = (downloadedBytes / ((now - startTime) / 1000));
+          logger.debug(`[CHUNK DOWNLOAD] Progress:`, {
+            songId,
+            chunkId: `${start}-${end}`,
+            downloadedBytes: `${(downloadedBytes / (1024 * 1024)).toFixed(2)}MB`,
+            speed: `${(speed / (1024 * 1024)).toFixed(2)}MB/s`
+          });
+          lastLogTime = now;
+        }
       }
     });
 
@@ -100,9 +114,9 @@ class ChunkDownloadManager extends EventEmitter {
     const duration = (endTime - startTime) / 1000;
     const speed = downloadedBytes / duration;
 
-    logger.info(`Chunk download completed:`, {
+    logger.info(`[CHUNK COMPLETE] Chunk download completed:`, {
       songId,
-      chunkSize: downloadedBytes,
+      chunkSize: `${(downloadedBytes / (1024 * 1024)).toFixed(2)}MB`,
       duration: `${duration.toFixed(2)}s`,
       speed: `${(speed / (1024 * 1024)).toFixed(2)}MB/s`
     });
