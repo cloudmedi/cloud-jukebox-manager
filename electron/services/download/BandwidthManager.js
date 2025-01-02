@@ -60,17 +60,16 @@ class BandwidthManager extends EventEmitter {
     return false;
   }
 
-  async updateProgress(downloadId, bytesDownloaded) {
+  async updateProgress(downloadId, bytes) {
     const stats = this.downloadStats.get(downloadId);
     if (stats) {
       const now = Date.now();
       const timeDiff = (now - stats.lastUpdate) / 1000;
-      const bytesDiff = bytesDownloaded - stats.bytesDownloaded;
       
       // Throttling uygula
-      await this.throttleController.throttle(bytesDiff);
+      await this.throttleController.throttle(bytes);
 
-      const currentSpeed = bytesDiff / timeDiff;
+      const currentSpeed = bytes / timeDiff;
       
       if (currentSpeed > this.maxChunkSpeed) {
         logger.warn(`[SPEED LIMIT] Download speed exceeds limit:`, {
@@ -82,7 +81,7 @@ class BandwidthManager extends EventEmitter {
       
       this.downloadStats.set(downloadId, {
         ...stats,
-        bytesDownloaded,
+        bytesDownloaded: stats.bytesDownloaded + bytes,
         currentSpeed,
         lastUpdate: now
       });
