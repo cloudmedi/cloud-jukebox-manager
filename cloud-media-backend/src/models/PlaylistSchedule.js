@@ -42,7 +42,7 @@ const playlistScheduleSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Zamanlama çakışması kontrolü - Düzeltilmiş versiyon
+// Zamanlama çakışması kontrolü - Yeni versiyon
 playlistScheduleSchema.methods.checkConflict = async function() {
   // Eğer hedef cihaz veya grup yoksa çakışma kontrolü yapmaya gerek yok
   if ((!this.targets.devices || this.targets.devices.length === 0) && 
@@ -55,11 +55,17 @@ playlistScheduleSchema.methods.checkConflict = async function() {
     status: 'active'
   };
 
-  // Tarih aralığı kontrolü - Düzeltilmiş versiyon
-  query.$or = [{
-    startDate: { $lte: this.endDate },
-    endDate: { $gte: this.startDate }
-  }];
+  // Tarih aralığı kontrolü
+  query.$and = [
+    {
+      $or: [
+        {
+          startDate: { $lte: this.endDate },
+          endDate: { $gte: this.startDate }
+        }
+      ]
+    }
+  ];
 
   // Hedef cihaz veya gruplardan herhangi biri çakışıyorsa kontrol et
   const targetConditions = [];
@@ -74,7 +80,7 @@ playlistScheduleSchema.methods.checkConflict = async function() {
 
   // Hedef koşullarını ekle
   if (targetConditions.length > 0) {
-    query.$and = [{ $or: targetConditions }];
+    query.$and.push({ $or: targetConditions });
   }
 
   console.log('Çakışma kontrolü sorgusu:', JSON.stringify(query, null, 2));
