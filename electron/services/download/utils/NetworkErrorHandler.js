@@ -20,7 +20,7 @@ class NetworkErrorHandler {
       (error.response && retryableStatusCodes.includes(error.response.status)) ||
       error.message.includes('timeout') ||
       error.message.includes('network error') ||
-      error.message.includes('chunk failed')
+      error.message.includes('checksum verification failed')
     );
 
     logger.debug('Error retry check:', {
@@ -31,6 +31,18 @@ class NetworkErrorHandler {
     });
 
     return isRetryable;
+  }
+
+  static async handleNetworkError(error, retryOperation, context, maxRetries = 3) {
+    if (!this.isRetryableError(error) || context.retryCount >= maxRetries) {
+      throw error;
+    }
+
+    const delay = Math.pow(2, context.retryCount) * 1000; // Exponential backoff
+    logger.info(`Retrying operation in ${delay}ms (attempt ${context.retryCount + 1}/${maxRetries})`);
+    
+    await new Promise(resolve => setTimeout(resolve, delay));
+    return retryOperation();
   }
 }
 
