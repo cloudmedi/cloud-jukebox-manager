@@ -28,20 +28,24 @@ class DownloadProgressService extends EventEmitter {
     this.emitProgress(downloadState);
   }
 
-  updateProgress(playlistId, chunkInfo) {
+  updateChunkProgress(playlistId, chunkInfo) {
     const download = this.activeDownloads.get(playlistId);
     if (!download) {
-      console.log('No active download found for playlist:', playlistId);
+      console.warn('No active download found for playlist:', playlistId);
       return;
     }
 
+    download.completedChunks.push(chunkInfo);
+    this.calculateProgress(download);
+    this.emitProgress(download);
+  }
+
+  calculateProgress(download) {
+    const totalChunks = download.totalSongs * 100; // Assuming 100 chunks per song
+    download.progress = (download.completedChunks.length / totalChunks) * 100;
+    
     const now = Date.now();
     const elapsed = (now - download.startTime) / 1000;
-
-    download.completedChunks.push(chunkInfo);
-    
-    const totalChunks = download.totalSongs * 100;
-    download.progress = (download.completedChunks.length / totalChunks) * 100;
     
     const totalBytes = download.completedChunks.reduce((sum, chunk) => sum + chunk.size, 0);
     download.downloadSpeed = totalBytes / elapsed;
@@ -49,11 +53,6 @@ class DownloadProgressService extends EventEmitter {
     const remainingChunks = totalChunks - download.completedChunks.length;
     const avgChunkTime = elapsed / download.completedChunks.length;
     download.estimatedTimeRemaining = remainingChunks * avgChunkTime;
-
-    const uniqueSongs = new Set(download.completedChunks.map(c => c.songId));
-    download.downloadedSongs = uniqueSongs.size;
-
-    this.emitProgress(download);
   }
 
   emitProgress(downloadState) {
@@ -89,15 +88,7 @@ class DownloadProgressService extends EventEmitter {
     download.lastError = error.message;
     download.retryCount++;
     
-    try {
-      this.emitProgress(download);
-    } catch (error) {
-      console.error('Error sending error update:', error);
-    }
-  }
-
-  getDownloadState(playlistId) {
-    return this.activeDownloads.get(playlistId);
+    this.emitProgress(download);
   }
 }
 
