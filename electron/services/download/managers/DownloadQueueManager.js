@@ -51,6 +51,7 @@ class DownloadQueueManager extends EventEmitter {
           await this.downloadSong(item);
         } catch (error) {
           logger.error(`Error downloading song: ${item.song.name}`, error);
+          this.emit('songError', { song: item.song, error });
         } finally {
           this.activeDownloads--;
           this.processQueue();
@@ -111,4 +112,6 @@ class DownloadQueueManager extends EventEmitter {
   }
 }
 
-module.exports = new DownloadQueueManager();
+// Create and export a single instance
+const downloadQueueManager = new DownloadQueueManager();
+module.exports = downloadQueueManager;

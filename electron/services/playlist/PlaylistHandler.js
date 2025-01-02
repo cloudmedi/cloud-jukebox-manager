@@ -1,11 +1,11 @@
-const { app } = require('electron');
-const path = require('path');
 const fs = require('fs');
+const path = require('path');
 const Store = require('electron-store');
 const store = new Store();
-const { downloadQueueManager } = require('../download/managers/DownloadQueueManager');
+const downloadQueueManager = require('../download/managers/DownloadQueueManager');
 const audioPlayer = require('../audio/AudioPlayer');
 const { createLogger } = require('../../utils/logger');
+const { app } = require('electron');
 
 const logger = createLogger('playlist-handler');
 
@@ -14,7 +14,6 @@ class PlaylistHandler {
     this.downloadPath = path.join(app.getPath('userData'), 'downloads');
     this.ensureDirectoryExists(this.downloadPath);
     
-    // Make sure downloadQueueManager is initialized before setting up listeners
     if (downloadQueueManager && typeof downloadQueueManager.on === 'function') {
       this.setupDownloadListeners();
     } else {
@@ -62,7 +61,6 @@ class PlaylistHandler {
       this.ensureDirectoryExists(playlistDir);
       logger.info(`Created playlist directory: ${playlistDir}`);
 
-      // İlk şarkıyı hemen indir
       const firstSong = playlist.songs[0];
       if (firstSong) {
         logger.info('Starting download of first song:', firstSong.name);
