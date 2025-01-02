@@ -42,7 +42,7 @@ const playlistScheduleSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Zamanlama çakışması kontrolü - Güncellenmiş versiyon
+// Zamanlama çakışması kontrolü - Düzeltilmiş versiyon
 playlistScheduleSchema.methods.checkConflict = async function() {
   // Eğer hedef cihaz veya grup yoksa çakışma kontrolü yapmaya gerek yok
   if ((!this.targets.devices || this.targets.devices.length === 0) && 
@@ -52,20 +52,32 @@ playlistScheduleSchema.methods.checkConflict = async function() {
 
   const query = {
     _id: { $ne: this._id }, // Kendisi hariç
-    status: 'active',
-    startDate: { $lt: this.endDate },
-    endDate: { $gt: this.startDate }
+    status: 'active'
   };
 
+  // Tarih aralığı kontrolü - Düzeltilmiş versiyon
+  query.$or = [{
+    startDate: { $lte: this.endDate },
+    endDate: { $gte: this.startDate }
+  }];
+
   // Hedef cihaz veya gruplardan herhangi biri çakışıyorsa kontrol et
+  const targetConditions = [];
+  
   if (this.targets.devices && this.targets.devices.length > 0) {
-    query['targets.devices'] = { $in: this.targets.devices };
+    targetConditions.push({ 'targets.devices': { $in: this.targets.devices } });
   }
   
   if (this.targets.groups && this.targets.groups.length > 0) {
-    query['targets.groups'] = { $in: this.targets.groups };
+    targetConditions.push({ 'targets.groups': { $in: this.targets.groups } });
   }
 
+  // Hedef koşullarını ekle
+  if (targetConditions.length > 0) {
+    query.$and = [{ $or: targetConditions }];
+  }
+
+  console.log('Çakışma kontrolü sorgusu:', JSON.stringify(query, null, 2));
   const conflictingSchedules = await this.constructor.find(query);
   console.log('Çakışan zamanlamalar:', conflictingSchedules);
   
