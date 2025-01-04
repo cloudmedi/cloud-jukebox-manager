@@ -29,10 +29,17 @@ export function EventDetailDialog({ event, isOpen, onClose }: EventDetailDialogP
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
+      if (!event?.extendedProps?.originalEventId) {
+        throw new Error("Event ID bulunamadı");
+      }
+
       console.log("Silme işlemi başlatıldı. Event ID:", event.extendedProps.originalEventId);
       
       const response = await fetch(`http://localhost:5000/api/playlist-schedules/${event.extendedProps.originalEventId}`, {
         method: "DELETE",
+        headers: {
+          'Content-Type': 'application/json'
+        }
       });
       
       if (!response.ok) {
@@ -60,7 +67,11 @@ export function EventDetailDialog({ event, isOpen, onClose }: EventDetailDialogP
   });
 
   const handleDelete = () => {
-    console.log("Silme işlemi onaylandı");
+    if (!event?.extendedProps?.originalEventId) {
+      toast.error("Event ID bulunamadı");
+      return;
+    }
+    console.log("Silme işlemi onaylandı, ID:", event.extendedProps.originalEventId);
     deleteMutation.mutate();
   };
 
