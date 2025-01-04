@@ -4,7 +4,8 @@ import dayGridPlugin from "@fullcalendar/daygrid";
 import timeGridPlugin from "@fullcalendar/timegrid";
 import interactionPlugin from "@fullcalendar/interaction";
 import { formatEventForCalendar } from "@/utils/scheduleUtils";
-import { useToast } from "@/components/ui/use-toast";
+import { useToast } from "@/hooks/use-toast";
+import trLocale from '@fullcalendar/core/locales/tr';
 
 interface CalendarViewProps {
   view: "timeGridWeek" | "dayGridMonth";
@@ -72,15 +73,18 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
     }
   };
 
-  // Tüm zamanlamaları tekrarlı eventlere dönüştür
   const events = schedules?.flatMap((schedule: any) => formatEventForCalendar(schedule)) || [];
 
   if (isLoading) {
-    return <div>Yükleniyor...</div>;
+    return <div className="flex items-center justify-center h-64">Yükleniyor...</div>;
   }
 
   if (error) {
-    return <div>Hata oluştu</div>;
+    return (
+      <div className="flex items-center justify-center h-64 text-red-500">
+        Hata oluştu: {error instanceof Error ? error.message : 'Bilinmeyen hata'}
+      </div>
+    );
   }
 
   return (
@@ -88,7 +92,13 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView={view}
-        headerToolbar={false}
+        headerToolbar={{
+          left: 'prev,next today',
+          center: 'title',
+          right: 'dayGridMonth,timeGridWeek'
+        }}
+        locale={trLocale}
+        firstDay={1}
         selectable={true}
         selectMirror={true}
         dayMaxEvents={true}
@@ -97,7 +107,6 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
         select={onDateSelect}
         eventClick={onEventClick}
         height="auto"
-        locale="tr"
         nowIndicator={true}
         slotMinTime="00:00:00"
         slotMaxTime="24:00:00"
@@ -109,6 +118,8 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
           end: '24:00',
           dows: [0, 1, 2, 3, 4, 5, 6]
         }}
+        allDaySlot={false}
+        dayMaxEventRows={true}
       />
     </div>
   );
