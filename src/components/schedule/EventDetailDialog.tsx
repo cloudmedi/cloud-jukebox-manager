@@ -62,19 +62,11 @@ export function EventDetailDialog({ event, isOpen, onClose }: EventDetailDialogP
     onError: (error: Error) => {
       console.error("Silme hatası:", error);
       toast.error(`Hata: ${error.message}`);
-      setShowDeleteAlert(false);
     },
   });
 
-  const handleDelete = (e: React.MouseEvent) => {
-    e.preventDefault();
-    e.stopPropagation();
-    
-    if (!event?.extendedProps?.originalEventId) {
-      toast.error("Event ID bulunamadı");
-      return;
-    }
-    console.log("Silme işlemi onaylandı, ID:", event.extendedProps.originalEventId);
+  const handleDelete = () => {
+    console.log("Silme işlemi tetiklendi");
     deleteMutation.mutate();
   };
 
@@ -119,7 +111,7 @@ export function EventDetailDialog({ event, isOpen, onClose }: EventDetailDialogP
       </Dialog>
 
       <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
-        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Bu zamanlamayı silmek istediğinizden emin misiniz?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -127,13 +119,7 @@ export function EventDetailDialog({ event, isOpen, onClose }: EventDetailDialogP
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={(e) => {
-              e.preventDefault();
-              e.stopPropagation();
-              setShowDeleteAlert(false);
-            }}>
-              İptal
-            </AlertDialogCancel>
+            <AlertDialogCancel>İptal</AlertDialogCancel>
             <Button
               variant="destructive"
               onClick={handleDelete}
