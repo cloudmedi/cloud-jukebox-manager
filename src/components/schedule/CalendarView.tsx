@@ -130,26 +130,58 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
         allDaySlot={false}
         dayMaxEventRows={true}
         eventDidMount={(info) => {
-          if (info.event.extendedProps?.tooltip) {
-            const tooltip = document.createElement('div');
-            tooltip.className = 'bg-background border rounded-md shadow-lg p-2 text-sm';
-            tooltip.innerHTML = info.event.extendedProps.tooltip.replace('\n', '<br/>');
-            
-            info.el.addEventListener('mouseover', () => {
-              document.body.appendChild(tooltip);
-              const rect = info.el.getBoundingClientRect();
-              tooltip.style.position = 'fixed';
-              tooltip.style.top = `${rect.bottom + 5}px`;
-              tooltip.style.left = `${rect.left}px`;
-              tooltip.style.zIndex = '10000';
-            });
+          let tooltipTimeout: number | null = null;
+          let tooltip: HTMLDivElement | null = null;
 
-            info.el.addEventListener('mouseout', () => {
-              if (document.body.contains(tooltip)) {
-                document.body.removeChild(tooltip);
-              }
-            });
-          }
+          const createTooltip = () => {
+            if (tooltip) return; // Eğer zaten varsa yeni tooltip oluşturma
+            
+            tooltip = document.createElement('div');
+            tooltip.className = 'bg-background border rounded-md shadow-lg p-2 text-sm';
+            tooltip.innerHTML = info.event.extendedProps?.tooltip?.replace('\n', '<br/>') || '';
+            document.body.appendChild(tooltip);
+            
+            const rect = info.el.getBoundingClientRect();
+            tooltip.style.position = 'fixed';
+            tooltip.style.top = `${rect.bottom + 5}px`;
+            tooltip.style.left = `${rect.left}px`;
+            tooltip.style.zIndex = '10000';
+          };
+
+          const removeTooltip = () => {
+            if (tooltip && document.body.contains(tooltip)) {
+              document.body.removeChild(tooltip);
+              tooltip = null;
+            }
+          };
+
+          const handleMouseEnter = () => {
+            if (tooltipTimeout) {
+              window.clearTimeout(tooltipTimeout);
+              tooltipTimeout = null;
+            }
+            createTooltip();
+          };
+
+          const handleMouseLeave = () => {
+            tooltipTimeout = window.setTimeout(() => {
+              removeTooltip();
+              tooltipTimeout = null;
+            }, 100);
+          };
+
+          info.el.addEventListener('mouseenter', handleMouseEnter);
+          info.el.addEventListener('mouseleave', handleMouseLeave);
+
+          // Cleanup function
+          return () => {
+            info.el.removeEventListener('mouseenter', handleMouseEnter);
+            info.el.removeEventListener('mouseleave', handleMouseLeave);
+            if (tooltipTimeout) {
+              window.clearTimeout(tooltipTimeout);
+            }
+            removeTooltip();
+          };
         }}
       />
     </div>
