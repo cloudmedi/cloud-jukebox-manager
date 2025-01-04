@@ -66,7 +66,11 @@ export function EventDetailDialog({ event, isOpen, onClose }: EventDetailDialogP
   });
 
   const handleDelete = () => {
-    console.log("Silme işlemi tetiklendi");
+    if (!event?.extendedProps?.originalEventId) {
+      toast.error("Event ID bulunamadı");
+      return;
+    }
+    console.log("Silme işlemi tetiklendi, ID:", event.extendedProps.originalEventId);
     deleteMutation.mutate();
   };
 
@@ -110,8 +114,16 @@ export function EventDetailDialog({ event, isOpen, onClose }: EventDetailDialogP
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
-        <AlertDialogContent>
+      <AlertDialog open={showDeleteAlert} onOpenChange={(open) => {
+        if (!deleteMutation.isPending) {
+          setShowDeleteAlert(open);
+        }
+      }}>
+        <AlertDialogContent onPointerDownOutside={(e) => {
+          if (!deleteMutation.isPending) {
+            e.preventDefault();
+          }
+        }}>
           <AlertDialogHeader>
             <AlertDialogTitle>Bu zamanlamayı silmek istediğinizden emin misiniz?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -119,14 +131,14 @@ export function EventDetailDialog({ event, isOpen, onClose }: EventDetailDialogP
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>İptal</AlertDialogCancel>
-            <Button
-              variant="destructive"
+            <AlertDialogCancel disabled={deleteMutation.isPending}>İptal</AlertDialogCancel>
+            <AlertDialogAction
               onClick={handleDelete}
               disabled={deleteMutation.isPending}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               {deleteMutation.isPending ? "Siliniyor..." : "Sil"}
-            </Button>
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
