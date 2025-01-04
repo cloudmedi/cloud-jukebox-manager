@@ -1,4 +1,4 @@
-import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { format } from "date-fns";
 import { tr } from "date-fns/locale";
@@ -79,9 +79,12 @@ export function EventDetailDialog({ event, isOpen, onClose }: EventDetailDialogP
   return (
     <>
       <Dialog open={isOpen} onOpenChange={onClose}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent>
           <DialogHeader>
             <DialogTitle>Zamanlama Detayları</DialogTitle>
+            <DialogDescription>
+              Seçilen zamanlamanın detaylarını görüntüleyin ve yönetin.
+            </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
             <div>
