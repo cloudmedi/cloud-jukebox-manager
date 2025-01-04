@@ -29,26 +29,30 @@ export function EventDetailDialog({ event, isOpen, onClose }: EventDetailDialogP
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      const response = await fetch(`http://localhost:5000/api/playlist-schedules/${event.id}`, {
+      console.log("Deleting schedule with ID:", event.extendedProps.originalEventId);
+      const response = await fetch(`http://localhost:5000/api/playlist-schedules/${event.extendedProps.originalEventId}`, {
         method: "DELETE",
       });
+      
       if (!response.ok) {
-        throw new Error("Zamanlama silinemedi");
+        const errorData = await response.json();
+        throw new Error(errorData.message || "Zamanlama silinemedi");
       }
     },
     onSuccess: () => {
       toast.success("Zamanlama başarıyla silindi");
       queryClient.invalidateQueries({ queryKey: ["playlist-schedules"] });
       onClose();
+      setShowDeleteAlert(false);
     },
     onError: (error: Error) => {
       toast.error(`Hata: ${error.message}`);
+      setShowDeleteAlert(false);
     },
   });
 
   const handleDelete = () => {
     deleteMutation.mutate();
-    setShowDeleteAlert(false);
   };
 
   if (!event) return null;

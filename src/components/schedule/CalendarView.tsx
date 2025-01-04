@@ -73,10 +73,12 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
     }
   };
 
-  const events = schedules?.flatMap((schedule: any) => formatEventForCalendar(schedule)) || [];
-
   if (isLoading) {
-    return <div className="flex items-center justify-center h-64">Yükleniyor...</div>;
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900"></div>
+      </div>
+    );
   }
 
   if (error) {
@@ -87,20 +89,7 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
     );
   }
 
-  // Global tooltip yönetimi için
-  let activeTooltip: HTMLDivElement | null = null;
-  let activeTimeout: number | null = null;
-
-  const removeGlobalTooltip = () => {
-    if (activeTooltip && document.body.contains(activeTooltip)) {
-      document.body.removeChild(activeTooltip);
-      activeTooltip = null;
-    }
-    if (activeTimeout) {
-      window.clearTimeout(activeTimeout);
-      activeTimeout = null;
-    }
-  };
+  const events = schedules?.flatMap((schedule: any) => formatEventForCalendar(schedule)) || [];
 
   return (
     <div className="bg-background rounded-lg border p-4">
@@ -126,10 +115,7 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
         slotMaxTime="24:00:00"
         selectOverlap={false}
         editable={true}
-        eventDrop={(info) => {
-          removeGlobalTooltip();
-          handleEventDrop(info);
-        }}
+        eventDrop={handleEventDrop}
         eventTimeFormat={{
           hour: '2-digit',
           minute: '2-digit',
@@ -147,38 +133,6 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
         }}
         allDaySlot={false}
         dayMaxEventRows={true}
-        eventDidMount={(info) => {
-          const handleMouseEnter = () => {
-            removeGlobalTooltip(); // Varolan tooltip'i kaldır
-
-            activeTooltip = document.createElement('div');
-            activeTooltip.className = 'bg-background border rounded-md shadow-lg p-2 text-sm';
-            activeTooltip.innerHTML = info.event.extendedProps?.tooltip?.replace('\n', '<br/>') || '';
-            document.body.appendChild(activeTooltip);
-            
-            const rect = info.el.getBoundingClientRect();
-            activeTooltip.style.position = 'fixed';
-            activeTooltip.style.top = `${rect.bottom + 5}px`;
-            activeTooltip.style.left = `${rect.left}px`;
-            activeTooltip.style.zIndex = '10000';
-          };
-
-          const handleMouseLeave = () => {
-            if (activeTimeout) {
-              window.clearTimeout(activeTimeout);
-            }
-            activeTimeout = window.setTimeout(removeGlobalTooltip, 100);
-          };
-
-          info.el.addEventListener('mouseenter', handleMouseEnter);
-          info.el.addEventListener('mouseleave', handleMouseLeave);
-
-          return () => {
-            info.el.removeEventListener('mouseenter', handleMouseEnter);
-            info.el.removeEventListener('mouseleave', handleMouseLeave);
-            removeGlobalTooltip();
-          };
-        }}
       />
     </div>
   );
