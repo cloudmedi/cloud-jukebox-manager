@@ -87,6 +87,21 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
     );
   }
 
+  // Global tooltip yönetimi için
+  let activeTooltip: HTMLDivElement | null = null;
+  let activeTimeout: number | null = null;
+
+  const removeGlobalTooltip = () => {
+    if (activeTooltip && document.body.contains(activeTooltip)) {
+      document.body.removeChild(activeTooltip);
+      activeTooltip = null;
+    }
+    if (activeTimeout) {
+      window.clearTimeout(activeTimeout);
+      activeTimeout = null;
+    }
+  };
+
   return (
     <div className="bg-background rounded-lg border p-4">
       <FullCalendar
@@ -111,7 +126,10 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
         slotMaxTime="24:00:00"
         selectOverlap={false}
         editable={true}
-        eventDrop={handleEventDrop}
+        eventDrop={(info) => {
+          removeGlobalTooltip();
+          handleEventDrop(info);
+        }}
         eventTimeFormat={{
           hour: '2-digit',
           minute: '2-digit',
@@ -130,57 +148,35 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
         allDaySlot={false}
         dayMaxEventRows={true}
         eventDidMount={(info) => {
-          let tooltipTimeout: number | null = null;
-          let tooltip: HTMLDivElement | null = null;
+          const handleMouseEnter = () => {
+            removeGlobalTooltip(); // Varolan tooltip'i kaldır
 
-          const createTooltip = () => {
-            if (tooltip) return; // Eğer zaten varsa yeni tooltip oluşturma
-            
-            tooltip = document.createElement('div');
-            tooltip.className = 'bg-background border rounded-md shadow-lg p-2 text-sm';
-            tooltip.innerHTML = info.event.extendedProps?.tooltip?.replace('\n', '<br/>') || '';
-            document.body.appendChild(tooltip);
+            activeTooltip = document.createElement('div');
+            activeTooltip.className = 'bg-background border rounded-md shadow-lg p-2 text-sm';
+            activeTooltip.innerHTML = info.event.extendedProps?.tooltip?.replace('\n', '<br/>') || '';
+            document.body.appendChild(activeTooltip);
             
             const rect = info.el.getBoundingClientRect();
-            tooltip.style.position = 'fixed';
-            tooltip.style.top = `${rect.bottom + 5}px`;
-            tooltip.style.left = `${rect.left}px`;
-            tooltip.style.zIndex = '10000';
-          };
-
-          const removeTooltip = () => {
-            if (tooltip && document.body.contains(tooltip)) {
-              document.body.removeChild(tooltip);
-              tooltip = null;
-            }
-          };
-
-          const handleMouseEnter = () => {
-            if (tooltipTimeout) {
-              window.clearTimeout(tooltipTimeout);
-              tooltipTimeout = null;
-            }
-            createTooltip();
+            activeTooltip.style.position = 'fixed';
+            activeTooltip.style.top = `${rect.bottom + 5}px`;
+            activeTooltip.style.left = `${rect.left}px`;
+            activeTooltip.style.zIndex = '10000';
           };
 
           const handleMouseLeave = () => {
-            tooltipTimeout = window.setTimeout(() => {
-              removeTooltip();
-              tooltipTimeout = null;
-            }, 100);
+            if (activeTimeout) {
+              window.clearTimeout(activeTimeout);
+            }
+            activeTimeout = window.setTimeout(removeGlobalTooltip, 100);
           };
 
           info.el.addEventListener('mouseenter', handleMouseEnter);
           info.el.addEventListener('mouseleave', handleMouseLeave);
 
-          // Cleanup function
           return () => {
             info.el.removeEventListener('mouseenter', handleMouseEnter);
             info.el.removeEventListener('mouseleave', handleMouseLeave);
-            if (tooltipTimeout) {
-              window.clearTimeout(tooltipTimeout);
-            }
-            removeTooltip();
+            removeGlobalTooltip();
           };
         }}
       />
