@@ -33,18 +33,19 @@ export const generateRecurringEvents = (event: RecurringEvent, until: Date) => {
       start: currentStart,
       end: currentEnd,
       backgroundColor: event.status === 'active' ? '#E5DEFF' : '#FDE1D3',
-      borderColor: event.status === 'active' ? '#E5DEFF' : '#FDE1D3',
+      borderColor: event.status === 'active' ? '#7C3AED' : '#FB923C',
       textColor: '#222222',
+      classNames: ['cursor-pointer', 'hover:opacity-90', 'transition-opacity'],
       extendedProps: {
         originalEventId: event._id,
         recurrenceIndex: recurrenceCount,
         repeatType: event.repeatType,
         playlistId: event.playlist._id,
-        status: event.status
+        status: event.status,
+        tooltip: `${event.playlist.name}\n${event.status === 'active' ? 'Aktif' : 'Pasif'}`
       }
     });
 
-    // Bir sonraki tekrarı hesapla
     switch (event.repeatType) {
       case 'daily':
         currentStart = addDays(currentStart, 1);
@@ -59,7 +60,6 @@ export const generateRecurringEvents = (event: RecurringEvent, until: Date) => {
         currentEnd = addMonths(currentEnd, 1);
         break;
       default:
-        // 'once' için sadece tek event oluştur
         return events;
     }
 
@@ -81,13 +81,15 @@ export const formatEventForCalendar = (schedule: RecurringEvent) => {
       start: schedule.startDate,
       end: schedule.endDate,
       backgroundColor: schedule.status === 'active' ? '#E5DEFF' : '#FDE1D3',
-      borderColor: schedule.status === 'active' ? '#E5DEFF' : '#FDE1D3',
+      borderColor: schedule.status === 'active' ? '#7C3AED' : '#FB923C',
       textColor: '#222222',
+      classNames: ['cursor-pointer', 'hover:opacity-90', 'transition-opacity'],
       extendedProps: {
         originalEventId: schedule._id,
         repeatType: schedule.repeatType,
         playlistId: schedule.playlist._id,
-        status: schedule.status
+        status: schedule.status,
+        tooltip: `${schedule.playlist.name}\n${schedule.status === 'active' ? 'Aktif' : 'Pasif'}`
       }
     }];
   }

@@ -102,7 +102,6 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
         selectable={true}
         selectMirror={true}
         dayMaxEvents={true}
-        weekends={true}
         events={events}
         select={onDateSelect}
         eventClick={onEventClick}
@@ -113,6 +112,16 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
         selectOverlap={false}
         editable={true}
         eventDrop={handleEventDrop}
+        eventTimeFormat={{
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        }}
+        slotLabelFormat={{
+          hour: '2-digit',
+          minute: '2-digit',
+          hour12: false
+        }}
         selectConstraint={{
           start: '00:00',
           end: '24:00',
@@ -120,6 +129,28 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
         }}
         allDaySlot={false}
         dayMaxEventRows={true}
+        eventDidMount={(info) => {
+          if (info.event.extendedProps?.tooltip) {
+            const tooltip = document.createElement('div');
+            tooltip.className = 'bg-background border rounded-md shadow-lg p-2 text-sm';
+            tooltip.innerHTML = info.event.extendedProps.tooltip.replace('\n', '<br/>');
+            
+            info.el.addEventListener('mouseover', () => {
+              document.body.appendChild(tooltip);
+              const rect = info.el.getBoundingClientRect();
+              tooltip.style.position = 'fixed';
+              tooltip.style.top = `${rect.bottom + 5}px`;
+              tooltip.style.left = `${rect.left}px`;
+              tooltip.style.zIndex = '10000';
+            });
+
+            info.el.addEventListener('mouseout', () => {
+              if (document.body.contains(tooltip)) {
+                document.body.removeChild(tooltip);
+              }
+            });
+          }
+        }}
       />
     </div>
   );
