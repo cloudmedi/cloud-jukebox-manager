@@ -114,16 +114,15 @@ export function EventDetailDialog({ event, isOpen, onClose }: EventDetailDialogP
         </DialogContent>
       </Dialog>
 
-      <AlertDialog open={showDeleteAlert} onOpenChange={(open) => {
-        if (!deleteMutation.isPending) {
-          setShowDeleteAlert(open);
-        }
-      }}>
-        <AlertDialogContent onPointerDownOutside={(e) => {
+      <AlertDialog 
+        open={showDeleteAlert} 
+        onOpenChange={(open) => {
           if (!deleteMutation.isPending) {
-            e.preventDefault();
+            setShowDeleteAlert(open);
           }
-        }}>
+        }}
+      >
+        <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Bu zamanlamayı silmek istediğinizden emin misiniz?</AlertDialogTitle>
             <AlertDialogDescription>
