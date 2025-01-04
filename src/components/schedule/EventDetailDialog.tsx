@@ -38,6 +38,8 @@ export function EventDetailDialog({ event, isOpen, onClose }: EventDetailDialogP
         const errorData = await response.json();
         throw new Error(errorData.message || "Zamanlama silinemedi");
       }
+
+      return response.json();
     },
     onSuccess: () => {
       toast.success("Zamanlama başarıyla silindi");
