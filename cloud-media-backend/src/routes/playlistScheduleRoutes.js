@@ -88,13 +88,20 @@ router.patch('/:id', async (req, res) => {
 // Zamanlama sil
 router.delete('/:id', async (req, res) => {
   try {
+    console.log('Silme isteği alındı. ID:', req.params.id);
+    
     const schedule = await PlaylistSchedule.findById(req.params.id);
     if (!schedule) {
+      console.log('Zamanlama bulunamadı:', req.params.id);
       return res.status(404).json({ message: 'Zamanlama bulunamadı' });
     }
+
     await PlaylistSchedule.findByIdAndDelete(req.params.id);
+    console.log('Zamanlama başarıyla silindi:', req.params.id);
+    
     res.json({ message: 'Zamanlama silindi' });
   } catch (error) {
+    console.error('Silme hatası:', error);
     res.status(500).json({ message: error.message });
   }
 });

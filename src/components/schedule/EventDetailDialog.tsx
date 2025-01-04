@@ -29,31 +29,38 @@ export function EventDetailDialog({ event, isOpen, onClose }: EventDetailDialogP
 
   const deleteMutation = useMutation({
     mutationFn: async () => {
-      console.log("Deleting schedule with ID:", event.extendedProps.originalEventId);
+      console.log("Silme işlemi başlatıldı. Event ID:", event.extendedProps.originalEventId);
+      
       const response = await fetch(`http://localhost:5000/api/playlist-schedules/${event.extendedProps.originalEventId}`, {
         method: "DELETE",
       });
       
       if (!response.ok) {
         const errorData = await response.json();
+        console.error("Silme hatası:", errorData);
         throw new Error(errorData.message || "Zamanlama silinemedi");
       }
 
-      return response.json();
+      const data = await response.json();
+      console.log("Silme yanıtı:", data);
+      return data;
     },
     onSuccess: () => {
+      console.log("Silme başarılı, cache güncelleniyor");
       toast.success("Zamanlama başarıyla silindi");
       queryClient.invalidateQueries({ queryKey: ["playlist-schedules"] });
       onClose();
       setShowDeleteAlert(false);
     },
     onError: (error: Error) => {
+      console.error("Silme hatası:", error);
       toast.error(`Hata: ${error.message}`);
       setShowDeleteAlert(false);
     },
   });
 
   const handleDelete = () => {
+    console.log("Silme işlemi onaylandı");
     deleteMutation.mutate();
   };
 
