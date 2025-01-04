@@ -66,7 +66,10 @@ export function EventDetailDialog({ event, isOpen, onClose }: EventDetailDialogP
     },
   });
 
-  const handleDelete = () => {
+  const handleDelete = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    
     if (!event?.extendedProps?.originalEventId) {
       toast.error("Event ID bulunamadı");
       return;
@@ -116,7 +119,7 @@ export function EventDetailDialog({ event, isOpen, onClose }: EventDetailDialogP
       </Dialog>
 
       <AlertDialog open={showDeleteAlert} onOpenChange={setShowDeleteAlert}>
-        <AlertDialogContent>
+        <AlertDialogContent onClick={(e) => e.stopPropagation()}>
           <AlertDialogHeader>
             <AlertDialogTitle>Bu zamanlamayı silmek istediğinizden emin misiniz?</AlertDialogTitle>
             <AlertDialogDescription>
@@ -124,10 +127,20 @@ export function EventDetailDialog({ event, isOpen, onClose }: EventDetailDialogP
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>İptal</AlertDialogCancel>
-            <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
-              Sil
-            </AlertDialogAction>
+            <AlertDialogCancel onClick={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+              setShowDeleteAlert(false);
+            }}>
+              İptal
+            </AlertDialogCancel>
+            <Button
+              variant="destructive"
+              onClick={handleDelete}
+              disabled={deleteMutation.isPending}
+            >
+              {deleteMutation.isPending ? "Siliniyor..." : "Sil"}
+            </Button>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
