@@ -13,7 +13,7 @@ const server = http.createServer(app);
 
 // WebSocket sunucusunu başlat
 const wss = new WebSocketServer(server);
-global.wss = wss;
+global.wss = wss; // Global erişim için WSS'i kaydet
 const cleanupService = new AnnouncementCleanupService(wss);
 
 // Connect to MongoDB
@@ -23,6 +23,7 @@ connectDB();
 const uploadsDir = path.join(__dirname, '../uploads');
 const playlistsDir = path.join(uploadsDir, 'playlists');
 
+// Klasörleri oluştur ve izinleri ayarla
 if (!fs.existsSync(uploadsDir)) {
   fs.mkdirSync(uploadsDir, { recursive: true, mode: 0o777 });
 }
@@ -33,6 +34,8 @@ if (!fs.existsSync(playlistsDir)) {
 // Middleware
 app.use(cors());
 app.use(express.json());
+
+// Uploads klasörünü statik olarak sunma
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
 // WebSocket server'ı route'lara enjekte et
@@ -51,12 +54,13 @@ app.use('/api/playlist-schedules', require('./routes/playlistScheduleRoutes'));
 app.use('/api/stats', require('./routes/statsRoutes'));
 app.use('/api/tokens', require('./routes/tokenRoutes'));
 app.use('/api/notifications', require('./routes/notificationRoutes'));
-app.use('/api/playback-history', require('./routes/playbackHistoryRoutes')); // Yeni route eklendi
 
 const PORT = process.env.PORT || 5000;
 
+// Cleanup servisi başlat
 cleanupService.start();
 
+// Uygulama kapatıldığında cleanup servisini durdur
 process.on('SIGTERM', () => {
   cleanupService.stop();
   process.exit(0);

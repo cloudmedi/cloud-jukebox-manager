@@ -4,7 +4,7 @@ const store = new Store();
 const websocketService = require('./websocketService');
 const AnnouncementManager = require('./announcement/AnnouncementManager');
 const AnnouncementScheduler = require('./announcement/AnnouncementScheduler');
-const PlaybackHistoryService = require('./playback/PlaybackHistoryService');
+const apiService = require('./apiService');
 
 class AudioService {
   constructor() {
@@ -199,28 +199,17 @@ class AudioService {
       }
     });
 
-    ipcMain.handle('song-ended', async (event, params) => {
-      try {
-        console.log('Song ended event received with params:', params);
-        
-        // Anons kontrolü için song-ended eventi
-        AnnouncementScheduler.onSongEnd();
-        
-        // Çalma geçmişini kaydet
-        const currentSong = this.queue[this.currentIndex];
-        if (currentSong && params?.duration) {
-          await PlaybackHistoryService.savePlaybackHistory(currentSong, params.duration);
-        } else {
-          console.warn('Missing song or duration data:', {
-            currentSong,
-            duration: params?.duration
-          });
-        }
-        
-        this.handleNextSong(event);
-      } catch (error) {
-        console.error('Error handling song-ended event:', error);
+    ipcMain.handle('song-ended', async (event, { duration }) => {
+      // Anons kontrolü için song-ended eventi
+      AnnouncementScheduler.onSongEnd();
+      
+      // Çalma geçmişini kaydet
+      const currentSong = this.queue[this.currentIndex];
+      if (currentSong) {
+        await this.savePlaybackHistory(currentSong, duration);
       }
+      
+      this.handleNextSong(event);
     });
 
     // Anons bittiğinde çağrılacak
@@ -273,11 +262,10 @@ class AudioService {
       const playbackData = {
         deviceId,
         songId: song._id,
-        playDuration: Math.floor(duration || 0),
+        playDuration: Math.floor(duration),
         completed: duration >= (song.duration * 0.9) // Şarkının en az %90'ı çalındıysa tamamlandı sayılır
       };
 
-      console.log('Saving playback history:', playbackData);
       const response = await apiService.post('/api/stats/playback-history', playbackData);
       console.log('Playback history saved:', response.data);
     } catch (error) {

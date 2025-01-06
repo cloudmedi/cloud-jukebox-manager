@@ -16,18 +16,6 @@ async function registerToken(token, deviceInfo) {
   }
 }
 
-async function savePlaybackHistory(playbackData) {
-  try {
-    console.log('Saving playback history:', playbackData);
-    const response = await axios.post(`${API_URL}/playback-history`, playbackData);
-    return response.data;
-  } catch (error) {
-    console.error('Playback history save error:', error);
-    throw error;
-  }
-}
-
 module.exports = {
-  registerToken,
-  savePlaybackHistory
+  registerToken
 };
