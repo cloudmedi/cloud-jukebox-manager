@@ -1,22 +1,28 @@
 const store = new Store();
 const apiService = require('../apiService');
+const { createLogger } = require('../../utils/logger');
+
+const logger = createLogger('PlaybackHistoryService');
 
 class PlaybackHistoryService {
   async savePlaybackHistory(song, duration) {
     try {
       const deviceId = store.get('deviceId');
       if (!deviceId || !song?._id) {
-        console.error('Device ID or Song ID missing for playback history', {
+        logger.error('Device ID or Song ID missing for playback history', {
           deviceId,
-          songId: song?._id
+          songId: song?._id,
+          songName: song?.name
         });
         return;
       }
 
-      console.log('Saving playback history:', {
+      logger.info('Attempting to save playback history', {
         deviceId,
         songId: song._id,
-        duration
+        songName: song.name,
+        duration,
+        timestamp: new Date().toISOString()
       });
 
       const playbackData = {
@@ -27,10 +33,21 @@ class PlaybackHistoryService {
       };
 
       const response = await apiService.savePlaybackHistory(playbackData);
-      console.log('Playback history saved successfully:', response);
+      logger.info('Playback history saved successfully', {
+        deviceId,
+        songId: song._id,
+        response
+      });
+      
       return response;
     } catch (error) {
-      console.error('Error saving playback history:', error);
+      logger.error('Failed to save playback history', {
+        error: error.message,
+        stack: error.stack,
+        deviceId: store.get('deviceId'),
+        songId: song?._id,
+        songName: song?.name
+      });
       throw error;
     }
   }
