@@ -18,14 +18,19 @@ const playbackHistorySchema = new mongoose.Schema({
   playDuration: {
     type: Number, // saniye cinsinden
     required: true
+  },
+  completed: {
+    type: Boolean,
+    default: false
   }
 }, {
   timestamps: true
 });
 
 // İndexler
-playbackHistorySchema.index({ deviceId: 1, playedAt: 1 });
+playbackHistorySchema.index({ deviceId: 1, playedAt: -1 });
 playbackHistorySchema.index({ songId: 1 });
+playbackHistorySchema.index({ completed: 1 });
 
 const PlaybackHistory = mongoose.model('PlaybackHistory', playbackHistorySchema);
 

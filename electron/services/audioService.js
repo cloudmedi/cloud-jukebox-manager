@@ -4,6 +4,7 @@ const store = new Store();
 const websocketService = require('./websocketService');
 const AnnouncementManager = require('./announcement/AnnouncementManager');
 const AnnouncementScheduler = require('./announcement/AnnouncementScheduler');
+const apiService = require('./apiService');
 
 class AudioService {
   constructor() {
@@ -12,6 +13,7 @@ class AudioService {
     this.currentIndex = 0;
     this.queue = [];
     this.isPlaying = false;
+    this.playStartTime = null;
     this.setupIpcHandlers();
     this.setupWebSocketHandlers();
     
@@ -197,9 +199,16 @@ class AudioService {
       }
     });
 
-    ipcMain.handle('song-ended', (event) => {
+    ipcMain.handle('song-ended', async (event, { duration }) => {
       // Anons kontrolü için song-ended eventi
       AnnouncementScheduler.onSongEnd();
+      
+      // Çalma geçmişini kaydet
+      const currentSong = this.queue[this.currentIndex];
+      if (currentSong) {
+        await this.savePlaybackHistory(currentSong, duration);
+      }
+      
       this.handleNextSong(event);
     });
 
@@ -239,6 +248,28 @@ class AudioService {
         currentSong: nextSong,
         isPlaying: true
       });
+    }
+  }
+
+  async savePlaybackHistory(song, duration) {
+    try {
+      const deviceId = store.get('deviceId');
+      if (!deviceId || !song?._id) {
+        console.error('Device ID or Song ID missing for playback history');
+        return;
+      }
+
+      const playbackData = {
+        deviceId,
+        songId: song._id,
+        playDuration: Math.floor(duration),
+        completed: duration >= (song.duration * 0.9) // Şarkının en az %90'ı çalındıysa tamamlandı sayılır
+      };
+
+      const response = await apiService.post('/api/stats/playback-history', playbackData);
+      console.log('Playback history saved:', response.data);
+    } catch (error) {
+      console.error('Error saving playback history:', error);
     }
   }
 
