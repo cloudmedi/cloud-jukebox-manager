@@ -4,7 +4,7 @@ const store = new Store();
 const websocketService = require('./websocketService');
 const AnnouncementManager = require('./announcement/AnnouncementManager');
 const AnnouncementScheduler = require('./announcement/AnnouncementScheduler');
-const apiService = require('./apiService');
+const PlaybackHistoryService = require('./playback/PlaybackHistoryService');
 
 class AudioService {
   constructor() {
@@ -203,16 +203,18 @@ class AudioService {
       try {
         console.log('Song ended event received with params:', params);
         
-        // Güvenli bir şekilde duration değerini al
-        const duration = params?.duration || 0;
-        
         // Anons kontrolü için song-ended eventi
         AnnouncementScheduler.onSongEnd();
         
         // Çalma geçmişini kaydet
         const currentSong = this.queue[this.currentIndex];
-        if (currentSong) {
-          await this.savePlaybackHistory(currentSong, duration);
+        if (currentSong && params?.duration) {
+          await PlaybackHistoryService.savePlaybackHistory(currentSong, params.duration);
+        } else {
+          console.warn('Missing song or duration data:', {
+            currentSong,
+            duration: params?.duration
+          });
         }
         
         this.handleNextSong(event);
