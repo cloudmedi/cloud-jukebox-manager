@@ -199,17 +199,26 @@ class AudioService {
       }
     });
 
-    ipcMain.handle('song-ended', async (event, { duration }) => {
-      // Anons kontrolü için song-ended eventi
-      AnnouncementScheduler.onSongEnd();
-      
-      // Çalma geçmişini kaydet
-      const currentSong = this.queue[this.currentIndex];
-      if (currentSong) {
-        await this.savePlaybackHistory(currentSong, duration);
+    ipcMain.handle('song-ended', async (event, params) => {
+      try {
+        console.log('Song ended event received with params:', params);
+        
+        // Güvenli bir şekilde duration değerini al
+        const duration = params?.duration || 0;
+        
+        // Anons kontrolü için song-ended eventi
+        AnnouncementScheduler.onSongEnd();
+        
+        // Çalma geçmişini kaydet
+        const currentSong = this.queue[this.currentIndex];
+        if (currentSong) {
+          await this.savePlaybackHistory(currentSong, duration);
+        }
+        
+        this.handleNextSong(event);
+      } catch (error) {
+        console.error('Error handling song-ended event:', error);
       }
-      
-      this.handleNextSong(event);
     });
 
     // Anons bittiğinde çağrılacak
@@ -262,10 +271,11 @@ class AudioService {
       const playbackData = {
         deviceId,
         songId: song._id,
-        playDuration: Math.floor(duration),
+        playDuration: Math.floor(duration || 0),
         completed: duration >= (song.duration * 0.9) // Şarkının en az %90'ı çalındıysa tamamlandı sayılır
       };
 
+      console.log('Saving playback history:', playbackData);
       const response = await apiService.post('/api/stats/playback-history', playbackData);
       console.log('Playback history saved:', response.data);
     } catch (error) {

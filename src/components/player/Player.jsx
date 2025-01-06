@@ -41,6 +41,8 @@ const Player = () => {
     const handleTimeUpdate = () => setProgress(audio.currentTime);
     const handleLoadedMetadata = () => setDuration(audio.duration);
     const handleEnded = () => {
+      console.log('Song ended with duration:', audio.duration);
+      window.electron.ipcRenderer.invoke('song-ended', { duration: audio.duration });
       setIsPlaying(false);
       setProgress(0);
       next();
