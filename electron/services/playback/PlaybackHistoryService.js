@@ -1,4 +1,3 @@
-const Store = require('electron-store');
 const store = new Store();
 const apiService = require('../apiService');
 const { createLogger } = require('../../utils/logger');
@@ -8,9 +7,7 @@ const logger = createLogger('PlaybackHistoryService');
 class PlaybackHistoryService {
   async savePlaybackHistory(song, duration) {
     try {
-      const deviceInfo = store.get('deviceInfo');
-      const deviceId = deviceInfo?.token;
-
+      const deviceId = store.get('deviceId');
       if (!deviceId || !song?._id) {
         logger.error('Device ID or Song ID missing for playback history', {
           deviceId,
@@ -35,19 +32,19 @@ class PlaybackHistoryService {
         completed: duration >= (song.duration * 0.9) // Şarkının en az %90'ı çalındıysa tamamlandı sayılır
       };
 
-      const response = await apiService.post('/api/stats/playback-history', playbackData);
+      const response = await apiService.savePlaybackHistory(playbackData);
       logger.info('Playback history saved successfully', {
         deviceId,
         songId: song._id,
-        response: response.data
+        response
       });
       
-      return response.data;
+      return response;
     } catch (error) {
       logger.error('Failed to save playback history', {
         error: error.message,
         stack: error.stack,
-        deviceId: store.get('deviceInfo.token'),
+        deviceId: store.get('deviceId'),
         songId: song?._id,
         songName: song?.name
       });
