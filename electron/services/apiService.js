@@ -1,33 +1,38 @@
 const axios = require('axios');
+const Store = require('electron-store');
+const store = new Store();
 
-const API_URL = 'http://localhost:5000/api';
+const API_BASE_URL = process.env.API_URL || 'http://localhost:3000';
 
-async function registerToken(token, deviceInfo) {
-  try {
-    console.log('Registering token:', token, 'with device info:', deviceInfo);
-    const response = await axios.post(`${API_URL}/tokens`, {
-      token,
-      deviceInfo
+class ApiService {
+  constructor() {
+    this.axios = axios.create({
+      baseURL: API_BASE_URL,
+      timeout: 10000
     });
-    return response.data;
-  } catch (error) {
-    console.error('Token registration error:', error);
-    throw error;
   }
+
+  async post(url, data) {
+    try {
+      const response = await this.axios.post(url, data);
+      return response;
+    } catch (error) {
+      console.error('API Error:', error.message);
+      throw error;
+    }
+  }
+
+  async get(url) {
+    try {
+      const response = await this.axios.get(url);
+      return response;
+    } catch (error) {
+      console.error('API Error:', error.message);
+      throw error;
+    }
+  }
+
+  // Diğer HTTP metodları buraya eklenebilir
 }
 
-async function savePlaybackHistory(playbackData) {
-  try {
-    console.log('Saving playback history:', playbackData);
-    const response = await axios.post(`${API_URL}/playback-history`, playbackData);
-    return response.data;
-  } catch (error) {
-    console.error('Playback history save error:', error);
-    throw error;
-  }
-}
-
-module.exports = {
-  registerToken,
-  savePlaybackHistory
-};
+module.exports = new ApiService();
