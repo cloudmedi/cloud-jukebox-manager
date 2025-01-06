@@ -201,7 +201,10 @@ class AudioService {
 
     ipcMain.handle('song-ended', async (event, params) => {
       try {
-        console.log('Song ended event received with params:', params);
+        console.log('Song ended event received with params:', {
+          duration: params?.duration,
+          currentSong: this.queue[this.currentIndex]
+        });
         
         // Anons kontrolü için song-ended eventi
         AnnouncementScheduler.onSongEnd();
