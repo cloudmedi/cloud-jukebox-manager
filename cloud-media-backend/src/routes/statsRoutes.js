@@ -6,38 +6,21 @@ const PlaylistSchedule = require('../models/PlaylistSchedule');
 const PlaybackHistory = require('../models/PlaybackHistory');
 const ErrorLog = require('../models/ErrorLog');
 const mongoose = require('mongoose');
+const Token = require('../models/Token'); // Token modelini ekledik
 
 router.get('/devices', async (req, res) => {
   try {
-    const totalDevices = await Device.countDocuments();
-    const onlineDevices = await Device.countDocuments({ isOnline: true });
-    const offlineDevices = totalDevices - onlineDevices;
-
-    // Grup bazlı cihaz dağılımı
-    const devicesByGroup = await Device.aggregate([
-      {
-        $group: {
-          _id: '$groupId',
-          count: { $sum: 1 }
-        }
-      },
-      {
-        $lookup: {
-          from: 'devicegroups',
-          localField: '_id',
-          foreignField: '_id',
-          as: 'group'
-        }
-      }
-    ]);
-
-    res.json({
-      total: totalDevices,
-      online: onlineDevices,
-      offline: offlineDevices,
-      groupDistribution: devicesByGroup
-    });
+    const devices = await Device.find({}).select('_id name location token');
+    // Her cihaz için token bilgisini obje formatına dönüştür
+    const formattedDevices = devices.map(device => ({
+      _id: device._id, // Cihazın kendi ID'sini kullanıyoruz
+      name: device.name,
+      location: device.location,
+      token: device.token // Token string'i saklıyoruz
+    }));
+    res.json(formattedDevices);
   } catch (error) {
+    console.error('Cihazlar alınırken hata:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -130,32 +113,47 @@ router.get('/device-playback', async (req, res) => {
   try {
     const { deviceId, from, to, startTime, endTime } = req.query;
 
+    console.log('Gelen parametreler:', { deviceId, from, to, startTime, endTime });
+
     if (!deviceId || !from || !to || !startTime || !endTime) {
-      return res.status(400).json({ 
-        message: "Gerekli parametreler eksik" 
-      });
+      return res.status(400).json({ message: 'Eksik parametreler' });
     }
 
-    // Tarih aralığını oluştur
-    const fromDate = new Date(from);
-    const toDate = new Date(to);
+    // Önce cihazı bul ve token'ını al
+    const device = await Device.findById(deviceId);
+    console.log('Bulunan cihaz:', device);
+    
+    if (!device) {
+      return res.status(404).json({ message: 'Cihaz bulunamadı' });
+    }
 
-    // Saat bilgilerini parse et
-    const [startHour, startMinute] = startTime.split(':').map(Number);
-    const [endHour, endMinute] = endTime.split(':').map(Number);
+    // Token'ı bul
+    const token = await Token.findOne({ token: device.token });
+    console.log('Bulunan token:', token);
+    
+    if (!token) {
+      return res.status(404).json({ message: 'Token bulunamadı' });
+    }
 
-    // Başlangıç ve bitiş zamanlarını ayarla
-    fromDate.setHours(startHour, startMinute, 0);
-    toDate.setHours(endHour, endMinute, 59);
+    console.log('Token ID:', token._id);
 
-    // Cihazın belirtilen tarih aralığındaki çalma verilerini getir
+    // Tarih aralığını UTC olarak ayarla
+    const startDate = new Date(from);
+    startDate.setUTCHours(parseInt(startTime.split(':')[0]), parseInt(startTime.split(':')[1]), 0, 0);
+
+    const endDate = new Date(to);
+    endDate.setUTCHours(parseInt(endTime.split(':')[0]), parseInt(endTime.split(':')[1]), 59, 999);
+
+    console.log('Tarih aralığı:', { startDate, endDate });
+
+    // Her çalınma kaydını ayrı göster
     const playbackData = await PlaybackHistory.aggregate([
       {
         $match: {
-          deviceId: mongoose.Types.ObjectId(deviceId),
+          deviceId: token._id,
           playedAt: {
-            $gte: fromDate,
-            $lte: toDate
+            $gte: startDate,
+            $lte: endDate
           }
         }
       },
@@ -164,30 +162,33 @@ router.get('/device-playback', async (req, res) => {
           from: 'songs',
           localField: 'songId',
           foreignField: '_id',
-          as: 'songDetails'
+          as: 'song'
         }
       },
       {
-        $unwind: '$songDetails'
-      },
-      {
-        $group: {
-          _id: '$songId',
-          songName: { $first: '$songDetails.title' },
-          artist: { $first: '$songDetails.artist' },
-          playCount: { $sum: 1 },
-          totalDuration: { $sum: '$songDetails.duration' },
-          lastPlayed: { $max: '$playedAt' }
+        $unwind: {
+          path: '$song',
+          preserveNullAndEmptyArrays: true
         }
       },
       {
-        $sort: { playCount: -1 }
+        $project: {
+          _id: 0,
+          songName: { $ifNull: ['$song.name', 'Bilinmeyen Şarkı'] },
+          artist: { $ifNull: ['$song.artist', 'Bilinmeyen Sanatçı'] },
+          playedAt: 1,
+          duration: { $ifNull: ['$playDuration', 0] }
+        }
+      },
+      {
+        $sort: { playedAt: -1 } // En son çalınanlar üstte
       }
     ]);
 
+    console.log('Sorgu sonucu:', playbackData);
     res.json(playbackData);
   } catch (error) {
-    console.error('Device playback stats error:', error);
+    console.error('Çalma verileri alınırken hata:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -263,6 +264,58 @@ router.get('/error-logs', async (req, res) => {
     res.json(logs);
   } catch (error) {
     console.error('Error logs fetch error:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Oynatma geçmişini kaydet
+router.post('/playback-history', async (req, res) => {
+  try {
+    const { deviceId, songId, playDuration, completed } = req.body;
+
+    if (!deviceId || !songId) {
+      return res.status(400).json({
+        message: "Device ID ve Song ID zorunludur"
+      });
+    }
+
+    const playbackHistory = new PlaybackHistory({
+      deviceId,
+      songId,
+      playDuration,
+      completed,
+      playedAt: new Date()
+    });
+
+    await playbackHistory.save();
+    res.status(201).json(playbackHistory);
+  } catch (error) {
+    console.error('Error saving playback history:', error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// Debug endpoint'i
+router.get('/debug/playback-history/:deviceId', async (req, res) => {
+  try {
+    const { deviceId } = req.params;
+    
+    // PlaybackHistory kayıtlarını kontrol et
+    const playbackRecords = await PlaybackHistory.find({
+      deviceId: new mongoose.Types.ObjectId(deviceId)
+    }).populate('songId');
+
+    // Songs koleksiyonunu kontrol et
+    const songs = await mongoose.connection.collection('songs').find({}).toArray();
+
+    res.json({
+      playbackCount: playbackRecords.length,
+      playbackSample: playbackRecords.slice(0, 5),
+      songsCount: songs.length,
+      songsSample: songs.slice(0, 5)
+    });
+  } catch (error) {
+    console.error('Debug verisi alınırken hata:', error);
     res.status(500).json({ message: error.message });
   }
 });

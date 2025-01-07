@@ -1,5 +1,9 @@
 const mongoose = require('mongoose');
 
+// Karışıklığa neden olabilecek karakterleri çıkardık:
+// Çıkarılanlar: 0, O, 1, I, l
+const ALLOWED_CHARS = '23456789ABCDEFGHJKLMNPQRSTUVWXYZ';
+
 const deviceSchema = new mongoose.Schema({
   name: {
     type: String,
@@ -10,12 +14,12 @@ const deviceSchema = new mongoose.Schema({
     type: String,
     required: [true, 'Token zorunludur'],
     unique: true,
-    length: 6,
     validate: {
       validator: function(v) {
-        return /^\d{6}$/.test(v);
+        if (v.length !== 6) return false;
+        return v.split('').every(char => ALLOWED_CHARS.includes(char));
       },
-      message: 'Token 6 haneli sayısal bir değer olmalıdır'
+      message: 'Token 6 karakterli olmalı ve sadece izin verilen karakterleri içermelidir (2-9 ve A-Z, 0,O,1,I,l hariç)'
     }
   },
   location: {
@@ -66,7 +70,12 @@ const deviceSchema = new mongoose.Schema({
 
 // Token oluşturma için helper method
 deviceSchema.statics.generateToken = function() {
-  return Math.floor(100000 + Math.random() * 900000).toString();
+  let token = '';
+  for (let i = 0; i < 6; i++) {
+    const randomIndex = Math.floor(Math.random() * ALLOWED_CHARS.length);
+    token += ALLOWED_CHARS[randomIndex];
+  }
+  return token;
 };
 
 // Cihaz durumunu güncelleme methodu
