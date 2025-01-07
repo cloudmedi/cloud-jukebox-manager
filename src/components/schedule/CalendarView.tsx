@@ -212,7 +212,7 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
         {`
           .event-animation {
             transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            cursor: pointer;
+            cursor: move;
             position: relative;
           }
           
@@ -249,35 +249,7 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
             margin-top: 2px;
           }
           
-          /* Resize handle styles */
-          .fc-event .fc-event-resizer {
-            width: 100%;
-            height: 6px;
-            background: rgba(255, 255, 255, 0.2);
-            position: absolute;
-            left: 0;
-            opacity: 0;
-            transition: opacity 0.2s ease;
-          }
-          
-          .fc-event .fc-event-resizer-start {
-            top: 0;
-            border-top-left-radius: 6px;
-            border-top-right-radius: 6px;
-          }
-          
-          .fc-event .fc-event-resizer-end {
-            bottom: 0;
-            border-bottom-left-radius: 6px;
-            border-bottom-right-radius: 6px;
-          }
-          
-          .fc-event:hover .fc-event-resizer {
-            opacity: 1;
-          }
-          
-          .fc-event.fc-event-dragging,
-          .fc-event.fc-event-resizing {
+          .fc-event.fc-event-dragging {
             z-index: 100;
             box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
           }
@@ -306,11 +278,8 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
         selectOverlap={true}
         editable={true}
         eventDrop={handleEventDrop}
-        eventResize={handleEventResize}
-        eventDraggable={true}
         eventStartEditable={true}
-        eventDurationEditable={true}
-        eventResizableFromStart={false}
+        eventDurationEditable={false}
         dragRevertDuration={0}
         eventTimeFormat={{
           hour: '2-digit',
