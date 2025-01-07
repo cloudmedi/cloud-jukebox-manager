@@ -248,6 +248,17 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
             font-weight: 400;
             margin-top: 2px;
           }
+
+          .fc-event-resizer {
+            height: 8px;
+            cursor: s-resize;
+            opacity: 0;
+            transition: opacity 0.2s;
+          }
+
+          .fc-event:hover .fc-event-resizer {
+            opacity: 1;
+          }
           
           .fc-event.fc-event-dragging {
             z-index: 100;
@@ -275,11 +286,13 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
         nowIndicator={true}
         slotMinTime="00:00:00"
         slotMaxTime="24:00:00"
-        selectOverlap={true}
+        selectOverlap={false}
+        eventOverlap={false}
         editable={true}
         eventDrop={handleEventDrop}
         eventStartEditable={true}
-        eventDurationEditable={false}
+        eventDurationEditable={true}
+        eventResizableFromStart={false}
         dragRevertDuration={0}
         eventTimeFormat={{
           hour: '2-digit',
