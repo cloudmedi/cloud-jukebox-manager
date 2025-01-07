@@ -211,47 +211,26 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
       <style>
         {`
           .event-animation {
-            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-            cursor: move;
-            position: relative;
+            transition: all 0.3s ease;
+            cursor: pointer;
           }
-          
           .event-animation:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
           }
-          
           .fc-event {
-            border-radius: 6px;
+            border-radius: 4px;
             border-left-width: 4px;
-            overflow: hidden;
           }
-          
           .fc-timegrid-event-harness {
-            margin: 2px 3px;
+            margin-left: 2px;
+            margin-right: 2px;
           }
-          
           .fc-timegrid-event {
-            min-height: 30px !important;
-            padding: 4px 6px;
+            min-height: 25px !important;
           }
-          
           .fc-event-main {
-            padding: 6px 8px;
-          }
-          
-          .fc-event-time {
-            font-weight: 500;
-          }
-          
-          .fc-event-title {
-            font-weight: 400;
-            margin-top: 2px;
-          }
-
-          .fc-event.fc-event-dragging {
-            z-index: 100;
-            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
+            padding: 4px;
           }
         `}
       </style>
@@ -275,12 +254,14 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
         nowIndicator={true}
         slotMinTime="00:00:00"
         slotMaxTime="24:00:00"
-        selectOverlap={false}
-        eventOverlap={false}
+        selectOverlap={true}
         editable={true}
         eventDrop={handleEventDrop}
+        eventResize={handleEventResize}
+        eventDraggable={true}
         eventStartEditable={true}
-        eventDurationEditable={false}
+        eventDurationEditable={true}
+        eventResizableFromStart={false}
         dragRevertDuration={0}
         eventTimeFormat={{
           hour: '2-digit',
