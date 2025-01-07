@@ -10,13 +10,18 @@ import { DateTimeRangePicker } from "./DateTimeRangePicker";
 import { PlaybackTable } from "./PlaybackTable";
 import { DateRange } from "react-day-picker";
 
+interface TimeRange {
+  startTime: string;
+  endTime: string;
+}
+
 export default function DevicePlaybackReport() {
   const [selectedDevice, setSelectedDevice] = useState<string>("");
   const [dateRange, setDateRange] = useState<DateRange | undefined>({
     from: new Date(),
     to: addDays(new Date(), 7)
   });
-  const [timeRange, setTimeRange] = useState({
+  const [timeRange, setTimeRange] = useState<TimeRange>({
     startTime: "00:00",
     endTime: "23:59"
   });
@@ -59,6 +64,10 @@ export default function DevicePlaybackReport() {
     },
     enabled: !!selectedDevice && !!dateRange?.from && !!dateRange?.to,
   });
+
+  const handleTimeRangeChange = (newTimeRange: TimeRange) => {
+    setTimeRange(newTimeRange);
+  };
 
   const generatePDF = () => {
     if (!dateRange?.from || !dateRange?.to) return;
@@ -110,9 +119,7 @@ export default function DevicePlaybackReport() {
           dateRange={dateRange}
           timeRange={timeRange}
           onDateRangeChange={setDateRange}
-          onTimeRangeChange={(type, value) =>
-            setTimeRange(prev => ({ ...prev, [type]: value }))
-          }
+          onTimeRangeChange={handleTimeRangeChange}
           showDownloadButton={!!selectedDevice}
           isDownloadDisabled={!playbackData || playbackLoading}
           onDownload={generatePDF}
