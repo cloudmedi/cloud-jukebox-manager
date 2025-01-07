@@ -211,26 +211,75 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
       <style>
         {`
           .event-animation {
-            transition: all 0.3s ease;
+            transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
             cursor: pointer;
+            position: relative;
           }
+          
           .event-animation:hover {
-            transform: scale(1.02);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+            box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
           }
+          
           .fc-event {
-            border-radius: 4px;
+            border-radius: 6px;
             border-left-width: 4px;
+            overflow: hidden;
           }
+          
           .fc-timegrid-event-harness {
-            margin-left: 2px;
-            margin-right: 2px;
+            margin: 2px 3px;
           }
+          
           .fc-timegrid-event {
-            min-height: 25px !important;
+            min-height: 30px !important;
+            padding: 4px 6px;
           }
+          
           .fc-event-main {
-            padding: 4px;
+            padding: 6px 8px;
+          }
+          
+          .fc-event-time {
+            font-weight: 500;
+          }
+          
+          .fc-event-title {
+            font-weight: 400;
+            margin-top: 2px;
+          }
+          
+          /* Resize handle styles */
+          .fc-event .fc-event-resizer {
+            width: 100%;
+            height: 6px;
+            background: rgba(255, 255, 255, 0.2);
+            position: absolute;
+            left: 0;
+            opacity: 0;
+            transition: opacity 0.2s ease;
+          }
+          
+          .fc-event .fc-event-resizer-start {
+            top: 0;
+            border-top-left-radius: 6px;
+            border-top-right-radius: 6px;
+          }
+          
+          .fc-event .fc-event-resizer-end {
+            bottom: 0;
+            border-bottom-left-radius: 6px;
+            border-bottom-right-radius: 6px;
+          }
+          
+          .fc-event:hover .fc-event-resizer {
+            opacity: 1;
+          }
+          
+          .fc-event.fc-event-dragging,
+          .fc-event.fc-event-resizing {
+            z-index: 100;
+            box-shadow: 0 8px 24px rgba(0, 0, 0, 0.15);
           }
         `}
       </style>
