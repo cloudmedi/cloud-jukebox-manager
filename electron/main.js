@@ -3,7 +3,12 @@ const path = require('path');
 const Store = require('electron-store');
 const store = new Store();
 const websocketService = require('./services/websocketService');
+const deviceService = require('./services/deviceService');
 require('./services/audioService');
+
+// Set application name
+app.name = 'Cloud Media Player';
+app.setAppUserModelId('Cloud Media Player');
 
 let mainWindow;
 let tray = null;
@@ -20,7 +25,7 @@ function createWindow() {
     maxHeight: 300,
     resizable: false,
     backgroundColor: '#1a1b1e',
-    frame: true,
+    frame: false,
     title: 'Cloud Media Player',
     webPreferences: {
       nodeIntegration: true,
@@ -157,9 +162,16 @@ function createTray() {
   }
 }
 
-app.whenReady().then(() => {
-  createWindow();
-  createTray();
+app.whenReady().then(async () => {
+  try {
+    // Uygulama başladığında device token'ı kaydet
+    await deviceService.registerDeviceToken();
+    createWindow();
+    createTray();
+  } catch (error) {
+    console.error('Error during app initialization:', error);
+    app.quit();
+  }
 });
 
 app.on('window-all-closed', () => {

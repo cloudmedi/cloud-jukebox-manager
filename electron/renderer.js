@@ -32,8 +32,9 @@ function updatePlaybackBadge(state) {
     }
 }
 
-// Audio event listeners için badge güncellemeleri
+// Audio event listeners
 playlistAudio.addEventListener('play', () => {
+    ipcRenderer.invoke('song-started');
     console.log('Audio started playing');
     updatePlaybackBadge('playing');
 });
@@ -41,6 +42,19 @@ playlistAudio.addEventListener('play', () => {
 playlistAudio.addEventListener('pause', () => {
     console.log('Audio paused');
     updatePlaybackBadge('paused');
+});
+
+playlistAudio.addEventListener('ended', () => {
+    console.log('14. Song ended, playing next');
+    ipcRenderer.invoke('song-ended');
+});
+
+playlistAudio.addEventListener('loadeddata', () => {
+    console.log('17. Audio data loaded successfully');
+});
+
+playlistAudio.addEventListener('error', (e) => {
+    console.error('18. Audio error:', e);
 });
 
 // İlk yüklemede badge durumunu ayarla
@@ -466,28 +480,7 @@ ipcRenderer.on('songRemoved', (event, { songId, playlistId }) => {
   }
 });
 
-// Audio event listeners
-playlistAudio.addEventListener('ended', () => {
-  console.log('14. Song ended, playing next');
-  ipcRenderer.invoke('song-ended');
-});
-
-playlistAudio.addEventListener('play', () => {
-  console.log('15. Audio started playing');
-});
-
-playlistAudio.addEventListener('pause', () => {
-  console.log('16. Audio paused');
-});
-
-playlistAudio.addEventListener('loadeddata', () => {
-  console.log('17. Audio data loaded successfully');
-});
-
-playlistAudio.addEventListener('error', (e) => {
-  console.error('18. Audio error:', e);
-});
-
+// Update the update-player event handler
 ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
   console.log('1. Update Player Event Received:', { playlist, currentSong });
   

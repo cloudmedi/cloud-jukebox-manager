@@ -5,6 +5,7 @@ const websocketService = require('./websocketService');
 const AnnouncementManager = require('./announcement/AnnouncementManager');
 const AnnouncementScheduler = require('./announcement/AnnouncementScheduler');
 const apiService = require('./apiService');
+const deviceService = require('./deviceService');
 
 class AudioService {
   constructor() {
@@ -14,6 +15,7 @@ class AudioService {
     this.queue = [];
     this.isPlaying = false;
     this.playStartTime = null;
+    this.isProcessingEndEvent = false;  
     this.setupIpcHandlers();
     this.setupWebSocketHandlers();
     
@@ -106,18 +108,15 @@ class AudioService {
     }, 1000);
   }
 
-  handlePlay() {
-    console.log('Play command received, current state:', this.isPlaying);
-    if (!this.isPlaying) {
-      const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
-      if (mainWindow) {
-        mainWindow.webContents.send('toggle-playback');
-        this.isPlaying = true;
-        this.sendPlaybackStatus();
-      }
-    } else {
-      console.log('Already playing, ignoring play command');
-      this.sendPlaybackStatus();
+  async handlePlay() {
+    if (this.currentSound && !this.isPlaying) {
+      this.isPlaying = true;
+      this.playStartTime = Date.now();  // Çalma başlangıç zamanını kaydet
+      
+      websocketService.sendMessage({
+        type: 'playbackStatus',
+        status: 'playing'
+      });
     }
   }
 
@@ -144,6 +143,7 @@ class AudioService {
   }
 
   setupIpcHandlers() {
+    // Playlist çalma başlangıcı
     ipcMain.handle('play-playlist', async (event, playlist) => {
       console.log('Playing playlist:', playlist);
       
@@ -157,6 +157,7 @@ class AudioService {
       this.playlist = playlist;
       this.currentIndex = 0;
       this.isPlaying = true;
+      this.playStartTime = Date.now(); // Çalma başlangıç zamanını kaydet
       
       // İlk şarkıyı çal
       const firstSong = this.queue[this.currentIndex];
@@ -173,6 +174,52 @@ class AudioService {
           status: 'loaded',
           playlistId: playlist._id
         });
+      }
+    });
+
+    // Şarkı başlama event'i
+    ipcMain.handle('song-started', async (event, data = {}) => {
+      console.log('Song started:', data);
+      this.playStartTime = Date.now();
+      this.isPlaying = true;
+    });
+
+    // Şarkı bitme event'i
+    ipcMain.handle('song-ended', async (event, data = {}) => {
+      try {
+        // Eğer zaten işleniyorsa, çık
+        if (this.isProcessingEndEvent) {
+          console.log('Already processing end event, skipping...');
+          return;
+        }
+
+        this.isProcessingEndEvent = true;
+
+        // Anons kontrolü için song-ended eventi
+        AnnouncementScheduler.onSongEnd();
+        
+        // Çalma geçmişini kaydet
+        const currentSong = this.queue[this.currentIndex];
+        if (currentSong) {
+          // Gerçek çalma süresini hesapla
+          let actualDuration = 0;
+          if (this.playStartTime) {
+            actualDuration = Math.floor((Date.now() - this.playStartTime) / 1000);
+            console.log('Actual play duration:', actualDuration, 'seconds');
+          }
+
+          await this.savePlaybackHistory(currentSong, actualDuration);
+        }
+        
+        await this.handleNextSong(event);
+
+        // İşlem bitti
+        this.isProcessingEndEvent = false;
+        this.playStartTime = null; // Süreyi sıfırla
+      } catch (error) {
+        console.error('Error handling song-ended event:', error);
+        this.isProcessingEndEvent = false;
+        this.playStartTime = null;
       }
     });
 
@@ -197,19 +244,6 @@ class AudioService {
           playlistId: playlist._id
         });
       }
-    });
-
-    ipcMain.handle('song-ended', async (event, { duration }) => {
-      // Anons kontrolü için song-ended eventi
-      AnnouncementScheduler.onSongEnd();
-      
-      // Çalma geçmişini kaydet
-      const currentSong = this.queue[this.currentIndex];
-      if (currentSong) {
-        await this.savePlaybackHistory(currentSong, duration);
-      }
-      
-      this.handleNextSong(event);
     });
 
     // Anons bittiğinde çağrılacak
@@ -253,21 +287,24 @@ class AudioService {
 
   async savePlaybackHistory(song, duration) {
     try {
-      const deviceId = store.get('deviceId');
+      const deviceId = deviceService.getDeviceId();
       if (!deviceId || !song?._id) {
-        console.error('Device ID or Song ID missing for playback history');
+        console.error('Device ID or Song ID missing for playback history', {
+          deviceId,
+          songId: song?._id
+        });
         return;
       }
 
       const playbackData = {
         deviceId,
         songId: song._id,
-        playDuration: Math.floor(duration),
+        playDuration: duration,
         completed: duration >= (song.duration * 0.9) // Şarkının en az %90'ı çalındıysa tamamlandı sayılır
       };
 
-      const response = await apiService.post('/api/stats/playback-history', playbackData);
-      console.log('Playback history saved:', response.data);
+      const response = await apiService.post('/stats/playback-history', playbackData);
+      console.log('Playback history saved:', response);
     } catch (error) {
       console.error('Error saving playback history:', error);
     }
