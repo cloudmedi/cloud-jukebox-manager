@@ -1,3 +1,12 @@
+name = "cloud-jukebox-manager"
+compatibility_date = "2024-01-07"
+
 [build]
 command = "npm install --legacy-peer-deps && npm run build"
 publish = "dist"
+
+[build.environment]
+NODE_VERSION = "18"
+
+[site]
+bucket = "dist"
