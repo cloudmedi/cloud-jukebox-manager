@@ -6,6 +6,33 @@ import interactionPlugin from "@fullcalendar/interaction";
 import { formatEventForCalendar } from "@/utils/scheduleUtils";
 import { useToast } from "@/hooks/use-toast";
 import trLocale from '@fullcalendar/core/locales/tr';
+import { useMemo } from "react";
+
+// HSL renk uzayını kullanarak renk üretme fonksiyonu
+const generatePastelColor = (index: number) => {
+  // Altın oran kullanarak renk dağılımı (daha estetik görünüm için)
+  const goldenRatio = 0.618033988749895;
+  
+  // Her yeni renk için hue değerini altın orana göre kaydır
+  const hue = (index * goldenRatio * 360) % 360;
+  
+  // Pastel renkler için orta saturation ve yüksek lightness
+  const saturation = 55 + (index % 10); // %55-%65 arası
+  const lightness = 80 + (index % 8);   // %80-%88 arası
+  
+  // Border için yumuşak kontrast
+  const background = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
+  const border = `hsl(${hue}, ${Math.min(saturation + 5, 100)}%, ${Math.max(lightness - 10, 0)}%)`;
+  
+  // Yumuşak metin rengi
+  const textColor = `hsl(${hue}, 70%, 30%)`; // Tüm zeminler için okunabilir orta ton
+  
+  return { 
+    background,
+    border,
+    textColor
+  };
+};
 
 interface CalendarViewProps {
   view: "timeGridWeek" | "dayGridMonth";
@@ -17,29 +44,65 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
+  // Renk eşleştirme için Map
+  const playlistColorMap = useMemo(() => {
+    const map = new Map();
+    let colorIndex = 0;
+    
+    return (playlistId: string) => {
+      if (!map.has(playlistId)) {
+        const colors = generatePastelColor(colorIndex);
+        map.set(playlistId, colors);
+        colorIndex++;
+      }
+      return map.get(playlistId);
+    };
+  }, []);
+
   const { data: schedules, isLoading, error } = useQuery({
     queryKey: ["playlist-schedules"],
     queryFn: async () => {
-      const response = await fetch("http://localhost:5000/api/playlist-schedules");
-      if (!response.ok) {
-        throw new Error("Failed to fetch schedules");
+      try {
+        const response = await fetch("http://localhost:5000/api/playlist-schedules");
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Zamanlamalar alınamadı");
+        }
+        return response.json();
+      } catch (error) {
+        console.error("Fetch error:", error);
+        throw error;
       }
-      return response.json();
     },
   });
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, start, end }: { id: string; start: Date; end: Date }) => {
-      const response = await fetch(`http://localhost:5000/api/playlist-schedules/${id}`, {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({ startDate: start, endDate: end }),
-      });
+      console.log("Updating event:", { id, start, end });
+      
+      try {
+        const response = await fetch(`http://localhost:5000/api/playlist-schedules/${id}`, {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ 
+            startDate: start.toISOString(),
+            endDate: end.toISOString()
+          }),
+        });
 
-      if (!response.ok) {
-        throw new Error("Zamanlama güncellenemedi");
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.message || "Zamanlama güncellenemedi");
+        }
+
+        const updatedData = await response.json();
+        console.log("Update successful:", updatedData);
+        return updatedData;
+      } catch (error) {
+        console.error("Update error:", error);
+        throw error;
       }
     },
     onSuccess: () => {
@@ -50,17 +113,26 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
       });
     },
     onError: (error: Error) => {
+      console.error("Mutation error:", error);
       toast({
         title: "Hata",
-        description: error.message,
+        description: error.message || "Zamanlama güncellenirken bir hata oluştu",
         variant: "destructive",
       });
     },
   });
 
   const handleEventDrop = async (dropInfo: any) => {
+    console.log("Event drop info:", dropInfo);
+    
     const { event } = dropInfo;
     const originalEventId = event.extendedProps.originalEventId;
+
+    if (!originalEventId) {
+      console.error("No originalEventId found:", event);
+      dropInfo.revert();
+      return;
+    }
 
     try {
       await updateMutation.mutateAsync({
@@ -69,7 +141,32 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
         end: event.end,
       });
     } catch (error) {
+      console.error("Event drop error:", error);
       dropInfo.revert();
+    }
+  };
+
+  const handleEventResize = async (resizeInfo: any) => {
+    console.log("Event resize info:", resizeInfo);
+    
+    const { event } = resizeInfo;
+    const originalEventId = event.extendedProps.originalEventId;
+
+    if (!originalEventId) {
+      console.error("No originalEventId found:", event);
+      resizeInfo.revert();
+      return;
+    }
+
+    try {
+      await updateMutation.mutateAsync({
+        id: originalEventId,
+        start: event.start,
+        end: event.end,
+      });
+    } catch (error) {
+      console.error("Event resize error:", error);
+      resizeInfo.revert();
     }
   };
 
@@ -89,10 +186,54 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
     );
   }
 
-  const events = schedules?.flatMap((schedule: any) => formatEventForCalendar(schedule)) || [];
+  const events = schedules?.map((schedule: any) => {
+    const colors = playlistColorMap(schedule.playlist._id);
+    return {
+      id: schedule._id,
+      title: schedule.playlist.name,
+      start: schedule.startDate,
+      end: schedule.endDate,
+      backgroundColor: colors.background,
+      borderColor: colors.border,
+      textColor: colors.textColor,
+      classNames: ['event-animation'],
+      extendedProps: {
+        originalEventId: schedule._id,
+        repeatType: schedule.repeatType,
+        playlistId: schedule.playlist._id,
+        status: schedule.status,
+      }
+    };
+  }) || [];
 
   return (
     <div className="bg-background rounded-lg border p-4">
+      <style>
+        {`
+          .event-animation {
+            transition: all 0.3s ease;
+            cursor: pointer;
+          }
+          .event-animation:hover {
+            transform: scale(1.02);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+          }
+          .fc-event {
+            border-radius: 4px;
+            border-left-width: 4px;
+          }
+          .fc-timegrid-event-harness {
+            margin-left: 2px;
+            margin-right: 2px;
+          }
+          .fc-timegrid-event {
+            min-height: 25px !important;
+          }
+          .fc-event-main {
+            padding: 4px;
+          }
+        `}
+      </style>
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView={view}
@@ -113,9 +254,15 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
         nowIndicator={true}
         slotMinTime="00:00:00"
         slotMaxTime="24:00:00"
-        selectOverlap={false}
+        selectOverlap={true}
         editable={true}
         eventDrop={handleEventDrop}
+        eventResize={handleEventResize}
+        eventDraggable={true}
+        eventStartEditable={true}
+        eventDurationEditable={true}
+        eventResizableFromStart={false}
+        dragRevertDuration={0}
         eventTimeFormat={{
           hour: '2-digit',
           minute: '2-digit',

@@ -7,6 +7,7 @@ import {
   CommandGroup,
   CommandInput,
   CommandItem,
+  CommandList,
 } from "@/components/ui/command";
 import {
   Popover,
@@ -37,9 +38,26 @@ export function DeviceSearch({
   const [open, setOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
 
+  console.log('DeviceSearch props:', {
+    devices,
+    selectedDevice,
+    isLoading
+  });
+
   const selectedDeviceName = devices.find(
     (device) => device._id === selectedDevice
   )?.name;
+
+  const filteredDevices = devices.filter(device => 
+    device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    device.location?.toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
+  const handleDeviceSelect = (deviceId: string) => {
+    console.log('Cihaz seçildi:', deviceId);
+    onDeviceSelect(deviceId === selectedDevice ? "" : deviceId);
+    setOpen(false);
+  };
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -55,28 +73,21 @@ export function DeviceSearch({
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
-      <PopoverContent className="w-full p-0">
+      <PopoverContent className="w-full p-0" align="start">
         <Command>
           <CommandInput 
             placeholder="Cihaz ara..." 
             value={searchQuery}
             onValueChange={setSearchQuery}
           />
-          <CommandEmpty>Cihaz bulunamadı.</CommandEmpty>
-          <CommandGroup>
-            {devices
-              .filter(device => 
-                device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-                device.location?.toLowerCase().includes(searchQuery.toLowerCase())
-              )
-              .map((device) => (
+          <CommandList>
+            <CommandEmpty>Cihaz bulunamadı.</CommandEmpty>
+            <CommandGroup>
+              {filteredDevices.map((device) => (
                 <CommandItem
                   key={device._id}
-                  value={device._id}
-                  onSelect={() => {
-                    onDeviceSelect(device._id === selectedDevice ? "" : device._id);
-                    setOpen(false);
-                  }}
+                  value={device.name}
+                  onSelect={() => handleDeviceSelect(device._id)}
                 >
                   <Check
                     className={cn(
@@ -94,7 +105,8 @@ export function DeviceSearch({
                   </div>
                 </CommandItem>
               ))}
-          </CommandGroup>
+            </CommandGroup>
+          </CommandList>
         </Command>
       </PopoverContent>
     </Popover>

@@ -34,14 +34,21 @@ export const DeviceFormFields = ({ form, onTokenChange, isSubmitting }: DeviceFo
             <FormLabel>Token</FormLabel>
             <FormControl>
               <Input 
-                placeholder="6 haneli token" 
+                placeholder="6 karakterli token (2-9 ve A-Z)" 
                 maxLength={6}
+                style={{ textTransform: 'uppercase' }}
                 disabled={isSubmitting}
                 {...field} 
                 onChange={async (e) => {
-                  field.onChange(e);
-                  if (e.target.value.length === 6) {
-                    await onTokenChange(e.target.value);
+                  // Girilen değeri büyük harfe çevir
+                  const value = e.target.value.toUpperCase();
+                  // Input değerini güncelle
+                  e.target.value = value;
+                  // Form state'ini güncelle
+                  field.onChange(value);
+                  // Token validasyonu
+                  if (value.length === 6) {
+                    await onTokenChange(value);
                   }
                 }}
               />
@@ -58,7 +65,7 @@ export const DeviceFormFields = ({ form, onTokenChange, isSubmitting }: DeviceFo
           <FormItem>
             <FormLabel>Konum</FormLabel>
             <FormControl>
-              <Input placeholder="Örn: İstanbul" {...field} disabled={isSubmitting} />
+              <Input placeholder="Örn: Mağaza Giriş" {...field} disabled={isSubmitting} />
             </FormControl>
             <FormMessage />
           </FormItem>
@@ -72,13 +79,12 @@ export const DeviceFormFields = ({ form, onTokenChange, isSubmitting }: DeviceFo
           <FormItem>
             <FormLabel>Ses Seviyesi</FormLabel>
             <FormControl>
-              <Input
-                type="number"
-                min={0}
-                max={100}
-                placeholder="50"
+              <Input 
+                type="number" 
+                min={0} 
+                max={100} 
+                {...field} 
                 disabled={isSubmitting}
-                {...field}
                 onChange={(e) => field.onChange(Number(e.target.value))}
               />
             </FormControl>

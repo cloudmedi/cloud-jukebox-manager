@@ -4,6 +4,7 @@ import { PlaylistScheduleForm } from "@/components/schedule/PlaylistScheduleForm
 import { EventDetailDialog } from "@/components/schedule/EventDetailDialog";
 import { CalendarView } from "@/components/schedule/CalendarView";
 import { ViewToggle } from "@/components/schedule/ViewToggle";
+import { useQueryClient } from "@tanstack/react-query";
 
 const Schedule = () => {
   const [view, setView] = useState<"timeGridWeek" | "dayGridMonth">("timeGridWeek");
@@ -14,6 +15,7 @@ const Schedule = () => {
   }>({ start: null, end: null });
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [isEventDetailOpen, setIsEventDetailOpen] = useState(false);
+  const queryClient = useQueryClient();
 
   const handleDateSelect = (selectInfo: any) => {
     setSelectedDates({
@@ -29,7 +31,11 @@ const Schedule = () => {
   };
 
   const handleScheduleCreated = () => {
+    // Dialog'u kapat
     setIsDialogOpen(false);
+    
+    // Takvim verilerini yenile
+    queryClient.invalidateQueries({ queryKey: ["playlist-schedules"] });
   };
 
   return (

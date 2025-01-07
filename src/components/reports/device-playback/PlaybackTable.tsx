@@ -1,57 +1,61 @@
-import { Loader2 } from "lucide-react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { format } from "date-fns";
+import { tr } from "date-fns/locale";
 
 interface PlaybackData {
   songName: string;
   artist: string;
-  playCount: number;
-  totalDuration: number;
-  lastPlayed: string;
+  playedAt: string;
+  duration: number;
 }
 
 interface PlaybackTableProps {
-  data: PlaybackData[] | null;
-  isLoading: boolean;
+  data: PlaybackData[];
+  isLoading?: boolean;
 }
 
-export function PlaybackTable({ data, isLoading }: PlaybackTableProps) {
+export function PlaybackTable({ data = [], isLoading = false }: PlaybackTableProps) {
   if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-[200px]">
-        <Loader2 className="h-8 w-8 animate-spin" />
-      </div>
-    );
+    return <div className="text-center p-4">Yükleniyor...</div>;
   }
 
-  if (!data) {
-    return null;
+  if (!data || data.length === 0) {
+    return <div className="text-center p-4">Veri bulunamadı.</div>;
   }
 
   return (
     <div className="rounded-md border">
-      <table className="w-full">
-        <thead>
-          <tr className="border-b bg-muted/50">
-            <th className="p-2 text-left">Şarkı</th>
-            <th className="p-2 text-left">Sanatçı</th>
-            <th className="p-2 text-left">Çalınma Sayısı</th>
-            <th className="p-2 text-left">Toplam Süre</th>
-            <th className="p-2 text-left">Son Çalınma</th>
-          </tr>
-        </thead>
-        <tbody>
-          {data.map((item: PlaybackData, index: number) => (
-            <tr key={index} className="border-b">
-              <td className="p-2">{item.songName}</td>
-              <td className="p-2">{item.artist}</td>
-              <td className="p-2">{item.playCount}</td>
-              <td className="p-2">{Math.round(item.totalDuration / 60)} dk</td>
-              <td className="p-2">
-                {new Date(item.lastPlayed).toLocaleDateString()}
-              </td>
-            </tr>
+      <Table>
+        <TableHeader>
+          <TableRow>
+            <TableHead>Şarkı</TableHead>
+            <TableHead>Sanatçı</TableHead>
+            <TableHead className="text-right">Çalınma Zamanı</TableHead>
+            <TableHead className="text-right">Süre (dk)</TableHead>
+          </TableRow>
+        </TableHeader>
+        <TableBody>
+          {data.map((item, index) => (
+            <TableRow key={index}>
+              <TableCell>{item.songName}</TableCell>
+              <TableCell>{item.artist}</TableCell>
+              <TableCell className="text-right">
+                {format(new Date(item.playedAt), "dd.MM.yyyy HH:mm", { locale: tr })}
+              </TableCell>
+              <TableCell className="text-right">
+                {Math.round(item.duration / 60)}
+              </TableCell>
+            </TableRow>
           ))}
-        </tbody>
-      </table>
+        </TableBody>
+      </Table>
     </div>
   );
 }

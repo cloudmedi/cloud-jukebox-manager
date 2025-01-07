@@ -7,7 +7,7 @@ import { RepeatTypeSelect } from "./RepeatTypeSelect";
 import { TargetSelect } from "./TargetSelect";
 import { ScheduleFormData } from "./types";
 import { useToast } from "@/components/ui/use-toast";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQueryClient } from "@tanstack/react-query";
 
 interface PlaylistScheduleFormProps {
   onSuccess?: () => void;
@@ -21,6 +21,7 @@ export function PlaylistScheduleForm({
   initialEndDate 
 }: PlaylistScheduleFormProps) {
   const { toast } = useToast();
+  const queryClient = useQueryClient();
   
   const form = useForm<ScheduleFormData>({
     defaultValues: {
@@ -68,6 +69,9 @@ export function PlaylistScheduleForm({
       return response.json();
     },
     onSuccess: () => {
+      // Takvim verilerini yenile
+      queryClient.invalidateQueries({ queryKey: ["playlist-schedules"] });
+      
       toast({
         title: "Başarılı",
         description: "Zamanlama başarıyla oluşturuldu",

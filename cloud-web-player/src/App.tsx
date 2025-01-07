@@ -3,7 +3,9 @@ import { Router } from './Router';
 
 const App = () => {
   return (
-    <TokenInitializer>
+    <
+      
+    >
       <Router />
     </TokenInitializer>
   );

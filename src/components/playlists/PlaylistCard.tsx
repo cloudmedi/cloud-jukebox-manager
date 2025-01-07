@@ -33,13 +33,13 @@ export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: Playli
 
   return (
     <>
-      <Card className="group overflow-hidden transition-all duration-300 hover:shadow-lg hover:-translate-y-1 w-[200px]">
+      <Card className="group overflow-hidden w-[200px] shadow-md bg-card/50 backdrop-blur-sm">
         <CardHeader className="relative aspect-square p-0">
           {playlist.artwork ? (
             <img
               src={`http://localhost:5000${playlist.artwork}`}
               alt={playlist.name}
-              className="h-[200px] w-[200px] object-cover transition-transform duration-300 group-hover:scale-105"
+              className="h-[200px] w-[200px] object-cover"
               loading="lazy"
             />
           ) : (
