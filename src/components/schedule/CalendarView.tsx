@@ -7,32 +7,9 @@ import { formatEventForCalendar } from "@/utils/scheduleUtils";
 import { useToast } from "@/hooks/use-toast";
 import trLocale from '@fullcalendar/core/locales/tr';
 import { useMemo } from "react";
-
-// HSL renk uzayını kullanarak renk üretme fonksiyonu
-const generatePastelColor = (index: number) => {
-  // Altın oran kullanarak renk dağılımı (daha estetik görünüm için)
-  const goldenRatio = 0.618033988749895;
-  
-  // Her yeni renk için hue değerini altın orana göre kaydır
-  const hue = (index * goldenRatio * 360) % 360;
-  
-  // Pastel renkler için orta saturation ve yüksek lightness
-  const saturation = 55 + (index % 10); // %55-%65 arası
-  const lightness = 80 + (index % 8);   // %80-%88 arası
-  
-  // Border için yumuşak kontrast
-  const background = `hsl(${hue}, ${saturation}%, ${lightness}%)`;
-  const border = `hsl(${hue}, ${Math.min(saturation + 5, 100)}%, ${Math.max(lightness - 10, 0)}%)`;
-  
-  // Yumuşak metin rengi
-  const textColor = `hsl(${hue}, 70%, 30%)`; // Tüm zeminler için okunabilir orta ton
-  
-  return { 
-    background,
-    border,
-    textColor
-  };
-};
+import { CalendarEventHandlers } from "./CalendarEventHandlers";
+import { CalendarStyles } from "./CalendarStyles";
+import { generatePastelColor } from "./utils/colorUtils";
 
 interface CalendarViewProps {
   view: "timeGridWeek" | "dayGridMonth";
@@ -70,15 +47,17 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
         }
         return response.json();
       } catch (error) {
-        console.error("Fetch error:", error);
-        throw error;
+        console.error("Veri çekme hatası:", error);
+        throw new Error("Zamanlamalar yüklenirken bir hata oluştu. Lütfen internet bağlantınızı kontrol edin ve tekrar deneyin.");
       }
     },
+    retry: 3, // 3 kez yeniden deneme
+    retryDelay: attemptIndex => Math.min(1000 * 2 ** attemptIndex, 30000), // Üstel geri çekilme
   });
 
   const updateMutation = useMutation({
     mutationFn: async ({ id, start, end }: { id: string; start: Date; end: Date }) => {
-      console.log("Updating event:", { id, start, end });
+      console.log("Güncelleme yapılıyor:", { id, start, end });
       
       try {
         const response = await fetch(`http://localhost:5000/api/playlist-schedules/${id}`, {
@@ -97,11 +76,9 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
           throw new Error(errorData.message || "Zamanlama güncellenemedi");
         }
 
-        const updatedData = await response.json();
-        console.log("Update successful:", updatedData);
-        return updatedData;
+        return response.json();
       } catch (error) {
-        console.error("Update error:", error);
+        console.error("Güncelleme hatası:", error);
         throw error;
       }
     },
@@ -113,7 +90,7 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
       });
     },
     onError: (error: Error) => {
-      console.error("Mutation error:", error);
+      console.error("Mutation hatası:", error);
       toast({
         title: "Hata",
         description: error.message || "Zamanlama güncellenirken bir hata oluştu",
@@ -123,13 +100,13 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
   });
 
   const handleEventDrop = async (dropInfo: any) => {
-    console.log("Event drop info:", dropInfo);
+    console.log("Event düşürme bilgisi:", dropInfo);
     
     const { event } = dropInfo;
     const originalEventId = event.extendedProps.originalEventId;
 
     if (!originalEventId) {
-      console.error("No originalEventId found:", event);
+      console.error("originalEventId bulunamadı:", event);
       dropInfo.revert();
       return;
     }
@@ -141,19 +118,19 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
         end: event.end,
       });
     } catch (error) {
-      console.error("Event drop error:", error);
+      console.error("Event düşürme hatası:", error);
       dropInfo.revert();
     }
   };
 
   const handleEventResize = async (resizeInfo: any) => {
-    console.log("Event resize info:", resizeInfo);
+    console.log("Event boyutlandırma bilgisi:", resizeInfo);
     
     const { event } = resizeInfo;
     const originalEventId = event.extendedProps.originalEventId;
 
     if (!originalEventId) {
-      console.error("No originalEventId found:", event);
+      console.error("originalEventId bulunamadı:", event);
       resizeInfo.revert();
       return;
     }
@@ -165,7 +142,7 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
         end: event.end,
       });
     } catch (error) {
-      console.error("Event resize error:", error);
+      console.error("Event boyutlandırma hatası:", error);
       resizeInfo.revert();
     }
   };
@@ -180,8 +157,14 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
 
   if (error) {
     return (
-      <div className="flex items-center justify-center h-64 text-red-500">
-        Hata oluştu: {error instanceof Error ? error.message : 'Bilinmeyen hata'}
+      <div className="flex flex-col items-center justify-center h-64 text-red-500 space-y-4">
+        <p>Hata oluştu: {error instanceof Error ? error.message : 'Bilinmeyen hata'}</p>
+        <button 
+          onClick={() => queryClient.invalidateQueries({ queryKey: ["playlist-schedules"] })}
+          className="px-4 py-2 bg-blue-500 text-white rounded hover:bg-blue-600 transition-colors"
+        >
+          Yeniden Dene
+        </button>
       </div>
     );
   }
@@ -208,32 +191,7 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
 
   return (
     <div className="bg-background rounded-lg border p-4">
-      <style>
-        {`
-          .event-animation {
-            transition: all 0.3s ease;
-            cursor: pointer;
-          }
-          .event-animation:hover {
-            transform: scale(1.02);
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
-          }
-          .fc-event {
-            border-radius: 4px;
-            border-left-width: 4px;
-          }
-          .fc-timegrid-event-harness {
-            margin-left: 2px;
-            margin-right: 2px;
-          }
-          .fc-timegrid-event {
-            min-height: 25px !important;
-          }
-          .fc-event-main {
-            padding: 4px;
-          }
-        `}
-      </style>
+      <CalendarStyles />
       <FullCalendar
         plugins={[dayGridPlugin, timeGridPlugin, interactionPlugin]}
         initialView={view}
@@ -254,13 +212,13 @@ export const CalendarView = ({ view, onDateSelect, onEventClick }: CalendarViewP
         nowIndicator={true}
         slotMinTime="00:00:00"
         slotMaxTime="24:00:00"
-        selectOverlap={true}
+        selectOverlap={false}
         editable={true}
         eventDrop={handleEventDrop}
         eventResize={handleEventResize}
         eventDraggable={true}
         eventStartEditable={true}
-        eventDurationEditable={true}
+        eventDurationEditable={false}
         eventResizableFromStart={false}
         dragRevertDuration={0}
         eventTimeFormat={{
