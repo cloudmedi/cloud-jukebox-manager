@@ -23,6 +23,7 @@ export const handleDeviceStatusMessage = (message: any) => {
         const updatedDevice = {
           ...device,
           isOnline: message.isOnline ?? device.isOnline,
+          isPlaying: message.isPlaying ?? device.isPlaying,
           volume: message.volume ?? device.volume,
           playlistStatus: message.playlistStatus ?? device.playlistStatus,
           downloadProgress: message.downloadProgress ?? device.downloadProgress,
@@ -34,7 +35,14 @@ export const handleDeviceStatusMessage = (message: any) => {
           lastError: message.error ?? device.lastError
         };
 
-        console.log('Updating device:', device.token, updatedDevice);
+        console.log('Device state update:', {
+          deviceToken: device.token,
+          deviceName: device.name,
+          oldPlayingState: device.isPlaying,
+          newPlayingState: message.isPlaying,
+          timestamp: new Date().toISOString()
+        });
+
         return updatedDevice;
       }
       return device;

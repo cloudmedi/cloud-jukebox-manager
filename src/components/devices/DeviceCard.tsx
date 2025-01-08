@@ -113,50 +113,66 @@ export const DeviceCard = ({ device, isSelected, onSelect }: DeviceCardProps) =>
 
   return (
     <Card className={cn(
-      "transition-all duration-200 hover:shadow-lg",
-      getGroupColor(device.groupId)
+      "group relative transition-all duration-200",
+      "hover:shadow-lg hover:border-primary/20",
+      device.isOnline ? "bg-card" : "bg-muted/30"
     )}>
-      <CardHeader className="pb-2">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <Checkbox checked={isSelected} onCheckedChange={onSelect} />
-            <div>
-              <h3 className="font-medium">{device.name}</h3>
-              <p className="text-sm text-muted-foreground font-mono">{device.token}</p>
+      <CardHeader className="space-y-0 p-4">
+        <div className="flex items-center gap-3">
+          <Checkbox
+            checked={isSelected}
+            onCheckedChange={onSelect}
+            className="data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
+          />
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className="font-medium truncate">{device.name}</span>
+              <Badge variant={device.isOnline ? "default" : "secondary"} className="h-5">
+                {device.isOnline ? "Çevrimiçi" : "Çevrimdışı"}
+              </Badge>
+            </div>
+            <div className="flex items-center gap-2 mt-1 text-sm text-muted-foreground">
+              <MapPin className="h-3 w-3" />
+              <span className="truncate">{device.location || "Konum Yok"}</span>
             </div>
           </div>
-          {device.isOnline ? (
-            <Badge className="bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25">
-              <CheckCircle2 className="h-3 w-3 mr-1" />
-              Çevrimiçi
-            </Badge>
-          ) : (
-            <Badge variant="destructive" className="bg-red-500/15 text-red-500 hover:bg-red-500/25">
-              <XCircle className="h-3 w-3 mr-1" />
-              Çevrimdışı
-            </Badge>
-          )}
+          <DeviceActions device={device} />
         </div>
       </CardHeader>
-      <CardContent className="space-y-2">
-        <div className="flex items-center gap-2 text-sm">
-          <MapPin className="h-4 w-4 text-muted-foreground" />
-          <span>{device.location || "-"}</span>
+
+      <CardContent className="p-4 pt-0 space-y-4">
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-1">
+            <div className="text-sm text-muted-foreground">Ses Seviyesi</div>
+            <div className="flex items-center gap-2">
+              <Volume2 className="h-4 w-4 text-primary" />
+              <span className="font-medium">{device.volume || 0}%</span>
+            </div>
+          </div>
+          <div className="space-y-1">
+            <div className="text-sm text-muted-foreground">Son Görülme</div>
+            <div className="text-sm">
+              {device.lastSeen
+                ? formatDistanceToNow(new Date(device.lastSeen), {
+                    addSuffix: true,
+                    locale: tr,
+                  })
+                : "-"}
+            </div>
+          </div>
         </div>
-        <div className="flex items-center gap-2 text-sm">
-          <Volume2 className="h-4 w-4 text-muted-foreground" />
-          <span>%{device.volume}</span>
-        </div>
-        <div className="text-sm">{renderPlaylistStatus()}</div>
-        <div className="text-sm text-muted-foreground">
-          Son görülme: {formatDistanceToNow(new Date(device.lastSeen), {
-            addSuffix: true,
-            locale: tr,
-          })}
+
+        <div className="space-y-1.5">
+          <div className="text-sm text-muted-foreground">Playlist Durumu</div>
+          <div className="min-h-[80px]">{renderPlaylistStatus()}</div>
         </div>
       </CardContent>
-      <CardFooter className="pt-2 flex justify-end">
-        <DeviceActions device={device} />
+
+      <CardFooter className="p-4 pt-0">
+        <div className="w-full flex items-center justify-between text-xs text-muted-foreground">
+          <span>ID: {device.token}</span>
+          <span>v{device.version || "1.0.0"}</span>
+        </div>
       </CardFooter>
     </Card>
   );

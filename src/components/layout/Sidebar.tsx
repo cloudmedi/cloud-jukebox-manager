@@ -1,4 +1,4 @@
-import { Home, Speaker, List, Calendar, Volume2, Upload, BarChart2 } from "lucide-react";
+import { Home, Speaker, List, Calendar, Volume2, Upload, BarChart2, Music2 } from "lucide-react";
 import {
   Sidebar as SidebarContainer,
   SidebarContent,
@@ -11,7 +11,9 @@ import {
   SidebarFooter,
   SidebarSeparator,
 } from "@/components/ui/sidebar";
-import { Link } from "react-router-dom";
+import { Link, useLocation } from "react-router-dom";
+import { cn } from "@/lib/utils";
+import { useQuery } from "@tanstack/react-query";
 
 const menuItems = [
   { title: "Ana Sayfa", icon: Home, path: "/" },
@@ -24,35 +26,74 @@ const menuItems = [
 ];
 
 const Sidebar = () => {
+  const location = useLocation();
+
+  const { data: devices } = useQuery({
+    queryKey: ['devices'],
+    queryFn: async () => {
+      const response = await fetch("http://localhost:5000/api/devices");
+      if (!response.ok) {
+        throw new Error("Cihazlar yüklenirken bir hata oluştu");
+      }
+      return response.json();
+    },
+    refetchInterval: 5000
+  });
+
+  const onlineDeviceCount = devices?.filter(d => d.isOnline).length || 0;
+
   return (
-    <SidebarContainer>
+    <SidebarContainer className="min-h-screen bg-white border-r">
       <SidebarContent>
-        <div className="p-4">
-          <h1 className="text-2xl font-bold">Cloud Media</h1>
+        <div className="flex items-center gap-3 p-6 border-b">
+          <div className="bg-primary/10 p-2 rounded-lg">
+            <Music2 className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-base font-semibold">Cloud Jukebox</h1>
+            <p className="text-xs text-muted-foreground">Müzik Yönetim Sistemi</p>
+          </div>
         </div>
-        <SidebarGroup>
-          <SidebarGroupLabel>Menu</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {menuItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <Link to={item.path} className="flex items-center gap-3">
-                      <item.icon className="h-5 w-5" />
-                      <span>{item.title}</span>
-                    </Link>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+
+        <div className="pt-2">
+          <SidebarGroup>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {menuItems.map((item) => {
+                  const isActive = location.pathname === item.path;
+
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild>
+                        <Link
+                          to={item.path}
+                          className={cn(
+                            "flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors",
+                            isActive
+                              ? "bg-primary/10 text-primary hover:bg-primary/15"
+                              : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                          )}
+                        >
+                          <item.icon className="h-4 w-4" />
+                          <span>{item.title}</span>
+                        </Link>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        </div>
       </SidebarContent>
-      <SidebarFooter>
-        <SidebarSeparator />
-        <div className="flex items-center justify-between px-4 py-3">
-          <span className="text-sm font-medium text-muted-foreground">Version</span>
-          <span className="text-sm font-semibold bg-secondary/50 px-2 py-0.5 rounded">V2.1</span>
+
+      <SidebarFooter className="border-t p-4">
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <div className="flex items-center gap-2">
+            <span className="flex h-2 w-2 rounded-full bg-emerald-500"></span>
+            {onlineDeviceCount} Cihaz
+          </div>
+          <span>v2.1.0</span>
         </div>
       </SidebarFooter>
     </SidebarContainer>

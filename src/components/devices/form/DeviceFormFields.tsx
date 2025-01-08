@@ -2,6 +2,8 @@ import { FormField, FormItem, FormLabel, FormControl, FormMessage } from "@/comp
 import { Input } from "@/components/ui/input";
 import { UseFormReturn } from "react-hook-form";
 import { FormData } from "./deviceFormSchema";
+import { Combobox } from "@/components/ui/combobox";
+import { TURKEY_CITIES } from "@/constants/cities";
 
 interface DeviceFormFieldsProps {
   form: UseFormReturn<FormData>;
@@ -65,7 +67,15 @@ export const DeviceFormFields = ({ form, onTokenChange, isSubmitting }: DeviceFo
           <FormItem>
             <FormLabel>Konum</FormLabel>
             <FormControl>
-              <Input placeholder="Örn: Mağaza Giriş" {...field} disabled={isSubmitting} />
+              <Combobox
+                options={TURKEY_CITIES}
+                value={field.value}
+                onValueChange={field.onChange}
+                placeholder="İl seçiniz"
+                searchPlaceholder="İl ara..."
+                emptyMessage="İl bulunamadı"
+                disabled={isSubmitting}
+              />
             </FormControl>
             <FormMessage />
           </FormItem>

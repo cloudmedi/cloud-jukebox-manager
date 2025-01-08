@@ -26,7 +26,7 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
   const handleScreenshot = () => {
     setIsScreenshotDialogOpen(true);
     setScreenshotData(undefined);
-    
+
     websocketService.sendMessage({
       type: 'command',
       token: device.token,
@@ -86,14 +86,38 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
 
   const handlePlayPause = async () => {
     try {
+      console.log('PlayPause - Current device state:', {
+        deviceId: device._id,
+        deviceName: device.name,
+        isPlaying: device.isPlaying,
+        isOnline: device.isOnline,
+        token: device.token
+      });
+
+      const command = device.isPlaying ? 'pause' : 'play';
+      console.log('PlayPause - Sending command:', command);
+
+      // Komut mesajını gönder
       websocketService.sendMessage({
         type: 'command',
         token: device.token,
-        command: device.isPlaying ? 'pause' : 'play'
+        command: command
       });
-      toast.success(`${device.isPlaying ? 'Durdurma' : 'Oynatma'} komutu gönderildi`);
+
+      // Durumu güncelle
+      queryClient.setQueryData(['devices'], (oldData: Device[] | undefined) => {
+        if (!oldData) return oldData;
+        return oldData.map(d => {
+          if (d._id === device._id) {
+            return { ...d, isPlaying: !device.isPlaying };
+          }
+          return d;
+        });
+      });
+
+      toast.success(`Müzik ${command === 'play' ? 'başlatıldı' : 'duraklatıldı'}`);
     } catch (error) {
-      console.error('Play/Pause error:', error);
+      console.error('PlayPause error:', error);
       toast.error('Komut gönderilemedi');
     }
   };
@@ -101,11 +125,11 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
   const handleVolumeChange = async (volume: number) => {
     try {
       console.log('Volume change requested:', { deviceId: device._id, volume });
-      
+
       // Backend'e gönder
       await deviceService.updateDevice(device._id, { volume });
       console.log('Volume updated in backend');
-      
+
       // WebSocket üzerinden cihaza gönder
       websocketService.sendMessage({
         type: 'command',
@@ -114,10 +138,10 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
         volume: volume
       });
       console.log('Volume command sent via WebSocket');
-      
+
       setIsVolumeDialogOpen(false);
       toast.success('Ses seviyesi değiştirme komutu gönderildi');
-      
+
       // Query'yi invalidate et
       queryClient.invalidateQueries({ queryKey: ['devices'] });
       console.log('Devices query invalidated');
@@ -194,4 +218,3 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
 };
 
 export default DeviceActions;
-

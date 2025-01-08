@@ -35,6 +35,10 @@ const deviceSchema = new mongoose.Schema({
     type: Boolean,
     default: false
   },
+  isPlaying: {
+    type: Boolean,
+    default: false
+  },
   volume: {
     type: Number,
     min: 0,

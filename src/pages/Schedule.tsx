@@ -15,6 +15,7 @@ const Schedule = () => {
   }>({ start: null, end: null });
   const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [isEventDetailOpen, setIsEventDetailOpen] = useState(false);
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
   const queryClient = useQueryClient();
 
   const handleDateSelect = (selectInfo: any) => {
@@ -26,7 +27,16 @@ const Schedule = () => {
   };
 
   const handleEventClick = (clickInfo: any) => {
-    setSelectedEvent(clickInfo.event);
+    console.log("Schedule - handleEventClick:", clickInfo); // Debug için
+    setSelectedEvent({
+      title: clickInfo.title,
+      start: clickInfo.start,
+      end: clickInfo.end,
+      extendedProps: {
+        originalEventId: clickInfo.id,
+        playlistId: clickInfo.playlist._id
+      }
+    });
     setIsEventDetailOpen(true);
   };
 
@@ -36,6 +46,7 @@ const Schedule = () => {
     
     // Takvim verilerini yenile
     queryClient.invalidateQueries({ queryKey: ["playlist-schedules"] });
+    setRefreshTrigger(prev => prev + 1);
   };
 
   return (
@@ -49,6 +60,7 @@ const Schedule = () => {
         view={view}
         onDateSelect={handleDateSelect}
         onEventClick={handleEventClick}
+        refreshTrigger={refreshTrigger}
       />
 
       <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
@@ -70,6 +82,8 @@ const Schedule = () => {
         onClose={() => {
           setIsEventDetailOpen(false);
           setSelectedEvent(null);
+          // Event detayı kapatıldığında da yenile
+          setRefreshTrigger(prev => prev + 1);
         }}
       />
     </div>

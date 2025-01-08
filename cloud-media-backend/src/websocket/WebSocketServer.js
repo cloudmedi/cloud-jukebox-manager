@@ -3,6 +3,7 @@ const MessageHandler = require('./handlers/MessageHandler');
 const StatusHandler = require('./handlers/StatusHandler');
 const AdminConnectionHandler = require('./handlers/AdminConnectionHandler');
 const DeviceConnectionHandler = require('./handlers/DeviceConnectionHandler');
+const Device = require('../models/Device');
 
 class WebSocketServer {
   constructor(server) {
@@ -54,6 +55,22 @@ class WebSocketServer {
     switch (message.type) {
       case 'status':
         await this.statusHandler.handleOnlineStatus(token, message.isOnline);
+        break;
+
+      case 'deviceStatus':
+        // Cihazın oynatma durumunu güncelle
+        const targetDevice = await Device.findOne({ token: token });
+        if (targetDevice) {
+          targetDevice.isPlaying = message.isPlaying;
+          await targetDevice.save();
+        }
+        
+        // Cihazın oynatma durumunu admin paneline ilet
+        this.broadcastToAdmins({
+          type: 'deviceStatus',
+          token: token,
+          isPlaying: message.isPlaying
+        });
         break;
 
       case 'playlistStatus':

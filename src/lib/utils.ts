@@ -15,7 +15,16 @@ export function formatBytes(bytes: number): string {
 
 export function formatDuration(seconds: number): string {
   if (seconds < 60) return `${Math.round(seconds)}s`;
+  
   const minutes = Math.floor(seconds / 60);
   const remainingSeconds = Math.round(seconds % 60);
-  return `${minutes}m ${remainingSeconds}s`;
+
+  if (minutes < 60) {
+    return `${minutes}m ${remainingSeconds}s`;
+  }
+
+  const hours = Math.floor(minutes / 60);
+  const remainingMinutes = minutes % 60;
+
+  return `${hours}s ${remainingMinutes}d`;
 }

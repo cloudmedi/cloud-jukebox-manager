@@ -53,9 +53,19 @@ export const DeviceList = () => {
             showPlaylistError(device.name, data.lastError || 'Playlist yüklenemedi');
           }
           
+          // Log state change
+          if (data.isPlaying !== undefined) {
+            console.log('Device playback state update:', {
+              deviceName: device.name,
+              oldState: device.isPlaying,
+              newState: data.isPlaying
+            });
+          }
+          
           return { 
             ...device, 
             ...data,
+            isPlaying: data.isPlaying !== undefined ? data.isPlaying : device.isPlaying,
             playlistStatus: data.playlistStatus || device.playlistStatus,
             downloadProgress: data.downloadProgress || device.downloadProgress,
             downloadSpeed: data.downloadSpeed || device.downloadSpeed,
