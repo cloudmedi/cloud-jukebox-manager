@@ -34,14 +34,33 @@ function updatePlaybackBadge(state) {
 
 // Audio event listeners
 playlistAudio.addEventListener('play', () => {
+    const currentState = playbackStateManager.getPlaybackState();
+    if (!currentState) {
+        console.log('Preventing auto-play, playback state is paused');
+        playlistAudio.pause();
+        return;
+    }
+
     ipcRenderer.invoke('song-started');
     console.log('Audio started playing');
     updatePlaybackBadge('playing');
+    
+    // WebSocket üzerinden oynatma durumunu gönder
+    ipcRenderer.invoke('send-playback-status', {
+        type: 'deviceStatus',
+        isPlaying: true
+    });
 });
 
 playlistAudio.addEventListener('pause', () => {
     console.log('Audio paused');
     updatePlaybackBadge('paused');
+    
+    // WebSocket üzerinden duraklatma durumunu gönder
+    ipcRenderer.invoke('send-playback-status', {
+        type: 'deviceStatus',
+        isPlaying: false
+    });
 });
 
 playlistAudio.addEventListener('ended', () => {
@@ -233,7 +252,13 @@ ipcRenderer.on('toggle-playback', () => {
       playlistAudio.play()
         .then(() => {
           console.log('Playback started successfully');
+          playbackStateManager.savePlaybackState(true);
           ipcRenderer.send('playback-status-changed', true);
+          // WebSocket üzerinden oynatma durumunu gönder
+          ipcRenderer.invoke('send-playback-status', {
+            type: 'deviceStatus',
+            isPlaying: true
+          });
         })
         .catch(err => {
           console.error('Playback error:', err);
@@ -242,7 +267,13 @@ ipcRenderer.on('toggle-playback', () => {
     } else {
       playlistAudio.pause();
       console.log('Playback paused');
+      playbackStateManager.savePlaybackState(false);
       ipcRenderer.send('playback-status-changed', false);
+      // WebSocket üzerinden duraklatma durumunu gönder
+      ipcRenderer.invoke('send-playback-status', {
+        type: 'deviceStatus',
+        isPlaying: false
+      });
     }
   }
 });
@@ -267,6 +298,42 @@ ipcRenderer.on('auto-play-playlist', (event, playlist) => {
         ipcRenderer.invoke('load-playlist', initializedPlaylist.playlist);
       }
     }
+  }
+});
+
+// Playback komutları için event listener
+ipcRenderer.on('playback-command', (event, data) => {
+  console.log('Playback command received:', data);
+  
+  if (data.action === 'play') {
+    console.log('Playing audio...');
+    playlistAudio.play().catch(err => {
+      console.error('Play error:', err);
+    });
+    playbackStateManager.savePlaybackState(true);
+  } else if (data.action === 'pause') {
+    console.log('Pausing audio...');
+    playlistAudio.pause();
+    playbackStateManager.savePlaybackState(false);
+  }
+});
+
+// WebSocket komut dinleyicisi
+ipcRenderer.on('playback-command', (event, data) => {
+  console.log('Playback command received:', data);
+  
+  switch (data.action) {
+    case 'play':
+      if (playlistAudio.paused) {
+        playlistAudio.play();
+      }
+      break;
+      
+    case 'pause':
+      if (!playlistAudio.paused) {
+        playlistAudio.pause();
+      }
+      break;
   }
 });
 
@@ -545,4 +612,3 @@ ipcRenderer.on('show-toast', (event, toast) => {
       break;
   }
 });
-

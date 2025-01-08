@@ -102,6 +102,7 @@ function updateTrayMenu(song = currentSong) {
     {
       label: isPlaying ? 'Duraklat' : 'Çal',
       click: function() {
+        console.log('Tray menu playback toggle clicked, current state:', isPlaying);
         mainWindow.webContents.send('toggle-playback');
       }
     },
@@ -203,6 +204,16 @@ ipcMain.handle('save-device-info', async (event, deviceInfo) => {
 
 ipcMain.handle('get-device-info', async () => {
   return store.get('deviceInfo');
+});
+
+// Playback durumu gönderme handler'ı
+ipcMain.handle('send-playback-status', async (event, message) => {
+  try {
+    console.log('Sending playback status:', message);
+    await websocketService.sendMessage(message);
+  } catch (error) {
+    console.error('Error sending playback status:', error);
+  }
 });
 
 // Şarkı değiştiğinde tray menüsünü güncelle

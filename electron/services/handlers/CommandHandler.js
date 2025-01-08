@@ -13,6 +13,18 @@ class CommandHandler {
 
     try {
       switch (message.command) {
+        case 'play':
+          console.log('Play command received');
+          const audioPlayer = mainWindow.webContents;
+          audioPlayer.send('playback-command', { action: 'play' });
+          break;
+
+        case 'pause':
+          console.log('Pause command received');
+          const player = mainWindow.webContents;
+          player.send('playback-command', { action: 'pause' });
+          break;
+
         case 'screenshot':
           console.log('Taking screenshot...');
           const result = await screenshotHandler.takeScreenshot();
