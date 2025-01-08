@@ -22,15 +22,29 @@ interface Notification {
 export function NotificationsPopover() {
   const { toast } = useToast();
 
-  const { data: notifications = [], isLoading } = useQuery({
+  const { data: notifications = [], isLoading, error } = useQuery({
     queryKey: ['notifications'],
     queryFn: async () => {
-      const response = await fetch('http://localhost:5000/api/notifications');
-      if (!response.ok) {
-        throw new Error('Bildirimler yüklenemedi');
+      try {
+        const response = await fetch('http://localhost:5000/api/notifications');
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        return response.json();
+      } catch (error) {
+        console.error('Error fetching notifications:', error);
+        throw new Error('Bildirimler yüklenemedi. Lütfen daha sonra tekrar deneyin.');
       }
-      return response.json();
     },
+    retry: 3,
+    retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
+    onError: (error) => {
+      toast({
+        title: "Hata",
+        description: error.message,
+        variant: "destructive",
+      });
+    }
   });
 
   const unreadCount = notifications.filter((n: Notification) => !n.read).length;
@@ -104,6 +118,10 @@ export function NotificationsPopover() {
             <div className="flex items-center justify-center h-full">
               <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-gray-900" />
             </div>
+          ) : error ? (
+            <p className="text-center text-muted-foreground py-4">
+              Bildirimler yüklenirken bir hata oluştu
+            </p>
           ) : notifications.length === 0 ? (
             <p className="text-center text-muted-foreground py-4">
               Bildirim bulunmuyor
