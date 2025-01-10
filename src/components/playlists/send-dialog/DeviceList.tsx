@@ -1,8 +1,7 @@
 import { useEffect } from "react";
 import { useFormContext } from "react-hook-form";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Progress } from "@/components/ui/progress";
 import { Device } from "@/types/device";
+import { Progress } from "@/components/ui/progress";
 
 interface DeviceListProps {
   searchQuery: string;
@@ -10,7 +9,7 @@ interface DeviceListProps {
   isDownloading: boolean;
 }
 
-export function DeviceList({ searchQuery, downloadProgress, isDownloading }: DeviceListProps) {
+export const DeviceList = ({ searchQuery, downloadProgress, isDownloading }: DeviceListProps) => {
   const { register, watch } = useFormContext();
   const devices = watch("targetDevices");
 
@@ -18,27 +17,34 @@ export function DeviceList({ searchQuery, downloadProgress, isDownloading }: Dev
     device.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
+  useEffect(() => {
+    // Logic to handle device selection
+  }, [devices]);
+
   return (
     <div>
-      <h3 className="text-lg font-semibold">Cihazlar</h3>
+      <h2 className="text-lg font-semibold">Cihazlar</h2>
       <div className="space-y-2">
-        {filteredDevices.map((device) => (
-          <div key={device._id} className="flex items-center">
-            <Checkbox
-              {...register("targetDevices")}
-              value={device._id}
-              className="mr-2"
-            />
+        {filteredDevices.map((device: Device) => (
+          <div key={device._id} className="flex items-center justify-between p-2 border rounded">
             <span>{device.name}</span>
-            {isDownloading && downloadProgress[device._id] !== undefined && (
+            {isDownloading && downloadProgress[device.token] !== undefined && (
               <Progress 
-                value={downloadProgress[device._id]} 
+                value={downloadProgress[device.token]} 
                 className="h-1.5 bg-gray-200"
               />
             )}
+            <input
+              type="checkbox"
+              value={device._id}
+              {...register("targetDevices")}
+              className="ml-2"
+            />
           </div>
         ))}
       </div>
     </div>
   );
-}
+};
+
+export default DeviceList;
