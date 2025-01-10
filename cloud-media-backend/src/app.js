@@ -1,4 +1,5 @@
 const express = require('express');
+const mongoose = require('mongoose');
 const cors = require('cors');
 const connectDB = require('./config/database');
 const path = require('path');
@@ -14,7 +15,12 @@ const server = http.createServer(app);
 // WebSocket sunucusunu başlat
 const wss = new WebSocketServer(server);
 global.wss = wss; // Global erişim için WSS'i kaydet
-const cleanupService = new AnnouncementCleanupService(wss);
+
+// WebSocket server'ı route'lara enjekte et
+app.use((req, res, next) => {
+  req.wss = wss;
+  next();
+});
 
 // Connect to MongoDB
 connectDB();
@@ -38,7 +44,7 @@ app.use(express.json());
 // Uploads klasörünü statik olarak sunma
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// WebSocket server'ı route'lara enjekte et
+// WebSocket server'ı route'lara ekle
 app.use((req, res, next) => {
   req.wss = wss;
   next();
@@ -58,6 +64,7 @@ app.use('/api/notifications', require('./routes/notificationRoutes'));
 const PORT = process.env.PORT || 5000;
 
 // Cleanup servisi başlat
+const cleanupService = new AnnouncementCleanupService();
 cleanupService.start();
 
 // Uygulama kapatıldığında cleanup servisini durdur

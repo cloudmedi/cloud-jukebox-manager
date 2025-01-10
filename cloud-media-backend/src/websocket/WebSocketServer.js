@@ -4,6 +4,7 @@ const StatusHandler = require('./handlers/StatusHandler');
 const AdminConnectionHandler = require('./handlers/AdminConnectionHandler');
 const DeviceConnectionHandler = require('./handlers/DeviceConnectionHandler');
 const Device = require('../models/Device');
+const ScheduleHandler = require('./handlers/ScheduleHandler');
 
 class WebSocketServer {
   constructor(server) {
@@ -13,6 +14,7 @@ class WebSocketServer {
     this.statusHandler = new StatusHandler(this);
     this.adminHandler = new AdminConnectionHandler(this);
     this.deviceHandler = new DeviceConnectionHandler(this);
+    this.scheduleHandler = new ScheduleHandler(this);
     this.initialize();
   }
 
@@ -130,36 +132,62 @@ class WebSocketServer {
     });
   }
 
-  sendToDevice(token, message) {
-    console.log(`Sending message to device ${token}:`, message);
+  sendMessageToDevice(token, message) {
+    console.log(`[WebSocket] Attempting to send message to device ${token}:`, message);
     let sent = false;
     this.wss.clients.forEach(client => {
       if (client.deviceToken === token && client.readyState === WebSocket.OPEN) {
         try {
-          client.send(JSON.stringify(message));
+          const messageToSend = JSON.stringify({
+            type: message.type,
+            data: message.data
+          });
+          console.log(`[WebSocket] Formatted message:`, messageToSend);
+          client.send(messageToSend);
           sent = true;
-          console.log(`Message successfully sent to device ${token}`);
+          console.log(`[WebSocket] Message successfully sent to device ${token}`);
         } catch (error) {
-          console.error(`Error sending message to device ${token}:`, error);
+          console.error(`[WebSocket] Error sending message to device ${token}:`, error);
         }
       }
     });
-    
     if (!sent) {
-      console.log(`Message could not be sent - Device ${token} not found or not connected`);
+      console.log(`[WebSocket] No active connection found for device ${token}`);
     }
-    
     return sent;
   }
 
   findDeviceWebSocket(token) {
-    let targetWs = null;
-    this.wss.clients.forEach(client => {
-      if (client.deviceToken === token) {
-        targetWs = client;
+    let foundWs = null;
+    this.wss.clients.forEach(ws => {
+      if (ws.deviceToken === token) {
+        foundWs = ws;
       }
     });
-    return targetWs;
+    return foundWs;
+  }
+
+  handleMessage(ws, message) {
+    try {
+      const data = JSON.parse(message);
+      
+      switch (data.type) {
+        case 'schedule':
+          this.messageHandler.handleScheduleMessage(ws, data);
+          break;
+        case 'playlist':
+          this.messageHandler.handlePlaylistMessage(ws, data);
+          break;
+        case 'command':
+          this.messageHandler.handleCommandMessage(ws, data);
+          break;
+        default:
+          console.log('Unknown message type:', data.type);
+          break;
+      }
+    } catch (error) {
+      console.error('Message handling error:', error);
+    }
   }
 }
 

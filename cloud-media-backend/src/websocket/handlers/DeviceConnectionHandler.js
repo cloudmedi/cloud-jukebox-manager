@@ -3,57 +3,82 @@ const Device = require('../../models/Device');
 class DeviceConnectionHandler {
   constructor(wss) {
     this.wss = wss;
+    this.connectedDevices = new Map();
   }
 
   async handleConnection(ws) {
-    let deviceToken = null;
+    console.log('[WebSocket] New device connection attempt');
 
     ws.once('message', async (message) => {
       try {
         const data = JSON.parse(message);
-        console.log('Device auth attempt:', data);
+        console.log('[WebSocket] Received message from device:', data);
 
         if (data.type === 'auth' && data.token) {
-          const device = await Device.findOne({ token: data.token });
+          let deviceToken = data.token;
+          console.log('[WebSocket] Device registration attempt with token:', deviceToken);
 
+          const device = await Device.findOne({ token: deviceToken });
           if (device) {
-            deviceToken = device.token;
             ws.deviceToken = deviceToken;
-            console.log(`Device authenticated: ${deviceToken}`);
+            console.log(`[WebSocket] Device authenticated successfully: ${deviceToken}`);
 
             await device.updateStatus(true);
+
+            ws.send(JSON.stringify({
+              type: 'auth',
+              success: true,
+              token: deviceToken,
+              data: {
+                name: device.name,
+                type: device.type,
+                volume: device.volume
+              }
+            }));
+            console.log(`[WebSocket] Auth success response sent to device: ${deviceToken}`);
+
+            this.connectedDevices.set(deviceToken, { ws, device });
+            this.setupMessageHandlers(ws, deviceToken, device);
+          } else {
+            console.log('[WebSocket] Invalid device token received:', deviceToken);
+            ws.send(JSON.stringify({
+              type: 'auth',
+              success: false,
+              message: 'Invalid device token'
+            }));
+            ws.close();
+          }
+        } else {
+          console.log('[WebSocket] Invalid auth message received');
+          ws.close();
+        }
+      } catch (error) {
+        console.error('[WebSocket] Error handling device message:', error);
+        ws.close();
+      }
+    });
+
+    ws.on('close', async () => {
+      const deviceToken = ws.deviceToken;
+      console.log('[WebSocket] Device connection closed:', deviceToken);
+      
+      if (deviceToken) {
+        try {
+          const device = await Device.findOne({ token: deviceToken });
+          if (device) {
+            await device.updateStatus(false);
+            console.log(`[WebSocket] Device ${deviceToken} status updated to offline`);
 
             this.wss.broadcastToAdmins({
               type: 'deviceStatus',
               token: deviceToken,
-              isOnline: true,
-              volume: device.volume
+              isOnline: false
             });
-
-            ws.send(JSON.stringify({
-              type: 'auth',
-              status: 'success',
-              deviceInfo: {
-                name: device.name,
-                volume: device.volume
-              }
-            }));
-            console.log(`Auth success response sent to device: ${deviceToken}`);
-
-            this.setupMessageHandlers(ws, deviceToken, device);
-          } else {
-            console.log('Invalid token received:', data.token);
-            ws.send(JSON.stringify({
-              type: 'auth',
-              status: 'error',
-              message: 'Invalid token'
-            }));
-            ws.close();
           }
+          this.connectedDevices.delete(deviceToken);
+        } catch (error) {
+          console.error('[WebSocket] Error updating device status on disconnect:', error);
         }
-      } catch (error) {
-        console.error('Authentication error:', error);
-        ws.close();
       }
     });
   }
@@ -62,37 +87,52 @@ class DeviceConnectionHandler {
     ws.on('message', async (message) => {
       try {
         const data = JSON.parse(message);
-        console.log(`Device message received from ${deviceToken}:`, data);
+        console.log(`[WebSocket] Device message received from ${deviceToken}:`, data);
+        
         await this.wss.handleDeviceMessage(deviceToken, data);
       } catch (error) {
-        console.error(`Message handling error for device ${deviceToken}:`, error);
+        console.error(`[WebSocket] Message handling error for device ${deviceToken}:`, error);
         ws.send(JSON.stringify({
           type: 'error',
           message: error.message
         }));
       }
     });
+  }
 
-    ws.on('close', async () => {
-      console.log(`Device disconnected: ${deviceToken}`);
+  async sendScheduleToDevice(deviceId, schedule) {
+    console.log(`[WebSocket] Sending schedule to device ${deviceId}:`, schedule);
+    const device = this.connectedDevices.get(deviceId);
+    if (device && device.ws.readyState === WebSocket.OPEN) {
       try {
-        const device = await Device.findOne({ token: deviceToken });
-        if (!device) {
-          console.log(`Device ${deviceToken} not found - probably deleted`);
-          return;
-        }
-        await device.updateStatus(false);
-
-        this.wss.broadcastToAdmins({
-          type: 'deviceStatus',
-          token: deviceToken,
-          isOnline: false
-        });
+        device.ws.send(JSON.stringify({
+          type: 'schedule-created',
+          data: {
+            id: schedule._id,
+            playlist: schedule.playlist,
+            startDate: schedule.startDate,
+            endDate: schedule.endDate,
+            repeatType: schedule.repeatType
+          }
+        }));
+        console.log(`[WebSocket] Schedule sent successfully to device ${deviceId}`);
+        return true;
       } catch (error) {
-        // Hata durumunda sadece loglama yap, uygulamayı kapatma
-        console.error(`Error updating device status on disconnect: ${error.message}`);
+        console.error(`[WebSocket] Error sending schedule to device ${deviceId}:`, error);
+        return false;
       }
-    });
+    }
+    console.log(`[WebSocket] Device ${deviceId} not connected or not ready`);
+    return false;
+  }
+
+  async sendMessageToDevice(deviceId, message) {
+    const device = this.connectedDevices.get(deviceId);
+    if (device && device.ws.readyState === WebSocket.OPEN) {
+      device.ws.send(JSON.stringify(message));
+      return true;
+    }
+    return false;
   }
 }
 

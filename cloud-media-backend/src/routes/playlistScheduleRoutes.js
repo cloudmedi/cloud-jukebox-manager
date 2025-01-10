@@ -33,6 +33,8 @@ router.get('/:id', async (req, res) => {
 
 // Yeni zamanlama oluştur
 router.post('/', async (req, res) => {
+  console.log('[Schedule] Creating new schedule:', req.body);
+  
   const schedule = new PlaylistSchedule({
     playlist: req.body.playlist,
     startDate: req.body.startDate,
@@ -46,62 +48,88 @@ router.post('/', async (req, res) => {
   });
 
   try {
-    // Çakışma kontrolü
     const hasConflict = await schedule.checkConflict();
     if (hasConflict) {
-      return res.status(400).json({ 
-        message: 'Bu zaman aralığında seçili cihaz veya gruplar için başka bir zamanlama mevcut' 
+      console.log('[Schedule] Conflict detected for new schedule');
+      return res.status(400).json({
+        message: "Bu zaman aralığında çakışan başka bir zamanlama mevcut"
       });
     }
 
     const newSchedule = await schedule.save();
+    console.log('[Schedule] New schedule created:', newSchedule._id);
+
+    // WebSocket üzerinden hedef cihazlara bildir
+    if (req.wss && req.wss.scheduleHandler) {
+      console.log('[Schedule] Broadcasting via WebSocket. WSS:', !!req.wss, 'ScheduleHandler:', !!req.wss.scheduleHandler);
+      const result = await req.wss.scheduleHandler.handleSendSchedule(newSchedule);
+      console.log('[Schedule] Broadcast result:', result);
+    } else {
+      console.log('[Schedule] WebSocket not available:', { wss: !!req.wss, scheduleHandler: req.wss ? !!req.wss.scheduleHandler : false });
+    }
+
     res.status(201).json(newSchedule);
   } catch (error) {
+    console.error('[Schedule] Error creating schedule:', error);
     res.status(400).json({ message: error.message });
   }
 });
 
-// Zamanlama güncelle
-router.patch('/:id', async (req, res) => {
+// Schedule güncelleme
+router.put('/:id', async (req, res) => {
   try {
-    const schedule = await PlaylistSchedule.findById(req.params.id);
-    if (!schedule) {
-      return res.status(404).json({ message: 'Zamanlama bulunamadı' });
+    const updatedSchedule = await PlaylistSchedule.findByIdAndUpdate(
+      req.params.id,
+      {
+        $set: {
+          playlist: req.body.playlist,
+          startDate: req.body.startDate,
+          endDate: req.body.endDate,
+          repeatType: req.body.repeatType,
+          targets: {
+            devices: req.body.targets.devices || [],
+            groups: req.body.targets.groups || []
+          }
+        }
+      },
+      { new: true }
+    );
+
+    if (!updatedSchedule) {
+      return res.status(404).json({ message: "Schedule not found" });
     }
 
-    // Güncelleme öncesi çakışma kontrolü
-    const updatedSchedule = Object.assign(schedule, req.body);
-    const hasConflict = await updatedSchedule.checkConflict();
-    if (hasConflict) {
-      return res.status(400).json({ 
-        message: 'Bu zaman aralığında seçili cihaz veya gruplar için başka bir zamanlama mevcut' 
-      });
+    // WebSocket üzerinden hedef cihazlara bildir
+    if (req.wss && req.wss.scheduleHandler) {
+      await req.wss.scheduleHandler.handleScheduleUpdate(updatedSchedule);
     }
 
-    const result = await updatedSchedule.save();
-    res.json(result);
+    res.json(updatedSchedule);
   } catch (error) {
+    console.error('[Schedule] Error updating schedule:', error);
     res.status(400).json({ message: error.message });
   }
 });
 
-// Zamanlama sil
+// Schedule silme
 router.delete('/:id', async (req, res) => {
   try {
-    console.log('Silme isteği alındı. ID:', req.params.id);
-    
     const schedule = await PlaylistSchedule.findById(req.params.id);
     if (!schedule) {
-      console.log('Zamanlama bulunamadı:', req.params.id);
-      return res.status(404).json({ message: 'Zamanlama bulunamadı' });
+      return res.status(404).json({ message: "Schedule not found" });
     }
 
-    await PlaylistSchedule.findByIdAndDelete(req.params.id);
-    console.log('Zamanlama başarıyla silindi:', req.params.id);
-    
-    res.json({ message: 'Zamanlama silindi' });
+    // WebSocket üzerinden hedef cihazlara bildir
+    if (req.wss && req.wss.scheduleHandler) {
+      await req.wss.scheduleHandler.handleScheduleDelete(schedule);
+    }
+
+    // Schedule'ı sil
+    await PlaylistSchedule.deleteOne({ _id: req.params.id });
+
+    res.json({ message: "Schedule deleted successfully" });
   } catch (error) {
-    console.error('Silme hatası:', error);
+    console.error('[Schedule] Error deleting schedule:', error);
     res.status(500).json({ message: error.message });
   }
 });
@@ -125,5 +153,4 @@ router.get('/active/now', async (req, res) => {
   }
 });
 
-module.exports = router;
 module.exports = router;
