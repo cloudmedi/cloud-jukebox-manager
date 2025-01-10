@@ -1,23 +1,30 @@
 const AnnouncementEventHandler = require('./handlers/AnnouncementEventHandler');
 const PlaylistEventHandler = require('./handlers/PlaylistEventHandler');
+const ScheduleEventHandler = require('./handlers/ScheduleEventHandler');
 const playbackStateManager = require('./PlaybackStateManager');
 
 class AudioEventHandler {
   constructor(playlistAudio) {
     this.playlistAudio = playlistAudio;
     this.campaignAudio = document.getElementById('campaignPlayer');
+    this.scheduleAudio = document.getElementById('schedulePlayer');
     
     // Handler'ları başlat
     this.announcementHandler = new AnnouncementEventHandler(
       this.playlistAudio,
       this.campaignAudio
     );
+
+    this.scheduleHandler = new ScheduleEventHandler(
+      this.playlistAudio,
+      this.scheduleAudio
+    );
     
     this.playlistHandler = new PlaylistEventHandler(
       this.playlistAudio,
       () => {
-        // Sadece kampanya çalmıyorken sonraki şarkıya geç
-        if (!this.announcementHandler.isPlaying()) {
+        // Sadece kampanya veya schedule çalmıyorken sonraki şarkıya geç
+        if (!this.announcementHandler.isPlaying() && !this.scheduleHandler.isPlaying()) {
           console.log('Şarkı bitti, sıradaki şarkıya geçiliyor');
           require('electron').ipcRenderer.invoke('song-ended');
         }
@@ -30,20 +37,39 @@ class AudioEventHandler {
     return this.announcementHandler.playAnnouncement(audioUrl);
   }
 
+  async playSchedule(audioUrl) {
+    console.log('Schedule çalma isteği:', audioUrl);
+    return this.scheduleHandler.playSchedule(audioUrl);
+  }
+
+  async stopSchedule() {
+    if (this.scheduleHandler) {
+      this.scheduleAudio.pause();
+      this.scheduleAudio.currentTime = 0;
+    }
+  }
+
+  async pauseSchedule() {
+    if (this.scheduleHandler) {
+      this.scheduleAudio.pause();
+    }
+  }
+
+  async resumeSchedule() {
+    if (this.scheduleHandler) {
+      await this.scheduleAudio.play();
+    }
+  }
+
   setVolume(volume) {
-    console.log('Setting volume for both players:', volume);
-    const normalizedVolume = volume / 100;
-    
-    // Playlist ses seviyesini ayarla
-    this.playlistAudio.volume = normalizedVolume;
-    console.log('Playlist volume set to:', normalizedVolume);
-    
-    // Kampanya ses seviyesini ayarla
+    if (this.playlistAudio) {
+      this.playlistAudio.volume = volume;
+    }
     if (this.campaignAudio) {
-      this.campaignAudio.volume = normalizedVolume;
-      console.log('Campaign volume set to:', normalizedVolume);
-    } else {
-      console.warn('Campaign audio element not found');
+      this.campaignAudio.volume = volume;
+    }
+    if (this.scheduleAudio) {
+      this.scheduleAudio.volume = volume;
     }
   }
 

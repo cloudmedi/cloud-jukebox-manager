@@ -129,63 +129,75 @@ class ChunkDownloadManager extends EventEmitter {
   async downloadSong(song, baseUrl, playlistDir, isResume = false) {
     logger.info(`Starting download for song: ${song.name}`);
     
+    if (!song.filePath) {
+      logger.error('Song filePath is missing:', song);
+      throw new Error('Song filePath is required for download');
+    }
+
     const songPath = path.join(playlistDir, `${song._id}.mp3`);
     const tempSongPath = `${songPath}.temp`;
     const songUrl = `${baseUrl}/${song.filePath.replace(/\\/g, '/')}`;
 
-    const { headers } = await axios.head(songUrl);
-    const fileSize = parseInt(headers['content-length'], 10);
-    const chunkSize = this.calculateChunkSize(fileSize);
-    
-    // Resume control
-    let startByte = 0;
-    if (fs.existsSync(tempSongPath)) {
-      const stats = fs.statSync(tempSongPath);
-      startByte = stats.size;
-      logger.info(`Resuming download from byte ${startByte}`);
-    }
+    logger.info(`Download URL: ${songUrl}`);
 
-    const chunks = Math.ceil((fileSize - startByte) / chunkSize);
-    const writer = fs.createWriteStream(tempSongPath, { flags: startByte ? 'a' : 'w' });
-    
     try {
-      for (let i = 0; i < chunks; i++) {
-        const start = startByte + (i * chunkSize);
-        const end = Math.min(start + chunkSize - 1, fileSize - 1);
-        
-        const chunk = await this.downloadChunk(songUrl, start, end, song._id, playlistDir);
-        writer.write(chunk);
-
-        const progress = Math.round(((i + 1) / chunks) * 100);
-        this.emit('progress', { 
-          songId: song._id, 
-          progress,
-          downloadedSize: start + chunk.length,
-          totalSize: fileSize,
-          currentChunk: i + 1,
-          totalChunks: chunks
-        });
-      }
-
-      await new Promise((resolve) => writer.end(resolve));
+      const { headers } = await axios.head(songUrl);
+      const fileSize = parseInt(headers['content-length'], 10);
+      const chunkSize = this.calculateChunkSize(fileSize);
       
-      // Final checksum verification
-      if (song.checksum) {
-        const isValid = await ChecksumVerifier.verifyFileChecksum(tempSongPath, song.checksum);
-        if (!isValid) {
-          throw new Error('Final checksum verification failed');
-        }
+      // Resume control
+      let startByte = 0;
+      if (fs.existsSync(tempSongPath)) {
+        const stats = fs.statSync(tempSongPath);
+        startByte = stats.size;
+        logger.info(`Resuming download from byte ${startByte}`);
       }
 
-      fs.renameSync(tempSongPath, songPath);
-      logger.info(`Download completed for ${song.name}`);
-      return songPath;
+      const chunks = Math.ceil((fileSize - startByte) / chunkSize);
+      const writer = fs.createWriteStream(tempSongPath, { flags: startByte ? 'a' : 'w' });
+      
+      try {
+        for (let i = 0; i < chunks; i++) {
+          const start = startByte + (i * chunkSize);
+          const end = Math.min(start + chunkSize - 1, fileSize - 1);
+          
+          const chunk = await this.downloadChunk(songUrl, start, end, song._id, playlistDir);
+          writer.write(chunk);
 
+          const progress = Math.round(((i + 1) / chunks) * 100);
+          this.emit('progress', { 
+            songId: song._id, 
+            progress,
+            downloadedSize: start + chunk.length,
+            totalSize: fileSize,
+            currentChunk: i + 1,
+            totalChunks: chunks
+          });
+        }
+
+        await new Promise((resolve) => writer.end(resolve));
+        
+        // Final checksum verification
+        if (song.checksum) {
+          const isValid = await ChecksumVerifier.verifyFileChecksum(tempSongPath, song.checksum);
+          if (!isValid) {
+            throw new Error('Final checksum verification failed');
+          }
+        }
+
+        fs.renameSync(tempSongPath, songPath);
+        logger.info(`Download completed for ${song.name}`);
+        return songPath;
+
+      } catch (error) {
+        logger.error(`Error downloading song ${song.name}:`, error);
+        if (fs.existsSync(tempSongPath)) {
+          fs.unlinkSync(tempSongPath);
+        }
+        throw error;
+      }
     } catch (error) {
       logger.error(`Error downloading song ${song.name}:`, error);
-      if (fs.existsSync(tempSongPath)) {
-        fs.unlinkSync(tempSongPath);
-      }
       throw error;
     }
   }

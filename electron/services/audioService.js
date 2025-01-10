@@ -145,35 +145,48 @@ class AudioService {
   setupIpcHandlers() {
     // Playlist çalma başlangıcı
     ipcMain.handle('play-playlist', async (event, playlist) => {
-      console.log('Playing playlist:', playlist);
-      
-      // Mevcut çalan playlist'i durdur
-      if (this.isPlaying) {
-        event.sender.send('toggle-playback');
-      }
-      
-      // Yeni playlist'i ayarla
-      this.queue = [...playlist.songs];
-      this.playlist = playlist;
-      this.currentIndex = 0;
-      this.isPlaying = true;
-      this.playStartTime = Date.now(); // Çalma başlangıç zamanını kaydet
-      
-      // İlk şarkıyı çal
-      const firstSong = this.queue[this.currentIndex];
-      if (firstSong) {
-        event.sender.send('update-player', {
-          playlist: this.playlist,
-          currentSong: firstSong,
-          isPlaying: true
-        });
+      try {
+        console.log('Playing playlist:', playlist);
+        
+        if (!playlist || !playlist.songs || !Array.isArray(playlist.songs)) {
+          console.error('Invalid playlist format:', playlist);
+          event.sender.send('playlist-error', 'Invalid playlist format');
+          return { success: false, error: 'Invalid playlist format' };
+        }
+        
+        // Mevcut çalan playlist'i durdur
+        if (this.isPlaying) {
+          event.sender.send('toggle-playback');
+        }
+        
+        // Yeni playlist'i ayarla
+        this.queue = [...playlist.songs];
+        this.playlist = playlist;
+        this.currentIndex = 0;
+        this.isPlaying = true;
+        this.playStartTime = Date.now(); // Çalma başlangıç zamanını kaydet
+        
+        // İlk şarkıyı çal
+        const firstSong = this.queue[this.currentIndex];
+        if (firstSong) {
+          event.sender.send('update-player', {
+            playlist: this.playlist,
+            currentSong: firstSong,
+            isPlaying: true
+          });
 
-        // Playlist durumunu güncelle
-        websocketService.sendMessage({
-          type: 'playlistStatus',
-          status: 'loaded',
-          playlistId: playlist._id
-        });
+          // Playlist durumunu güncelle
+          this.sendPlaybackStatus();
+          return { success: true };
+        } else {
+          console.error('No songs in playlist');
+          event.sender.send('playlist-error', 'No songs in playlist');
+          return { success: false, error: 'No songs in playlist' };
+        }
+      } catch (error) {
+        console.error('Error playing playlist:', error);
+        event.sender.send('playlist-error', error.message);
+        return { success: false, error: error.message };
       }
     });
 

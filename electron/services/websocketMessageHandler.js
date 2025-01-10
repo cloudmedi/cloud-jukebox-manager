@@ -3,6 +3,7 @@ const Store = require('electron-store');
 const path = require('path');
 const fs = require('fs');
 const { createLogger } = require('../utils/logger');
+const scheduleHandler = require('./schedule/ScheduleHandler');
 
 const logger = createLogger('websocket-handler');
 
@@ -18,6 +19,9 @@ class WebSocketMessageHandler {
     this.handlers.set('playlist', this.handlePlaylist.bind(this));
     this.handlers.set('command', this.handleCommand.bind(this));
     this.handlers.set('songRemoved', this.handleSongRemoved.bind(this));
+    this.handlers.set('schedule-created', this.handleScheduleCreated.bind(this));
+    this.handlers.set('schedule-updated', this.handleScheduleUpdated.bind(this));
+    this.handlers.set('schedule-deleted', this.handleScheduleDeleted.bind(this));
     logger.info('Message handlers registered');
   }
 
@@ -141,6 +145,42 @@ class WebSocketMessageHandler {
       }
     } else {
       logger.warn('Playlist not found:', playlistId);
+    }
+  }
+
+  async handleScheduleCreated(message) {
+    logger.info('Schedule created message received:', message);
+    try {
+      const success = await scheduleHandler.handleNewSchedule(message.data);
+      if (success) {
+        this.sendToRenderer('schedule-created', message.data);
+      }
+    } catch (error) {
+      logger.error('Error handling schedule creation:', error);
+    }
+  }
+
+  async handleScheduleUpdated(message) {
+    logger.info('Schedule updated message received:', message);
+    try {
+      const success = await scheduleHandler.handleScheduleUpdate(message.data);
+      if (success) {
+        this.sendToRenderer('schedule-updated', message.data);
+      }
+    } catch (error) {
+      logger.error('Error handling schedule update:', error);
+    }
+  }
+
+  async handleScheduleDeleted(message) {
+    logger.info('Schedule deleted message received:', message);
+    try {
+      const success = await scheduleHandler.handleScheduleDelete(message.data.id);
+      if (success) {
+        this.sendToRenderer('schedule-deleted', message.data.id);
+      }
+    } catch (error) {
+      logger.error('Error handling schedule deletion:', error);
     }
   }
 

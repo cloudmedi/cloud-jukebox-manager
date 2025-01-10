@@ -4,6 +4,7 @@ const { app } = require('electron');
 const playlistHandler = require('./playlist/PlaylistHandler');
 const DeleteMessageHandler = require('./websocket/handlers/DeleteMessageHandler');
 const CommandHandler = require('./handlers/CommandHandler');
+const scheduleHandler = require('./schedule/ScheduleHandler');
 const store = new Store();
 
 class WebSocketService {
@@ -45,6 +46,22 @@ class WebSocketService {
     this.addMessageHandler('delete', async (message) => {
       console.log('Delete message received:', message);
       await this.deleteMessageHandler.handleMessage(message);
+    });
+
+    // Schedule handlers
+    this.addMessageHandler('schedule-created', async (message) => {
+      console.log('Schedule created message received:', message);
+      await scheduleHandler.handleNewSchedule(message.data);
+    });
+
+    this.addMessageHandler('schedule-updated', async (message) => {
+      console.log('Schedule updated message received:', message);
+      await scheduleHandler.handleScheduleUpdate(message.data);
+    });
+
+    this.addMessageHandler('schedule-deleted', async (message) => {
+      console.log('Schedule deleted message received:', message);
+      await scheduleHandler.handleScheduleDelete(message.data);
     });
   }
 
@@ -106,17 +123,25 @@ class WebSocketService {
   }
 
   handleMessage(message) {
-    const handlers = this.messageHandlers.get(message.type);
-    if (handlers) {
-      handlers.forEach(handler => {
-        try {
-          handler(message);
-        } catch (error) {
-          console.error(`Handler error for message type ${message.type}:`, error);
-        }
-      });
-    } else {
-      console.log('Unhandled message type:', message.type);
+    try {
+      // Mesaj string ise parse et, değilse direkt kullan
+      const data = typeof message === 'string' ? JSON.parse(message) : message;
+      console.log('WebSocket message received:', JSON.stringify(data, null, 2));
+      
+      const handlers = this.messageHandlers.get(data.type);
+      if (handlers) {
+        handlers.forEach(handler => {
+          try {
+            handler(data);
+          } catch (error) {
+            console.error(`Handler error for message type ${data.type}:`, error);
+          }
+        });
+      } else {
+        console.log('Unhandled message type:', data.type, 'Available handlers:', Array.from(this.messageHandlers.keys()));
+      }
+    } catch (error) {
+      console.error('Error handling WebSocket message:', error);
     }
   }
 
