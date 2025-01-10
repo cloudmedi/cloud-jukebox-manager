@@ -1,6 +1,6 @@
 export interface Playlist {
-  _id: string; 
-  id?: string; // Made optional since it's causing conflicts
+  _id: string;
+  id: string; // Making id required
   name: string;
   description?: string;
   songs: any[];
