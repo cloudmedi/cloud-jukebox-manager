@@ -7,5 +7,4 @@ export interface Playlist {
   totalDuration?: number;
   artwork?: string;
   genre?: string;
-  status?: 'active' | 'inactive';
 }
