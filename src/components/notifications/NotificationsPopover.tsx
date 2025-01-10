@@ -38,12 +38,14 @@ export function NotificationsPopover() {
     },
     retry: 3,
     retryDelay: (attemptIndex) => Math.min(1000 * 2 ** attemptIndex, 30000),
-    onError: (error) => {
-      toast({
-        title: "Hata",
-        description: error.message,
-        variant: "destructive",
-      });
+    meta: {
+      onError: (error: Error) => {
+        toast({
+          title: "Hata",
+          description: error.message,
+          variant: "destructive",
+        });
+      }
     }
   });
 

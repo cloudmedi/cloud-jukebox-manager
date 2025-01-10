@@ -30,6 +30,7 @@ export interface Device {
   updatedAt?: string;
   groupId?: string | null;
   deviceInfo?: DeviceInfo;
+  version?: string;
   
   // Playlist ve indirme durumu
   playlistStatus?: 'loaded' | 'loading' | 'error' | null;

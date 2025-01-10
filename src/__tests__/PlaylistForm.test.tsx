@@ -1,4 +1,4 @@
-import { render, screen, fireEvent } from '@testing-library/react/pure';
+import { render, screen, fireEvent } from '@testing-library/react';
 import { PlaylistForm } from '../components/playlists/PlaylistForm';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { describe, it, expect, beforeEach } from 'vitest';
