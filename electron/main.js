@@ -40,27 +40,93 @@ ipcMain.handle('check-active-schedule', async () => {
   }
 });
 
-// Schedule event'lerini dinle ve renderer'a ilet
-schedulePlayer.on('schedule-started', (data) => {
-  BrowserWindow.getAllWindows().forEach(window => {
-    window.webContents.send('schedule-started', data);
-  });
+// Aktif schedule'ı getiren IPC handler
+ipcMain.handle('get-active-schedule', async () => {
+  try {
+    const activeSchedules = await scheduleStorage.getActiveSchedules();
+    const now = new Date();
+
+    // Aktif schedule'ı bul
+    const currentSchedule = activeSchedules.find(schedule => {
+      const startDate = new Date(schedule.startDate);
+      const endDate = new Date(schedule.endDate);
+      return startDate <= now && endDate >= now;
+    });
+
+    if (currentSchedule) {
+      // Playlist detaylarını al
+      const playlist = await scheduleStorage.getSchedulePlaylist(currentSchedule.id);
+      
+      // Schedule başladı event'ini gönder
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        mainWindow.webContents.send('schedule-started', {
+          ...currentSchedule,
+          playlist
+        });
+      }
+
+      return {
+        schedule: {
+          ...currentSchedule,
+          playlist
+        }
+      };
+    }
+
+    // Schedule bitti event'ini gönder
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('schedule-stopped');
+    }
+
+    return { schedule: null };
+  } catch (error) {
+    console.error('Error getting active schedule:', error);
+    return { schedule: null, error: error.message };
+  }
 });
 
-schedulePlayer.on('schedule-stopped', (scheduleId) => {
-  BrowserWindow.getAllWindows().forEach(window => {
-    window.webContents.send('schedule-stopped', scheduleId);
-  });
-});
+// Schedule event handlers
+let scheduleErrorHandler = null;
+let scheduleStartHandler = null;
+let scheduleStopHandler = null;
 
-// Schedule error event'ini dinle
-schedulePlayer.on('schedule-error', (error) => {
-  BrowserWindow.getAllWindows().forEach(window => {
-    window.webContents.send('schedule-error', error);
-  });
-});
+function setupScheduleEvents() {
+  // Önceki event handler'ları temizle
+  if (scheduleErrorHandler) {
+    schedulePlayer.removeListener('schedule-error', scheduleErrorHandler);
+  }
+  if (scheduleStartHandler) {
+    schedulePlayer.removeListener('schedule-started', scheduleStartHandler);
+  }
+  if (scheduleStopHandler) {
+    schedulePlayer.removeListener('schedule-stopped', scheduleStopHandler);
+  }
 
-// Uygulama hazır olduğunda aktif schedule'ı kontrol et
+  // Yeni event handler'ları tanımla
+  scheduleErrorHandler = (error) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('schedule-error', error);
+    }
+  };
+
+  scheduleStartHandler = (scheduleData) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('schedule-started', scheduleData);
+    }
+  };
+
+  scheduleStopHandler = (scheduleId) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('schedule-stopped', scheduleId);
+    }
+  };
+
+  // Event listener'ları ekle
+  schedulePlayer.on('schedule-error', scheduleErrorHandler);
+  schedulePlayer.on('schedule-started', scheduleStartHandler);
+  schedulePlayer.on('schedule-stopped', scheduleStopHandler);
+}
+
 app.whenReady().then(async () => {
   try {
     // Uygulama başladığında device token'ı kaydet
@@ -70,6 +136,35 @@ app.whenReady().then(async () => {
     createWindow();
     createTray();
 
+    // IPC event handler'ları ekle
+    ipcMain.handle('get-active-schedule', async () => {
+      try {
+        const activeSchedules = await scheduleStorage.getActiveSchedules();
+        const now = new Date();
+
+        // Aktif schedule'ı bul
+        const currentSchedule = activeSchedules.find(schedule => {
+          const startDate = new Date(schedule.startDate);
+          const endDate = new Date(schedule.endDate);
+          return startDate <= now && endDate >= now;
+        });
+
+        if (currentSchedule) {
+          // Playlist detaylarını al
+          const playlist = await scheduleStorage.getSchedulePlaylist(currentSchedule.id);
+          return { schedule: { ...currentSchedule, playlist } };
+        }
+        
+        return { schedule: null };
+      } catch (error) {
+        console.error('Error getting active schedule:', error);
+        return { schedule: null, error: error.message };
+      }
+    });
+
+    // WebSocket bağlantısını başlat
+    websocketService.connect();
+
     // Window yüklenmesini bekle
     await new Promise(resolve => {
       mainWindow.webContents.on('did-finish-load', resolve);
@@ -77,61 +172,21 @@ app.whenReady().then(async () => {
 
     console.log('Checking for active schedules...');
     
-    // Sonra aktif schedule kontrolü yap
-    const activeSchedules = await scheduleStorage.getActiveSchedules();
-    console.log('Active schedules:', activeSchedules);
-    
-    const now = new Date();
-    console.log('Current time:', now);
+    // Schedule event'lerini ayarla
+    setupScheduleEvents();
 
-    // Aktif schedule'ı bul
-    const currentSchedule = activeSchedules.find(schedule => {
-      const startDate = new Date(schedule.startDate);
-      const endDate = new Date(schedule.endDate);
-      const isActive = startDate <= now && endDate >= now;
+    const deviceInfo = store.get('deviceInfo');
+    if (deviceInfo && deviceInfo.token) {
+      websocketService.connect(deviceInfo.token);
       
-      console.log('Schedule check:', {
-        id: schedule.id,
-        startDate,
-        endDate,
-        isActive,
-        playlist: schedule.playlist ? {
-          id: schedule.playlist.id,
-          name: schedule.playlist.name,
-          songCount: schedule.playlist.songs?.length
-        } : null
-      });
-      
-      return isActive;
-    });
-
-    // Aktif schedule varsa başlat
-    if (currentSchedule) {
-      console.log('Found active schedule:', currentSchedule);
-      
-      try {
-        // Schedule'ı başlat
-        console.log('Starting schedule:', currentSchedule.id);
-        const success = await schedulePlayer.startSchedule(currentSchedule.id);
-        
-        if (success) {
-          console.log('Schedule started successfully:', currentSchedule.id);
-        } else {
-          console.error('Failed to start schedule:', currentSchedule.id);
-          // Schedule başlatılamazsa son playlist'i dene
-          console.log('Falling back to last playlist');
-          loadLastPlaylist();
-        }
-      } catch (error) {
-        console.error('Error auto-starting schedule:', error);
-        // Hata durumunda son playlist'i dene
-        console.log('Error occurred, falling back to last playlist');
-        loadLastPlaylist();
+      const playlists = store.get('playlists', []);
+      if (playlists.length > 0) {
+        const lastPlaylist = playlists[playlists.length - 1];
+        console.log('Starting last saved playlist:', lastPlaylist.name);
+        mainWindow.webContents.on('did-finish-load', () => {
+          mainWindow.webContents.send('auto-play-playlist', lastPlaylist);
+        });
       }
-    } else {
-      console.log('No active schedule found');
-      // Schedule yoksa son playlist'i başlat
-      loadLastPlaylist();
     }
   } catch (error) {
     console.error('Error during app initialization:', error);
@@ -243,6 +298,20 @@ function createTray() {
 }
 
 app.on('window-all-closed', () => {
+  if (scheduleErrorHandler) {
+    schedulePlayer.removeListener('schedule-error', scheduleErrorHandler);
+  }
+  if (scheduleStartHandler) {
+    schedulePlayer.removeListener('schedule-started', scheduleStartHandler);
+  }
+  if (scheduleStopHandler) {
+    schedulePlayer.removeListener('schedule-stopped', scheduleStopHandler);
+  }
+  
+  scheduleErrorHandler = null;
+  scheduleStartHandler = null;
+  scheduleStopHandler = null;
+  
   schedulePlayer.cleanup();
   websocketService.disconnect();
   if (process.platform !== 'darwin') {

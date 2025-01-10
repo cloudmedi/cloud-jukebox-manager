@@ -46,6 +46,48 @@ class ScheduleStorage {
     }
   }
 
+  async getSchedulePlaylist(scheduleId) {
+    try {
+      // Doğrudan schedule store'dan veriyi al
+      const schedule = await this.getSchedule(scheduleId);
+      if (!schedule || !schedule.playlist) {
+        logger.error('Schedule or playlist not found:', scheduleId);
+        return null;
+      }
+
+      // Store'daki playlist'i kullan (localPath'ler burada)
+      const playlist = schedule.playlist;
+
+      // Şarkı yollarını düzelt
+      const songs = (playlist.songs || []).map(song => ({
+        ...song,
+        // Local path varsa onu kullan, yoksa normal path'i kullan
+        url: song.localPath ? `file://${song.localPath}` : (song.url || song.path)
+      }));
+
+      logger.info('Retrieved schedule playlist:', {
+        scheduleId,
+        playlistId: playlist.id,
+        songCount: songs.length,
+        songs: songs.map(s => ({ 
+          id: s.id, 
+          name: s.name, 
+          url: s.url,
+          hasLocalPath: !!s.localPath 
+        }))
+      });
+
+      return {
+        ...playlist,
+        songs,
+        status: 'active'
+      };
+    } catch (error) {
+      logger.error('Error getting schedule playlist:', error);
+      return null;
+    }
+  }
+
   async deleteSchedule(scheduleId) {
     try {
       const schedules = this.store.get('schedules', []);

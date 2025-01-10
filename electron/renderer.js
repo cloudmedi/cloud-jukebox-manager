@@ -55,8 +55,71 @@ function updatePlaybackStatus(isPlaying) {
   }
 }
 
+// Event listener yönetimi için Map
+const eventListeners = new Map();
+
+// Event listener ekle ve sakla
+function addListener(element, event, listener) {
+  element.addEventListener(event, listener);
+  
+  const key = `${element.id || 'anonymous'}-${event}`;
+  if (!eventListeners.has(key)) {
+    eventListeners.set(key, []);
+  }
+  eventListeners.get(key).push({ element, event, listener });
+}
+
+// Event listener'ları temizle
+function removeListeners(elementId = null) {
+  for (const [key, listeners] of eventListeners.entries()) {
+    if (!elementId || key.startsWith(elementId)) {
+      listeners.forEach(({ element, event, listener }) => {
+        element.removeEventListener(event, listener);
+      });
+      eventListeners.delete(key);
+    }
+  }
+}
+
+// IPC event listener'ları
+const ipcListeners = new Map();
+
+// IPC listener ekle ve sakla
+function addIpcListener(channel, listener) {
+  ipcRenderer.on(channel, listener);
+  if (!ipcListeners.has(channel)) {
+    ipcListeners.set(channel, []);
+  }
+  ipcListeners.get(channel).push(listener);
+}
+
+// IPC listener'ları temizle
+function removeIpcListeners(channel = null) {
+  if (channel) {
+    const listeners = ipcListeners.get(channel);
+    if (listeners) {
+      listeners.forEach(listener => {
+        ipcRenderer.removeListener(channel, listener);
+      });
+      ipcListeners.delete(channel);
+    }
+  } else {
+    for (const [channel, listeners] of ipcListeners.entries()) {
+      listeners.forEach(listener => {
+        ipcRenderer.removeListener(channel, listener);
+      });
+    }
+    ipcListeners.clear();
+  }
+}
+
 // Audio event listeners
-playlistAudio.addEventListener('play', () => {
+function setupAudioListeners() {
+  // Önceki listener'ları temizle
+  removeListeners('audioPlayer');
+
+  // Audio events
+  addListener(playlistAudio, 'play', () => {
     const currentState = playbackStateManager.getPlaybackState();
     if (!currentState) {
         console.log('Preventing auto-play, playback state is paused');
@@ -74,9 +137,9 @@ playlistAudio.addEventListener('play', () => {
         type: 'deviceStatus',
         isPlaying: true
     });
-});
+  });
 
-playlistAudio.addEventListener('pause', () => {
+  addListener(playlistAudio, 'pause', () => {
     console.log('Audio paused');
     updatePlaybackBadge('paused');
     updatePlaybackStatus(false);
@@ -86,19 +149,98 @@ playlistAudio.addEventListener('pause', () => {
         type: 'deviceStatus',
         isPlaying: false
     });
-});
+  });
 
-playlistAudio.addEventListener('ended', () => {
+  addListener(playlistAudio, 'ended', () => {
     console.log('14. Song ended, playing next');
     ipcRenderer.invoke('song-ended');
-});
+  });
 
-playlistAudio.addEventListener('loadeddata', () => {
+  addListener(playlistAudio, 'loadeddata', () => {
     console.log('17. Audio data loaded successfully');
+  });
+
+  addListener(playlistAudio, 'error', (e) => {
+    console.error('18. Audio error:', e);
+  });
+}
+
+// Schedule event'lerini dinle
+function setupScheduleListeners() {
+  // Önceki listener'ları temizle
+  removeIpcListeners('schedule-started');
+  removeIpcListeners('schedule-stopped');
+  removeIpcListeners('schedule-error');
+
+  // Schedule başladı
+  addIpcListener('schedule-started', (event, scheduleData) => {
+    try {
+      console.log('Schedule started:', scheduleData);
+      
+      // Mevcut playlist'i durdur
+      if (playlistAudio && playlistAudio.playing) {
+        playlistAudio.pause();
+      }
+      
+      // Schedule moduna geç
+      playbackStateManager.setPlaybackState(true, 'schedule');
+      
+      // UI'ı güncelle
+      UIManager.updateScheduleStatus(true, scheduleData.schedule);
+      
+      // Schedule şarkısını çal
+      if (scheduleData.songs && scheduleData.songs.length > 0) {
+        const firstSong = scheduleData.songs[0];
+        playlistAudio.src = firstSong.path;
+        playlistAudio.play().catch(err => console.error('Error playing schedule song:', err));
+        
+        // Şarkı bilgilerini güncelle
+        UIManager.updateCurrentSong(firstSong);
+        updatePlaybackStatus(true);
+      }
+    } catch (error) {
+      console.error('Error handling schedule start:', error);
+    }
+  });
+
+  // Schedule durdu
+  addIpcListener('schedule-stopped', (event, scheduleId) => {
+    try {
+      UIManager.updateScheduleStatus(false, null);
+    } catch (error) {
+      console.error('Error handling schedule stop:', error);
+    }
+  });
+
+  // Schedule hatası
+  addIpcListener('schedule-error', (event, error) => {
+    try {
+      console.error('Schedule error:', error);
+      new Notification('Schedule Error', {
+        body: error.message
+      });
+      UIManager.updateScheduleStatus(false, null);
+    } catch (error) {
+      console.error('Error handling schedule error:', error);
+    }
+  });
+}
+
+// Sayfa yüklendiğinde
+document.addEventListener('DOMContentLoaded', () => {
+  try {
+    setupAudioListeners();
+    setupScheduleListeners();
+    // initializeUI();
+  } catch (error) {
+    console.error('Error during initialization:', error);
+  }
 });
 
-playlistAudio.addEventListener('error', (e) => {
-    console.error('18. Audio error:', e);
+// Sayfa kapatıldığında
+window.addEventListener('unload', () => {
+  removeListeners();
+  removeIpcListeners();
 });
 
 // İlk yüklemede badge durumunu ayarla
@@ -124,7 +266,7 @@ if (emergencyState && emergencyState.isActive) {
 }
 
 // Emergency stop handler
-ipcRenderer.on('emergency-stop', () => {
+addIpcListener('emergency-stop', () => {
   console.log('Emergency stop received');
   
   // Tüm ses çalmayı durdur
@@ -153,7 +295,7 @@ ipcRenderer.on('emergency-stop', () => {
 });
 
 // Emergency reset handler
-ipcRenderer.on('emergency-reset', () => {
+addIpcListener('emergency-reset', () => {
   console.log('Emergency reset received');
   hideEmergencyMessage();
   
@@ -170,11 +312,11 @@ ipcRenderer.on('emergency-reset', () => {
 });
 
 // Emergency message handlers
-ipcRenderer.on('show-emergency-message', (event, data) => {
+addIpcListener('show-emergency-message', (event, data) => {
   showEmergencyMessage(data.title, data.message);
 });
 
-ipcRenderer.on('hide-emergency-message', () => {
+addIpcListener('hide-emergency-message', () => {
   hideEmergencyMessage();
 });
 
@@ -208,7 +350,7 @@ document.getElementById('closeButton').addEventListener('click', () => {
 });
 
 // Anons kontrolleri
-ipcRenderer.on('play-announcement', async (event, announcement) => {
+addIpcListener('play-announcement', async (event, announcement) => {
   console.log('Received announcement:', announcement);
   
   // Anonsu çal
@@ -219,35 +361,35 @@ ipcRenderer.on('play-announcement', async (event, announcement) => {
   }
 });
 
-ipcRenderer.on('pause-playback', () => {
+addIpcListener('pause-playback', () => {
   if (playlistAudio && !playlistAudio.paused) {
     playlistAudio.pause();
   }
 });
 
-ipcRenderer.on('resume-playback', () => {
+addIpcListener('resume-playback', () => {
   if (playlistAudio && playlistAudio.paused) {
     playlistAudio.play().catch(err => console.error('Resume playback error:', err));
   }
 });
 
 // WebSocket bağlantı durumu
-ipcRenderer.on('websocket-status', (event, isConnected) => {
+addIpcListener('websocket-status', (event, isConnected) => {
     UIManager.updateConnectionStatus(isConnected);
 });
 
 // İndirme progress
-ipcRenderer.on('download-progress', (event, { songName, progress }) => {
+addIpcListener('download-progress', (event, { songName, progress }) => {
     UIManager.showDownloadProgress(progress, songName);
 });
 
 // Hata mesajları
-ipcRenderer.on('error', (event, message) => {
+addIpcListener('error', (event, message) => {
     UIManager.showError(message);
 });
 
 // Playlist error event'ini dinle
-ipcRenderer.on('playlist-error', (event, error) => {
+addIpcListener('playlist-error', (event, error) => {
   console.error('Playlist error:', error);
   // Kullanıcıya hata bildir
   new Notification('Playlist Error', {
@@ -256,7 +398,7 @@ ipcRenderer.on('playlist-error', (event, error) => {
 });
 
 // Volume değişikliği event listener'ı
-ipcRenderer.on('set-volume', (event, volume) => {
+addIpcListener('set-volume', (event, volume) => {
     console.log('Setting volume to:', volume);
     if (volumeController && playlistAudio) {
         volumeController.setVolume(volume);
@@ -266,7 +408,7 @@ ipcRenderer.on('set-volume', (event, volume) => {
 });
 
 // Restart playback from WebSocket
-ipcRenderer.on('restart-playback', () => {
+addIpcListener('restart-playback', () => {
   console.log('Restarting playback');
   if (playlistAudio) {
     playlistAudio.currentTime = 0;
@@ -275,7 +417,7 @@ ipcRenderer.on('restart-playback', () => {
 });
 
 // Toggle playback from WebSocket
-ipcRenderer.on('toggle-playback', () => {
+addIpcListener('toggle-playback', () => {
   console.log('Toggle playback, current state:', playlistAudio.paused);
   if (playlistAudio) {
     if (playlistAudio.paused) {
@@ -309,7 +451,7 @@ ipcRenderer.on('toggle-playback', () => {
 });
 
 // Otomatik playlist başlatma
-ipcRenderer.on('auto-play-playlist', async (event, playlist) => {
+addIpcListener('auto-play-playlist', async (event, playlist) => {
   try {
     console.log('Auto-playing playlist:', playlist);
     
@@ -331,7 +473,7 @@ ipcRenderer.on('auto-play-playlist', async (event, playlist) => {
 });
 
 // Playback komutları için event listener
-ipcRenderer.on('playback-command', (event, data) => {
+addIpcListener('playback-command', (event, data) => {
   console.log('Playback command received:', data);
   
   if (data.action === 'play') {
@@ -348,7 +490,7 @@ ipcRenderer.on('playback-command', (event, data) => {
 });
 
 // WebSocket komut dinleyicisi
-ipcRenderer.on('playback-command', (event, data) => {
+addIpcListener('playback-command', (event, data) => {
   console.log('Playback command received:', data);
   
   switch (data.action) {
@@ -406,7 +548,7 @@ async function startPlaylist(playlist) {
 }
 
 // WebSocket mesaj dinleyicileri
-ipcRenderer.on('playlist-received', async (event, playlist) => {
+addIpcListener('playlist-received', async (event, playlist) => {
   try {
     console.log('New playlist received:', playlist);
     
@@ -446,7 +588,7 @@ ipcRenderer.on('playlist-received', async (event, playlist) => {
 });
 
 // Playlist event'lerini dinle
-ipcRenderer.on('playlist-updated', async (event, data) => {
+addIpcListener('playlist-updated', async (event, data) => {
   try {
     if (data.action === 'play') {
       const canStart = await checkAndStartPlaylist();
@@ -493,30 +635,8 @@ async function handlePlaylistEvent(data) {
   }
 }
 
-// Audio event'lerini dinle
-if (playlistAudio) {
-  playlistAudio.addEventListener('ended', () => {
-    ipcRenderer.invoke('song-ended');
-  });
-
-  playlistAudio.addEventListener('error', (e) => {
-    console.error('Audio error:', e);
-    ipcRenderer.invoke('song-error', e.message);
-  });
-
-  playlistAudio.addEventListener('play', () => {
-    isPlaying = true;
-    updatePlaybackStatus(true);
-  });
-
-  playlistAudio.addEventListener('pause', () => {
-    isPlaying = false;
-    updatePlaybackStatus(false);
-  });
-}
-
 // Update the delete message handler
-ipcRenderer.on('device-deleted', (event, id) => {
+addIpcListener('device-deleted', (event, id) => {
   console.log('Device deleted, cleaning up...');
   
   // Stop any playing audio
@@ -545,7 +665,7 @@ ipcRenderer.on('device-deleted', (event, id) => {
   }
 });
 
-ipcRenderer.on('songRemoved', (event, { songId, playlistId }) => {
+addIpcListener('songRemoved', (event, { songId, playlistId }) => {
   console.log('Şarkı silme mesajı alındı:', { songId, playlistId });
   
   const playlists = store.get('playlists', []);
@@ -594,7 +714,7 @@ ipcRenderer.on('songRemoved', (event, { songId, playlistId }) => {
 });
 
 // Update the update-player event handler
-ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
+addIpcListener('update-player', (event, { playlist, currentSong }) => {
   console.log('1. Update Player Event Received:', { playlist, currentSong });
   
   if (currentSong && currentSong.localPath) {
@@ -627,7 +747,7 @@ ipcRenderer.on('update-player', (event, { playlist, currentSong }) => {
 });
 
 // Sonraki şarkı için event listener
-ipcRenderer.on('next-song', () => {
+addIpcListener('next-song', () => {
   console.log('Next song requested from tray menu');
   ipcRenderer.invoke('song-ended');
 });
@@ -639,7 +759,7 @@ document.addEventListener('DOMContentLoaded', () => {
 });
 
 // Toast bildirimleri için event listener
-ipcRenderer.on('show-toast', (event, toast) => {
+addIpcListener('show-toast', (event, toast) => {
   switch(toast.type) {
     case 'success':
       new Notification('Başarılı', {
@@ -663,20 +783,20 @@ ipcRenderer.on('show-toast', (event, toast) => {
 // const scheduleController = new ScheduleController();
 
 // Schedule event'lerini dinle
-ipcRenderer.on('schedule-downloaded', (event, scheduleId) => {
+addIpcListener('schedule-downloaded', (event, scheduleId) => {
   console.log('Schedule downloaded:', scheduleId);
 });
 
-ipcRenderer.on('schedule-download-progress', (event, data) => {
+addIpcListener('schedule-download-progress', (event, data) => {
   console.log('Schedule download progress:', data);
 });
 
-ipcRenderer.on('schedule-download-error', (event, error) => {
+addIpcListener('schedule-download-error', (event, error) => {
   console.error('Schedule download error:', error);
 });
 
 // Schedule error event'ini dinle
-ipcRenderer.on('schedule-error', (event, error) => {
+addIpcListener('schedule-error', (event, error) => {
   console.error('Schedule error:', error);
   new Notification('Schedule Error', {
     body: error.message
@@ -684,7 +804,7 @@ ipcRenderer.on('schedule-error', (event, error) => {
 });
 
 // Hata mesajlarını göster
-ipcRenderer.on('show-error', (event, message) => {
+addIpcListener('show-error', (event, message) => {
   showError(message);
 });
 
@@ -817,7 +937,7 @@ function deleteOldPlaylists() {
 }
 
 // WebSocket mesaj dinleyicileri
-ipcRenderer.on('playlist-received', async (event, playlist) => {
+addIpcListener('playlist-received', async (event, playlist) => {
   try {
     console.log('New playlist received:', playlist);
     
@@ -857,7 +977,7 @@ ipcRenderer.on('playlist-received', async (event, playlist) => {
 });
 
 // Schedule başlatma event'i
-ipcRenderer.on('schedule-started', async (event, scheduleData) => {
+addIpcListener('schedule-started', async (event, scheduleData) => {
   try {
     console.log('Schedule started:', scheduleData);
     
@@ -888,7 +1008,7 @@ ipcRenderer.on('schedule-started', async (event, scheduleData) => {
 });
 
 // Auto-play playlist event'i
-ipcRenderer.on('auto-play-playlist', async (event, playlist) => {
+addIpcListener('auto-play-playlist', async (event, playlist) => {
   try {
     console.log('Auto-playing playlist:', playlist);
     

@@ -76,6 +76,48 @@ router.post('/', async (req, res) => {
 });
 
 // Schedule güncelleme
+router.patch('/:id', async (req, res) => {
+  try {
+    const schedule = await PlaylistSchedule.findById(req.params.id);
+    if (!schedule) {
+      return res.status(404).json({ message: "Schedule not found" });
+    }
+
+    // Sadece gönderilen alanları güncelle
+    if (req.body.startDate) schedule.startDate = req.body.startDate;
+    if (req.body.endDate) schedule.endDate = req.body.endDate;
+    if (req.body.playlist) schedule.playlist = req.body.playlist;
+    if (req.body.repeatType) schedule.repeatType = req.body.repeatType;
+    if (req.body.targets) {
+      schedule.targets = {
+        devices: req.body.targets.devices || schedule.targets.devices || [],
+        groups: req.body.targets.groups || schedule.targets.groups || []
+      };
+    }
+
+    // Çakışma kontrolü
+    const hasConflict = await schedule.checkConflict();
+    if (hasConflict) {
+      return res.status(400).json({
+        message: "Bu zaman aralığında çakışan başka bir zamanlama mevcut"
+      });
+    }
+
+    const updatedSchedule = await schedule.save();
+
+    // WebSocket üzerinden hedef cihazlara bildir
+    if (req.wss && req.wss.scheduleHandler) {
+      await req.wss.scheduleHandler.handleScheduleUpdate(updatedSchedule);
+    }
+
+    res.json(updatedSchedule);
+  } catch (error) {
+    console.error('[Schedule] Error updating schedule:', error);
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// Schedule güncelleme (PUT metodu - geriye dönük uyumluluk için)
 router.put('/:id', async (req, res) => {
   try {
     const updatedSchedule = await PlaylistSchedule.findByIdAndUpdate(

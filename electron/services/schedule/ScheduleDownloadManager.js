@@ -3,6 +3,7 @@ const fs = require('fs');
 const axios = require('axios');
 const { app } = require('electron');
 const { createLogger } = require('../../utils/logger');
+const scheduleStorage = require('./ScheduleStorage');
 
 const logger = createLogger('schedule-download');
 
@@ -113,6 +114,8 @@ class ScheduleDownloadManager {
       // Şarkı zaten indirilmiş mi kontrol et
       if (fs.existsSync(songPath)) {
         logger.info(`[Schedule Download] Song already exists: ${songId} for schedule: ${scheduleId}`);
+        // Var olan şarkının local path'ini ekle
+        await this.updateSongLocalPath(scheduleId, songId, songPath);
         this.updateDownloadProgress(scheduleId);
         setImmediate(() => this.processQueue());
         return;
@@ -141,8 +144,10 @@ class ScheduleDownloadManager {
       
       response.data.pipe(writer);
 
-      writer.on('finish', () => {
+      writer.on('finish', async () => {
         logger.info(`[Schedule Download] Successfully downloaded song: ${songId} for schedule: ${scheduleId}`);
+        // İndirilen şarkının local path'ini ekle
+        await this.updateSongLocalPath(scheduleId, songId, songPath);
         this.updateDownloadProgress(scheduleId);
         setImmediate(() => this.processQueue());
       });
@@ -191,6 +196,7 @@ class ScheduleDownloadManager {
       if (state.downloadedSongs === state.totalSongs) {
         state.status = 'completed';
         state.endTime = new Date();
+        
         logger.info(`[Schedule Download] Completed all downloads for schedule: ${scheduleId}`, {
           totalSongs: state.totalSongs,
           duration: state.endTime - state.startTime
@@ -199,11 +205,9 @@ class ScheduleDownloadManager {
         logger.info(`[Schedule Download] Progress for schedule: ${scheduleId}`, {
           downloaded: state.downloadedSongs,
           total: state.totalSongs,
-          progress: `${state.progress.toFixed(2)}%`
+          progress: Math.round(state.progress)
         });
       }
-
-      this.downloadStates.set(scheduleId, state);
     }
   }
 
@@ -262,6 +266,33 @@ class ScheduleDownloadManager {
       if (state.schedule && new Date(state.schedule.endDate) < now) {
         await this.cleanupSchedule(scheduleId);
       }
+    }
+  }
+
+  async updateSongLocalPath(scheduleId, songId, songPath) {
+    try {
+      // Schedule'ı store'dan al
+      const schedule = await scheduleStorage.getSchedule(scheduleId);
+      if (schedule && schedule.playlist && schedule.playlist.songs) {
+        // Şarkıya local path ekle
+        schedule.playlist.songs = schedule.playlist.songs.map(song => {
+          if ((song.id || song._id) === songId) {
+            return { ...song, localPath: songPath };
+          }
+          return song;
+        });
+
+        // Güncellenmiş schedule'ı kaydet
+        await scheduleStorage.saveSchedule(schedule);
+        logger.info(`[Schedule Download] Updated local path for song: ${songId} in schedule: ${scheduleId}`);
+      }
+    } catch (error) {
+      logger.error(`[Schedule Download] Error updating song local path:`, {
+        error: error.message,
+        scheduleId,
+        songId,
+        songPath
+      });
     }
   }
 }

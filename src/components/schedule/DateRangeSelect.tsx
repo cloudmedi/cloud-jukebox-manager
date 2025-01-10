@@ -25,6 +25,7 @@ export function DateRangeSelect({ control }: DateRangeSelectProps) {
         render={({ field }) => (
           <FormItem className="flex flex-col">
             <FormLabel>Başlangıç Tarihi ve Saati</FormLabel>
+            <FormMessage />
             <Popover>
               <PopoverTrigger asChild>
                 <FormControl>
@@ -108,7 +109,6 @@ export function DateRangeSelect({ control }: DateRangeSelectProps) {
                 </div>
               </PopoverContent>
             </Popover>
-            <FormMessage />
           </FormItem>
         )}
       />
@@ -119,6 +119,7 @@ export function DateRangeSelect({ control }: DateRangeSelectProps) {
         render={({ field }) => (
           <FormItem className="flex flex-col">
             <FormLabel>Bitiş Tarihi ve Saati</FormLabel>
+            <FormMessage />
             <Popover>
               <PopoverTrigger asChild>
                 <FormControl>
@@ -204,7 +205,6 @@ export function DateRangeSelect({ control }: DateRangeSelectProps) {
                 </div>
               </PopoverContent>
             </Popover>
-            <FormMessage />
           </FormItem>
         )}
       />

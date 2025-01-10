@@ -42,26 +42,25 @@ const playlistScheduleSchema = new mongoose.Schema({
   timestamps: true
 });
 
-// Zamanlama çakışması kontrolü - Yeni versiyon
+// Zamanlama çakışması kontrolü
 playlistScheduleSchema.methods.checkConflict = async function() {
-  // Eğer hedef cihaz veya grup yoksa çakışma kontrolü yapmaya gerek yok
-  if ((!this.targets.devices || this.targets.devices.length === 0) && 
-      (!this.targets.groups || this.targets.groups.length === 0)) {
-    return false;
-  }
-
   const query = {
     _id: { $ne: this._id }, // Kendisi hariç
-    status: 'active'
+    status: 'active',
+    playlist: this.playlist // Aynı playlist'e ait zamanlamaları kontrol et
   };
 
-  // Tarih aralığı kontrolü
+  // Tarih aralığı kontrolü - 1 dakikalık tolerans ekle
+  const tolerance = 60000; // 1 dakika (milisaniye)
+  const startDate = new Date(this.startDate.getTime() + tolerance);
+  const endDate = new Date(this.endDate.getTime() - tolerance);
+
   query.$and = [
     {
       $or: [
         {
-          startDate: { $lte: this.endDate },
-          endDate: { $gte: this.startDate }
+          startDate: { $lt: endDate },
+          endDate: { $gt: startDate }
         }
       ]
     }

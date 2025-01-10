@@ -7,7 +7,26 @@ import { RepeatTypeSelect } from "./RepeatTypeSelect";
 import { TargetSelect } from "./TargetSelect";
 import { ScheduleFormData } from "./types";
 import { useToast } from "@/components/ui/use-toast";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+
+const scheduleFormSchema = z.object({
+  playlist: z.string().min(1, "Playlist seçiniz"),
+  startDate: z.date(),
+  endDate: z.date(),
+  repeatType: z.enum(["once", "daily", "weekly", "monthly"]),
+  targets: z.object({
+    targetType: z.enum(["group", "device"]),
+    devices: z.array(z.string()),
+    groups: z.array(z.string())
+  })
+}).refine((data) => {
+  return data.startDate < data.endDate;
+}, {
+  message: "Bitiş zamanı başlangıç zamanından sonra olmalıdır",
+  path: ["endDate"]
+});
 
 interface PlaylistScheduleFormProps {
   onSuccess?: (savedEvent: any) => void;
@@ -31,22 +50,43 @@ export function PlaylistScheduleForm({
   const [selectedPlaylists, setSelectedPlaylists] = useState<string[]>([]);
 
   const form = useForm<ScheduleFormData>({
+    resolver: zodResolver(scheduleFormSchema),
     defaultValues: {
       playlist: initialData?.playlist?._id || "",
-      startDate: initialStartDate || new Date(),
-      endDate: initialEndDate || new Date(),
+      startDate: initialStartDate || 
+                (initialData?.startDate ? new Date(initialData.startDate) : new Date()),
+      endDate: initialEndDate || 
+              (initialData?.endDate ? new Date(initialData.endDate) : new Date()),
       repeatType: initialData?.repeatType || "once",
       targets: {
         targetType: initialData?.targets?.targetType || "group",
-        devices: initialData?.targets?.devices || [],
-        groups: initialData?.targets?.groups || []
+        devices: initialData?.targets?.devices?.map((device: any) => device._id) || [],
+        groups: initialData?.targets?.groups?.map((group: any) => group._id) || []
       }
     }
   });
 
+  // Form değerlerini izle
+  const formValues = form.watch();
+
+  useEffect(() => {
+    if (initialData && Object.keys(initialData).length > 0) {
+      console.log("Setting form with initial data:", {
+        isEditing,
+        initialData,
+        id: initialData._id
+      });
+    }
+  }, [initialData, isEditing]);
+
   const onSubmit = async (data: ScheduleFormData) => {
     try {
       setIsSubmitting(true);
+      console.log("Form submission started:", {
+        isEditing,
+        initialData,
+        formData: data
+      });
 
       const payload = {
         playlist: data.playlist,
@@ -57,35 +97,60 @@ export function PlaylistScheduleForm({
         createdBy: "admin"
       };
 
-      const url = initialData?._id
-        ? `http://localhost:5000/api/playlist-schedules/${initialData._id}`
-        : "http://localhost:5000/api/playlist-schedules";
+      let response;
+      
+      if (isEditing) {
+        const eventId = initialData?.id || initialData?._id;
+        console.log("Updating event with ID:", eventId);
+        
+        if (!eventId) {
+          console.error("No event ID found in initialData:", initialData);
+          throw new Error("Güncellenecek event ID'si bulunamadı");
+        }
 
-      const response = await fetch(url, {
-        method: initialData?._id ? "PATCH" : "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
+        response = await fetch(
+          `http://localhost:5000/api/playlist-schedules/${eventId}`,
+          {
+            method: "PATCH",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }
+        );
+      } else {
+        console.log("Creating new event");
+        response = await fetch(
+          "http://localhost:5000/api/playlist-schedules",
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload),
+          }
+        );
+      }
 
-      if (!response.ok) throw new Error("İşlem başarısız");
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.message || "İşlem başarısız oldu");
+      }
 
       const savedEvent = await response.json();
+      console.log("Operation successful:", {
+        type: isEditing ? "update" : "create",
+        event: savedEvent
+      });
 
       toast({
         title: "Başarılı",
-        description: initialData?._id
-          ? "Zamanlama güncellendi"
-          : "Yeni zamanlama oluşturuldu",
+        description: isEditing ? "Zamanlama güncellendi" : "Yeni zamanlama oluşturuldu",
       });
 
-      // İşlem başarılı olduğunda onSuccess'i çağır ve event'i gönder
       onSuccess?.(savedEvent);
       onClose?.(true);
-    } catch (error) {
-      console.error("Form gönderme hatası:", error);
+    } catch (error: any) {
+      console.error("Form submission error:", error);
       toast({
         title: "Hata",
-        description: "İşlem başarısız oldu",
+        description: error.message || "İşlem başarısız oldu",
         variant: "destructive",
       });
     } finally {

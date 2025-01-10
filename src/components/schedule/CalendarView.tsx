@@ -1,4 +1,4 @@
-import { Calendar, Views } from 'react-big-calendar';
+import { Calendar, Views, SlotInfo } from 'react-big-calendar';
 import { momentLocalizer } from 'react-big-calendar';
 import moment from 'moment';
 import 'moment/locale/tr';
@@ -421,19 +421,29 @@ export function CalendarView({
     const samePlaylistEvents = relevantEvents.filter(event => {
       if (eventId && event.id === eventId) return false;
       const targetEvent = relevantEvents.find(e => e.id === eventId);
-      return targetEvent ? event.playlist._id === targetEvent.playlist._id : true;
+      if (!targetEvent) return false; // eventId yoksa hiçbir eventi kontrol etme
+      return event.playlist._id === targetEvent.playlist._id;
     });
 
+    // Ardışık eventler için tolerans (1 dakika)
+    const tolerance = 60000; // 1 dakika (milisaniye cinsinden)
+
     return samePlaylistEvents.some(event => {
-      const eventStart = moment(event.start);
-      const eventEnd = moment(event.end);
-      const newStart = moment(targetStart);
-      const newEnd = moment(targetEnd);
+      const eventStart = moment(event.start).valueOf();
+      const eventEnd = moment(event.end).valueOf();
+      const newStart = moment(targetStart).valueOf();
+      const newEnd = moment(targetEnd).valueOf();
+
+      // Ardışık eventler için özel kontrol
+      const isConsecutive = Math.abs(newStart - eventEnd) <= tolerance || 
+                           Math.abs(eventStart - newEnd) <= tolerance;
+      
+      if (isConsecutive) return false; // Ardışık eventlere izin ver
 
       return (
-        (newStart.isSameOrAfter(eventStart) && newStart.isBefore(eventEnd)) ||
-        (newEnd.isAfter(eventStart) && newEnd.isSameOrBefore(eventEnd)) ||
-        (newStart.isSameOrBefore(eventStart) && newEnd.isSameOrAfter(eventEnd))
+        (newStart >= eventStart && newStart < eventEnd) ||
+        (newEnd > eventStart && newEnd <= eventEnd) ||
+        (newStart <= eventStart && newEnd >= eventEnd)
       );
     });
   }, [events]);
@@ -497,6 +507,9 @@ export function CalendarView({
       try {
         setIsDragging(true);
 
+        // Parent event ID'sini al (tekrarlanan eventler için)
+        const eventId = event.parentEventId || event.id;
+
         // Minimum süre kontrolü
         const duration = moment.duration(moment(end).diff(moment(start))).asMinutes();
         if (duration < 30) {
@@ -512,7 +525,7 @@ export function CalendarView({
         updateEventState(updatedEvent);
 
         // Çakışma kontrolü
-        if (checkEventOverlap(start, end, event.id)) {
+        if (checkEventOverlap(start, end, eventId)) {
           toast({
             title: "Hata",
             description: "Bu zaman aralığında başka bir event var",
@@ -524,7 +537,7 @@ export function CalendarView({
         }
 
         // Backend güncelleme
-        const response = await fetch(`http://localhost:5000/api/playlist-schedules/${event.id}`, {
+        const response = await fetch(`http://localhost:5000/api/playlist-schedules/${eventId}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -538,6 +551,22 @@ export function CalendarView({
         if (!response.ok) {
           throw new Error('Event güncellenemedi');
         }
+
+        const updatedData = await response.json();
+
+        // Tüm ilgili eventleri güncelle (parent ve tekrarlanan instancelar)
+        setEvents(prevEvents => prevEvents.map(e => {
+          if (e.id === eventId || e.parentEventId === eventId) {
+            const timeDiff = moment(end).diff(moment(start));
+            const eventStart = moment(e.start);
+            return {
+              ...e,
+              start: eventStart.toDate(),
+              end: eventStart.clone().add(timeDiff).toDate()
+            };
+          }
+          return e;
+        }));
 
         // Parent'a bildir
         onEventChange?.(updatedEvent);
@@ -565,6 +594,9 @@ export function CalendarView({
       try {
         setIsDragging(true);
 
+        // Parent event ID'sini al (tekrarlanan eventler için)
+        const eventId = event.parentEventId || event.id;
+
         // Minimum süre kontrolü
         const duration = moment.duration(moment(end).diff(moment(start))).asMinutes();
         if (duration < 30) {
@@ -580,7 +612,7 @@ export function CalendarView({
         updateEventState(updatedEvent);
 
         // Çakışma kontrolü
-        if (checkEventOverlap(start, end, event.id)) {
+        if (checkEventOverlap(start, end, eventId)) {
           toast({
             title: "Hata",
             description: "Bu zaman aralığında başka bir event var",
@@ -591,7 +623,7 @@ export function CalendarView({
         }
 
         // Backend güncelleme
-        const response = await fetch(`http://localhost:5000/api/playlist-schedules/${event.id}`, {
+        const response = await fetch(`http://localhost:5000/api/playlist-schedules/${eventId}`, {
           method: 'PATCH',
           headers: {
             'Content-Type': 'application/json',
@@ -606,14 +638,30 @@ export function CalendarView({
           throw new Error('Event güncellenemedi');
         }
 
+        const updatedData = await response.json();
+
+        // Tüm ilgili eventleri güncelle (parent ve tekrarlanan instancelar)
+        setEvents(prevEvents => prevEvents.map(e => {
+          if (e.id === eventId || e.parentEventId === eventId) {
+            const timeDiff = moment(end).diff(moment(start));
+            const eventStart = moment(e.start);
+            return {
+              ...e,
+              start: eventStart.toDate(),
+              end: eventStart.clone().add(timeDiff).toDate()
+            };
+          }
+          return e;
+        }));
+
         // Parent'a bildir
         onEventChange?.(updatedEvent);
 
       } catch (error) {
-        console.error('Event yeniden boyutlandırma hatası:', error);
+        console.error('Event boyutlandırma hatası:', error);
         toast({
           title: "Hata",
-          description: "Event yeniden boyutlandırma başarısız oldu",
+          description: "Event boyutlandırma başarısız oldu",
           variant: "destructive",
         });
         setEvents(eventsRef.current);
@@ -658,11 +706,19 @@ export function CalendarView({
     }
   };
 
-  // Event detayları dialog'unda düzenle butonuna tıklandığında
   const handleEventClick = useCallback((event: CalendarEvent) => {
+    console.log("Clicked event:", {
+      event,
+      id: event.id,
+      title: event.title,
+      start: event.start,
+      end: event.end,
+      playlist: event.playlist
+    });
+
     setEventDetailsDialog({
       isOpen: true,
-      event: event
+      event
     });
   }, []);
 

@@ -5,252 +5,268 @@ const { createLogger } = require('../../utils/logger');
 
 const logger = createLogger('schedule-player');
 
-const MAX_CONSECUTIVE_ERRORS = 3;
-const ERROR_RESET_INTERVAL = 5 * 60 * 1000; // 5 dakika
-
 class SchedulePlayer extends EventEmitter {
   constructor(downloadPath) {
     super();
-    this.currentSchedule = null;
-    this.checkInterval = null;
     this.downloadPath = downloadPath;
-    this.consecutiveErrors = 0;
-    this.lastErrorTime = null;
-    this.errorResetTimeout = null;
-    this.initialize();
-    logger.info('Schedule player initialized');
+    this.currentSchedule = null;
+    this.errorCount = 0;
+    this.maxErrors = 3;
+    this.isRetrying = false;
+    this.retryTimeout = null;
+    this.checkInterval = null;
+    this.isCheckingEnabled = true;
+    this.boundCheckSchedules = this.checkSchedules.bind(this);
+    
+    // Event listener'ları sakla
+    this.eventListeners = new Map();
+
+    // Schedule kontrolünü başlat
+    this.startScheduleCheck();
   }
 
-  initialize() {
-    // Her dakika schedule'ları kontrol et
-    this.checkInterval = setInterval(() => {
-      this.checkSchedules();
-    }, 60 * 1000);
+  startScheduleCheck() {
+    // Her 10 saniyede bir schedule kontrolü yap
+    this.checkInterval = setInterval(async () => {
+      try {
+        const activeSchedules = await scheduleStorage.getActiveSchedules();
+        const now = new Date();
 
-    // Başlangıçta bir kere kontrol et
-    this.checkSchedules();
+        // Aktif schedule'ı bul
+        const currentSchedule = activeSchedules.find(schedule => {
+          const startDate = new Date(schedule.startDate);
+          const endDate = new Date(schedule.endDate);
+          return startDate <= now && endDate >= now;
+        });
+
+        if (currentSchedule) {
+          if (!this.currentSchedule || this.currentSchedule.id !== currentSchedule.id) {
+            // Yeni schedule başlıyor
+            logger.info('Starting new schedule:', currentSchedule.id);
+            await this.startSchedule(currentSchedule);
+          }
+        } else if (this.currentSchedule) {
+          // Schedule bitiyor
+          logger.info('Stopping current schedule:', this.currentSchedule.id);
+          this.stopSchedule(this.currentSchedule.id);
+        }
+      } catch (error) {
+        logger.error('Error in schedule check:', error);
+        this.handleError(error);
+      }
+    }, 10000);
+  }
+
+  async startSchedule(schedule) {
+    try {
+      if (!schedule) {
+        throw new Error('Invalid schedule');
+      }
+
+      // Schedule detaylarını al
+      const playlist = await scheduleStorage.getSchedulePlaylist(schedule.id);
+      if (!playlist || !playlist.songs || playlist.songs.length === 0) {
+        throw new Error('No songs in schedule playlist');
+      }
+
+      this.currentSchedule = {
+        ...schedule,
+        playlist
+      };
+
+      logger.info('Schedule started:', {
+        scheduleId: schedule.id,
+        songCount: playlist.songs.length
+      });
+
+      // Schedule başladı event'ini gönder
+      this.emit('schedule-started', this.currentSchedule);
+
+      // İlk şarkıyı başlat
+      this.playNextSong();
+    } catch (error) {
+      logger.error('Error starting schedule:', error);
+      this.handleError(error, schedule.id);
+    }
+  }
+
+  stopSchedule(scheduleId) {
+    if (this.currentSchedule && (!scheduleId || this.currentSchedule.id === scheduleId)) {
+      logger.info('Schedule stopped:', scheduleId);
+      
+      // Schedule durdu event'ini gönder
+      this.emit('schedule-stopped', scheduleId);
+      
+      // State'i temizle
+      this.reset();
+    }
+  }
+
+  // Event listener ekleme ve saklama
+  on(eventName, listener) {
+    super.on(eventName, listener);
+    if (!this.eventListeners.has(eventName)) {
+      this.eventListeners.set(eventName, []);
+    }
+    this.eventListeners.get(eventName).push(listener);
+  }
+
+  // Tüm event listener'ları temizle
+  removeAllListeners(eventName) {
+    if (eventName && this.eventListeners.has(eventName)) {
+      const listeners = this.eventListeners.get(eventName);
+      listeners.forEach(listener => super.removeListener(eventName, listener));
+      this.eventListeners.delete(eventName);
+    } else {
+      this.eventListeners.forEach((listeners, event) => {
+        listeners.forEach(listener => super.removeListener(event, listener));
+      });
+      this.eventListeners.clear();
+    }
   }
 
   handleError(error, scheduleId) {
-    const now = Date.now();
-
-    // Son hata üzerinden 5 dakika geçtiyse sayacı sıfırla
-    if (this.lastErrorTime && (now - this.lastErrorTime) > ERROR_RESET_INTERVAL) {
-      this.consecutiveErrors = 0;
-      if (this.errorResetTimeout) {
-        clearTimeout(this.errorResetTimeout);
-        this.errorResetTimeout = null;
-      }
+    if (!this.isCheckingEnabled || this.isRetrying) {
+      return;
     }
 
-    this.consecutiveErrors++;
-    this.lastErrorTime = now;
+    this.errorCount++;
 
-    // Hata sayacını sıfırlamak için zamanlayıcı ayarla
-    if (!this.errorResetTimeout) {
-      this.errorResetTimeout = setTimeout(() => {
-        this.consecutiveErrors = 0;
-        this.lastErrorTime = null;
-        this.errorResetTimeout = null;
-      }, ERROR_RESET_INTERVAL);
-    }
-
-    // Ardışık hata limiti aşıldıysa schedule'ı durdur
-    if (this.consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-      logger.error('Too many consecutive errors, stopping schedule playback');
-      this.emit('schedule-error', { 
-        message: 'Too many playback errors, stopping schedule', 
-        scheduleId 
-      });
-      this.stopSchedule(scheduleId);
+    if (this.errorCount >= this.maxErrors) {
+      // Tüm event listener'ları temizle
+      this.removeAllListeners();
       
-      // Schedule kontrolünü durdur
-      if (this.checkInterval) {
-        clearInterval(this.checkInterval);
-        this.checkInterval = null;
-      }
+      // Schedule kontrolünü devre dışı bırak
+      this.isCheckingEnabled = false;
+      
+      // Schedule'ı durdur ve state'i temizle
+      this.stopSchedule(scheduleId);
+      this.reset();
+      
+      // Son event'i gönder ve listener'ı temizle
+      this.emit('fallback-to-playlist');
+      this.removeAllListeners('fallback-to-playlist');
+      return;
+    }
 
-      // 5 dakika sonra yeniden başlat
-      setTimeout(() => {
-        this.consecutiveErrors = 0;
-        this.lastErrorTime = null;
-        if (this.errorResetTimeout) {
-          clearTimeout(this.errorResetTimeout);
-          this.errorResetTimeout = null;
-        }
-        
-        // Schedule kontrolünü yeniden başlat
-        this.checkInterval = setInterval(() => {
-          this.checkSchedules();
-        }, 60 * 1000);
-        
-        // Hemen bir kontrol yap
-        this.checkSchedules();
-      }, ERROR_RESET_INTERVAL);
-    } else {
-      // Normal hata bildirimi
-      this.emit('schedule-error', { 
-        message: error.message || 'Schedule playback error', 
-        scheduleId 
-      });
+    if (this.errorCount === 1 && !this.isRetrying) {
+      this.isRetrying = true;
+      this.retryTimeout = setTimeout(() => {
+        this.isRetrying = false;
+        this.startSchedule(scheduleId);
+      }, 30 * 1000);
     }
   }
 
-  async checkSchedules() {
-    try {
-      // Eğer çok fazla hata varsa kontrol etmeyi durdur
-      if (this.consecutiveErrors >= MAX_CONSECUTIVE_ERRORS) {
-        return;
-      }
+  reset() {
+    // Tüm zamanlayıcıları temizle
+    if (this.retryTimeout) {
+      clearTimeout(this.retryTimeout);
+      this.retryTimeout = null;
+    }
+    
+    if (this.checkInterval) {
+      clearInterval(this.checkInterval);
+      this.checkInterval = null;
+    }
 
+    // State'i sıfırla
+    this.currentSchedule = null;
+    this.errorCount = 0;
+    this.isRetrying = false;
+    
+    // Event listener'ları temizle
+    this.removeAllListeners();
+  }
+
+  async checkSchedules() {
+    // Kontrol devre dışıysa çalışma
+    if (!this.isCheckingEnabled) {
+      return;
+    }
+
+    try {
       const activeSchedules = await scheduleStorage.getActiveSchedules();
       const now = new Date();
 
-      // Aktif schedule'ları kontrol et
       for (const schedule of activeSchedules) {
         const startDate = new Date(schedule.startDate);
         const endDate = new Date(schedule.endDate);
 
-        // Schedule zamanı geldiyse ve şu an çalışan schedule değilse
-        if (startDate <= now && endDate >= now && (!this.currentSchedule || this.currentSchedule.id !== schedule.id)) {
-          const success = await this.startSchedule(schedule.id);
-          if (!success) {
-            this.handleError(new Error('Failed to start schedule'), schedule.id);
-            // Hata durumunda diğer schedule'ları kontrol etmeyi bırak
-            return;
-          }
+        if (startDate <= now && endDate >= now && 
+            (!this.currentSchedule || this.currentSchedule.id !== schedule.id)) {
+          // Schedule objesini doğrudan geçir
+          await this.startSchedule(schedule);
         }
-        // Mevcut schedule'ın süresi bittiyse
-        else if (this.currentSchedule && this.currentSchedule.id === schedule.id && endDate < now) {
-          const success = await this.stopSchedule(schedule.id);
-          if (!success) {
-            this.handleError(new Error('Failed to stop schedule'), schedule.id);
-            // Hata durumunda diğer schedule'ları kontrol etmeyi bırak
-            return;
-          }
+        else if (this.currentSchedule && this.currentSchedule.id === schedule.id && 
+                 (now < startDate || now > endDate)) {
+          this.stopSchedule(schedule.id);
         }
       }
-
-      // Süresi bitmiş schedule'ları temizle
-      await scheduleStorage.clearExpiredSchedules();
     } catch (error) {
       logger.error('Error checking schedules:', error);
-      if (this.currentSchedule) {
-        this.handleError(error, this.currentSchedule.id);
-      }
+      this.handleError(error);
     }
   }
 
-  async startSchedule(scheduleId) {
-    try {
-      logger.info('Starting schedule:', { scheduleId });
-      
-      const schedule = await scheduleStorage.getSchedule(scheduleId);
-      if (!schedule) {
-        logger.error(`Schedule not found: ${scheduleId}`);
-        return false;
-      }
-
-      logger.info('Schedule details:', {
-        id: schedule.id,
-        startDate: schedule.startDate,
-        endDate: schedule.endDate,
-        playlist: schedule.playlist ? {
-          id: schedule.playlist.id,
-          name: schedule.playlist.name,
-          songCount: schedule.playlist.songs?.length
-        } : null
-      });
-
-      // Playlist ve şarkı kontrolü
-      if (!schedule.playlist || !schedule.playlist.songs || !Array.isArray(schedule.playlist.songs) || schedule.playlist.songs.length === 0) {
-        logger.info('No songs in schedule');
-        this.handleError(new Error('No songs in schedule'), scheduleId);
-        return false;
-      }
-
-      // Mevcut çalan schedule varsa durdur
-      if (this.currentSchedule) {
-        logger.info('Stopping current schedule before starting new one');
-        await this.stopSchedule(this.currentSchedule.id);
-      }
-
-      logger.info(`Starting schedule: ${scheduleId}`);
-      this.currentSchedule = schedule;
-
-      // Schedule başladı event'ini gönder
-      const scheduleData = {
-        id: scheduleId,
-        schedule: schedule,
-        songs: schedule.playlist.songs.map(song => ({
-          id: song.id,
-          name: song.name,
-          artist: song.artist,
-          path: path.join(this.downloadPath, scheduleId, `${song.id}.mp3`)
-        }))
-      };
-
-      logger.info('Emitting schedule-started event:', {
-        id: scheduleId,
-        songCount: scheduleData.songs.length
-      });
-
-      this.emit('schedule-started', scheduleData);
-      return true;
-    } catch (error) {
-      logger.error('Error starting schedule:', error);
-      this.handleError(error, scheduleId);
-      return false;
+  initialize() {
+    // Önceki state'i temizle
+    this.reset();
+    
+    // Yeni state'i ayarla
+    this.isCheckingEnabled = true;
+    this.errorCount = 0;
+    
+    // Schedule kontrolünü başlat
+    if (!this.checkInterval) {
+      this.checkInterval = setInterval(this.boundCheckSchedules, 60 * 1000);
     }
-  }
-
-  async stopSchedule(scheduleId) {
-    try {
-      if (!this.currentSchedule || this.currentSchedule.id !== scheduleId) {
-        return false;
-      }
-
-      logger.info(`Stopping schedule: ${scheduleId}`);
-
-      // Schedule durdu event'ini gönder
-      this.emit('schedule-stopped', scheduleId);
-      
-      this.currentSchedule = null;
-
-      // Schedule deaktif et
-      await scheduleStorage.deactivateSchedule(scheduleId);
-
-      // Hata sayaçlarını sıfırla
-      this.consecutiveErrors = 0;
-      this.lastErrorTime = null;
-      if (this.errorResetTimeout) {
-        clearTimeout(this.errorResetTimeout);
-        this.errorResetTimeout = null;
-      }
-
-      return true;
-    } catch (error) {
-      logger.error('Error stopping schedule:', error);
-      this.handleError(error, scheduleId);
-      return false;
-    }
+    
+    // İlk kontrolü yap
+    this.checkSchedules();
   }
 
   getCurrentSchedule() {
     return this.currentSchedule;
   }
 
-  getSchedulePath(scheduleId) {
-    return path.join(this.downloadPath, scheduleId);
+  destroy() {
+    // Tüm kaynakları temizle
+    this.reset();
+    
+    // Bound fonksiyonu temizle
+    this.boundCheckSchedules = null;
   }
 
-  cleanup() {
-    if (this.checkInterval) {
-      clearInterval(this.checkInterval);
+  playNextSong() {
+    if (!this.currentSchedule || !this.currentSchedule.playlist || !this.currentSchedule.playlist.songs) {
+      logger.error('No current schedule or playlist');
+      return;
     }
-    if (this.errorResetTimeout) {
-      clearTimeout(this.errorResetTimeout);
+
+    const songs = this.currentSchedule.playlist.songs;
+    if (songs.length === 0) {
+      logger.error('No songs in playlist');
+      return;
     }
+
+    // Çalınacak şarkıyı seç
+    const currentSong = songs[0];
+    
+    // Şarkıyı çal event'ini gönder
+    this.emit('play-song', {
+      scheduleId: this.currentSchedule.id,
+      song: currentSong
+    });
+
+    // Şarkıyı playlist'in sonuna taşı (döngüsel çalma)
+    songs.push(songs.shift());
+
+    logger.info('Playing song:', {
+      scheduleId: this.currentSchedule.id,
+      songName: currentSong.name,
+      songPath: currentSong.url
+    });
   }
 }
 
