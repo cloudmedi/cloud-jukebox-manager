@@ -1,6 +1,6 @@
 export interface Playlist {
   _id: string;
-  id?: string; // Making id optional to match the backend response
+  id?: string;
   name: string;
   description?: string;
   songs: any[];

@@ -1,25 +1,20 @@
-import { useEffect } from "react";
 import { useFormContext } from "react-hook-form";
-import { Device } from "@/types/device";
 import { Progress } from "@/components/ui/progress";
+import { Device } from "@/types/device";
 
 interface DeviceListProps {
   searchQuery: string;
   downloadProgress: { [key: string]: number };
   isDownloading: boolean;
+  form: any; // Add form prop to interface
 }
 
-export const DeviceList = ({ searchQuery, downloadProgress, isDownloading }: DeviceListProps) => {
-  const { register, watch } = useFormContext();
-  const devices = watch("targetDevices");
+export const DeviceList = ({ searchQuery, downloadProgress, isDownloading, form }: DeviceListProps) => {
+  const devices = form.watch("targetDevices");
 
   const filteredDevices = devices.filter((device: Device) =>
     device.name.toLowerCase().includes(searchQuery.toLowerCase())
   );
-
-  useEffect(() => {
-    // Logic to handle device selection
-  }, [devices]);
 
   return (
     <div>
@@ -37,7 +32,7 @@ export const DeviceList = ({ searchQuery, downloadProgress, isDownloading }: Dev
             <input
               type="checkbox"
               value={device._id}
-              {...register("targetDevices")}
+              {...form.register("targetDevices")}
               className="ml-2"
             />
           </div>
