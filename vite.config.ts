@@ -25,12 +25,12 @@ export default defineConfig(({ mode }) => ({
     rollupOptions: {
       output: {
         manualChunks: {
-          jspdf: ['jspdf']
+          jspdf: ['jspdf', 'jspdf-autotable']
         }
       }
     }
   },
   optimizeDeps: {
-    include: ['jspdf']
+    include: ['jspdf', 'jspdf-autotable']
   }
 }));
