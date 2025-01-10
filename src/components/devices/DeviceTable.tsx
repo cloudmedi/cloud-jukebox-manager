@@ -1,5 +1,6 @@
 import { FC } from 'react';
 import { Device } from '@/types/device';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 interface DeviceTableProps {
   devices: Device[];
@@ -7,14 +8,24 @@ interface DeviceTableProps {
 
 export const DeviceTable: FC<DeviceTableProps> = ({ devices }) => {
   return (
-    <div className="space-y-4">
-      {devices.map(device => (
-        <div key={device._id} className="p-4 border rounded">
-          <h3>{device.name}</h3>
-          <p>Status: {device.status}</p>
-        </div>
-      ))}
-    </div>
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead>Name</TableHead>
+          <TableHead>Status</TableHead>
+          <TableHead>Location</TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {devices.map((device) => (
+          <TableRow key={device._id}>
+            <TableCell>{device.name}</TableCell>
+            <TableCell>{device.isOnline ? 'Online' : 'Offline'}</TableCell>
+            <TableCell>{device.location}</TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
   );
 };
 

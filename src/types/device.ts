@@ -5,8 +5,15 @@ export interface DeviceInfo {
   cpus: string;
   totalMemory: string;
   freeMemory: string;
-  osVersion: string;
   networkInterfaces: string[];
+  osVersion: string;
+  language?: string; // Made optional since it's used in tokenService
+  screenResolution?: string;
+  timeZone?: string;
+  browserInfo?: {
+    name: string;
+    version: string;
+  };
 }
 
 export interface Device {
@@ -18,6 +25,7 @@ export interface Device {
   isOnline?: boolean;
   isPlaying?: boolean;
   version?: string;
+  status?: string; // Added for DeviceTable
   activePlaylist?: {
     _id: string;
     name: string;
