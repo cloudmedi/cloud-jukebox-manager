@@ -20,7 +20,8 @@ export default defineConfig(({ mode }) => ({
   build: {
     commonjsOptions: {
       include: [/node_modules/],
-      transformMixedEsModules: true
+      transformMixedEsModules: true,
+      exclude: ['jspdf']
     },
     rollupOptions: {
       output: {
@@ -31,6 +32,7 @@ export default defineConfig(({ mode }) => ({
     }
   },
   optimizeDeps: {
-    include: ['jspdf', 'jspdf-autotable']
+    include: ['jspdf', 'jspdf-autotable'],
+    exclude: ['jspdf']
   }
 }));
