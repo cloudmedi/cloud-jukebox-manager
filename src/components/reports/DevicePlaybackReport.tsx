@@ -1,3 +1,4 @@
+import { RobotoRegular, RobotoMedium } from '@/assets/fonts';
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { DateTimeRangePicker } from "./device-playback/DateTimeRangePicker";
@@ -9,10 +10,6 @@ import jsPDF from "jspdf";
 import autoTable from "jspdf-autotable";
 import { toast } from "sonner";
 import { DateRange } from "react-day-picker";
-
-// Roboto fontunu import et
-import robotoNormal from '@/assets/fonts/Roboto-Regular-normal.js';
-import robotoMedium from '@/assets/fonts/Roboto-Medium-normal.js';
 
 interface Device {
   _id: string; // Bu artık token değeri

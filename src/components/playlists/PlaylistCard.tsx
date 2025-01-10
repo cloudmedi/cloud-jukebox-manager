@@ -5,6 +5,7 @@ import { formatDuration } from "@/lib/utils";
 import { SendPlaylistDialog } from "./SendPlaylistDialog";
 import { usePlayerStore } from "@/store/playerStore";
 import { usePlayer } from "@/components/layout/MainLayout";
+import { Playlist } from "@/types/playlist";
 
 const ARTWORK_SIZES = {
   CARD: {
@@ -14,21 +15,13 @@ const ARTWORK_SIZES = {
 };
 
 interface PlaylistCardProps {
-  playlist: {
-    _id: string;
-    name: string;
-    description?: string;
-    songs: any[];
-    totalDuration?: number;
-    artwork?: string;
-    genre?: string;
-  };
+  playlist: Playlist;
   onDelete?: (id: string) => void;
   onEdit?: (id: string) => void;
   onPlay?: (id: string) => void;
 }
 
-const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: PlaylistCardProps) => {
+export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: PlaylistCardProps) => {
   const [isSendDialogOpen, setIsSendDialogOpen] = useState(false);
   const { setShowPlayer } = usePlayer();
 
