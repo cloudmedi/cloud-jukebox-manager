@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Plus, Music2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
-import { PlaylistCard } from "@/components/playlists/PlaylistCard";
+import PlaylistCard from "@/components/playlists/PlaylistCard";
 import { PlaylistCardSkeleton } from "@/components/playlists/PlaylistCardSkeleton";
 import { HeroSkeleton } from "@/components/hero/HeroSkeleton";
 import { useToast } from "@/hooks/use-toast";

@@ -1,55 +1,76 @@
 import { create } from 'zustand';
 
 interface Song {
-  _id: string;
+  id: string;
   name: string;
   artist: string;
+  artwork?: string;
   filePath?: string;
-  artwork?: string | null;
+  duration?: number;
+}
+
+interface Playlist {
+  id: string;
+  name: string;
+  artwork?: string;
+  songs: Song[];
 }
 
 interface PlayerState {
+  currentSong: Song | null;
+  currentPlaylist: Playlist | null;
+  queue: Song[];
   isPlaying: boolean;
+  volume: number;
   currentTime: number;
   duration: number;
-  volume: number;
-  currentSong: Song | null;
-  queue: Song[];
+  setCurrentSong: (song: Song | null) => void;
+  setCurrentPlaylist: (playlist: Playlist | null) => void;
+  setQueue: (queue: Song[]) => void;
   setIsPlaying: (isPlaying: boolean) => void;
+  setVolume: (volume: number) => void;
   setCurrentTime: (time: number) => void;
   setDuration: (duration: number) => void;
-  setVolume: (volume: number) => void;
-  nextSong: () => void;
-  previousSong: () => void;
-  setCurrentSong: (song: Song) => void;
+  addToQueue: (song: Song) => void;
+  removeFromQueue: (index: number) => void;
+  clearQueue: () => void;
+  playPlaylist: (playlist: Playlist, startFromSong?: Song) => void;
 }
 
-export const usePlayerStore = create<PlayerState>((set, get) => ({
+export const usePlayerStore = create<PlayerState>((set) => ({
+  currentSong: null,
+  currentPlaylist: null,
+  queue: [],
   isPlaying: false,
+  volume: 70,
   currentTime: 0,
   duration: 0,
-  volume: 100,
-  currentSong: null,
-  queue: [],
+  setCurrentSong: (song) => set({ currentSong: song }),
+  setCurrentPlaylist: (playlist) => set({ currentPlaylist: playlist }),
+  setQueue: (queue) => set({ queue }),
   setIsPlaying: (isPlaying) => set({ isPlaying }),
+  setVolume: (volume) => set({ volume }),
   setCurrentTime: (currentTime) => set({ currentTime }),
   setDuration: (duration) => set({ duration }),
-  setVolume: (volume) => set({ volume }),
-  nextSong: () => {
-    const { queue, currentSong } = get();
-    if (!currentSong || queue.length === 0) return;
+  addToQueue: (song) => set((state) => ({ queue: [...state.queue, song] })),
+  removeFromQueue: (index) => set((state) => ({
+    queue: state.queue.filter((_, i) => i !== index)
+  })),
+  clearQueue: () => set({ queue: [] }),
+  playPlaylist: (playlist, startFromSong) => {
+    const songIndex = startFromSong 
+      ? playlist.songs.findIndex(s => s.id === startFromSong.id)
+      : 0;
     
-    const currentIndex = queue.findIndex(song => song._id === currentSong._id);
-    const nextIndex = (currentIndex + 1) % queue.length;
-    set({ currentSong: queue[nextIndex] });
-  },
-  previousSong: () => {
-    const { queue, currentSong } = get();
-    if (!currentSong || queue.length === 0) return;
-    
-    const currentIndex = queue.findIndex(song => song._id === currentSong._id);
-    const previousIndex = (currentIndex - 1 + queue.length) % queue.length;
-    set({ currentSong: queue[previousIndex] });
-  },
-  setCurrentSong: (song) => set({ currentSong: song })
+    if (songIndex === -1) return;
+
+    const currentSong = playlist.songs[songIndex];
+    const queue = playlist.songs.slice(songIndex + 1);
+
+    set({
+      currentSong,
+      currentPlaylist: playlist,
+      queue
+    });
+  }
 }));

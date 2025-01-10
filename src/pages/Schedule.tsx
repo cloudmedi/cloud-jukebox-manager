@@ -6,19 +6,29 @@ import { CalendarView } from "@/components/schedule/CalendarView";
 import { ViewToggle } from "@/components/schedule/ViewToggle";
 import { useQueryClient } from "@tanstack/react-query";
 
-const Schedule = () => {
+export default function Schedule() {
   const [view, setView] = useState<"timeGridWeek" | "dayGridMonth">("timeGridWeek");
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [selectedEvent, setSelectedEvent] = useState<any>(null);
   const [selectedDates, setSelectedDates] = useState<{
     start: Date | null;
     end: Date | null;
   }>({ start: null, end: null });
-  const [selectedEvent, setSelectedEvent] = useState<any>(null);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [isEventDetailOpen, setIsEventDetailOpen] = useState(false);
   const [refreshTrigger, setRefreshTrigger] = useState(0);
   const queryClient = useQueryClient();
 
+  const handleEventClick = (event: any) => {
+    setSelectedEvent(event);
+    setSelectedDates({
+      start: event.start,
+      end: event.end
+    });
+    setIsDialogOpen(true);
+  };
+
   const handleDateSelect = (selectInfo: any) => {
+    setSelectedEvent(null);
     setSelectedDates({
       start: selectInfo.start,
       end: selectInfo.end
@@ -26,18 +36,10 @@ const Schedule = () => {
     setIsDialogOpen(true);
   };
 
-  const handleEventClick = (clickInfo: any) => {
-    console.log("Schedule - handleEventClick:", clickInfo); // Debug için
-    setSelectedEvent({
-      title: clickInfo.title,
-      start: clickInfo.start,
-      end: clickInfo.end,
-      extendedProps: {
-        originalEventId: clickInfo.id,
-        playlistId: clickInfo.playlist._id
-      }
-    });
-    setIsEventDetailOpen(true);
+  const handleDialogClose = () => {
+    setIsDialogOpen(false);
+    setSelectedEvent(null);
+    setSelectedDates({ start: null, end: null });
   };
 
   const handleScheduleCreated = () => {
@@ -72,6 +74,9 @@ const Schedule = () => {
             onSuccess={handleScheduleCreated}
             initialStartDate={selectedDates.start}
             initialEndDate={selectedDates.end}
+            isEditing={!!selectedEvent}
+            initialData={selectedEvent}
+            onClose={handleDialogClose}
           />
         </DialogContent>
       </Dialog>
@@ -89,5 +94,3 @@ const Schedule = () => {
     </div>
   );
 };
-
-export default Schedule;

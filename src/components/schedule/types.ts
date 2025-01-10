@@ -5,6 +5,7 @@ export interface ScheduleFormData {
   endDate: Date;
   repeatType: "once" | "daily" | "weekly" | "monthly";
   targets: {
+    targetType: "device" | "group";
     devices: string[];
     groups: string[];
   };

@@ -3,6 +3,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ErrorBoundary } from "./components/ErrorBoundary";
 import { MainLayout } from "./components/layout/MainLayout";
 import { Toaster } from "./components/ui/toaster";
+import { Toaster as SonnerToaster } from "sonner";
 import { ThemeProvider } from "./components/theme/ThemeProvider";
 import Index from "./pages/Index";
 import Devices from "./pages/Devices";
@@ -41,6 +42,7 @@ function App() {
               </Route>
             </Routes>
             <Toaster />
+            <SonnerToaster position="top-right" expand={true} richColors />
           </BrowserRouter>
         </ErrorBoundary>
       </QueryClientProvider>

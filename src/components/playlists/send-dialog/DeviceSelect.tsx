@@ -25,31 +25,46 @@ export const DeviceSelect = ({ devices, value, onChange, disabled }: DeviceSelec
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1">
       {devices.map((device) => (
-        <div key={device._id} className="flex items-center space-x-2">
-          <Checkbox
-            id={device._id}
-            checked={value.includes(device._id)}
-            onCheckedChange={(checked) => handleCheckboxChange(device._id, checked as boolean)}
-            disabled={disabled}
-          />
-          <div className="grid gap-1.5 leading-none">
-            <label
-              htmlFor={device._id}
-              className={`text-sm font-medium leading-none ${
-                device.isOnline ? 'text-green-600' : 'text-gray-500'
-              } peer-disabled:cursor-not-allowed peer-disabled:opacity-70`}
-            >
-              {device.name}
-            </label>
+        <label
+          key={device._id}
+          className={`group flex items-center gap-3 p-2 rounded-md transition-all cursor-pointer
+            ${value.includes(device._id) ? 'bg-primary/15' : 'hover:bg-gray-100'}
+            ${disabled ? 'opacity-50 cursor-not-allowed' : ''}
+          `}
+        >
+          <div className="relative flex items-center justify-center">
+            <Checkbox
+              id={device._id}
+              checked={value.includes(device._id)}
+              onCheckedChange={(checked) => handleCheckboxChange(device._id, checked as boolean)}
+              disabled={disabled}
+              className="w-4 h-4 border-gray-300 data-[state=checked]:border-primary data-[state=checked]:bg-primary"
+            />
+            <div className={`absolute w-8 h-8 rounded-full transition-all scale-0 bg-primary/10
+              ${value.includes(device._id) ? 'scale-100' : 'group-hover:scale-90'}
+            `} />
+          </div>
+          
+          <div className="flex-1 min-w-0">
+            <div className="flex items-center gap-2">
+              <span className={`text-sm font-medium truncate
+                ${value.includes(device._id) ? 'text-gray-900' : 'text-gray-700'}
+              `}>
+                {device.name}
+              </span>
+              {device.isOnline && (
+                <span className="flex-shrink-0 w-2 h-2 rounded-full bg-green-500" />
+              )}
+            </div>
             {device.location && (
-              <p className="text-xs text-muted-foreground">
+              <p className="text-xs text-gray-500 truncate mt-0.5">
                 {device.location}
               </p>
             )}
           </div>
-        </div>
+        </label>
       ))}
     </div>
   );

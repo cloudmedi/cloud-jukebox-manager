@@ -7,89 +7,90 @@ import { RepeatTypeSelect } from "./RepeatTypeSelect";
 import { TargetSelect } from "./TargetSelect";
 import { ScheduleFormData } from "./types";
 import { useToast } from "@/components/ui/use-toast";
-import { useMutation, useQueryClient } from "@tanstack/react-query";
+import { useState } from "react";
 
 interface PlaylistScheduleFormProps {
-  onSuccess?: () => void;
+  onSuccess?: (savedEvent: any) => void;
+  onClose?: (success: boolean) => void;
   initialStartDate?: Date;
   initialEndDate?: Date;
+  isEditing?: boolean;
+  initialData?: any;
 }
 
 export function PlaylistScheduleForm({ 
   onSuccess,
+  onClose,
   initialStartDate,
-  initialEndDate 
+  initialEndDate,
+  isEditing,
+  initialData 
 }: PlaylistScheduleFormProps) {
   const { toast } = useToast();
-  const queryClient = useQueryClient();
-  
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedPlaylists, setSelectedPlaylists] = useState<string[]>([]);
+
   const form = useForm<ScheduleFormData>({
     defaultValues: {
-      playlist: "",
+      playlist: initialData?.playlist?._id || "",
       startDate: initialStartDate || new Date(),
       endDate: initialEndDate || new Date(),
-      repeatType: "once",
+      repeatType: initialData?.repeatType || "once",
       targets: {
-        devices: [],
-        groups: []
+        targetType: initialData?.targets?.targetType || "group",
+        devices: initialData?.targets?.devices || [],
+        groups: initialData?.targets?.groups || []
       }
     }
   });
 
-  console.log("Form values:", form.watch());
+  const onSubmit = async (data: ScheduleFormData) => {
+    try {
+      setIsSubmitting(true);
 
-  const mutation = useMutation({
-    mutationFn: async (data: ScheduleFormData) => {
-      // API'ye gönderilecek veriyi düzenle
       const payload = {
         playlist: data.playlist,
-        startDate: data.startDate,
-        endDate: data.endDate,
+        startDate: data.startDate.toISOString(),
+        endDate: data.endDate.toISOString(),
         repeatType: data.repeatType,
-        targets: {
-          devices: data.targets.devices,
-          groups: data.targets.groups
-        },
-        createdBy: "admin" // Geçici olarak sabit bir değer atadık
+        targets: data.targets,
+        createdBy: "admin"
       };
 
-      const response = await fetch("http://localhost:5000/api/playlist-schedules", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+      const url = initialData?._id
+        ? `http://localhost:5000/api/playlist-schedules/${initialData._id}`
+        : "http://localhost:5000/api/playlist-schedules";
+
+      const response = await fetch(url, {
+        method: initialData?._id ? "PATCH" : "POST",
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify(payload),
       });
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.message || "Zamanlama oluşturulamadı");
-      }
+      if (!response.ok) throw new Error("İşlem başarısız");
 
-      return response.json();
-    },
-    onSuccess: () => {
-      // Takvim verilerini yenile
-      queryClient.invalidateQueries({ queryKey: ["playlist-schedules"] });
-      
+      const savedEvent = await response.json();
+
       toast({
         title: "Başarılı",
-        description: "Zamanlama başarıyla oluşturuldu",
+        description: initialData?._id
+          ? "Zamanlama güncellendi"
+          : "Yeni zamanlama oluşturuldu",
       });
-      onSuccess?.();
-    },
-    onError: (error: Error) => {
+
+      // İşlem başarılı olduğunda onSuccess'i çağır ve event'i gönder
+      onSuccess?.(savedEvent);
+      onClose?.(true);
+    } catch (error) {
+      console.error("Form gönderme hatası:", error);
       toast({
         title: "Hata",
-        description: error.message,
+        description: "İşlem başarısız oldu",
         variant: "destructive",
       });
-    },
-  });
-
-  const onSubmit = (data: ScheduleFormData) => {
-    console.log("Submitting form with data:", data);
-    mutation.mutate(data);
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -101,8 +102,8 @@ export function PlaylistScheduleForm({
         <TargetSelect control={form.control} />
         
         <div className="flex justify-end">
-          <Button type="submit" disabled={mutation.isPending}>
-            {mutation.isPending ? "Oluşturuluyor..." : "Oluştur"}
+          <Button type="submit" disabled={isSubmitting}>
+            {isSubmitting ? "Oluşturuluyor..." : isEditing ? "Güncelle" : "Oluştur"}
           </Button>
         </div>
       </form>

@@ -93,15 +93,15 @@ export function EventDetailDialog({ event, isOpen, onClose }: EventDetailDialogP
             </div>
             <div>
               <h3 className="font-semibold">Başlangıç</h3>
-              <p>{format(new Date(event.start), "d MMMM yyyy HH:mm", { locale: tr })}</p>
+              <p>{event.start ? format(new Date(event.start), "d MMMM yyyy HH:mm", { locale: tr }) : "-"}</p>
             </div>
             <div>
               <h3 className="font-semibold">Bitiş</h3>
-              <p>{format(new Date(event.end), "d MMMM yyyy HH:mm", { locale: tr })}</p>
+              <p>{event.end ? format(new Date(event.end), "d MMMM yyyy HH:mm", { locale: tr }) : "-"}</p>
             </div>
             <div>
               <h3 className="font-semibold">Hedef</h3>
-              <p>{event.extendedProps.targetType === 'device' ? 'Cihaz' : 'Grup'}</p>
+              <p>{event.targets?.targetType === "group" ? "Grup" : event.targets?.targetType === "device" ? "Cihaz" : "-"}</p>
             </div>
             <div className="flex justify-end pt-4">
               <Button 

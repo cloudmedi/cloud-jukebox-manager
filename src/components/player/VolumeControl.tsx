@@ -16,12 +16,12 @@ const VolumeControl = ({ volume, isMuted, onVolumeChange, onToggleMute }: Volume
         variant="ghost" 
         size="icon"
         onClick={onToggleMute}
-        className="shrink-0"
+        className="h-9 w-9 shrink-0 hover:bg-primary/10 transition-all"
       >
         {isMuted || volume === 0 ? (
-          <VolumeX className="h-5 w-5" />
+          <VolumeX className="h-4 w-4" />
         ) : (
-          <Volume2 className="h-5 w-5" />
+          <Volume2 className="h-4 w-4" />
         )}
       </Button>
       <Slider
@@ -29,7 +29,7 @@ const VolumeControl = ({ volume, isMuted, onVolumeChange, onToggleMute }: Volume
         onValueChange={onVolumeChange}
         max={100}
         step={1}
-        className="w-28"
+        className="w-24 group"
       />
     </div>
   );

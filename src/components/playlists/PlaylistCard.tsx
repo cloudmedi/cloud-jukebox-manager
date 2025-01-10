@@ -1,17 +1,17 @@
-import { memo } from "react";
-import { Send, Trash2, Music2, MoreVertical, Pencil, Play } from "lucide-react";
+import { useState, memo } from "react";
+import { Music2, Clock, Play } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuTrigger,
-} from "@/components/ui/dropdown-menu";
-import { Card, CardContent, CardHeader } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
-import { SendPlaylistDialog } from "./SendPlaylistDialog";
-import { useState } from "react";
 import { formatDuration } from "@/lib/utils";
+import { SendPlaylistDialog } from "./SendPlaylistDialog";
+import { usePlayerStore } from "@/store/playerStore";
+import { usePlayer } from "@/components/layout/MainLayout";
+
+const ARTWORK_SIZES = {
+  CARD: {
+    width: 220,
+    height: 220,
+  },
+};
 
 interface PlaylistCardProps {
   playlist: {
@@ -23,94 +23,87 @@ interface PlaylistCardProps {
     artwork?: string;
     genre?: string;
   };
-  onDelete: (id: string) => void;
+  onDelete?: (id: string) => void;
   onEdit?: (id: string) => void;
   onPlay?: (id: string) => void;
 }
 
-export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: PlaylistCardProps) => {
+const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: PlaylistCardProps) => {
   const [isSendDialogOpen, setIsSendDialogOpen] = useState(false);
+  const { setShowPlayer } = usePlayer();
+
+  const handlePlay = () => {
+    if (playlist.songs && playlist.songs.length > 0) {
+      usePlayerStore.getState().playPlaylist(playlist);
+      setShowPlayer(true);
+    }
+  };
 
   return (
     <>
-      <Card className="group overflow-hidden w-[200px] shadow-md bg-card/50 backdrop-blur-sm">
-        <CardHeader className="relative aspect-square p-0">
-          {playlist.artwork ? (
-            <img
-              src={`http://localhost:5000${playlist.artwork}`}
-              alt={playlist.name}
-              className="h-[200px] w-[200px] object-cover"
-              loading="lazy"
-            />
-          ) : (
-            <div className="flex h-[200px] w-[200px] items-center justify-center bg-gradient-to-br from-sidebar-primary/20 to-sidebar-accent/20">
-              <Music2 className="h-24 w-24 text-muted-foreground/40" />
+      <div className={`group relative rounded-lg overflow-hidden bg-card w-[${ARTWORK_SIZES.CARD.width}px]`}>
+        <div className="relative group">
+          <div className="relative aspect-square rounded-md overflow-hidden bg-muted">
+            {playlist.artwork ? (
+              <>
+                <img
+                  src={`http://localhost:5000${playlist.artwork}`}
+                  alt={playlist.name}
+                  className="w-full h-full object-cover transition-transform duration-500 ease-out group-hover:scale-105"
+                />
+                <div className="absolute inset-0 group-hover:[&:not(:has(button:hover))]:bg-black/40 transition-colors duration-500" />
+                <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-500">
+                  <button 
+                    onClick={handlePlay}
+                    className="w-12 h-12 rounded-full bg-primary/90 text-primary-foreground flex items-center justify-center transform scale-75 group-hover:[&:not(:has(button:hover))]:scale-100 transition-all duration-500 ease-out hover:bg-primary hover:scale-105"
+                  >
+                    <Play className="w-6 h-6" />
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="w-full h-full flex items-center justify-center bg-muted">
+                <Music2 className="h-12 w-12 text-muted-foreground/40" />
+              </div>
+            )}
+            
+            <div className="absolute bottom-0 left-0 right-0">
+              <div className="bg-black/40 backdrop-blur-[2px] p-2.5 transition-colors duration-500">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex-1 space-y-1">
+                    <h3 className="font-medium text-[14px] text-white/95 group-hover:text-white transition-colors duration-300 line-clamp-2">
+                      {playlist.name}
+                    </h3>
+                    <div className="flex items-center justify-between gap-3 text-[11px] text-white/75 group-hover:text-white/90">
+                      <div className="flex items-center gap-3">
+                        <div className="flex items-center gap-1 min-w-[2.5rem]">
+                          <Music2 className="h-3 w-3 shrink-0" />
+                          <span className="tabular-nums">
+                            {playlist.songs?.length || 0}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-1 min-w-[3.5rem]">
+                          <Clock className="h-3 w-3 shrink-0" />
+                          <span className="tabular-nums">
+                            {formatDuration(playlist.totalDuration || 0)}
+                          </span>
+                        </div>
+                      </div>
+                      <Button
+                        variant="ghost"
+                        className="relative z-10 h-[18px] px-2 rounded-sm bg-black/50 hover:bg-black/70 text-[11px] font-normal text-white/80 hover:text-white transition-all duration-300 -mr-0.5"
+                        onClick={() => setIsSendDialogOpen(true)}
+                      >
+                        Gönder
+                      </Button>
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-          )}
-          <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-black/30 to-transparent opacity-0 transition-opacity duration-300 group-hover:opacity-100" />
-        </CardHeader>
-        
-        <CardContent className="space-y-2 p-4">
-          <div className="flex items-start justify-between">
-            <div className="space-y-1 flex-1">
-              <h3 className="line-clamp-1 text-base font-semibold tracking-tight">
-                {playlist.name}
-              </h3>
-              {playlist.genre && (
-                <Badge variant="secondary" className="text-xs">
-                  {playlist.genre}
-                </Badge>
-              )}
-            </div>
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="h-8 w-8 text-muted-foreground/60 hover:text-primary"
-                >
-                  <MoreVertical className="h-4 w-4" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="end" className="w-40">
-                {onPlay && (
-                  <DropdownMenuItem onClick={() => onPlay(playlist._id)} className="gap-2">
-                    <Play className="h-4 w-4" />
-                    Oynat
-                  </DropdownMenuItem>
-                )}
-                {onEdit && (
-                  <DropdownMenuItem onClick={() => onEdit(playlist._id)} className="gap-2">
-                    <Pencil className="h-4 w-4" />
-                    Düzenle
-                  </DropdownMenuItem>
-                )}
-                <DropdownMenuItem onClick={() => setIsSendDialogOpen(true)} className="gap-2">
-                  <Send className="h-4 w-4" />
-                  Gönder
-                </DropdownMenuItem>
-                <DropdownMenuItem 
-                  onClick={() => onDelete(playlist._id)} 
-                  className="gap-2 text-destructive focus:text-destructive"
-                >
-                  <Trash2 className="h-4 w-4" />
-                  Sil
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
           </div>
-
-          <div className="flex items-center justify-between text-xs text-muted-foreground">
-            <div className="flex items-center gap-1">
-              <Music2 className="h-3 w-3" />
-              <span>{playlist.songs?.length || 0} şarkı</span>
-            </div>
-            <span>
-              {formatDuration(playlist.totalDuration || 0)}
-            </span>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <SendPlaylistDialog 
         isOpen={isSendDialogOpen}
@@ -122,3 +115,5 @@ export const PlaylistCard = memo(({ playlist, onDelete, onEdit, onPlay }: Playli
 });
 
 PlaylistCard.displayName = "PlaylistCard";
+
+export default PlaylistCard;

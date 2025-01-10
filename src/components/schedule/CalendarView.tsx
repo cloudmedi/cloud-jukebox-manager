@@ -11,7 +11,7 @@ import { memo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import 'moment-timezone';
 import { Button } from "@/components/ui/button";
-import { ChevronLeft, ChevronRight, Copy, MoveRight, Save, Download, Trash2 } from "lucide-react";
+import { ChevronLeft, ChevronRight, Copy, MoveRight, Save, Download, Trash2, Pencil } from "lucide-react";
 import { TimelineFilters, TimelineFilters as TimelineFiltersType } from "./TimelineFilters";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Input } from "@/components/ui/input";
@@ -41,8 +41,10 @@ interface PlaylistSchedule {
     _id: string;
     name: string;
   };
-  isRecurring?: boolean;
-  recurrence?: RecurrenceRule;
+  repeatType?: string;
+  targets?: {
+    targetType: "group" | "device";
+  };
 }
 
 interface CalendarEvent {
@@ -60,10 +62,12 @@ interface CalendarEvent {
     color: string;
     playlistId: string;
   };
-  isRecurring?: boolean;
-  recurrence?: RecurrenceRule;
+  repeatType?: string;
+  targets?: {
+    targetType: "group" | "device";
+  };
   isRecurrenceInstance?: boolean;
-  originalEventId?: string;
+  parentEventId?: string;
 }
 
 interface CalendarViewProps {
@@ -187,7 +191,6 @@ export function CalendarView({
   const [currentDate, setCurrentDate] = useState(moment().startOf('week').toDate());
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [filteredEvents, setFilteredEvents] = useState<CalendarEvent[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
   const [isDragging, setIsDragging] = useState(false);
   const eventsRef = useRef<CalendarEvent[]>([]);
   const [currentView, setCurrentView] = useState(Views.WEEK);
@@ -199,6 +202,10 @@ export function CalendarView({
     isOpen: false,
     startDate: null,
     endDate: null
+  });
+  const [eventDetailsDialog, setEventDetailsDialog] = useState<{ isOpen: boolean; event: CalendarEvent | null }>({
+    isOpen: false,
+    event: null
   });
 
   // Filtreleri uygula
@@ -238,11 +245,6 @@ export function CalendarView({
       );
     }
 
-    // Tekrarlanan event'leri filtrele
-    if (!filters.showRecurring) {
-      filtered = filtered.filter(event => !event.isRecurring && !event.isRecurrenceInstance);
-    }
-
     setFilteredEvents(filtered);
   }, [events]);
 
@@ -277,7 +279,7 @@ export function CalendarView({
         borderColor: event.resource.borderColor,
         color: event.resource.color,
         borderWidth: '2px',
-        borderStyle: event.isRecurring || event.isRecurrenceInstance ? 'dashed' : 'solid',
+        borderStyle: event.repeatType === 'recurring' ? 'dashed' : 'solid',
         opacity: isDragging ? 0.5 : 1,
         cursor: isDragging ? 'grabbing' : 'grab',
         transition: 'all 0.2s ease',
@@ -290,54 +292,49 @@ export function CalendarView({
   }, [isDragging]);
 
   // Tekrarlanan event'leri oluştur
-  const generateRecurringEvents = useCallback((baseEvent: CalendarEvent, recurrence: RecurrenceRule): CalendarEvent[] => {
+  const generateRecurringEvents = useCallback((baseEvent: CalendarEvent): CalendarEvent[] => {
     const events: CalendarEvent[] = [];
     const startDate = moment(baseEvent.start);
     const endDate = moment(baseEvent.end);
     const duration = moment.duration(endDate.diff(startDate));
-    const recurrenceEnd = moment(recurrence.endDate);
 
-    let currentStart = startDate.clone();
-    
-    while (currentStart.isSameOrBefore(recurrenceEnd)) {
-      // Haftalık tekrarda belirli günler için kontrol
-      if (recurrence.type === 'weekly' && recurrence.daysOfWeek?.length) {
-        const currentDay = currentStart.day();
-        if (!recurrence.daysOfWeek.includes(currentDay)) {
-          currentStart.add(1, 'day');
-          continue;
+    if (baseEvent.repeatType === 'weekly') {
+      // Ay sonuna kadar olan tarihi bul
+      const monthEnd = startDate.clone().endOf('month');
+      let currentDate = startDate.clone();
+
+      // Ay sonuna kadar aynı günleri ekle
+      while (currentDate.isSameOrBefore(monthEnd)) {
+        if (currentDate.isAfter(startDate)) { // İlk günü atlayalım çünkü o zaten var
+          events.push({
+            ...baseEvent,
+            id: `${baseEvent.id}_${currentDate.format('YYYY-MM-DD')}`,
+            start: currentDate.toDate(),
+            end: currentDate.clone().add(duration).toDate(),
+            isRecurrenceInstance: true,
+            parentEventId: baseEvent.id
+          });
         }
+        currentDate.add(1, 'week');
       }
+    } else if (baseEvent.repeatType === 'monthly') {
+      // Yıl sonuna kadar olan tarihi bul
+      const yearEnd = startDate.clone().endOf('year');
+      let currentDate = startDate.clone();
 
-      const currentEnd = currentStart.clone().add(duration);
-      
-      // Eğer bitiş tarihini geçtiyse döngüyü bitir
-      if (currentEnd.isAfter(recurrenceEnd)) break;
-
-      events.push({
-        ...baseEvent,
-        id: `${baseEvent.id}_${currentStart.format('YYYY-MM-DD')}`,
-        start: currentStart.toDate(),
-        end: currentEnd.toDate(),
-        isRecurrenceInstance: true,
-        originalEventId: baseEvent.id
-      });
-
-      // Tekrarlama tipine göre ilerleme
-      switch (recurrence.type) {
-        case 'daily':
-          currentStart.add(recurrence.interval, 'days');
-          break;
-        case 'weekly':
-          if (recurrence.daysOfWeek?.length) {
-            currentStart.add(1, 'day');
-          } else {
-            currentStart.add(recurrence.interval, 'weeks');
-          }
-          break;
-        case 'monthly':
-          currentStart.add(recurrence.interval, 'months');
-          break;
+      // Yıl sonuna kadar aynı günü ekle
+      while (currentDate.isSameOrBefore(yearEnd)) {
+        if (currentDate.isAfter(startDate)) { // İlk ayı atlayalım çünkü o zaten var
+          events.push({
+            ...baseEvent,
+            id: `${baseEvent.id}_${currentDate.format('YYYY-MM-DD')}`,
+            start: currentDate.toDate(),
+            end: currentDate.clone().add(duration).toDate(),
+            isRecurrenceInstance: true,
+            parentEventId: baseEvent.id
+          });
+        }
+        currentDate.add(1, 'month');
       }
     }
 
@@ -347,7 +344,6 @@ export function CalendarView({
   // Event'leri getir
   const fetchEvents = useCallback(async () => {
     try {
-      setIsLoading(true);
       const response = await fetch("http://localhost:5000/api/playlist-schedules");
       if (!response.ok) throw new Error("Zamanlamalar yüklenemedi");
       const data: PlaylistSchedule[] = await response.json();
@@ -365,15 +361,20 @@ export function CalendarView({
           end: new Date(schedule.endDate),
           playlist: schedule.playlist,
           resource: colors,
-          isRecurring: schedule.isRecurring,
-          recurrence: schedule.recurrence
+          repeatType: schedule.repeatType || "once",
+          targets: schedule.targets
         };
 
         allEvents.push(baseEvent);
 
-        // Tekrarlanan event'leri oluştur
-        if (schedule.isRecurring && schedule.recurrence) {
-          const recurringEvents = generateRecurringEvents(baseEvent, schedule.recurrence);
+        // Tekrarlı event'leri oluştur
+        if (schedule.repeatType && schedule.repeatType !== "once") {
+          const recurrence: RecurrenceRule = {
+            type: schedule.repeatType,
+            interval: 1,
+            endDate: schedule.endDate
+          };
+          const recurringEvents = generateRecurringEvents(baseEvent);
           allEvents.push(...recurringEvents);
         }
       });
@@ -385,27 +386,42 @@ export function CalendarView({
         description: "Event'ler yüklenemedi",
         variant: "destructive",
       });
-    } finally {
-      setIsLoading(false);
     }
   }, [toast, generateRecurringEvents, getEventColor]);
 
-  // Event'leri yükle
+  // İlk yükleme için loading kullan
   useEffect(() => {
-    fetchEvents();
-  }, [fetchEvents, refreshTrigger]);
+    const initialLoad = async () => {
+      setIsDragging(false);
+      await fetchEvents();
+    };
+    initialLoad();
+  }, []);
+
+  // Refresh trigger için sadece fetchEvents çağır
+  useEffect(() => {
+    if (refreshTrigger > 0) {
+      fetchEvents();
+    }
+  }, [refreshTrigger, fetchEvents]);
+
+  // Event state'i için optimistik güncelleme yardımcı fonksiyonu
+  const updateEventState = useCallback((updatedEvent: CalendarEvent) => {
+    setEvents(prevEvents => 
+      prevEvents.map(e => e.id === updatedEvent.id ? updatedEvent : e)
+    );
+  }, []);
 
   // Event'lerin çakışıp çakışmadığını kontrol et
   const checkEventOverlap = useCallback((targetStart: Date, targetEnd: Date, eventId?: string) => {
-    const currentEvents = eventsRef.current;
-    
     // Tekrarlanan event instance'larını filtrele
-    const relevantEvents = currentEvents.filter(event => !event.isRecurrenceInstance);
+    const relevantEvents = events.filter(event => !event.parentEventId);
     
+    // Aynı playlist'e ait event'leri bul
     const samePlaylistEvents = relevantEvents.filter(event => {
       if (eventId && event.id === eventId) return false;
       const targetEvent = relevantEvents.find(e => e.id === eventId);
-      return targetEvent ? event.resource.playlistId === targetEvent.resource.playlistId : true;
+      return targetEvent ? event.playlist._id === targetEvent.playlist._id : true;
     });
 
     return samePlaylistEvents.some(event => {
@@ -420,20 +436,13 @@ export function CalendarView({
         (newStart.isSameOrBefore(eventStart) && newEnd.isSameOrAfter(eventEnd))
       );
     });
-  }, []);
-
-  // Event state'i için optimistik güncelleme yardımcı fonksiyonu
-  const updateEventState = useCallback((updatedEvent: CalendarEvent) => {
-    setEvents(prevEvents => 
-      prevEvents.map(e => e.id === updatedEvent.id ? updatedEvent : e)
-    );
-  }, []);
+  }, [events]);
 
   // Event güncelleme
-  const updateEvent = async (id: string, start: Date, end: Date, isRecurrenceInstance?: boolean) => {
+  const updateEvent = async (id: string, start: Date, end: Date) => {
     try {
       // Ana event ID'sini al
-      const originalId = isRecurrenceInstance ? id.split('_')[0] : id;
+      const originalId = id.split('_')[0];
 
       if (checkEventOverlap(start, end, originalId)) {
         toast({
@@ -455,32 +464,16 @@ export function CalendarView({
 
       if (!response.ok) throw new Error("Güncelleme başarısız");
 
-      // Event'i lokalde güncelle
-      const updatedEvents = eventsRef.current.map(event => {
-        if (isRecurrenceInstance) {
-          // Tekrarlanan event instance'ı ise sadece o instance'ı güncelle
-          if (event.id === id) {
-            const updatedEvent = {
-              ...event,
-              start,
-              end
-            };
-            onEventChange?.(updatedEvent);
-            return updatedEvent;
-          }
-        } else {
-          // Ana event ise tüm tekrarları güncelle
-          if (event.id === id || event.originalEventId === id) {
-            const timeDiff = moment(end).diff(moment(start));
-            const eventStart = moment(event.start);
-            const updatedEvent = {
-              ...event,
-              start: eventStart.toDate(),
-              end: eventStart.clone().add(timeDiff).toDate()
-            };
-            onEventChange?.(updatedEvent);
-            return updatedEvent;
-          }
+      // Lokal state'i güncelle
+      const updatedEvents = events.map(event => {
+        if (event.id === originalId || event.parentEventId === originalId) {
+          const timeDiff = moment(end).diff(moment(start));
+          const eventStart = moment(event.start);
+          return {
+            ...event,
+            start: eventStart.toDate(),
+            end: eventStart.clone().add(timeDiff).toDate()
+          };
         }
         return event;
       });
@@ -632,41 +625,46 @@ export function CalendarView({
   );
 
   // Event silme
-  const handleEventDelete = async (eventToDelete) => {
+  const handleEventDelete = async (event: CalendarEvent) => {
     try {
-      // Sadece seçilen event'i sil
-      const updatedEvents = events.filter(event => event.id !== eventToDelete.id);
-      setEvents(updatedEvents);
-
-      // API'ye silme isteği gönder
-      const response = await fetch(`http://localhost:5000/api/playlist-schedules/${eventToDelete.id}`, {
-        method: 'DELETE',
+      // Eğer tekrarlı event instance'ı ise ana event ID'sini kullan
+      const eventId = event.parentEventId || event.id;
+      
+      const response = await fetch(`http://localhost:5000/api/playlist-schedules/${eventId}`, {
+        method: "DELETE"
       });
 
-      if (!response.ok) {
-        throw new Error('Event silinemedi');
-      }
+      if (!response.ok) throw new Error("Silme başarısız");
+
+      // Lokal state'i güncelle
+      const updatedEvents = events.filter(e => 
+        e.id !== eventId && e.parentEventId !== eventId
+      );
+      setEvents(updatedEvents);
 
       setDeleteDialog({ isOpen: false, eventToDelete: null });
+      setEventDetailsDialog({ isOpen: false, event: null });
       
+      toast({
+        title: "Başarılı",
+        description: "Event başarıyla silindi",
+      });
     } catch (error) {
-      console.error('Event silme hatası:', error);
-      // Hata durumunda orijinal state'e dön
       toast({
         title: "Hata",
-        description: "Event silme başarısız oldu",
+        description: "Event silinirken bir hata oluştu",
         variant: "destructive",
       });
     }
   };
 
-  // Event silme handler'ını handleEventClick'e bağla
-  const handleEventClick = (event) => {
-    setDeleteDialog({
+  // Event detayları dialog'unda düzenle butonuna tıklandığında
+  const handleEventClick = useCallback((event: CalendarEvent) => {
+    setEventDetailsDialog({
       isOpen: true,
-      eventToDelete: event
+      event: event
     });
-  };
+  }, []);
 
   // Yeni event oluşturma
   const handleSelectSlot = useCallback(
@@ -795,8 +793,6 @@ export function CalendarView({
     }
   };
 
-  if (isLoading) return <div>Loading...</div>;
-
   return (
     <div className="bg-background rounded-lg border p-4">
       {/* Silme Dialog'u */}
@@ -897,6 +893,81 @@ export function CalendarView({
         </DialogContent>
       </Dialog>
 
+      {/* Event Detayları Dialog'u */}
+      <Dialog 
+        open={eventDetailsDialog.isOpen} 
+        onOpenChange={(open) => setEventDetailsDialog(prev => ({ ...prev, isOpen: open }))}
+      >
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Event Detayları</DialogTitle>
+            <DialogDescription>
+              {eventDetailsDialog.event && (
+                <div className="space-y-4">
+                  <div>
+                    <Label>Playlist</Label>
+                    <div className="font-medium">{eventDetailsDialog.event.playlist.name}</div>
+                  </div>
+                  <div>
+                    <Label>Başlangıç</Label>
+                    <div className="font-medium">
+                      {moment(eventDetailsDialog.event.start).format('DD MMMM YYYY HH:mm')}
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Bitiş</Label>
+                    <div className="font-medium">
+                      {moment(eventDetailsDialog.event.end).format('DD MMMM YYYY HH:mm')}
+                    </div>
+                  </div>
+                  <div>
+                    <Label>Tekrar Tipi</Label>
+                    <div className="font-medium">
+                      {eventDetailsDialog.event.repeatType === 'weekly' ? 'Haftalık' :
+                       eventDetailsDialog.event.repeatType === 'monthly' ? 'Aylık' : 'Tek Seferlik'}
+                    </div>
+                  </div>
+                </div>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter className="gap-2">
+            <Button
+              variant="outline"
+              onClick={() => setEventDetailsDialog({ isOpen: false, event: null })}
+            >
+              Kapat
+            </Button>
+            <Button
+              onClick={() => {
+                onEventClick(eventDetailsDialog.event);
+                setEventDetailsDialog({ isOpen: false, event: null });
+              }}
+              className="flex items-center gap-2"
+            >
+              <Pencil className="w-4 h-4" />
+              Düzenle
+            </Button>
+            <Button
+              variant="destructive"
+              onClick={() => {
+                if (eventDetailsDialog.event) {
+                  setDeleteDialog({
+                    isOpen: true,
+                    eventToDelete: eventDetailsDialog.event
+                  });
+                  setEventDetailsDialog({ isOpen: false, event: null });
+                }
+              }}
+              className="flex items-center gap-2"
+            >
+              <Trash2 className="w-4 h-4" />
+              Sil
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <ScheduleActions
         onCopyToNextWeek={handleCopyToNextWeek}
         onMoveSchedule={handleMoveSchedule}
@@ -951,6 +1022,22 @@ export function CalendarView({
             onSelectEvent={handleEventClick}
             onSelectSlot={handleSelectSlot}
             eventPropGetter={eventPropGetter}
+            components={{
+              toolbar: CustomToolbar,
+              event: (props) => (
+                <div 
+                  onContextMenu={(e) => {
+                    e.preventDefault();
+                    setDeleteDialog({
+                      isOpen: true,
+                      eventToDelete: props.event
+                    });
+                  }}
+                >
+                  {props.title}
+                </div>
+              )
+            }}
             formats={{
               timeGutterFormat: (date: Date) => moment(date).format('HH:mm'),
               eventTimeRangeFormat: ({ start, end }: { start: Date, end: Date }) => {
@@ -985,9 +1072,6 @@ export function CalendarView({
               event: 'Çalma Listesi',
               allDay: 'Tüm gün',
               showMore: (total: number) => `+${total} daha fazla`
-            }}
-            components={{
-              toolbar: CustomToolbar
             }}
           />
         </motion.div>
