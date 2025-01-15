@@ -39,7 +39,7 @@ class EmergencyStateManager {
       // Cihazların emergency durumunu kaldır ve normal duruma döndür
       await Device.updateMany({}, {
         emergencyStopped: false,
-        playlistStatus: 'loaded',  // Playlist durumunu yüklenmiş olarak ayarla
+        playlistStatus: 'completed',  // Playlist durumunu tamamlanmış olarak ayarla
         volume: 50  // Varsayılan ses seviyesine geri döndür
       });
 

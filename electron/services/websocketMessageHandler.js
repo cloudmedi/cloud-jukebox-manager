@@ -22,6 +22,7 @@ class WebSocketMessageHandler {
     this.handlers.set('schedule-created', this.handleScheduleCreated.bind(this));
     this.handlers.set('schedule-updated', this.handleScheduleUpdated.bind(this));
     this.handlers.set('schedule-deleted', this.handleScheduleDeleted.bind(this));
+    this.handlers.set('downloadProgress', this.handleDownloadProgress.bind(this));
     logger.info('Message handlers registered');
   }
 
@@ -181,6 +182,17 @@ class WebSocketMessageHandler {
       }
     } catch (error) {
       logger.error('Error handling schedule deletion:', error);
+    }
+  }
+
+  handleDownloadProgress(message) {
+    logger.info('Handling download progress:', message);
+    
+    // Mesajı WebSocket üzerinden backend'e gönder
+    if (global.ws && global.ws.readyState === WebSocket.OPEN) {
+      global.ws.send(JSON.stringify(message));
+    } else {
+      logger.warn('WebSocket connection not available');
     }
   }
 

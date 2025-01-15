@@ -7,11 +7,13 @@ type MessageHandler = (data: any) => void;
 
 class WebSocketService {
   private static instance: WebSocketService;
-  private ws: WebSocket | null = null;
+  private socket: WebSocket | null = null;
   private messageHandlers: Map<string, Set<MessageHandler>>;
+  private eventListeners: Map<string, Set<(data: any) => void>>;
 
   private constructor() {
     this.messageHandlers = new Map();
+    this.eventListeners = new Map();
     this.setupMessageHandlers();
     this.connect();
   }
@@ -31,29 +33,45 @@ class WebSocketService {
   }
 
   private connect() {
-    if (this.ws?.readyState === WebSocket.OPEN) return;
+    if (this.socket?.readyState === WebSocket.OPEN) return;
 
-    this.ws = new WebSocket('ws://localhost:5000/admin');
+    this.socket = new WebSocket('ws://localhost:5000/admin');
 
-    this.ws.onopen = () => {
+    this.socket.onopen = () => {
       console.log('WebSocket bağlantısı kuruldu');
     };
 
-    this.ws.onmessage = (event) => {
+    this.socket.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);
-        this.handleMessage(message);
+        
+        if (message.type === 'deviceDownloadProgress') {
+          // Gelen mesajı düzenle ve emit et
+          const formattedMessage = {
+            deviceToken: message.deviceToken,
+            status: message.status,
+            playlistId: message.playlistId,
+            totalSongs: message.totalSongs,
+            completedSongs: message.completedSongs,
+            songProgress: message.songProgress,
+            progress: message.progress
+          };
+          
+          this.emit('deviceDownloadProgress', formattedMessage);
+        } else {
+          this.handleMessage(message);
+        }
       } catch (error) {
         console.error('Message parsing error:', error);
       }
     };
 
-    this.ws.onclose = () => {
+    this.socket.onclose = () => {
       console.log('WebSocket bağlantısı kapandı, yeniden bağlanılıyor...');
       setTimeout(() => this.connect(), 5000);
     };
 
-    this.ws.onerror = (error) => {
+    this.socket.onerror = (error) => {
       console.error('WebSocket error:', error);
     };
   }
@@ -106,9 +124,33 @@ class WebSocketService {
     }
   }
 
+  public on(event: string, callback: (data: any) => void) {
+    if (!this.eventListeners.has(event)) {
+      this.eventListeners.set(event, new Set());
+    }
+    this.eventListeners.get(event)?.add(callback);
+  }
+
+  public off(event: string, callback: (data: any) => void) {
+    this.eventListeners.get(event)?.delete(callback);
+  }
+
+  public emit(event: string, data: any) {
+    const listeners = this.eventListeners.get(event);
+    if (listeners) {
+      listeners.forEach(callback => {
+        try {
+          callback(data);
+        } catch (error) {
+          console.error(`Error in ${event} event listener:`, error);
+        }
+      });
+    }
+  }
+
   public sendMessage(message: any) {
-    if (this.ws?.readyState === WebSocket.OPEN) {
-      this.ws.send(JSON.stringify(message));
+    if (this.socket?.readyState === WebSocket.OPEN) {
+      this.socket.send(JSON.stringify(message));
     } else {
       console.error('WebSocket bağlantısı kurulamadı');
       this.connect();
@@ -116,10 +158,11 @@ class WebSocketService {
   }
 
   public cleanup() {
-    if (this.ws) {
-      this.ws.close();
-      this.ws = null;
+    if (this.socket) {
+      this.socket.close();
+      this.socket = null;
     }
+    this.eventListeners.clear();
   }
 }
 

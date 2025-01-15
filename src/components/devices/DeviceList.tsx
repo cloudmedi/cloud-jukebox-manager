@@ -14,11 +14,13 @@ import {
   showPlaylistError,
   VOLUME_THRESHOLD 
 } from "@/utils/notificationUtils";
+import { useDownloadProgressStore } from "@/store/downloadProgressStore";
 
 export const DeviceList = () => {
   const queryClient = useQueryClient();
   const [selectedDevices, setSelectedDevices] = useState<string[]>([]);
   const isMobile = useIsMobile();
+  const updateProgress = useDownloadProgressStore(state => state.updateProgress);
   
   const { data: devices, isLoading } = useQuery({
     queryKey: ['devices'],
@@ -33,61 +35,27 @@ export const DeviceList = () => {
   });
 
   useEffect(() => {
-    const handleDeviceStatus = (data: any) => {
-      console.log('WebSocket device status received:', data);
+    const handleDownloadProgress = (data: any) => {
+      console.log('Download progress update - Raw data:', data);
       
-      const currentDevices = queryClient.getQueryData<Device[]>(['devices']);
-      if (!currentDevices) return;
-
-      const updatedDevices = currentDevices.map(device => {
-        if (device.token === data.token) {
-          if (device.isOnline && !data.isOnline) {
-            showDeviceOfflineNotification(device.name);
-          }
-
-          if (data.volume && data.volume >= VOLUME_THRESHOLD) {
-            showVolumeWarning(device.name, data.volume);
-          }
-
-          if (data.playlistStatus === 'error') {
-            showPlaylistError(device.name, data.lastError || 'Playlist yüklenemedi');
-          }
-          
-          // Log state change
-          if (data.isPlaying !== undefined) {
-            console.log('Device playback state update:', {
-              deviceName: device.name,
-              oldState: device.isPlaying,
-              newState: data.isPlaying
-            });
-          }
-          
-          return { 
-            ...device, 
-            ...data,
-            isPlaying: data.isPlaying !== undefined ? data.isPlaying : device.isPlaying,
-            playlistStatus: data.playlistStatus || device.playlistStatus,
-            downloadProgress: data.downloadProgress || device.downloadProgress,
-            downloadSpeed: data.downloadSpeed || device.downloadSpeed,
-            downloadedSongs: data.downloadedSongs || device.downloadedSongs,
-            totalSongs: data.totalSongs || device.totalSongs,
-            estimatedTimeRemaining: data.estimatedTimeRemaining || device.estimatedTimeRemaining,
-            retryCount: data.retryCount || device.retryCount,
-            lastError: data.error || device.lastError
-          };
-        }
-        return device;
+      // Store'a kaydet
+      updateProgress({
+        deviceToken: data.deviceToken,
+        status: data.status,
+        playlistId: data.playlistId,
+        totalSongs: data.totalSongs,
+        completedSongs: data.completedSongs,
+        songProgress: data.songProgress,
+        progress: data.progress
       });
-
-      queryClient.setQueryData(['devices'], updatedDevices);
     };
 
-    websocketService.addMessageHandler('deviceStatus', handleDeviceStatus);
+    websocketService.on('deviceDownloadProgress', handleDownloadProgress);
 
     return () => {
-      websocketService.removeMessageHandler('deviceStatus', handleDeviceStatus);
+      websocketService.off('deviceDownloadProgress', handleDownloadProgress);
     };
-  }, [queryClient]);
+  }, [updateProgress]);
 
   const handleSelectAll = (checked: boolean) => {
     if (checked) {

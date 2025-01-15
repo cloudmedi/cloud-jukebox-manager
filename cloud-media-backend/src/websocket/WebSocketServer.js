@@ -59,12 +59,29 @@ class WebSocketServer {
         await this.statusHandler.handleOnlineStatus(token, message.isOnline);
         break;
 
+      case 'downloadProgress':
+        console.log('📥 Download Progress Message Received:', {
+          deviceToken: token,
+          totalSongs: message.data.totalSongs,
+          completedSongs: message.data.completedSongs,
+          currentSong: message.data.songProgress?.current?.name || 'Unknown',
+          progress: `${message.data.progress}%`,
+          status: message.data.status
+        });
+
+        // İndirme durumunu statusHandler'a ilet
+        const targetDevice = await Device.findOne({ token });
+        if (targetDevice) {
+          await this.statusHandler.handleDownloadProgress(message, targetDevice);
+        }
+        break;
+
       case 'deviceStatus':
         // Cihazın oynatma durumunu güncelle
-        const targetDevice = await Device.findOne({ token: token });
-        if (targetDevice) {
-          targetDevice.isPlaying = message.isPlaying;
-          await targetDevice.save();
+        const playingDevice = await Device.findOne({ token: token });
+        if (playingDevice) {
+          playingDevice.isPlaying = message.isPlaying;
+          await playingDevice.save();
         }
         
         // Cihazın oynatma durumunu admin paneline ilet

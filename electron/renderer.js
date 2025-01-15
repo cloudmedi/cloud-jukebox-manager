@@ -548,6 +548,11 @@ async function startPlaylist(playlist) {
 }
 
 // WebSocket mesaj dinleyicileri
+addIpcListener('websocket-message', (event, message) => {
+  console.log('Sending WebSocket message:', message);
+  ipcRenderer.invoke('send-websocket-message', message);
+});
+
 addIpcListener('playlist-received', async (event, playlist) => {
   try {
     console.log('New playlist received:', playlist);

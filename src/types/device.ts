@@ -23,29 +23,29 @@ export interface Device {
   location: string;
   ipAddress: string | null;
   isOnline: boolean;
-  volume: number;
-  isPlaying?: boolean;
+  isPlaying: boolean;
   lastSeen: string;
   createdAt?: string;
   updatedAt?: string;
-  groupId?: string | null;
+  groupId?: string;
   deviceInfo?: DeviceInfo;
   
   // Playlist ve indirme durumu
-  playlistStatus?: 'loaded' | 'loading' | 'error' | null;
-  downloadProgress?: number;
-  downloadSpeed?: number;
-  downloadedSongs?: number;
-  totalSongs?: number;
-  estimatedTimeRemaining?: number;
-  retryCount?: number;
-  lastError?: string;
-  
-  activePlaylist?: {
-    _id: string;
-    name: string;
+  playlistStatus: 'completed' | 'downloading' | 'error' | null;
+  downloadProgress?: {
+    playlistId: string;
+    totalSongs: number;
+    completedSongs: number;
+    currentSong: {
+      current: number;
+      total: number;
+      name: string;
+    };
+    progress: number;
   };
-  
+  activePlaylist?: string;
+  volume: number;
+  emergencyStopped: boolean;
   currentSong?: {
     _id: string;
     name: string;

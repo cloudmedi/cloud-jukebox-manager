@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Monitor, Activity, Download, AlertCircle, WifiOff } from "lucide-react";
 import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
+import { useDownloadProgressStore } from "@/store/downloadProgressStore";
 
 export const DeviceStats = () => {
   const { data: devices } = useQuery({
@@ -15,11 +16,32 @@ export const DeviceStats = () => {
     refetchInterval: 5000
   });
 
+  const progressMap = useDownloadProgressStore((state) => state.progressMap);
+  
+  // İndirme istatistiklerini hesapla
+  const downloadStats = Object.values(progressMap).reduce(
+    (acc, curr) => {
+      if (curr.status === "downloading") {
+        acc.downloading++;
+        acc.totalDownloadProgress += curr.progress || 0;
+      } else if (curr.status === "error") {
+        acc.error++;
+      }
+      return acc;
+    },
+    { downloading: 0, error: 0, totalDownloadProgress: 0 }
+  );
+
+  // Ortalama ilerleme yüzdesini hesapla
+  const averageProgress = downloadStats.downloading > 0
+    ? Math.round((downloadStats.totalDownloadProgress / downloadStats.downloading) * 10) / 10
+    : 0;
+
   const stats = {
     total: devices?.length || 0,
     online: devices?.filter(d => d.isOnline).length || 0,
-    loading: devices?.filter(d => d.playlistStatus === 'loading').length || 0,
-    error: devices?.filter(d => d.playlistStatus === 'error').length || 0
+    loading: downloadStats.downloading,
+    error: downloadStats.error
   };
 
   return (
@@ -69,9 +91,12 @@ export const DeviceStats = () => {
           <Download className="h-4 w-4 text-orange-500" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-orange-500">{stats.loading}</div>
+          <div className="flex items-center gap-1">
+            <span className="text-2xl font-bold text-orange-500">{stats.loading}</span>
+            <span className="text-sm text-orange-500 mt-1">cihaza</span>
+          </div>
           <p className="text-xs text-muted-foreground">
-            {((stats.loading / stats.total) * 100).toFixed(0) || 0}% yükleniyor
+            {stats.loading} adet playlist yükleniyor
           </p>
         </CardContent>
       </Card>
@@ -82,9 +107,12 @@ export const DeviceStats = () => {
           <AlertCircle className="h-4 w-4 text-red-500" />
         </CardHeader>
         <CardContent>
-          <div className="text-2xl font-bold text-red-500">{stats.error}</div>
+          <div className="flex items-center gap-1">
+            <span className="text-2xl font-bold text-red-500">{stats.error}</span>
+            <span className="text-sm text-red-500 mt-1">cihaza</span>
+          </div>
           <p className="text-xs text-muted-foreground">
-            {((stats.error / stats.total) * 100).toFixed(0) || 0}% hata
+            {stats.error} adet hatalı yükleme
           </p>
         </CardContent>
       </Card>

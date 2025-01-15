@@ -34,13 +34,38 @@ class WebSocketService {
           console.log('Playlist update sent to renderer');
         }
       } catch (error) {
-        console.error('Error handling playlist message:', error);
+        console.error('Error handling playlist:', error);
       }
     });
 
     this.addMessageHandler('command', (message) => {
       console.log('Command message received:', message);
       CommandHandler.handleCommand(message);
+    });
+
+    this.addMessageHandler('downloadProgress', (message) => {
+      console.log('Download progress message received:', message);
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        const deviceToken = store.get('deviceInfo')?.token;
+        
+        // İndirme tamamlandıysa status'ü completed yap
+        const status = message.data.progress >= 100 ? 'completed' : 'downloading';
+        
+        const messageWithToken = {
+          type: 'downloadProgress',
+          data: {
+            ...message.data,
+            status: status,
+            progress: message.data.progress,
+            downloadedBytes: message.data.downloadedBytes,
+            totalBytes: message.data.totalBytes
+          },
+          deviceToken
+        };
+        
+        console.log('Sending download progress:', messageWithToken);
+        this.ws.send(JSON.stringify(messageWithToken));
+      }
     });
 
     this.addMessageHandler('delete', async (message) => {

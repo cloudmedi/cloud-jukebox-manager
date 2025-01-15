@@ -8,6 +8,12 @@ const SchedulePlayer = require('./services/schedule/SchedulePlayer');
 const scheduleStorage = require('./services/schedule/ScheduleStorage');
 require('./services/audioService');
 
+// WebSocket mesaj handler'ı
+ipcMain.handle('send-websocket-message', async (event, message) => {
+  console.log('Handling WebSocket message:', message);
+  websocketService.handleMessage(message);
+});
+
 // Set application name
 app.name = 'Cloud Media Player';
 app.setAppUserModelId('Cloud Media Player');
@@ -211,12 +217,12 @@ function loadLastPlaylist() {
 
 function createWindow() {
   mainWindow = new BrowserWindow({
-    width: 1000,
-    height: 1000,
-    minWidth: 1000,
-    minHeight: 1000,
-    maxWidth: 1000,
-    maxHeight: 1000,
+    width: 800,
+    height: 800,
+    minWidth: 800,
+    minHeight: 800,
+    maxWidth: 800,
+    maxHeight: 800,
     resizable: false,
     backgroundColor: '#1a1b1e',
     frame: false,

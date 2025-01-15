@@ -251,10 +251,15 @@ class AudioService {
           isPlaying: false
         });
 
-        websocketService.sendMessage({
-          type: 'playlistStatus',
-          status: 'loaded',
-          playlistId: playlist._id
+        await websocketService.sendMessage({
+          type: 'deviceStatus',
+          data: {
+            token: deviceToken,
+            isPlaying: this.isPlaying,
+            volume: this.volume,
+            status: 'completed',
+            currentSong: this.currentSong
+          }
         });
       }
     });

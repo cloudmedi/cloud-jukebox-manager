@@ -5,10 +5,11 @@ import { tr } from "date-fns/locale";
 import type { Device } from "@/types/device";
 import DeviceActions from "./DeviceActions";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Volume2, Play, Loader2, AlertCircle, MapPin, CheckCircle2, XCircle } from "lucide-react";
+import { Volume2, Play, Loader2, AlertCircle, MapPin, CheckCircle2, XCircle, Clock } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { formatBytes, formatDuration } from "@/lib/utils";
+import { useDownloadProgressStore } from "@/store/downloadProgressStore";
 
 interface DeviceTableRowProps {
   device: Device;
@@ -17,34 +18,50 @@ interface DeviceTableRowProps {
 }
 
 export const DeviceTableRow = ({ device, isSelected, onSelect }: DeviceTableRowProps) => {
+  const downloadProgress = useDownloadProgressStore(state => state.getProgress(device.token));
+
   const renderPlaylistStatus = () => {
     if (!device.playlistStatus) return "-";
 
     switch (device.playlistStatus) {
-      case "loaded":
+      case "completed":
+        const playlist = device.activePlaylist as { name: string };
         return (
-          <div className="flex items-center gap-2 text-emerald-500">
-            <CheckCircle2 className="h-4 w-4" />
-            <span>Yüklendi</span>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-sm">
+              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+              <span className="text-emerald-600 font-medium">
+                {playlist?.name}
+              </span>
+            </div>
           </div>
         );
-      case "loading":
+      case "downloading":
+        if (!downloadProgress) return null;
+        
         return (
-          <div className="space-y-2">
-            <div className="flex items-center gap-2 text-orange-500">
-              <Loader2 className="h-4 w-4 animate-spin" />
-              <span>İndiriliyor</span>
+          <div className="flex flex-col gap-1 w-[300px]">
+            {/* Üstte şarkı sayısı */}
+            <div className="text-xs text-muted-foreground">
+              {downloadProgress.completedSongs}/{downloadProgress.totalSongs} şarkı
             </div>
-            <Progress value={device.downloadProgress || 0} className="h-1.5 w-32" />
-            <div className="space-y-1 text-xs text-muted-foreground">
-              <div>İlerleme: %{device.downloadProgress || 0}</div>
-              <div>{device.downloadedSongs || 0}/{device.totalSongs || 0} şarkı</div>
-              {device.downloadSpeed > 0 && (
-                <div>Hız: {formatBytes(device.downloadSpeed)}/s</div>
-              )}
-              {device.estimatedTimeRemaining > 0 && (
-                <div>Kalan: {formatDuration(device.estimatedTimeRemaining)}</div>
-              )}
+
+            {/* Ortada progress ve yüzde */}
+            <div className="flex items-center gap-2">
+              <div className="w-[240px]">
+                <Progress 
+                  value={downloadProgress.progress || 0} 
+                  className="h-2.5 [&>div]:bg-[#4ade80]"
+                />
+              </div>
+              <span className="text-xstext-muted-foreground">
+                %{(downloadProgress.progress || 0).toFixed(1)}
+              </span>
+            </div>
+
+            {/* Altta şarkı ismi */}
+            <div className="text-xs text-muted-foreground truncate">
+              {downloadProgress.songProgress?.name}
             </div>
           </div>
         );

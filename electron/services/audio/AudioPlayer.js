@@ -1,229 +1,173 @@
-const QueueManager = require('./QueueManager');
-const PlaybackState = require('./PlaybackState');
-const path = require('path');
 const { Howl } = require('howler');
-const Store = require('electron-store');
-const store = new Store();
+const path = require('path');
+const { createLogger } = require('../../utils/logger');
+const QueueManager = require('./QueueManager');
+const DownloadStateManager = require('../download/DownloadStateManager');
+
+const logger = createLogger('audio-player');
 
 class AudioPlayer {
   constructor() {
-    this.queueManager = new QueueManager();
-    this.playbackState = new PlaybackState();
     this.sound = null;
-    this.playlist = null;
-    this.isPlaying = false;
-    this.volume = store.get('volume', 100) / 100;
-    this.readyToPlay = false;
-
-    this.setupEventListeners();
-  }
-
-  setupEventListeners() {
-    if (this.sound) {
-      this.sound.on('end', () => {
-        console.log('Song ended, playing next');
-        this.playNext();
-      });
-
-      this.sound.on('play', () => {
-        console.log('Audio started playing');
-        this.isPlaying = true;
-        this.updatePlaybackState('playing');
-      });
-
-      this.sound.on('pause', () => {
-        console.log('Audio paused');
-        this.isPlaying = false;
-        this.updatePlaybackState('paused');
-      });
-
-      this.sound.on('loaderror', (id, err) => {
-        console.error('Audio loading error:', err);
-        this.playNext();
-      });
-    }
-  }
-
-  handleFirstSongReady(songId, songPath) {
-    console.log('First song ready handler called:', { songId, songPath });
-    
-    try {
-      if (!songPath) {
-        console.error('No song path provided to handleFirstSongReady');
-        return;
-      }
-
-      // Create a new Howl instance for the song
-      if (this.sound) {
-        this.sound.unload();
-      }
-
-      this.sound = new Howl({
-        src: [songPath],
-        html5: true,
-        volume: this.volume,
-        format: ['mp3'],
-        onload: () => {
-          console.log('First song loaded successfully');
-          this.readyToPlay = true;
-          if (this.isPlaying) {
-            this.sound.play();
-          }
-        },
-        onloaderror: (id, error) => {
-          console.error('Error loading first song:', error);
-        }
-      });
-
-      this.setupEventListeners();
-      
-      console.log('First song initialized successfully');
-    } catch (error) {
-      console.error('Error in handleFirstSongReady:', error);
-    }
+    this.volume = 1.0;
+    this.queueManager = new QueueManager();
+    this.downloadStateManager = DownloadStateManager;
+    this.isLoading = false;
   }
 
   loadPlaylist(playlist) {
-    console.log('Loading playlist:', playlist);
-    this.playlist = playlist;
+    if (!playlist || !playlist.songs) return;
+
+    // Mevcut çalan şarkıyı al
+    const currentlyPlaying = this.downloadStateManager.getCurrentlyPlaying();
+
+    // Queue'yu güncelle ama çalan şarkıyı durdurma
     this.queueManager.setQueue(playlist.songs);
-    
-    if (this.queueManager.getCurrentSong()) {
-      this.loadCurrentSong();
-    } else {
-      console.log('No playable songs in playlist');
+
+    // Eğer şarkı çalmıyorsa ve hazır şarkı varsa başlat
+    if (!currentlyPlaying) {
+      const readySong = playlist.songs.find(song => 
+        song.status === 'completed' && song.localPath
+      );
+      
+      if (readySong) {
+        this.loadAndPlaySong(readySong);
+      }
     }
   }
 
-  loadCurrentSong() {
-    const song = this.queueManager.getCurrentSong();
-    if (!song) {
-      console.log('No song to load');
-      return;
-    }
+  loadAndPlaySong(song) {
+    if (!song || !song.localPath || this.isLoading) return;
 
-    console.log('Loading song:', song);
+    this.isLoading = true;
+    logger.info(`Loading song: ${song.name}`);
 
-    if (!song.localPath) {
-      console.error('Song localPath is missing:', song);
-      this.playNext();
-      return;
+    // Önceki şarkıyı temizle
+    if (this.sound) {
+      this.sound.unload();
     }
 
     try {
-      const normalizedPath = path.normalize(song.localPath);
-      console.log('Playing file from:', normalizedPath);
-      
-      if (this.sound) {
-        this.sound.unload();
-      }
-      
+      // Yeni şarkıyı yükle
       this.sound = new Howl({
-        src: [normalizedPath],
+        src: [song.localPath],
         html5: true,
         volume: this.volume,
         format: ['mp3'],
-        onload: () => {
-          console.log('Song loaded successfully');
-          if (this.isPlaying) {
-            this.sound.play();
+        onplay: async () => {
+          logger.info(`Started playing: ${song.name}`);
+          
+          // Önceki çalan şarkıyı kontrol et
+          const previousPlaying = this.downloadStateManager.getCurrentlyPlaying();
+          const activePlaylistId = this.downloadStateManager.store.get('activePlaylistId');
+          
+          // Eğer önceki şarkı varsa ve farklı bir playlist'ten ise temizle
+          if (previousPlaying && previousPlaying.playlistId !== activePlaylistId) {
+            logger.info(`Cleaning up previous song from different playlist: ${previousPlaying.name}`);
+            await this.downloadStateManager.clearPlaylistState(previousPlaying.playlistId);
           }
+          
+          // Yeni şarkıyı aktif olarak işaretle
+          this.downloadStateManager.setCurrentlyPlaying({
+            ...song,
+            playlistId: activePlaylistId
+          });
+          
+          this.isLoading = false;
+        },
+        onend: () => {
+          logger.info(`Song ended: ${song.name}`);
+          this.downloadStateManager.clearCurrentlyPlaying();
+          this.playNext();
         },
         onloaderror: (id, error) => {
-          console.error('Error loading song:', error);
+          logger.error(`Error loading song: ${song.name}`, error);
+          this.isLoading = false;
+          this.downloadStateManager.clearCurrentlyPlaying();
+          this.playNext();
+        },
+        onplayerror: (id, error) => {
+          logger.error(`Error playing song: ${song.name}`, error);
+          this.isLoading = false;
+          this.downloadStateManager.clearCurrentlyPlaying();
           this.playNext();
         }
       });
-      
-      this.setupEventListeners();
-      
+
+      this.sound.play();
     } catch (error) {
-      console.error('Error loading song:', error);
+      logger.error(`Error initializing song: ${song.name}`, error);
+      this.isLoading = false;
+      this.downloadStateManager.clearCurrentlyPlaying();
       this.playNext();
     }
   }
 
-  play() {
-    console.log('Play requested');
-    if (this.sound) {
-      this.sound.play();
-      this.isPlaying = true;
-    } else {
-      console.log('No audio source loaded');
-      const currentSong = this.queueManager.getCurrentSong();
-      if (currentSong) {
-        this.loadCurrentSong();
+  playNext() {
+    logger.info('Playing next song');
+    const nextSong = this.queueManager.next();
+    
+    // Önce aktif playlist'ten hazır olan şarkıyı bul
+    const activePlaylistId = this.downloadStateManager.store.get('activePlaylistId');
+    if (activePlaylistId) {
+      const activePlaylist = this.downloadStateManager.store.get(`playlists.${activePlaylistId}`);
+      if (activePlaylist) {
+        const readySong = activePlaylist.songs.find(song => 
+          song.status === 'completed' && song.localPath
+        );
+        
+        if (readySong) {
+          this.loadAndPlaySong(readySong);
+          return;
+        }
       }
+    }
+
+    // Aktif playlist'te hazır şarkı yoksa queue'dan devam et
+    if (nextSong && nextSong.localPath) {
+      this.loadAndPlaySong(nextSong);
     }
   }
 
   pause() {
     if (this.sound) {
       this.sound.pause();
-      this.isPlaying = false;
+    }
+  }
+
+  resume() {
+    if (this.sound) {
+      this.sound.play();
     }
   }
 
   stop() {
     if (this.sound) {
       this.sound.stop();
-      this.isPlaying = false;
+      this.sound.unload();
+      this.sound = null;
     }
-  }
-
-  playNext() {
-    console.log('Playing next song');
-    const nextSong = this.queueManager.next();
-    if (nextSong) {
-      console.log('Next song found:', nextSong.name);
-      this.loadCurrentSong();
-    } else {
-      console.log('No more songs in queue');
-      this.stop();
-    }
+    this.downloadStateManager.clearCurrentlyPlaying();
   }
 
   setVolume(volume) {
-    const normalizedVolume = Math.max(0, Math.min(100, volume));
-    this.volume = normalizedVolume / 100;
+    this.volume = volume;
     if (this.sound) {
-      this.sound.volume(this.volume);
+      this.sound.volume(volume);
     }
-    store.set('volume', normalizedVolume);
-    console.log('Volume set and saved:', normalizedVolume);
   }
 
-  updatePlaybackState(state) {
-    this.playbackState.update(
-      state,
-      this.queueManager.getCurrentSong(),
-      this.playlist,
-      this.volume * 100
-    );
+  getCurrentTime() {
+    return this.sound ? this.sound.seek() : 0;
   }
 
-  getCurrentState() {
-    return {
-      isPlaying: this.isPlaying,
-      currentSong: this.queueManager.getCurrentSong(),
-      playlist: this.playlist,
-      volume: this.volume * 100
-    };
+  getDuration() {
+    return this.sound ? this.sound.duration() : 0;
   }
 
-  restoreState() {
-    const state = this.playbackState.restore();
-    if (state && state.playlist) {
-      console.log('Restoring previous state:', state);
-      this.loadPlaylist(state.playlist);
-      this.setVolume(state.volume);
-      
-      if (state.state === 'playing') {
-        setTimeout(() => {
-          console.log('Auto-playing restored playlist');
-          this.play();
-        }, 1000);
-      }
+  seek(position) {
+    if (this.sound) {
+      this.sound.seek(position);
     }
   }
 }

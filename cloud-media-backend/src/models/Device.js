@@ -45,14 +45,14 @@ const deviceSchema = new mongoose.Schema({
     max: 100,
     default: 50
   },
+  playlistStatus: {
+    type: String,
+    enum: ['completed', 'loading', 'downloading', 'error', null],
+    default: null
+  },
   activePlaylist: {
     type: mongoose.Schema.Types.ObjectId,
     ref: 'Playlist',
-    default: null
-  },
-  playlistStatus: {
-    type: String,
-    enum: ['loaded', 'loading', 'error', 'emergency-stopped', null],
     default: null
   },
   groupId: {
@@ -67,6 +67,17 @@ const deviceSchema = new mongoose.Schema({
   emergencyStopped: {
     type: Boolean,
     default: false
+  },
+  downloadProgress: {
+    playlistId: { type: String },
+    totalSongs: { type: Number },
+    completedSongs: { type: Number },
+    currentSong: {
+      current: { type: Number },
+      total: { type: Number },
+      name: { type: String }
+    },
+    progress: { type: Number }
   }
 }, {
   timestamps: true

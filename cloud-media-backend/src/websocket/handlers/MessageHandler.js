@@ -83,9 +83,38 @@ class MessageHandler {
 
   async handleMessage(ws, message) {
     try {
-      const data = JSON.parse(message);
+      // Mesaj zaten JSON objesi, tekrar parse etmeye gerek yok
+      const data = typeof message === 'string' ? JSON.parse(message) : message;
       
       switch (data.type) {
+        case 'downloadProgress':
+          console.log('📥 Download Progress Message Received:', {
+            deviceToken: ws.deviceToken,
+            progress: `${data.data.progress}%`,
+            status: data.data.status,
+            downloaded: `${(data.data.downloadedBytes / (1024 * 1024)).toFixed(2)} MB`,
+            total: `${(data.data.totalBytes / (1024 * 1024)).toFixed(2)} MB`
+          });
+
+          // İndirme durumunu admin clientlara ilet
+          let adminCount = 0;
+          this.wss.clients.forEach(client => {
+            if (client.isAdmin) {
+              adminCount++;
+              client.send(JSON.stringify({
+                type: 'deviceDownloadProgress',
+                deviceToken: data.deviceToken,
+                progress: data.data.progress,
+                status: data.data.status,
+                downloadedBytes: data.data.downloadedBytes,
+                totalBytes: data.data.totalBytes
+              }));
+            }
+          });
+          
+          console.log(`✅ Download progress sent to ${adminCount} admin clients`);
+          break;
+
         case 'schedule-created':
         case 'schedule-updated':
         case 'schedule-deleted':

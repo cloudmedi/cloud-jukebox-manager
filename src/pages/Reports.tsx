@@ -6,6 +6,7 @@ import ScheduleStats from "@/components/reports/ScheduleStats";
 import PerformanceStats from "@/components/reports/PerformanceStats";
 import DevicePlaybackReport from "@/components/reports/DevicePlaybackReport";
 import ErrorLogs from "@/components/reports/ErrorLogs";
+import DownloadStats from "@/components/reports/DownloadStats";
 
 const Reports = () => {
   return (
@@ -40,6 +41,10 @@ const Reports = () => {
             <AlertTriangle className="h-4 w-4" />
             Hata Logları
           </TabsTrigger>
+          <TabsTrigger value="download" className="flex items-center gap-2">
+            <AlertTriangle className="h-4 w-4" />
+            İndirme İstatistikleri
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="playback">
@@ -64,6 +69,10 @@ const Reports = () => {
 
         <TabsContent value="error-logs">
           <ErrorLogs />
+        </TabsContent>
+
+        <TabsContent value="download">
+          <DownloadStats />
         </TabsContent>
       </Tabs>
     </div>

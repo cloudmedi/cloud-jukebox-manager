@@ -46,6 +46,39 @@ class StatusHandler {
     }
   }
 
+  async handleDownloadProgress(message, device) {
+    try {
+      // Playlist durumunu güncelle
+      await Device.findByIdAndUpdate(device._id, {
+        playlistStatus: message.data.status,
+        downloadProgress: {
+          playlistId: message.data.playlistId,
+          totalSongs: message.data.totalSongs,
+          completedSongs: message.data.completedSongs,
+          currentSong: message.data.songProgress,
+          progress: message.data.progress
+        }
+      });
+
+      // Admin paneline yeni format ile bildir
+      this.wss.broadcastToAdmins({
+        type: 'deviceDownloadProgress',
+        deviceToken: device.token,
+        playlistId: message.data.playlistId,
+        totalSongs: message.data.totalSongs,
+        completedSongs: message.data.completedSongs,
+        status: message.data.status,
+        songProgress: message.data.songProgress,
+        progress: message.data.progress
+      });
+
+      console.info(`Device ${device._id} download progress updated: ${message.data.completedSongs}/${message.data.totalSongs} songs`);
+    } catch (error) {
+      console.error('Error handling download progress:', error);
+      throw error;
+    }
+  }
+
   async handleOnlineStatus(token, isOnline) {
     try {
       const device = await Device.findOne({ token });

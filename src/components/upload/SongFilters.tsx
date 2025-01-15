@@ -7,7 +7,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { DateRange } from "react-day-picker";
-import { DateTimeRangePicker } from "@/components/reports/device-playback/DateTimeRangePicker";
+import { UploadDateRangeSelect } from "@/components/upload/UploadDateRangeSelect";
+import { TimeFilter, timeFilterOptions } from "@/types/timeFilter";
 
 interface SongFiltersProps {
   searchTerm: string;
@@ -17,9 +18,11 @@ interface SongFiltersProps {
   genres: string[];
   dateRange: DateRange | undefined;
   onDateRangeChange: (range: DateRange | undefined) => void;
+  timeFilter: TimeFilter;
+  onTimeFilterChange: (filter: TimeFilter) => void;
 }
 
-export const SongFilters = ({
+export function SongFilters({
   searchTerm,
   onSearchChange,
   selectedGenre,
@@ -27,14 +30,17 @@ export const SongFilters = ({
   genres,
   dateRange,
   onDateRangeChange,
-}: SongFiltersProps) => {
+  timeFilter,
+  onTimeFilterChange
+}: SongFiltersProps) {
   return (
-    <div className="flex flex-col sm:flex-row gap-4">
+    <div className="flex flex-col space-y-4 md:flex-row md:space-x-4 md:space-y-0">
       <div className="flex-1">
         <Input
           placeholder="Şarkı veya sanatçı ara..."
           value={searchTerm}
           onChange={(e) => onSearchChange(e.target.value)}
+          className="w-full"
         />
       </div>
       <Select value={selectedGenre} onValueChange={onGenreChange}>
@@ -44,20 +50,27 @@ export const SongFilters = ({
         <SelectContent>
           {genres.map((genre) => (
             <SelectItem key={genre} value={genre}>
-              {genre}
+              {genre === "all" ? "Tüm Türler" : genre}
             </SelectItem>
           ))}
         </SelectContent>
       </Select>
-      <div className="w-[300px]">
-        <DateTimeRangePicker
-          dateRange={dateRange}
-          timeRange={{ startTime: "00:00", endTime: "23:59" }}
-          onDateRangeChange={onDateRangeChange}
-          onTimeRangeChange={() => {}}
-          showDownloadButton={false}
-        />
-      </div>
+      <Select value={timeFilter} onValueChange={onTimeFilterChange}>
+        <SelectTrigger className="w-[180px]">
+          <SelectValue placeholder="Zaman filtresi" />
+        </SelectTrigger>
+        <SelectContent>
+          {timeFilterOptions.map((option) => (
+            <SelectItem key={option.value} value={option.value}>
+              {option.label}
+            </SelectItem>
+          ))}
+        </SelectContent>
+      </Select>
+      <UploadDateRangeSelect 
+        dateRange={dateRange} 
+        onDateRangeChange={onDateRangeChange}
+      />
     </div>
   );
-};
+}

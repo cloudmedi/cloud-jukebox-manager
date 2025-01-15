@@ -57,10 +57,12 @@ export const handleDeviceStatusMessage = (message: any) => {
     toast.warning(`${message.deviceName || 'Cihaz'} çevrimdışı oldu`);
   }
 
-  if (message.playlistStatus === 'error') {
+  if (message.playlistStatus === 'loading') {
+    // İndirme devam ediyor
+  } else if (message.playlistStatus === 'completed') {
+    // İndirme tamamlandı
+  } else if (message.playlistStatus === 'error') {
     toast.error(`Playlist yükleme hatası: ${message.deviceName || 'Cihaz'}`);
-  } else if (message.playlistStatus === 'loaded') {
-    toast.success(`Playlist başarıyla yüklendi: ${message.deviceName || 'Cihaz'}`);
   }
 
   if (message.volume && message.volume > 80) {
