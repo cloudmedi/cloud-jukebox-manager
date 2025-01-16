@@ -1,52 +1,51 @@
-const AnnouncementLogger = require('../logging/AnnouncementLogger');
-const AnnouncementEventHandler = require('./handlers/AnnouncementEventHandler');
-const VolumeManager = require('./VolumeManager');
+const { Howl } = require('howler');
+const { createLogger } = require('../../utils/logger');
+
+const logger = createLogger('announcement-service');
 
 class AnnouncementAudioService {
-  constructor() {
-    this.playlistAudio = document.getElementById('audioPlayer');
-    this.campaignAudio = document.getElementById('campaignPlayer');
-    this.volumeManager = VolumeManager;
-    
-    if (!this.campaignAudio || !this.playlistAudio) {
-      console.error('Audio elementler bulunamadı!');
-      return;
+    constructor() {
+        this.howl = null;
     }
 
-    this.eventHandler = new AnnouncementEventHandler(
-      this.playlistAudio,
-      this.campaignAudio
-    );
+    playAnnouncement(filePath) {
+        try {
+            // Önceki anons varsa durdur
+            if (this.howl) {
+                this.howl.unload();
+            }
 
-    // Başlangıçta kayıtlı ses seviyesini ayarla
-    const savedVolume = this.volumeManager.getStoredVolume();
-    if (this.campaignAudio) {
-      this.campaignAudio.volume = this.volumeManager.normalizeVolume(savedVolume);
+            // Yeni anons oluştur
+            this.howl = new Howl({
+                src: [filePath],
+                html5: true,
+                onend: () => {
+                    logger.info('Announcement finished');
+                    this.howl.unload();
+                },
+                onloaderror: () => {
+                    logger.error('Error loading announcement');
+                    this.howl.unload();
+                },
+                onplayerror: () => {
+                    logger.error('Error playing announcement');
+                    this.howl.unload();
+                }
+            });
+
+            // Anonsu çal
+            this.howl.play();
+
+        } catch (error) {
+            logger.error('Error in playAnnouncement:', error);
+        }
     }
-  }
 
-  async playAnnouncement(announcement) {
-    try {
-      AnnouncementLogger.logAnnouncementRequest(announcement);
-
-      if (!announcement.localPath) {
-        throw new Error('Kampanya dosya yolu bulunamadı');
-      }
-
-      const success = await this.eventHandler.playAnnouncement(announcement.localPath);
-      
-      if (success) {
-        AnnouncementLogger.logAudioState(this.campaignAudio);
-        AnnouncementLogger.logPlaybackStart();
-      }
-
-      return success;
-    } catch (error) {
-      AnnouncementLogger.logError('Kampanya Çalma', error);
-      console.error('Kampanya çalma hatası:', error);
-      return false;
+    stop() {
+        if (this.howl) {
+            this.howl.unload();
+        }
     }
-  }
 }
 
 module.exports = new AnnouncementAudioService();

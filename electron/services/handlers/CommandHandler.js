@@ -1,63 +1,58 @@
-const { BrowserWindow } = require('electron');
-const screenshotHandler = require('../screenshot/ScreenshotHandler');
+const { ipcMain } = require('electron');
+const { createLogger } = require('../../utils/logger');
+const jukeboxPlayer = require('../audio/JukeboxPlayer');
+const scheduleStorage = require('../schedule/ScheduleStorage');
+
+const logger = createLogger('command-handler');
 
 class CommandHandler {
-  static async handleCommand(message) {
-    console.log('Processing command:', message);
-    const mainWindow = global.mainWindow;
-    
-    if (!mainWindow) {
-      console.log('No main window found');
-      return;
+    constructor() {
+        this.initialize();
     }
 
-    try {
-      switch (message.command) {
-        case 'play':
-          console.log('Play command received');
-          const audioPlayer = mainWindow.webContents;
-          audioPlayer.send('playback-command', { action: 'play' });
-          break;
+    initialize() {
+        // Playback komutları
+        ipcMain.handle('playback-command', async (event, data) => {
+            try {
+                const { action } = data;
+                logger.info('Received playback command:', action);
 
-        case 'pause':
-          console.log('Pause command received');
-          const player = mainWindow.webContents;
-          player.send('playback-command', { action: 'pause' });
-          break;
+                switch (action) {
+                    case 'play':
+                        // Manuel pause'u kaldır
+                        await scheduleStorage.setManuallyPaused(false);
+                        jukeboxPlayer.resume();
+                        break;
 
-        case 'screenshot':
-          console.log('Taking screenshot...');
-          const result = await screenshotHandler.takeScreenshot();
-          console.log('Screenshot result:', result);
-          
-          if (result.success) {
-            const websocketService = require('../websocketService');
-            websocketService.sendMessage({
-              type: 'screenshot',
-              token: message.token,
-              data: result.data.split(',')[1]
-            });
-          }
-          
-          mainWindow.webContents.send('screenshot-taken', {
-            success: result.success,
-            error: result.error
-          });
-          break;
+                    case 'pause':
+                        // Manuel pause'u aktif et
+                        await scheduleStorage.setManuallyPaused(true);
+                        jukeboxPlayer.pause();
+                        break;
 
-        default:
-          console.log('Unknown command:', message.command);
-          mainWindow.webContents.send(message.command, message.data);
-          break;
-      }
-    } catch (error) {
-      console.error('Command handling error:', error);
-      mainWindow.webContents.send('screenshot-taken', {
-        success: false,
-        error: error.message
-      });
+                    default:
+                        logger.warn('Unknown playback command:', action);
+                }
+
+                return { success: true };
+            } catch (error) {
+                logger.error('Error handling playback command:', error);
+                return { success: false, error: error.message };
+            }
+        });
+
+        // Volume kontrolü
+        ipcMain.handle('volume-command', async (event, data) => {
+            try {
+                const { volume } = data;
+                jukeboxPlayer.setVolume(volume);
+                return { success: true };
+            } catch (error) {
+                logger.error('Error handling volume command:', error);
+                return { success: false, error: error.message };
+            }
+        });
     }
-  }
 }
 
-module.exports = CommandHandler;
+module.exports = new CommandHandler();

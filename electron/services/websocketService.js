@@ -40,7 +40,12 @@ class WebSocketService {
 
     this.addMessageHandler('command', (message) => {
       console.log('Command message received:', message);
-      CommandHandler.handleCommand(message);
+      // Mesaj yapısını düzelt
+      const commandMessage = message.data && message.data.type === 'command' 
+        ? message.data  // İç içe command mesajı
+        : message;      // Normal command mesajı
+      
+      CommandHandler.handleCommand(commandMessage);
     });
 
     this.addMessageHandler('downloadProgress', (message) => {

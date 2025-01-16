@@ -91,6 +91,27 @@ ipcMain.handle('get-active-schedule', async () => {
   }
 });
 
+// Schedule kontrolü için IPC handler
+ipcMain.handle('schedule-control', async (event, { manuallyPaused }) => {
+  try {
+    return await scheduleStorage.setManuallyPaused(manuallyPaused);
+  } catch (error) {
+    console.error('Schedule control error:', error);
+    return false;
+  }
+});
+
+// Schedule pause state handler
+ipcMain.handle('get-schedule-pause-state', async () => {
+  try {
+    const scheduleStorage = require('./services/schedule/ScheduleStorage');
+    return scheduleStorage.isManuallyPaused();
+  } catch (error) {
+    console.error('Error getting schedule pause state:', error);
+    return false;
+  }
+});
+
 // Schedule event handlers
 let scheduleErrorHandler = null;
 let scheduleStartHandler = null;
@@ -371,6 +392,62 @@ ipcMain.on('playback-status-changed', (event, playing) => {
   console.log('Playback status changed:', playing);
   isPlaying = playing;
   updateTrayMenu(currentSong);
+});
+
+// Playlist handlers
+ipcMain.handle('get-current-playlist', async () => {
+  try {
+    // Burada backend'den playlist'i alabilirsiniz
+    // Şimdilik mock data dönüyoruz
+    return {
+      success: true,
+      playlist: {
+        id: 'default',
+        name: 'Default Playlist',
+        songs: [
+          // Mock şarkılar
+          {
+            id: '1',
+            name: 'Test Song 1',
+            artist: 'Test Artist 1',
+            localPath: 'path/to/song1.mp3'
+          },
+          {
+            id: '2',
+            name: 'Test Song 2',
+            artist: 'Test Artist 2',
+            localPath: 'path/to/song2.mp3'
+          }
+        ]
+      }
+    };
+  } catch (error) {
+    console.error('Error getting current playlist:', error);
+    return { success: false, error: error.message };
+  }
+});
+
+// Artwork kaydetme handler'ı
+ipcMain.handle('save-artwork', async (event, { path: artworkPath, buffer }) => {
+  try {
+    const fs = require('fs');
+    const { promisify } = require('util');
+    const writeFile = promisify(fs.writeFile);
+    const mkdir = promisify(fs.mkdir);
+
+    // Artwork klasörünü oluştur
+    const artworkDir = require('path').dirname(artworkPath);
+    await mkdir(artworkDir, { recursive: true });
+
+    // Buffer'ı dosyaya kaydet
+    await writeFile(artworkPath, Buffer.from(buffer));
+    
+    console.log('Artwork saved:', artworkPath);
+    return artworkPath;
+  } catch (error) {
+    console.error('Error saving artwork:', error);
+    throw error;
+  }
 });
 
 function updateTrayMenu(song = currentSong) {

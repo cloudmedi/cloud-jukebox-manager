@@ -1,14 +1,19 @@
-const { app } = require('electron');
+const { ipcRenderer } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const axios = require('axios');
 const Store = require('electron-store');
+const { Howl } = require('howler');
+const { createLogger } = require('../../utils/logger');
+
 const store = new Store();
+const logger = createLogger('announcement-handler');
 
 class AnnouncementHandler {
   constructor() {
-    this.downloadPath = path.join(app.getPath('userData'), 'announcements');
+    this.downloadPath = path.join(process.env.APPDATA, 'cloud-jukebox-manager', 'announcements');
     this.ensureDirectoryExists();
+    this.howl = null;
   }
 
   ensureDirectoryExists() {
@@ -19,7 +24,7 @@ class AnnouncementHandler {
 
   async handleAnnouncement(announcement) {
     try {
-      console.log('Handling announcement:', announcement);
+      logger.info('Handling announcement:', announcement);
       
       // Anons dosyasını indir ve local path oluştur
       const localPath = await this.downloadAnnouncementFile(announcement);
@@ -32,10 +37,34 @@ class AnnouncementHandler {
       
       // Local storage'a kaydet
       this.saveAnnouncement(updatedAnnouncement);
+
+      // Howl ile çal
+      if (this.howl) {
+        this.howl.unload();
+      }
+
+      this.howl = new Howl({
+        src: [localPath],
+        html5: true,
+        onend: () => {
+          logger.info('Announcement finished');
+          this.howl.unload();
+        },
+        onloaderror: () => {
+          logger.error('Error loading announcement');
+          this.howl.unload();
+        },
+        onplayerror: () => {
+          logger.error('Error playing announcement');
+          this.howl.unload();
+        }
+      });
+
+      this.howl.play();
       
       return updatedAnnouncement;
     } catch (error) {
-      console.error('Error handling announcement:', error);
+      logger.error('Error handling announcement:', error);
       throw error;
     }
   }
@@ -47,7 +76,7 @@ class AnnouncementHandler {
 
     // Dosya zaten varsa tekrar indirme
     if (fs.existsSync(localPath)) {
-      console.log('Announcement file already exists:', localPath);
+      logger.info('Announcement file already exists:', localPath);
       return localPath;
     }
 
@@ -66,7 +95,7 @@ class AnnouncementHandler {
         writer.on('error', reject);
       });
     } catch (error) {
-      console.error('Error downloading announcement file:', error);
+      logger.error('Error downloading announcement file:', error);
       throw error;
     }
   }
@@ -82,7 +111,13 @@ class AnnouncementHandler {
     }
     
     store.set('announcements', announcements);
-    console.log('Announcement saved to store:', announcement);
+    logger.info('Announcement saved to store:', announcement);
+  }
+
+  stop() {
+    if (this.howl) {
+      this.howl.unload();
+    }
   }
 }
 

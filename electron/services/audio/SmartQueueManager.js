@@ -1,83 +1,191 @@
-const QueueHistory = require('./QueueHistory');
-const BlacklistManager = require('./BlacklistManager');
-const WeightCalculator = require('./WeightCalculator');
+const { createLogger } = require('../../utils/logger');
+const { Howl } = require('howler');
+const logger = createLogger('smart-queue');
 
 class SmartQueueManager {
-  constructor() {
-    this.queue = [];
-    this.currentIndex = -1;
-    this.history = new QueueHistory();
-    this.blacklist = new BlacklistManager(20);
-    this.weightCalculator = new WeightCalculator();
-    this.songCounter = 0;
-  }
-
-  initializeQueue(songs) {
-    console.log('Initializing queue with', songs.length, 'songs');
-    this.queue = [...songs];
-    this.shuffleQueue();
-    this.blacklist.clear();
-    this.songCounter = 0;
-    
-    // Çalınabilir şarkılar arasından rastgele bir başlangıç şarkısı seç
-    const playableSongs = this.findPlayableSongs();
-    if (playableSongs.length > 0) {
-      const randomIndex = Math.floor(Math.random() * playableSongs.length);
-      this.currentIndex = playableSongs[randomIndex].index;
-    } else {
-      // Eğer hiç uygun şarkı yoksa, en uzun süre önce çalınanı seç
-      this.currentIndex = this.findLeastRecentlyPlayedIndex();
+    constructor() {
+        this.queue = [];
+        this.currentIndex = -1;
+        this.howl = null;
+        this.isPlaying = false;
     }
-    
-    console.log('Starting with song at index:', this.currentIndex);
-    return this.getCurrentSong();
-  }
 
-  findPlayableSongs() {
-    return this.queue
-      .map((song, index) => {
-        const lastPlayed = this.history.getLastPlayedTime(song._id);
-        const weight = this.weightCalculator.calculateWeight(lastPlayed);
-        return { song, index, weight, lastPlayed };
-      })
-      .filter(item => 
-        !this.blacklist.has(item.song._id) && // Blacklist'te olmayan
-        item.weight > 0 // Çalınabilir durumda olan
-      )
-      .sort((a, b) => b.weight - a.weight); // Ağırlığa göre sırala
-  }
-
-  findLeastRecentlyPlayedIndex() {
-    let leastRecentTime = Date.now();
-    let leastRecentIndex = 0;
-
-    this.queue.forEach((song, index) => {
-      const lastPlayed = this.history.getLastPlayedTime(song._id);
-      if (lastPlayed < leastRecentTime) {
-        leastRecentTime = lastPlayed;
-        leastRecentIndex = index;
-      }
-    });
-
-    return leastRecentIndex;
-  }
-
-  shuffleQueue() {
-    for (let i = this.queue.length - 1; i > 0; i--) {
-      const j = Math.floor(Math.random() * (i + 1));
-      [this.queue[i], this.queue[j]] = [this.queue[j], this.queue[i]];
+    addToQueue(song) {
+        logger.info('Adding song to queue:', song.name);
+        this.queue.push(song);
     }
-    console.log('Queue shuffled');
-  }
 
-  getCurrentSong() {
-    if (this.currentIndex === -1 || this.queue.length === 0) return null;
-    return this.queue[this.currentIndex];
-  }
+    clearQueue() {
+        logger.info('Clearing queue');
+        this.queue = [];
+        this.currentIndex = -1;
+        if (this.howl) {
+            this.howl.unload();
+            this.howl = null;
+        }
+    }
 
-  getQueue() {
-    return this.queue;
-  }
+    getCurrentSong() {
+        return this.currentIndex >= 0 && this.currentIndex < this.queue.length 
+            ? this.queue[this.currentIndex] 
+            : null;
+    }
+
+    async playNext() {
+        try {
+            if (this.queue.length === 0) {
+                logger.info('Queue is empty');
+                return null;
+            }
+
+            // Sıradaki şarkıya geç
+            this.currentIndex = (this.currentIndex + 1) % this.queue.length;
+            const nextSong = this.queue[this.currentIndex];
+
+            if (!nextSong) {
+                logger.error('No next song available');
+                return null;
+            }
+
+            // Önceki şarkıyı durdur
+            if (this.howl) {
+                this.howl.unload();
+            }
+
+            // Yeni şarkıyı yükle
+            this.howl = new Howl({
+                src: [nextSong.localPath],
+                html5: true,
+                onend: () => {
+                    logger.info('Song ended, playing next');
+                    this.playNext();
+                },
+                onplay: () => {
+                    logger.info('Started playing:', nextSong.name);
+                    this.isPlaying = true;
+                },
+                onpause: () => {
+                    logger.info('Paused:', nextSong.name);
+                    this.isPlaying = false;
+                },
+                onstop: () => {
+                    logger.info('Stopped:', nextSong.name);
+                    this.isPlaying = false;
+                },
+                onloaderror: (id, error) => {
+                    logger.error('Error loading audio:', error);
+                    this.playNext(); // Hata durumunda sonraki şarkıya geç
+                },
+                onplayerror: (id, error) => {
+                    logger.error('Error playing audio:', error);
+                    this.playNext(); // Hata durumunda sonraki şarkıya geç
+                }
+            });
+
+            // Şarkıyı çal
+            this.howl.play();
+
+            return nextSong;
+        } catch (error) {
+            logger.error('Error in playNext:', error);
+            return null;
+        }
+    }
+
+    async playPrevious() {
+        try {
+            if (this.queue.length === 0) {
+                logger.info('Queue is empty');
+                return null;
+            }
+
+            // Önceki şarkıya geç
+            this.currentIndex = this.currentIndex > 0 
+                ? this.currentIndex - 1 
+                : this.queue.length - 1;
+
+            const previousSong = this.queue[this.currentIndex];
+
+            if (!previousSong) {
+                logger.error('No previous song available');
+                return null;
+            }
+
+            // Önceki şarkıyı durdur
+            if (this.howl) {
+                this.howl.unload();
+            }
+
+            // Yeni şarkıyı yükle
+            this.howl = new Howl({
+                src: [previousSong.localPath],
+                html5: true,
+                onend: () => {
+                    logger.info('Song ended, playing next');
+                    this.playNext();
+                },
+                onplay: () => {
+                    logger.info('Started playing:', previousSong.name);
+                    this.isPlaying = true;
+                },
+                onpause: () => {
+                    logger.info('Paused:', previousSong.name);
+                    this.isPlaying = false;
+                },
+                onstop: () => {
+                    logger.info('Stopped:', previousSong.name);
+                    this.isPlaying = false;
+                },
+                onloaderror: (id, error) => {
+                    logger.error('Error loading audio:', error);
+                    this.playNext(); // Hata durumunda sonraki şarkıya geç
+                },
+                onplayerror: (id, error) => {
+                    logger.error('Error playing audio:', error);
+                    this.playNext(); // Hata durumunda sonraki şarkıya geç
+                }
+            });
+
+            // Şarkıyı çal
+            this.howl.play();
+
+            return previousSong;
+        } catch (error) {
+            logger.error('Error in playPrevious:', error);
+            return null;
+        }
+    }
+
+    pause() {
+        if (this.howl && this.isPlaying) {
+            this.howl.pause();
+        }
+    }
+
+    resume() {
+        if (this.howl && !this.isPlaying) {
+            this.howl.play();
+        }
+    }
+
+    stop() {
+        if (this.howl) {
+            this.howl.stop();
+            this.howl.unload();
+            this.howl = null;
+        }
+        this.isPlaying = false;
+    }
+
+    setVolume(volume) {
+        if (this.howl) {
+            this.howl.volume(volume);
+        }
+    }
+
+    getVolume() {
+        return this.howl ? this.howl.volume() : 1;
+    }
 }
 
 module.exports = new SmartQueueManager();

@@ -132,6 +132,23 @@ class ScheduleHandler {
     await this.scheduleStorage.deactivateSchedule(scheduleId);
   }
 
+  async startSchedule(schedule) {
+    try {
+      // Manuel pause durumunu kontrol et
+      if (this.scheduleStorage.isManuallyPaused()) {
+        logger.info('Schedule is manually paused, skipping auto-start');
+        return false;
+      }
+
+      // Normal başlatma işlemleri
+      logger.info(`Starting schedule: ${schedule.id}`);
+      // ... diğer kodlar
+    } catch (error) {
+      logger.error('Error starting schedule:', error);
+      return false;
+    }
+  }
+
   getScheduleDownloadStatus(scheduleId) {
     return this.downloadManager.getDownloadStatus(scheduleId);
   }

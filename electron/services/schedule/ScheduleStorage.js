@@ -9,7 +9,8 @@ class ScheduleStorage {
       name: 'schedules', // Ayrı bir store dosyası
       defaults: {
         schedules: [],
-        activeSchedules: []
+        activeSchedules: [],
+        manuallyPaused: false
       }
     });
     logger.info('Schedule storage initialized');
@@ -48,40 +49,11 @@ class ScheduleStorage {
 
   async getSchedulePlaylist(scheduleId) {
     try {
-      // Doğrudan schedule store'dan veriyi al
       const schedule = await this.getSchedule(scheduleId);
       if (!schedule || !schedule.playlist) {
-        logger.error('Schedule or playlist not found:', scheduleId);
         return null;
       }
-
-      // Store'daki playlist'i kullan (localPath'ler burada)
-      const playlist = schedule.playlist;
-
-      // Şarkı yollarını düzelt
-      const songs = (playlist.songs || []).map(song => ({
-        ...song,
-        // Local path varsa onu kullan, yoksa normal path'i kullan
-        url: song.localPath ? `file://${song.localPath}` : (song.url || song.path)
-      }));
-
-      logger.info('Retrieved schedule playlist:', {
-        scheduleId,
-        playlistId: playlist.id,
-        songCount: songs.length,
-        songs: songs.map(s => ({ 
-          id: s.id, 
-          name: s.name, 
-          url: s.url,
-          hasLocalPath: !!s.localPath 
-        }))
-      });
-
-      return {
-        ...playlist,
-        songs,
-        status: 'active'
-      };
+      return schedule.playlist;
     } catch (error) {
       logger.error('Error getting schedule playlist:', error);
       return null;
@@ -109,25 +81,24 @@ class ScheduleStorage {
 
   async getActiveSchedules() {
     try {
-      const activeIds = this.store.get('activeSchedules', []);
       const schedules = this.store.get('schedules', []);
-      
-      logger.info('Getting active schedules:', { 
-        activeIds, 
-        totalSchedules: schedules.length 
+      const activeSchedules = schedules.filter(schedule => {
+        const now = new Date();
+        const startDate = new Date(schedule.startDate);
+        const endDate = new Date(schedule.endDate);
+        return startDate <= now && endDate >= now;
       });
-      
-      const activeSchedules = schedules.filter(s => activeIds.includes(s.id));
-      
-      logger.info('Found active schedules:', {
-        count: activeSchedules.length,
+
+      logger.info('Retrieved active schedules:', {
+        total: schedules.length,
+        active: activeSchedules.length,
         schedules: activeSchedules.map(s => ({
           id: s.id,
           startDate: s.startDate,
           endDate: s.endDate
         }))
       });
-      
+
       return activeSchedules;
     } catch (error) {
       logger.error('Error getting active schedules:', error);
@@ -199,6 +170,32 @@ class ScheduleStorage {
       return true;
     } catch (error) {
       logger.error('Error clearing expired schedules:', error);
+      return false;
+    }
+  }
+
+  // Manuel pause durumunu ayarla
+  setManuallyPaused(paused) {
+    try {
+      logger.info('Setting manually paused state:', paused);
+      const oldState = this.store.get('manuallyPaused', false);
+      this.store.set('manuallyPaused', paused);
+      logger.info(`Schedule manually paused state changed: ${oldState} -> ${paused}`);
+      return true;
+    } catch (error) {
+      logger.error('Error setting manually paused state:', error);
+      return false;
+    }
+  }
+
+  // Manuel pause durumunu kontrol et
+  isManuallyPaused() {
+    try {
+      const paused = this.store.get('manuallyPaused', false);
+      logger.info('Current manually paused state:', paused);
+      return paused;
+    } catch (error) {
+      logger.error('Error getting manually paused state:', error);
       return false;
     }
   }

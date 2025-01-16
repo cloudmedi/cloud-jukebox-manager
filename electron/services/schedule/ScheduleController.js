@@ -18,6 +18,7 @@ class ScheduleController {
         this.songs = [];
         this.wasPlaylistPlaying = false;
         this.playlistAudio = document.getElementById('audioPlayer');
+        this.playlistStarted = false;  // Playlist'in başlatılıp başlatılmadığını takip et
         
         // Audio elementlerinin başlangıç ayarları
         if (this.audioPlayer) {
@@ -59,6 +60,13 @@ class ScheduleController {
 
     async checkCurrentSchedule() {
         try {
+            // Manuel pause durumunu kontrol et
+            const isManuallyPaused = await ipcRenderer.invoke('get-schedule-pause-state');
+            if (isManuallyPaused) {
+                logger.info('Schedule is manually paused, skipping check');
+                return;
+            }
+
             // Backend'den aktif schedule'ı al
             const response = await ipcRenderer.invoke('get-active-schedule');
             const activeSchedule = response.schedule;
@@ -68,12 +76,19 @@ class ScheduleController {
                 currentSchedule: this.currentSchedule ? this.currentSchedule.id : null
             });
 
-            if (!activeSchedule && this.currentSchedule) {
-                // Schedule artık aktif değil
-                logger.info('Schedule is no longer active:', this.currentSchedule.id);
-                await this.fallbackToPlaylist('schedule_ended');
+            if (!activeSchedule) {
+                // Hiç aktif schedule yok
+                if (this.currentSchedule) {
+                    // Schedule bitti, playlist'e dön
+                    logger.info('Schedule is no longer active:', this.currentSchedule.id);
+                    await this.fallbackToPlaylist('schedule_ended');
+                } else if (!this.playlistStarted) {
+                    // Hiç schedule yoktu ve playlist başlatılmamış, playlist'i başlat
+                    logger.info('No active schedule, starting playlist');
+                    await this.fallbackToPlaylist('no_schedule');
+                }
             } 
-            else if (activeSchedule && (!this.currentSchedule || this.currentSchedule.id !== activeSchedule.id)) {
+            else if (!this.currentSchedule || this.currentSchedule.id !== activeSchedule.id) {
                 // Yeni veya farklı schedule başlıyor
                 await this.startSchedule(activeSchedule);
             }
@@ -123,6 +138,7 @@ class ScheduleController {
             // Playlist durumunu kaydet ve durdur
             if (this.playlistAudio) {
                 this.wasPlaylistPlaying = !this.playlistAudio.paused;
+                this.playlistStarted = false;  // Schedule başladığında playlist durumunu sıfırla
                 if (this.wasPlaylistPlaying) {
                     logger.info('Pausing playlist for schedule');
                     this.playlistAudio.pause();
@@ -162,18 +178,19 @@ class ScheduleController {
             this.playlistAudio.playbackRate = 1.0;
 
             try {
-                // Eğer playlist duraklatılmışsa veya bitmiş durumdaysa baştan başlat
-                if (this.playlistAudio.paused || this.playlistAudio.ended) {
+                // Playlist durumunu kontrol et
+                if ((reason === 'schedule_ended' || reason === 'no_schedule') && !this.playlistStarted) {
+                    // Schedule bitti veya hiç yoktu ve playlist başlatılmamış, playlist'i başlat
                     this.playlistAudio.currentTime = 0;
+                    await this.playlistAudio.play();
+                    this.playlistStarted = true;  // Playlist'in başlatıldığını işaretle
+                    logger.info('Started normal playlist playback', {
+                        reason,
+                        currentTime: this.playlistAudio.currentTime,
+                        playbackRate: this.playlistAudio.playbackRate,
+                        volume: this.playlistAudio.volume
+                    });
                 }
-                
-                // Direk başlat
-                await this.playlistAudio.play();
-                logger.info('Started normal playlist playback', {
-                    currentTime: this.playlistAudio.currentTime,
-                    playbackRate: this.playlistAudio.playbackRate,
-                    volume: this.playlistAudio.volume
-                });
             } catch (error) {
                 logger.error('Error starting playlist:', error);
             }
@@ -189,28 +206,61 @@ class ScheduleController {
         try {
             const currentSong = this.songs[this.currentSongIndex];
             if (this.audioPlayer) {
+                // Log song info
+                logger.info('Playing song:', {
+                    songId: currentSong.id,
+                    songName: currentSong.name,
+                    songPath: currentSong.localPath || currentSong.path
+                });
+
+                // Şarkı yolunu belirle
+                let songUrl = '';
+                if (currentSong.localPath) {
+                    // Local path varsa onu kullan
+                    songUrl = `file://${currentSong.localPath}`;
+                } else if (currentSong.path) {
+                    // Remote path varsa onu kullan
+                    songUrl = currentSong.path;
+                } else {
+                    throw new Error('No valid path found for song');
+                }
+
                 // Eğer aynı şarkı çalıyorsa, tekrar başlatma
-                if (this.audioPlayer.src === currentSong.url || 
-                    this.audioPlayer.src === `file://${currentSong.url}`) {
+                if (this.audioPlayer.src === songUrl) {
                     logger.info('Song already playing, skipping restart');
                     return;
                 }
 
-                logger.info('Playing song:', {
+                // Şarkı bilgilerini UI'a gönder
+                ipcRenderer.send('update-now-playing', {
                     songId: currentSong.id,
                     songName: currentSong.name,
-                    songUrl: currentSong.url
+                    artist: currentSong.artist,
+                    duration: currentSong.duration,
+                    playerType: 'schedule'
                 });
 
-                // URL'yi doğru formatta ayarla
-                const songUrl = currentSong.url.startsWith('file://') ? 
-                    currentSong.url : 
-                    `file://${currentSong.url}`;
+                // WebSocket üzerinden admin'e gönder
+                ipcRenderer.invoke('send-websocket-message', {
+                    type: 'nowPlaying',
+                    data: {
+                        songId: currentSong.id,
+                        songName: currentSong.name,
+                        artist: currentSong.artist,
+                        duration: currentSong.duration,
+                        playerType: 'schedule',
+                        scheduleId: this.currentSchedule.id,
+                        timestamp: new Date().toISOString()
+                    }
+                });
 
                 this.audioPlayer.src = songUrl;
                 await this.audioPlayer.play();
                 this.errorCount = 0;
                 logger.info(`Playing schedule song: ${currentSong.id}`);
+
+                // Playback durumunu güncelle
+                ipcRenderer.send('playback-status-changed', true);
             }
         } catch (error) {
             logger.error('Error playing song:', {
@@ -236,16 +286,23 @@ class ScheduleController {
         await this.playCurrentSong();
     }
 
-    stopPlayback() {
+    async stopPlayback() {
         if (this.audioPlayer) {
             this.audioPlayer.pause();
             this.audioPlayer.currentTime = 0;
-            this.audioPlayer.src = '';
+            
+            // Playback durumunu güncelle
+            ipcRenderer.send('playback-status-changed', false);
+            
+            // UI'ı temizle
+            ipcRenderer.send('update-now-playing', {
+                songId: null,
+                songName: null,
+                artist: null,
+                duration: null,
+                playerType: 'schedule'
+            });
         }
-        this.currentSchedule = null;
-        this.songs = [];
-        this.currentSongIndex = 0;
-        this.errorCount = 0;
     }
 
     setVolume(volume) {

@@ -4,6 +4,7 @@ const path = require('path');
 const fs = require('fs');
 const { createLogger } = require('../utils/logger');
 const scheduleHandler = require('./schedule/ScheduleHandler');
+const playlistController = require('./playlist/PlaylistController');
 
 const logger = createLogger('websocket-handler');
 
@@ -23,6 +24,9 @@ class WebSocketMessageHandler {
     this.handlers.set('schedule-updated', this.handleScheduleUpdated.bind(this));
     this.handlers.set('schedule-deleted', this.handleScheduleDeleted.bind(this));
     this.handlers.set('downloadProgress', this.handleDownloadProgress.bind(this));
+    this.handlers.set('playbackStatus', this.handlePlaybackStatus.bind(this));
+    this.handlers.set('deviceStatus', this.handleDeviceStatus.bind(this));
+    this.handlers.set('loadPlaylist', this.handleLoadPlaylist.bind(this)); // Added new handler
     logger.info('Message handlers registered');
   }
 
@@ -193,6 +197,46 @@ class WebSocketMessageHandler {
       global.ws.send(JSON.stringify(message));
     } else {
       logger.warn('WebSocket connection not available');
+    }
+  }
+
+  async handlePlaybackStatus(message) {
+    // Sadece renderer'a ilet, başka işlem yapma
+    this.sendToRenderer('playback-status-update', message.data);
+  }
+
+  async handleDeviceStatus(message) {
+    // Sadece renderer'a ilet, başka işlem yapma
+    this.sendToRenderer('device-status-update', { isPlaying: message.isPlaying });
+  }
+
+  async handleLoadPlaylist(message) {
+    try {
+      logger.info('Received load playlist message:', message);
+      
+      // Playlist'i local storage'a kaydet
+      const playlists = this.store.get('playlists', []);
+      const existingIndex = playlists.findIndex(p => p.id === message.id);
+      
+      if (existingIndex !== -1) {
+        playlists[existingIndex] = message;
+      } else {
+        playlists.push(message);
+      }
+      
+      this.store.set('playlists', playlists);
+
+      // PlaylistController'a gönder
+      await playlistController.loadPlaylist(message);
+
+      // UI'ı bilgilendir
+      const mainWindow = BrowserWindow.getAllWindows()[0];
+      if (mainWindow) {
+        mainWindow.webContents.send('playlist-loaded', message);
+      }
+
+    } catch (error) {
+      logger.error('Error handling load playlist:', error);
     }
   }
 

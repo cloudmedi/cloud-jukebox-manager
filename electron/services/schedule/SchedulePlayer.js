@@ -2,6 +2,7 @@ const { EventEmitter } = require('events');
 const path = require('path');
 const scheduleStorage = require('./ScheduleStorage');
 const { createLogger } = require('../../utils/logger');
+const playbackStateManager = require('../audio/PlaybackStateManager');
 
 const logger = createLogger('schedule-player');
 
@@ -29,36 +30,67 @@ class SchedulePlayer extends EventEmitter {
     // Her 10 saniyede bir schedule kontrolü yap
     this.checkInterval = setInterval(async () => {
       try {
+        // Manuel pause durumunu kontrol et ve logla
+        const isPaused = await scheduleStorage.isManuallyPaused();
+        logger.info('Schedule check - Manual pause status:', isPaused);
+
+        if (isPaused) {
+          logger.info('Schedule is manually paused, skipping check');
+          return;
+        }
+
         const activeSchedules = await scheduleStorage.getActiveSchedules();
+        logger.info('Active schedules:', activeSchedules);
+
         const now = new Date();
+        logger.info('Current time:', now.toISOString());
 
         // Aktif schedule'ı bul
         const currentSchedule = activeSchedules.find(schedule => {
           const startDate = new Date(schedule.startDate);
           const endDate = new Date(schedule.endDate);
-          return startDate <= now && endDate >= now;
+          const isActive = startDate <= now && endDate >= now;
+          
+          logger.info('Schedule time check:', {
+            scheduleId: schedule.id,
+            startDate: startDate.toISOString(),
+            endDate: endDate.toISOString(),
+            isActive
+          });
+          
+          return isActive;
         });
 
         if (currentSchedule) {
           if (!this.currentSchedule || this.currentSchedule.id !== currentSchedule.id) {
             // Yeni schedule başlıyor
-            logger.info('Starting new schedule:', currentSchedule.id);
+            logger.info('Starting new schedule:', currentSchedule);
             await this.startSchedule(currentSchedule);
           }
         } else if (this.currentSchedule) {
           // Schedule bitiyor
           logger.info('Stopping current schedule:', this.currentSchedule.id);
           this.stopSchedule(this.currentSchedule.id);
+        } else {
+          logger.info('No active schedule found for current time');
         }
       } catch (error) {
         logger.error('Error in schedule check:', error);
         this.handleError(error);
       }
     }, 10000);
+
+    logger.info('Schedule check started with 10 second interval');
   }
 
   async startSchedule(schedule) {
     try {
+      // Manuel pause durumunu kontrol et
+      if (scheduleStorage.isManuallyPaused()) {
+        logger.info('Schedule is manually paused, cannot start');
+        return;
+      }
+
       if (!schedule) {
         throw new Error('Invalid schedule');
       }
@@ -68,6 +100,9 @@ class SchedulePlayer extends EventEmitter {
       if (!playlist || !playlist.songs || playlist.songs.length === 0) {
         throw new Error('No songs in schedule playlist');
       }
+
+      // Önce diğer player'ları durdur
+      await playbackStateManager.pauseAll();
 
       this.currentSchedule = {
         ...schedule,
@@ -80,7 +115,13 @@ class SchedulePlayer extends EventEmitter {
       });
 
       // Schedule başladı event'ini gönder
-      this.emit('schedule-started', this.currentSchedule);
+      this.emit('schedule-started', {
+        scheduleId: schedule.id,
+        songCount: playlist.songs.length
+      });
+
+      // Schedule player'ı başlat
+      await playbackStateManager.play('schedule');
 
       // İlk şarkıyı başlat
       this.playNextSong();
@@ -90,15 +131,21 @@ class SchedulePlayer extends EventEmitter {
     }
   }
 
-  stopSchedule(scheduleId) {
-    if (this.currentSchedule && (!scheduleId || this.currentSchedule.id === scheduleId)) {
-      logger.info('Schedule stopped:', scheduleId);
-      
-      // Schedule durdu event'ini gönder
-      this.emit('schedule-stopped', scheduleId);
-      
-      // State'i temizle
-      this.reset();
+  async stopSchedule(scheduleId) {
+    try {
+      if (this.currentSchedule && this.currentSchedule.id === scheduleId) {
+        // Schedule player'ı durdur
+        await playbackStateManager.pause('schedule');
+        
+        this.currentSchedule = null;
+        this.errorCount = 0;
+        
+        logger.info('Schedule stopped:', scheduleId);
+        this.emit('schedule-stopped', { scheduleId });
+      }
+    } catch (error) {
+      logger.error('Error stopping schedule:', error);
+      this.handleError(error, scheduleId);
     }
   }
 

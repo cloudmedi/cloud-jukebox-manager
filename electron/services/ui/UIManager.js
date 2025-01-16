@@ -59,10 +59,29 @@ class UIManager {
         if (playlist) {
             const playlistElement = document.createElement('div');
             playlistElement.className = 'playlist-item';
+
+            // Artwork path'ini düzelt
+            let artworkSrc = '';
+            if (playlist.artwork) {
+                try {
+                    // Dosyanın var olup olmadığını kontrol et
+                    const fs = require('fs');
+                    if (fs.existsSync(playlist.artwork)) {
+                        // Local dosya yolunu file:// protokolü ile başlat
+                        artworkSrc = 'file://' + playlist.artwork.replace(/\\/g, '/');
+                        console.log('Artwork path:', artworkSrc);
+                    } else {
+                        console.warn('Artwork file not found:', playlist.artwork);
+                    }
+                } catch (error) {
+                    console.error('Error checking artwork:', error);
+                }
+            }
+
             playlistElement.innerHTML = `
                 <div class="playlist-info">
-                    ${playlist.artwork ? 
-                        `<img src="${playlist.artwork}" alt="${playlist.name}" class="playlist-artwork"/>` :
+                    ${artworkSrc ? 
+                        `<img src="${artworkSrc}" alt="${playlist.name}" class="playlist-artwork" onerror="this.style.display='none'"/>` :
                         '<div class="playlist-artwork-placeholder"></div>'
                     }
                     <div class="playlist-details">
