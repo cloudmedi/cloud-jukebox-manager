@@ -10,6 +10,8 @@ import { Progress } from "@/components/ui/progress";
 import { cn } from "@/lib/utils";
 import { formatBytes, formatDuration } from "@/lib/utils";
 import { useDownloadProgressStore } from "@/store/downloadProgressStore";
+import { useDeviceStore } from "@/store/deviceStore";
+import { memo, useCallback } from "react";
 
 interface DeviceTableRowProps {
   device: Device;
@@ -17,70 +19,74 @@ interface DeviceTableRowProps {
   onSelect: (checked: boolean) => void;
 }
 
-export const DeviceTableRow = ({ device, isSelected, onSelect }: DeviceTableRowProps) => {
+export const DeviceTableRow = memo(({ device, isSelected, onSelect }: DeviceTableRowProps) => {
   const downloadProgress = useDownloadProgressStore(state => state.getProgress(device.token));
+  const lastSeen = useDeviceStore(state => state.getLastSeen(device.token));
 
-  const renderPlaylistStatus = () => {
-    if (!device.playlistStatus) return "-";
+  const renderPlaylistStatus = useCallback(() => {
+    const playlist = device.activePlaylist as { name: string };
 
-    switch (device.playlistStatus) {
-      case "completed":
-        const playlist = device.activePlaylist as { name: string };
-        return (
+    // İndirme durumunu kontrol et
+    if (downloadProgress?.status === "downloading") {
+      // Toplam ilerlemeyi hesapla
+      const completedProgress = (downloadProgress.completedSongs / downloadProgress.totalSongs) * 100;
+      const currentSongProgress = ((downloadProgress.songProgress?.current || 0) / (downloadProgress.songProgress?.total || 1)) * (100 / downloadProgress.totalSongs);
+      const totalProgress = completedProgress + currentSongProgress;
+
+      return (
+        <div className="flex flex-col gap-1 w-[300px]">
+          <div className="text-xs text-muted-foreground">
+            {downloadProgress.completedSongs}/{downloadProgress.totalSongs} şarkı
+          </div>
+
           <div className="flex items-center gap-2">
-            <div className="flex items-center gap-1.5 rounded-full bg-emerald-50 px-2 py-0.5 text-sm">
-              <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
-              <span className="text-emerald-600 font-medium">
-                {playlist?.name}
-              </span>
+            <div className="w-[240px]">
+              <Progress 
+                value={totalProgress} 
+                className="h-2.5 [&>div]:bg-[#4ade80] [&>div]:duration-300"
+              />
             </div>
+            <span className="text-xs text-muted-foreground">
+              %{totalProgress.toFixed(1)}
+            </span>
           </div>
-        );
-      case "downloading":
-        if (!downloadProgress) return null;
-        
-        return (
-          <div className="flex flex-col gap-1 w-[300px]">
-            {/* Üstte şarkı sayısı */}
-            <div className="text-xs text-muted-foreground">
-              {downloadProgress.completedSongs}/{downloadProgress.totalSongs} şarkı
-            </div>
 
-            {/* Ortada progress ve yüzde */}
-            <div className="flex items-center gap-2">
-              <div className="w-[240px]">
-                <Progress 
-                  value={downloadProgress.progress || 0} 
-                  className="h-2.5 [&>div]:bg-[#4ade80]"
-                />
-              </div>
-              <span className="text-xstext-muted-foreground">
-                %{(downloadProgress.progress || 0).toFixed(1)}
-              </span>
-            </div>
-
-            {/* Altta şarkı ismi */}
-            <div className="text-xs text-muted-foreground truncate">
-              {downloadProgress.songProgress?.name}
-            </div>
+          <div className="text-xs text-muted-foreground truncate">
+            {downloadProgress.songProgress?.name}
           </div>
-        );
-      case "error":
-        return (
-          <div className="flex items-center gap-2 text-red-500">
-            <AlertCircle className="h-4 w-4" />
-            <span>Yükleme Hatası</span>
-            {device.retryCount > 0 && (
-              <span className="text-xs">({device.retryCount}/3)</span>
-            )}
-          </div>
-        );
-      default:
-        return "-";
+        </div>
+      );
     }
-  };
 
-  const getGroupColor = (groupId?: string) => {
+    // Hata durumu
+    if (downloadProgress?.status === "error") {
+      return (
+        <div className="flex items-center gap-2 text-red-500">
+          <AlertCircle className="h-4 w-4" />
+          <span>Yükleme Hatası</span>
+          {device.retryCount > 0 && (
+            <span className="text-xs">({device.retryCount}/3)</span>
+          )}
+        </div>
+      );
+    }
+
+    // İndirme tamamlandı veya aktif playlist varsa
+    if (downloadProgress?.status === "completed" || playlist?.name) {
+      return (
+        <div className="flex items-center gap-2">
+          <Badge className="bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25">
+            <CheckCircle2 className="h-3 w-3 mr-1" />
+            {playlist?.name}
+          </Badge>
+        </div>
+      );
+    }
+
+    return null;
+  }, [device.token, device.activePlaylist, device.retryCount, downloadProgress]);
+
+  const getGroupColor = useCallback((groupId?: string) => {
     if (!groupId) return "";
     
     const hash = groupId.split('').reduce((acc, char) => char.charCodeAt(0) + acc, 0);
@@ -89,7 +95,7 @@ export const DeviceTableRow = ({ device, isSelected, onSelect }: DeviceTableRowP
       "hover:bg-pink-50/50", "hover:bg-yellow-50/50", "hover:bg-orange-50/50"
     ];
     return colors[hash % colors.length];
-  };
+  }, []);
 
   return (
     <TableRow className={cn(
@@ -107,14 +113,8 @@ export const DeviceTableRow = ({ device, isSelected, onSelect }: DeviceTableRowP
           </div>
         </div>
       </TableCell>
-      <TableCell className="font-mono text-sm">{device.token}</TableCell>
-      <TableCell>
-        <div className="flex items-center gap-2">
-          <MapPin className="h-4 w-4 text-muted-foreground" />
-          <span>{device.location || "-"}</span>
-        </div>
-      </TableCell>
       <TableCell>{device.ipAddress || "-"}</TableCell>
+      <TableCell className="font-mono text-sm">{device.token}</TableCell>
       <TableCell>
         {device.isOnline ? (
           <Badge className="bg-emerald-500/15 text-emerald-500 hover:bg-emerald-500/25">
@@ -138,14 +138,14 @@ export const DeviceTableRow = ({ device, isSelected, onSelect }: DeviceTableRowP
         </div>
       </TableCell>
       <TableCell>
-        {formatDistanceToNow(new Date(device.lastSeen), {
+        {lastSeen ? formatDistanceToNow(new Date(lastSeen), {
           addSuffix: true,
           locale: tr,
-        })}
+        }) : '-'}
       </TableCell>
-      <TableCell className="text-right">
+      <TableCell>
         <DeviceActions device={device} />
       </TableCell>
     </TableRow>
   );
-};
+});

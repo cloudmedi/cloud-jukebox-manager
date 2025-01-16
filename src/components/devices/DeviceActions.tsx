@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { deviceService } from "@/services/deviceService";
 import type { Device } from "@/types/device";
-import websocketService from "@/services/websocketService";
+import WebSocketService from "@/services/websocketService";
 import { toast } from "sonner";
 import { DeviceActionMenu } from "./actions/DeviceActionMenu";
 import { DeviceActionDialogs } from "./actions/DeviceActionDialogs";
@@ -27,7 +27,7 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
     setIsScreenshotDialogOpen(true);
     setScreenshotData(undefined);
 
-    websocketService.sendMessage({
+    WebSocketService.sendMessage({
       type: 'command',
       token: device.token,
       command: 'screenshot'
@@ -37,11 +37,11 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
     const handleScreenshotResponse = (message: any) => {
       if (message.type === 'screenshot' && message.token === device.token) {
         setScreenshotData(message.data);
-        websocketService.removeMessageHandler('screenshot', handleScreenshotResponse);
+        WebSocketService.removeMessageHandler('screenshot', handleScreenshotResponse);
       }
     };
 
-    websocketService.addMessageHandler('screenshot', handleScreenshotResponse);
+    WebSocketService.addMessageHandler('screenshot', handleScreenshotResponse);
   };
 
   // Clear screenshot data when dialog closes
@@ -71,7 +71,7 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
 
   const handleRestart = async () => {
     try {
-      websocketService.sendMessage({
+      WebSocketService.sendMessage({
         type: 'command',
         token: device.token,
         command: 'restart'
@@ -98,7 +98,7 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
       console.log('PlayPause - Sending command:', command);
 
       // Komut mesajını gönder
-      websocketService.sendMessage({
+      WebSocketService.sendMessage({
         type: 'command',
         token: device.token,
         command: command
@@ -131,7 +131,7 @@ const DeviceActions = ({ device }: DeviceActionsProps) => {
       console.log('Volume updated in backend');
 
       // WebSocket üzerinden cihaza gönder
-      websocketService.sendMessage({
+      WebSocketService.sendMessage({
         type: 'command',
         token: device.token,
         command: 'setVolume',

@@ -1,169 +1,128 @@
-import { handleDeleteMessage } from './websocket/handlers/DeleteMessageHandler';
-import { handleDeviceStatusMessage } from './websocket/handlers/DeviceStatusHandler';
-import { handleInitialStateMessage } from './websocket/handlers/InitialStateHandler';
-import { handleDeviceDelete } from './websocket/handlers/DeviceDeleteHandler';
+import { WebSocketMessage, WebSocketConfig } from './websocket/types';
+import { handleConnectionStatus } from './websocket/handlers/ConnectionHandler';
+import { handleDownloadProgress } from './websocket/handlers/DownloadProgressHandler';
+import { throttle } from '@/lib/utils';
 
-type MessageHandler = (data: any) => void;
+const DEFAULT_CONFIG: WebSocketConfig = {
+  url: 'ws://localhost:5000/admin',
+  reconnectAttempts: 5,
+  reconnectInterval: 1000,
+  maxReconnectDelay: 30000
+};
 
 class WebSocketService {
   private static instance: WebSocketService;
   private socket: WebSocket | null = null;
-  private messageHandlers: Map<string, Set<MessageHandler>>;
-  private eventListeners: Map<string, Set<(data: any) => void>>;
+  private config: WebSocketConfig;
+  private reconnectAttempts: number = 0;
+  private reconnectTimer: NodeJS.Timeout | null = null;
+  private messageHandlers: Map<string, Set<(data: WebSocketMessage) => void>>;
 
-  private constructor() {
+  private constructor(config: WebSocketConfig = DEFAULT_CONFIG) {
+    this.config = config;
     this.messageHandlers = new Map();
-    this.eventListeners = new Map();
-    this.setupMessageHandlers();
+    this.setupHandlers();
     this.connect();
   }
 
-  private setupMessageHandlers() {
-    this.addMessageHandler('delete', handleDeleteMessage);
-    this.addMessageHandler('delete', handleDeviceDelete);
-    this.addMessageHandler('deviceStatus', handleDeviceStatusMessage);
-    this.addMessageHandler('initialState', handleInitialStateMessage);
-  }
-
-  public static getInstance(): WebSocketService {
-    if (!WebSocketService.instance) {
-      WebSocketService.instance = new WebSocketService();
-    }
-    return WebSocketService.instance;
+  private setupHandlers() {
+    this.addHandler('connectionStatus', handleConnectionStatus);
+    this.addHandler('deviceDownloadProgress', handleDownloadProgress);
   }
 
   private connect() {
     if (this.socket?.readyState === WebSocket.OPEN) return;
 
-    this.socket = new WebSocket('ws://localhost:5000/admin');
+    this.socket = new WebSocket(this.config.url);
 
     this.socket.onopen = () => {
       console.log('WebSocket bağlantısı kuruldu');
+      this.reconnectAttempts = 0;
     };
 
     this.socket.onmessage = (event) => {
       try {
         const message = JSON.parse(event.data);
-        
-        if (message.type === 'deviceDownloadProgress') {
-          // Gelen mesajı düzenle ve emit et
-          const formattedMessage = {
-            deviceToken: message.deviceToken,
-            status: message.status,
-            playlistId: message.playlistId,
-            totalSongs: message.totalSongs,
-            completedSongs: message.completedSongs,
-            songProgress: message.songProgress,
-            progress: message.progress
-          };
-          
-          this.emit('deviceDownloadProgress', formattedMessage);
-        } else {
-          this.handleMessage(message);
-        }
+        this.emit(message.type, message);
       } catch (error) {
-        console.error('Message parsing error:', error);
+        console.error('WebSocket mesaj işleme hatası:', error);
       }
     };
 
-    this.socket.onclose = () => {
-      console.log('WebSocket bağlantısı kapandı, yeniden bağlanılıyor...');
-      setTimeout(() => this.connect(), 5000);
-    };
-
     this.socket.onerror = (error) => {
-      console.error('WebSocket error:', error);
+      console.error('WebSocket bağlantı hatası:', error);
+    };
+
+    this.socket.onclose = () => {
+      console.log('WebSocket bağlantısı kapandı');
+      this.reconnect();
     };
   }
 
-  private handleMessage(message: any) {
-    console.log('1. WebSocket message received:', {
-      type: message.type,
-      payload: message,
-      timestamp: new Date().toISOString()
-    });
-
-    const handlers = this.messageHandlers.get(message.type);
-    if (handlers) {
-      console.log('2. Handlers found for message type:', message.type);
-      handlers.forEach(handler => {
-        try {
-          console.log('3. Executing handler for:', message.type);
-          handler(message);
-          console.log('4. Handler executed successfully');
-        } catch (error) {
-          console.error('5. Handler error:', {
-            type: message.type,
-            error: error.message,
-            stack: error.stack
-          });
-        }
-      });
-    } else {
-      console.warn('6. Unhandled message type:', {
-        type: message.type,
-        payload: message
-      });
+  private async reconnect() {
+    if (this.reconnectTimer) {
+      clearTimeout(this.reconnectTimer);
     }
+
+    if (this.reconnectAttempts >= this.config.reconnectAttempts) {
+      console.error('Maximum reconnection attempts reached');
+      return;
+    }
+
+    const delay = Math.min(
+      this.config.reconnectInterval * Math.pow(2, this.reconnectAttempts),
+      this.config.maxReconnectDelay
+    );
+
+    this.reconnectTimer = setTimeout(() => {
+      this.reconnectAttempts++;
+      this.connect();
+    }, delay);
   }
 
-  public addMessageHandler(type: string, handler: MessageHandler) {
+  private addHandler(type: string, handler: (message: WebSocketMessage) => void) {
     if (!this.messageHandlers.has(type)) {
       this.messageHandlers.set(type, new Set());
     }
     this.messageHandlers.get(type)?.add(handler);
   }
 
-  public removeMessageHandler(type: string, handler: MessageHandler) {
+  private emit(type: string, data: any) {
     const handlers = this.messageHandlers.get(type);
     if (handlers) {
-      handlers.delete(handler);
-      if (handlers.size === 0) {
-        this.messageHandlers.delete(type);
-      }
-    }
-  }
-
-  public on(event: string, callback: (data: any) => void) {
-    if (!this.eventListeners.has(event)) {
-      this.eventListeners.set(event, new Set());
-    }
-    this.eventListeners.get(event)?.add(callback);
-  }
-
-  public off(event: string, callback: (data: any) => void) {
-    this.eventListeners.get(event)?.delete(callback);
-  }
-
-  public emit(event: string, data: any) {
-    const listeners = this.eventListeners.get(event);
-    if (listeners) {
-      listeners.forEach(callback => {
+      handlers.forEach(handler => {
         try {
-          callback(data);
+          handler(data);
         } catch (error) {
-          console.error(`Error in ${event} event listener:`, error);
+          console.error(`Error in handler for ${type}:`, error);
         }
       });
     }
   }
 
-  public sendMessage(message: any) {
+  public sendMessage(message: WebSocketMessage) {
     if (this.socket?.readyState === WebSocket.OPEN) {
       this.socket.send(JSON.stringify(message));
     } else {
-      console.error('WebSocket bağlantısı kurulamadı');
-      this.connect();
+      console.error('WebSocket is not connected');
     }
   }
 
-  public cleanup() {
-    if (this.socket) {
-      this.socket.close();
-      this.socket = null;
+  public on(type: string, handler: (data: any) => void) {
+    this.addHandler(type, handler);
+  }
+
+  public off(type: string, handler: (data: any) => void) {
+    this.messageHandlers.get(type)?.delete(handler);
+  }
+
+  public static getInstance(config?: WebSocketConfig): WebSocketService {
+    if (!WebSocketService.instance) {
+      WebSocketService.instance = new WebSocketService(config);
     }
-    this.eventListeners.clear();
+    return WebSocketService.instance;
   }
 }
 
-export default WebSocketService.getInstance();
+const websocketService = WebSocketService.getInstance();
+export default websocketService;

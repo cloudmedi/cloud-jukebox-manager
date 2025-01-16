@@ -1,5 +1,5 @@
 import { useQuery } from "@tanstack/react-query";
-import { useState } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -18,19 +18,21 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { useDownloadProgressStore } from "@/store/downloadProgressStore";
 
 const Devices = () => {
   const [activeTab, setActiveTab] = useState("devices");
+  const [selectedDevices, setSelectedDevices] = useState<string[]>([]);
   const [isFormOpen, setIsFormOpen] = useState(false);
-  const [filterStatus, setFilterStatus] = useState<"all" | "online" | "offline">("all");
+  const [filterStatus, setFilterStatus] = useState<
+    "all" | "online" | "offline" | "loading" | "error" | "no_playlist" | "muted" | "no_group" | "needs_update"
+  >("all");
   const [searchQuery, setSearchQuery] = useState("");
   const [locationFilter, setLocationFilter] = useState("_all");
   const [showEmergencyDialog, setShowEmergencyDialog] = useState(false);
   const [isEmergencyActive, setIsEmergencyActive] = useState(false);
-  const [selectedFilter, setSelectedFilter] = useState("all");
-  const [selectedRegion, setSelectedRegion] = useState("all");
 
-  const { data: devices } = useQuery({
+  const { data: devices = [] } = useQuery({
     queryKey: ['devices'],
     queryFn: async () => {
       const response = await fetch('http://localhost:5000/api/devices');
@@ -42,7 +44,58 @@ const Devices = () => {
     refetchInterval: 5000
   });
 
-  const handleEmergencyAction = async () => {
+  const { progressMap } = useDownloadProgressStore();
+
+  // Benzersiz lokasyonları memoize ediyoruz
+  const uniqueLocations = useMemo(() => 
+    Array.from(new Set(devices.map(device => device.location))).filter(Boolean),
+    [devices]
+  );
+
+  // Şu anki en son versiyon (normalde API'den gelecek)
+  const LATEST_VERSION = "1.0.0";
+
+  // Filtreleme fonksiyonlarını memoize ediyoruz
+  const filterFunctions = useMemo(() => ({
+    matchesSearch: (device: any) => 
+      device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+      device.token.toLowerCase().includes(searchQuery.toLowerCase()),
+
+    matchesLocation: (device: any) => 
+      locationFilter === "_all" || device.location === locationFilter,
+
+    matchesStatus: (device: any) => {
+      const deviceProgress = progressMap[device.token];
+      const isLoading = deviceProgress?.status === 'downloading';
+      const hasError = deviceProgress?.status === 'error';
+      const hasNoPlaylist = !device.activePlaylist && !device.downloadProgress?.playlistId;
+      const isMuted = device.volume === 0;
+      const hasNoGroup = !device.groupId;
+      const needsUpdate = device.deviceInfo?.browserInfo?.version !== LATEST_VERSION;
+
+      return filterStatus === "all" ||
+        (filterStatus === "online" && device.isOnline) ||
+        (filterStatus === "offline" && !device.isOnline) ||
+        (filterStatus === "loading" && isLoading) ||
+        (filterStatus === "error" && hasError) ||
+        (filterStatus === "no_playlist" && hasNoPlaylist) ||
+        (filterStatus === "muted" && isMuted) ||
+        (filterStatus === "no_group" && hasNoGroup) ||
+        (filterStatus === "needs_update" && needsUpdate);
+    }
+  }), [searchQuery, locationFilter, filterStatus, progressMap, LATEST_VERSION]);
+
+  // Filtrelenmiş cihazları memoize ediyoruz
+  const filteredDevices = useMemo(() => 
+    devices.filter(device => 
+      filterFunctions.matchesSearch(device) &&
+      filterFunctions.matchesLocation(device) &&
+      filterFunctions.matchesStatus(device)
+    ),
+    [devices, filterFunctions]
+  );
+
+  const handleEmergencyAction = useCallback(async () => {
     try {
       if (!isEmergencyActive) {
         await deviceService.emergencyStop();
@@ -58,22 +111,7 @@ const Devices = () => {
       console.error('Emergency action error:', error);
       toast.error('İşlem başarısız oldu');
     }
-  };
-
-  const filteredDevices = devices?.filter((device) => {
-    const matchesSearch = device.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      device.token.toLowerCase().includes(searchQuery.toLowerCase());
-    
-    const matchesRegion = selectedRegion === 'all' || device.location === selectedRegion;
-    
-    const matchesFilter = selectedFilter === 'all' ||
-      (selectedFilter === 'online' && device.isOnline) ||
-      (selectedFilter === 'offline' && !device.isOnline) ||
-      (selectedFilter === 'loading' && device.playlistStatus === 'loading') ||
-      (selectedFilter === 'error' && device.playlistStatus === 'error');
-
-    return matchesSearch && matchesRegion && matchesFilter;
-  }) || [];
+  }, [isEmergencyActive]);
 
   return (
     <div className="space-y-8 p-8">
@@ -138,7 +176,7 @@ const Devices = () => {
                 onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-[250px]"
               />
-              <Select value={selectedFilter} onValueChange={setSelectedFilter}>
+              <Select value={filterStatus} onValueChange={setFilterStatus}>
                 <SelectTrigger className="w-[130px]">
                   <SelectValue placeholder="Tümü" />
                 </SelectTrigger>
@@ -148,17 +186,23 @@ const Devices = () => {
                   <SelectItem value="offline">Çevrimdışı</SelectItem>
                   <SelectItem value="loading">Yükleniyor</SelectItem>
                   <SelectItem value="error">Hata</SelectItem>
+                  <SelectItem value="no_playlist">Playlist Yok</SelectItem>
+                  <SelectItem value="muted">Ses Kapalı</SelectItem>
+                  <SelectItem value="no_group">Grup Yok</SelectItem>
+                  <SelectItem value="needs_update">Güncelleme Gerekli</SelectItem>
                 </SelectContent>
               </Select>
-              <Select value={selectedRegion} onValueChange={setSelectedRegion}>
+              <Select value={locationFilter} onValueChange={setLocationFilter}>
                 <SelectTrigger className="w-[130px]">
                   <SelectValue placeholder="Tüm Bölgeler" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="all">Tüm Bölgeler</SelectItem>
-                  <SelectItem value="istanbul">İstanbul</SelectItem>
-                  <SelectItem value="ankara">Ankara</SelectItem>
-                  <SelectItem value="izmir">İzmir</SelectItem>
+                  <SelectItem value="_all">Tüm Bölgeler</SelectItem>
+                  {uniqueLocations.map((location) => (
+                    <SelectItem key={location} value={location}>
+                      {location}
+                    </SelectItem>
+                  ))}
                 </SelectContent>
               </Select>
             </div>
@@ -177,8 +221,18 @@ const Devices = () => {
           </div>
         </div>
 
-        <TabsContent value="devices" className="space-y-4 m-0">
-          <DeviceList devices={filteredDevices} />
+        <TabsContent value="devices" className="space-y-4">
+          <DeviceList 
+            devices={filteredDevices}
+            selectedDevices={selectedDevices}
+            onDeviceSelect={(deviceToken, checked) => {
+              setSelectedDevices(prev => 
+                checked 
+                  ? [...prev, deviceToken]
+                  : prev.filter(token => token !== deviceToken)
+              );
+            }}
+          />
         </TabsContent>
 
         <TabsContent value="groups" className="m-0">
