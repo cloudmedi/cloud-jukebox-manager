@@ -18,20 +18,31 @@ class WebSocketService {
 
   setupHandlers() {
     this.addMessageHandler('auth', (message) => {
-      console.log('Auth message received:', message);
+      // Debug modunda değilse loglama yapma
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Auth message received:', message);
+      }
+      
       if (message.success) {
         store.set('deviceInfo', { token: message.token });
       }
     });
 
     this.addMessageHandler('playlist', async (message) => {
-      console.log('Playlist message received:', message);
+      // Debug modunda değilse loglama yapma
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Playlist message received:', message);
+      }
+      
       try {
         const updatedPlaylist = await playlistHandler.handlePlaylist(message.data);
         const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
         if (mainWindow) {
           mainWindow.webContents.send('playlist-received', updatedPlaylist);
-          console.log('Playlist update sent to renderer');
+          // Debug modunda değilse loglama yapma
+          if (process.env.NODE_ENV === 'development') {
+            console.log('Playlist update sent to renderer');
+          }
         }
       } catch (error) {
         console.error('Error handling playlist:', error);
@@ -39,7 +50,11 @@ class WebSocketService {
     });
 
     this.addMessageHandler('command', (message) => {
-      console.log('Command message received:', message);
+      // Debug modunda değilse loglama yapma
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Command message received:', message);
+      }
+      
       // Mesaj yapısını düzelt
       const commandMessage = message.data && message.data.type === 'command' 
         ? message.data  // İç içe command mesajı
@@ -49,7 +64,11 @@ class WebSocketService {
     });
 
     this.addMessageHandler('downloadProgress', (message) => {
-      console.log('Download progress message received:', message);
+      // Debug modunda değilse loglama yapma
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Download progress message received:', message);
+      }
+      
       if (this.ws && this.ws.readyState === WebSocket.OPEN) {
         const deviceToken = store.get('deviceInfo')?.token;
         
@@ -68,44 +87,92 @@ class WebSocketService {
           deviceToken
         };
         
-        console.log('Sending download progress:', messageWithToken);
+        // Debug modunda değilse loglama yapma
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Sending download progress:', messageWithToken);
+        }
+        
         this.ws.send(JSON.stringify(messageWithToken));
       }
     });
 
     this.addMessageHandler('delete', async (message) => {
-      console.log('Delete message received:', message);
+      // Debug modunda değilse loglama yapma
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Delete message received:', message);
+      }
+      
       await this.deleteMessageHandler.handleMessage(message);
     });
 
     // Schedule handlers
     this.addMessageHandler('schedule-created', async (message) => {
-      console.log('Schedule created message received:', message);
+      // Debug modunda değilse loglama yapma
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Schedule created message received:', message);
+      }
+      
       await scheduleHandler.handleNewSchedule(message.data);
     });
 
     this.addMessageHandler('schedule-updated', async (message) => {
-      console.log('Schedule updated message received:', message);
+      // Debug modunda değilse loglama yapma
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Schedule updated message received:', message);
+      }
+      
       await scheduleHandler.handleScheduleUpdate(message.data);
     });
 
     this.addMessageHandler('schedule-deleted', async (message) => {
-      console.log('Schedule deleted message received:', message);
+      // Debug modunda değilse loglama yapma
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Schedule deleted message received:', message);
+      }
+      
       await scheduleHandler.handleScheduleDelete(message.data);
+    });
+
+    // Playback status handler
+    this.addMessageHandler('playbackStatus', (message) => {
+      // Debug modunda değilse loglama yapma
+      if (process.env.NODE_ENV === 'development') {
+        console.log('Playback status message received:', message);
+      }
+      
+      // Mesajı doğrudan websocket üzerinden backend'e ilet
+      if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+        const deviceToken = store.get('deviceInfo')?.token;
+        if (deviceToken) {
+          const messageWithToken = {
+            ...message,
+            deviceToken
+          };
+          this.ws.send(JSON.stringify(messageWithToken));
+        }
+      }
     });
   }
 
   connect() {
     const deviceInfo = store.get('deviceInfo');
     if (!deviceInfo || !deviceInfo.token) {
-      console.log('No device info found');
+      // Debug modunda değilse loglama yapma
+      if (process.env.NODE_ENV === 'development') {
+        console.log('No device info found');
+      }
+      
       return;
     }
 
     this.ws = new WebSocket('ws://localhost:5000');
 
     this.ws.on('open', () => {
-      console.log('WebSocket connected');
+      // Debug modunda değilse loglama yapma
+      if (process.env.NODE_ENV === 'development') {
+        console.log('WebSocket connected');
+      }
+      
       this.sendAuth(deviceInfo.token);
       const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
       if (mainWindow) {
@@ -116,7 +183,12 @@ class WebSocketService {
     this.ws.on('message', (data) => {
       try {
         const message = JSON.parse(data);
-        console.log('Received message:', message);
+        
+        // Debug modunda değilse loglama yapma
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Received message:', message);
+        }
+        
         this.handleMessage(message);
       } catch (error) {
         console.error('Error parsing message:', error);
@@ -124,7 +196,11 @@ class WebSocketService {
     });
 
     this.ws.on('close', () => {
-      console.log('WebSocket disconnected, reconnecting...');
+      // Debug modunda değilse loglama yapma
+      if (process.env.NODE_ENV === 'development') {
+        console.log('WebSocket disconnected, reconnecting...');
+      }
+      
       const mainWindow = require('electron').BrowserWindow.getAllWindows()[0];
       if (mainWindow) {
         mainWindow.webContents.send('websocket-status', false);
@@ -156,7 +232,11 @@ class WebSocketService {
     try {
       // Mesaj string ise parse et, değilse direkt kullan
       const data = typeof message === 'string' ? JSON.parse(message) : message;
-      console.log('WebSocket message received:', JSON.stringify(data, null, 2));
+      
+      // Debug modunda değilse loglama yapma
+      if (process.env.NODE_ENV === 'development') {
+        console.log('WebSocket message received:', JSON.stringify(data, null, 2));
+      }
       
       const handlers = this.messageHandlers.get(data.type);
       if (handlers) {
@@ -168,7 +248,10 @@ class WebSocketService {
           }
         });
       } else {
-        console.log('Unhandled message type:', data.type, 'Available handlers:', Array.from(this.messageHandlers.keys()));
+        // Debug modunda değilse loglama yapma
+        if (process.env.NODE_ENV === 'development') {
+          console.log('Unhandled message type:', data.type, 'Available handlers:', Array.from(this.messageHandlers.keys()));
+        }
       }
     } catch (error) {
       console.error('Error handling WebSocket message:', error);

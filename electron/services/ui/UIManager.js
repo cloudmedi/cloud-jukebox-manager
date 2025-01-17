@@ -52,48 +52,98 @@ class UIManager {
 
     displayPlaylists(playlist) {
         const playlistContainer = document.getElementById('playlistContainer');
-        if (!playlistContainer) return;
+        if (!playlistContainer) {
+            console.error('Playlist container not found');
+            return;
+        }
 
+        console.log('Displaying playlist:', playlist);
         playlistContainer.innerHTML = '';
 
-        if (playlist) {
-            const playlistElement = document.createElement('div');
-            playlistElement.className = 'playlist-item';
+        if (!playlist || !playlist.songs || !Array.isArray(playlist.songs)) {
+            console.error('Invalid playlist data:', playlist);
+            return;
+        }
 
-            // Artwork path'ini düzelt
-            let artworkSrc = '';
-            if (playlist.artwork) {
+        // Playlist başlığı
+        const playlistHeader = document.createElement('div');
+        playlistHeader.className = 'playlist-header';
+        
+        // Playlist artwork'ü
+        let artworkSrc = '';
+        if (playlist.artwork) {
+            try {
+                const fs = require('fs');
+                if (fs.existsSync(playlist.artwork)) {
+                    artworkSrc = 'file://' + playlist.artwork.replace(/\\/g, '/');
+                    console.log('Playlist artwork path:', artworkSrc);
+                }
+            } catch (error) {
+                console.error('Error checking playlist artwork:', error);
+            }
+        }
+
+        playlistHeader.innerHTML = `
+            <div class="playlist-info">
+                ${artworkSrc ? 
+                    `<img src="${artworkSrc}" alt="${playlist.name}" class="playlist-artwork" onerror="this.style.display='none'"/>` :
+                    '<div class="playlist-artwork-placeholder"></div>'
+                }
+                <div class="playlist-details">
+                    <h2>${playlist.name || 'Unnamed Playlist'}</h2>
+                    <p>${playlist.songs.length} songs</p>
+                </div>
+            </div>
+        `;
+        playlistContainer.appendChild(playlistHeader);
+
+        // Şarkı listesi
+        const songsList = document.createElement('div');
+        songsList.className = 'songs-list';
+
+        // Her şarkı için bir element oluştur
+        playlist.songs.forEach((song, index) => {
+            const songElement = document.createElement('div');
+            songElement.className = 'playlist-item';
+            songElement.setAttribute('data-index', index);
+
+            // Şarkı artwork'ü
+            let songArtworkSrc = '';
+            if (song.artworkPath) {
                 try {
-                    // Dosyanın var olup olmadığını kontrol et
                     const fs = require('fs');
-                    if (fs.existsSync(playlist.artwork)) {
-                        // Local dosya yolunu file:// protokolü ile başlat
-                        artworkSrc = 'file://' + playlist.artwork.replace(/\\/g, '/');
-                        console.log('Artwork path:', artworkSrc);
-                    } else {
-                        console.warn('Artwork file not found:', playlist.artwork);
+                    if (fs.existsSync(song.artworkPath)) {
+                        songArtworkSrc = 'file://' + song.artworkPath.replace(/\\/g, '/');
+                        console.log(`Artwork path for song ${index}:`, songArtworkSrc);
                     }
                 } catch (error) {
-                    console.error('Error checking artwork:', error);
+                    console.error(`Error checking artwork for song ${index}:`, error);
                 }
             }
 
-            playlistElement.innerHTML = `
+            songElement.innerHTML = `
                 <div class="playlist-info">
-                    ${artworkSrc ? 
-                        `<img src="${artworkSrc}" alt="${playlist.name}" class="playlist-artwork" onerror="this.style.display='none'"/>` :
+                    ${songArtworkSrc ? 
+                        `<img src="${songArtworkSrc}" alt="${song.name}" class="playlist-artwork" onerror="this.style.display='none'"/>` :
                         '<div class="playlist-artwork-placeholder"></div>'
                     }
                     <div class="playlist-details">
-                        <h3>${playlist.name}</h3>
-                        <p>${playlist.songs[0]?.artist || 'Unknown Artist'}</p>
-                        <p>${playlist.songs[0]?.name || 'No songs'}</p>
+                        <h3>${song.name || 'Unknown Song'}</h3>
+                        <p>${song.artist || 'Unknown Artist'}</p>
                     </div>
                 </div>
             `;
-            
-            playlistContainer.appendChild(playlistElement);
-        }
+
+            // Status'a göre class ekle
+            if (song.status === 'completed') {
+                songElement.classList.add('completed');
+            }
+
+            songsList.appendChild(songElement);
+        });
+
+        playlistContainer.appendChild(songsList);
+        console.log('Playlist UI updated successfully');
     }
 
     showDownloadProgress(progress, fileName) {

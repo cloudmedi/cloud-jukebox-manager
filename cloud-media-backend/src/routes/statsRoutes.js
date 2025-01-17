@@ -150,7 +150,7 @@ router.get('/device-playback', async (req, res) => {
     const playbackData = await PlaybackHistory.aggregate([
       {
         $match: {
-          deviceId: token._id,
+          deviceId: new mongoose.Types.ObjectId(deviceId), // Token ID yerine Device ID kullan
           playedAt: {
             $gte: startDate,
             $lte: endDate

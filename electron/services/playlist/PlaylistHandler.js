@@ -3,7 +3,7 @@ const fs = require('fs-extra');
 const { createLogger } = require('../../utils/logger');
 const downloadStateManager = require('../download/DownloadStateManager');
 const chunkDownloadManager = require('../download/ChunkDownloadManager');
-const audioPlayer = require('../audio/AudioPlayer');
+const JukeboxPlayer = require('../audio/JukeboxPlayer');
 const Store = require('electron-store');
 const store = new Store();
 
@@ -43,9 +43,9 @@ class PlaylistHandler {
       }
 
       // En son çalan şarkıyı başlat
-      audioPlayer.loadPlaylist(activePlaylist);
-      audioPlayer.isPlaying = true;
-      audioPlayer.play();
+      JukeboxPlayer.loadPlaylist(activePlaylist);
+      JukeboxPlayer.isPlaying = true;
+      JukeboxPlayer.play();
 
     } catch (error) {
       logger.error(`Initialization error: ${error.message}`);
@@ -86,11 +86,11 @@ class PlaylistHandler {
             // Store'daki playlist'i güncelle
             this.updateStoredPlaylist(playlist);
             
-            // AudioPlayer'ı hazırla ve başlat
-            audioPlayer.handleFirstSongReady(firstSong._id, firstSongPath);
-            audioPlayer.loadPlaylist(playlist);
-            audioPlayer.isPlaying = true;
-            audioPlayer.play();
+            // JukeboxPlayer'ı hazırla ve başlat
+            JukeboxPlayer.handleFirstSongReady(firstSong._id, firstSongPath);
+            JukeboxPlayer.loadPlaylist(playlist);
+            JukeboxPlayer.isPlaying = true;
+            JukeboxPlayer.play();
             
             logger.info('Started playing first song');
           }
@@ -177,8 +177,8 @@ class PlaylistHandler {
           // Store'daki playlist'i güncelle
           this.updateStoredPlaylist(playlist);
           
-          // AudioPlayer'a bildir
-          audioPlayer.handleSongReady(song._id, songPath);
+          // JukeboxPlayer'a bildir
+          JukeboxPlayer.handleSongReady(song._id, songPath);
           
           logger.info(`Successfully downloaded song ${i + 1}/${playlist.songs.length}`);
         }
@@ -232,8 +232,8 @@ class PlaylistHandler {
               }
               this.updateStoredPlaylist(playlist);
               
-              // AudioPlayer'a bildir
-              audioPlayer.handleSongReady(song._id, songPath);
+              // JukeboxPlayer'a bildir
+              JukeboxPlayer.handleSongReady(song._id, songPath);
             }
           } catch (error) {
             logger.error(`Error resuming song ${song._id}:`, error);

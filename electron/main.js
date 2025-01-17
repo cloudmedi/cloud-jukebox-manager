@@ -10,8 +10,29 @@ require('./services/audioService');
 
 // WebSocket mesaj handler'ı
 ipcMain.handle('send-websocket-message', async (event, message) => {
-  console.log('Handling WebSocket message:', message);
-  websocketService.handleMessage(message);
+  try {
+    // Debug modunda değilse loglama yapma
+    if (process.env.NODE_ENV === 'development') {
+      console.log('Handling WebSocket message:', message);
+    }
+    websocketService.handleMessage(message);
+  } catch (error) {
+    console.error('Error handling WebSocket message:', error);
+  }
+});
+
+// Şarkı değişim eventi
+ipcMain.on('song-changed', (event, song) => {
+  console.log('Main process received song-changed event:', song);
+  
+  // Tray menüsünü güncelle
+  currentSong = song;
+  updateTrayMenu(song);
+
+  // Renderer process'e bildir
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    mainWindow.webContents.send('update-current-song', song);
+  }
 });
 
 // Set application name
@@ -163,32 +184,6 @@ app.whenReady().then(async () => {
     createWindow();
     createTray();
 
-    // IPC event handler'ları ekle
-    ipcMain.handle('get-active-schedule', async () => {
-      try {
-        const activeSchedules = await scheduleStorage.getActiveSchedules();
-        const now = new Date();
-
-        // Aktif schedule'ı bul
-        const currentSchedule = activeSchedules.find(schedule => {
-          const startDate = new Date(schedule.startDate);
-          const endDate = new Date(schedule.endDate);
-          return startDate <= now && endDate >= now;
-        });
-
-        if (currentSchedule) {
-          // Playlist detaylarını al
-          const playlist = await scheduleStorage.getSchedulePlaylist(currentSchedule.id);
-          return { schedule: { ...currentSchedule, playlist } };
-        }
-        
-        return { schedule: null };
-      } catch (error) {
-        console.error('Error getting active schedule:', error);
-        return { schedule: null, error: error.message };
-      }
-    });
-
     // WebSocket bağlantısını başlat
     websocketService.connect();
 
@@ -201,40 +196,10 @@ app.whenReady().then(async () => {
     
     // Schedule event'lerini ayarla
     setupScheduleEvents();
-
-    const deviceInfo = store.get('deviceInfo');
-    if (deviceInfo && deviceInfo.token) {
-      websocketService.connect(deviceInfo.token);
-      
-      const playlists = store.get('playlists', []);
-      if (playlists.length > 0) {
-        const lastPlaylist = playlists[playlists.length - 1];
-        console.log('Starting last saved playlist:', lastPlaylist.name);
-        mainWindow.webContents.on('did-finish-load', () => {
-          mainWindow.webContents.send('auto-play-playlist', lastPlaylist);
-        });
-      }
-    }
   } catch (error) {
     console.error('Error during app initialization:', error);
   }
 });
-
-function loadLastPlaylist() {
-  try {
-    const deviceInfo = store.get('deviceInfo');
-    if (deviceInfo && deviceInfo.token) {
-      const playlists = store.get('playlists', []);
-      if (playlists.length > 0) {
-        const lastPlaylist = playlists[playlists.length - 1];
-        console.log('Starting last saved playlist:', lastPlaylist.name);
-        mainWindow.webContents.send('auto-play-playlist', lastPlaylist);
-      }
-    }
-  } catch (error) {
-    console.error('Error loading last playlist:', error);
-  }
-}
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -256,9 +221,7 @@ function createWindow() {
     }
   });
 
-  // Pencereyi global olarak sakla
   global.mainWindow = mainWindow;
-
   mainWindow.loadFile('index.html');
   
   if (process.env.NODE_ENV === 'development') {
@@ -275,20 +238,6 @@ function createWindow() {
     }
     return false;
   });
-
-  const deviceInfo = store.get('deviceInfo');
-  if (deviceInfo && deviceInfo.token) {
-    websocketService.connect(deviceInfo.token);
-    
-    const playlists = store.get('playlists', []);
-    if (playlists.length > 0) {
-      const lastPlaylist = playlists[playlists.length - 1];
-      console.log('Starting last saved playlist:', lastPlaylist.name);
-      mainWindow.webContents.on('did-finish-load', () => {
-        mainWindow.webContents.send('auto-play-playlist', lastPlaylist);
-      });
-    }
-  }
 }
 
 function createTray() {
@@ -324,6 +273,21 @@ function createTray() {
   }
 }
 
+app.on('before-quit', () => {
+  try {
+    console.log('Application is quitting, starting cleanup...');
+    
+    // Global JukeboxPlayer cleanup
+    if (global.jukeboxPlayer) {
+      global.jukeboxPlayer.cleanup();
+    }
+    
+    app.isQuitting = true;
+  } catch (error) {
+    console.error('Error during application cleanup:', error);
+  }
+});
+
 app.on('window-all-closed', () => {
   if (scheduleErrorHandler) {
     schedulePlayer.removeListener('schedule-error', scheduleErrorHandler);
@@ -339,8 +303,14 @@ app.on('window-all-closed', () => {
   scheduleStartHandler = null;
   scheduleStopHandler = null;
   
+  // Global cleanup
+  if (global.jukeboxPlayer) {
+    global.jukeboxPlayer.cleanup();
+  }
+  
   schedulePlayer.cleanup();
   websocketService.disconnect();
+  
   if (process.platform !== 'darwin') {
     app.quit();
   }

@@ -3,6 +3,9 @@ const fs = require('fs');
 const path = require('path');
 const Store = require('electron-store');
 const store = new Store();
+const { createLogger } = require('./utils/logger');
+
+const logger = createLogger('renderer');
 
 // Controller'ları ve servisleri import et
 const scheduleController = new (require('./services/schedule/ScheduleController'))();
@@ -89,6 +92,19 @@ jukeboxPlayer.setOnSongEndCallback(() => {
 
 jukeboxPlayer.setOnPlaybackChangeCallback((isPlaying) => {
     updatePlaybackStatus(isPlaying);
+});
+
+// Şarkı değişimini dinle
+jukeboxPlayer.setOnSongChangeCallback((currentSong) => {
+    if (currentSong) {
+        // UI'ı güncelle
+        updateUIForSong(currentSong);
+        // WebSocket üzerinden durumu gönder
+        ipcRenderer.invoke('send-websocket-message', {
+            type: 'currentSong',
+            data: currentSong
+        });
+    }
 });
 
 // IPC event listeners
@@ -471,6 +487,24 @@ ipcRenderer.on('playlist-received', async (event, playlist) => {
     } else {
       console.log('Loading new playlist without auto-play');
       await ipcRenderer.invoke('load-playlist', playlist);
+      
+      // UI'ı güncelle
+      displayPlaylists();
+      
+      // İlk şarkı için UI'ı güncelle
+      const currentSong = playlist.songs[0];
+      if (currentSong) {
+          // UI'da aktif şarkıyı işaretle
+          const songElements = document.querySelectorAll('.playlist-item');
+          songElements.forEach(el => el.classList.remove('active'));
+          const activeSong = document.querySelector(`[data-index="0"]`);
+          if (activeSong) {
+              activeSong.classList.add('active');
+          }
+          
+          // Şarkı bilgilerini güncelle
+          updateUIForSong(currentSong);
+      }
     }
     
     deleteOldPlaylists();
@@ -773,95 +807,6 @@ async function displayPlaylists() {
     }
 }
 
-// Auto-play playlist event'i
-ipcRenderer.on('auto-play-playlist', async (event, playlist) => {
-    try {
-        // Eğer zaten çalıyorsa, yeni playlist'i başlatma
-        if (jukeboxPlayer.isPlaying) {
-            console.log('Player is already playing, skipping auto-play');
-            return;
-        }
-
-        console.log('Auto-playing playlist:', {
-            name: playlist.name,
-            songCount: playlist.songs.length,
-            firstSong: playlist.songs[0]
-        });
-        
-        // Playlist'i yükle ve çal
-        const loadResult = await jukeboxPlayer.loadPlaylist(playlist);
-        console.log('Playlist load result:', loadResult);
-        
-        if (loadResult) {
-            // UI'ı güncelle
-            UIManager.displayPlaylists(playlist);
-            
-            // Artwork'leri yükle
-            if (playlist.songs) {
-                playlist.songs.forEach(song => {
-                    if (song.artworkPath) {
-                        ArtworkManager.loadArtwork(song.artworkPath);
-                    }
-                });
-            }
-            
-            // Playback durumunu güncelle
-            playbackStateManager.setPlaybackState(true);
-        } else {
-            console.error('Failed to load playlist');
-            UIManager.showError('Failed to load playlist');
-        }
-    } catch (error) {
-        console.error('Error handling auto-play playlist:', error);
-        UIManager.showError('Failed to auto-play playlist');
-    }
-});
-
-// Playlist başlatma fonksiyonu
-async function startPlaylist(playlist) {
-  try {
-    if (!playlist || !playlist.songs || !Array.isArray(playlist.songs)) {
-      console.error('Invalid playlist:', playlist);
-      return;
-    }
-
-    // Önce aktif schedule kontrolü yap
-    const hasActiveSchedule = await ipcRenderer.invoke('check-active-schedule');
-    if (hasActiveSchedule) {
-      console.log('Cannot start playlist - active schedule exists');
-      new Notification('Schedule Active', {
-        body: 'Cannot play playlist while a schedule is active'
-      });
-      return;
-    }
-
-    console.log('Starting playlist:', playlist.name);
-    
-    // Direkt JukeboxPlayer'ı kullan
-    const result = await jukeboxPlayer.loadPlaylist(playlist);
-    
-    if (!result) {
-      console.error('Failed to start playlist');
-      new Notification('Playlist Error', {
-        body: 'Failed to start playlist'
-      });
-      return;
-    }
-
-    // Playlist başarıyla başlatıldı
-    console.log('Playlist started successfully');
-    
-    // UI'ı güncelle
-    playbackStateManager.setPlaybackState(true);
-    
-  } catch (error) {
-    console.error('Error starting playlist:', error);
-    new Notification('Playlist Error', {
-      body: error.message
-    });
-  }
-}
-
 // Eski playlistleri sil
 function deleteOldPlaylists() {
   const playlists = store.get('playlists', []);
@@ -921,7 +866,7 @@ ipcRenderer.on('playback-status-update', (event, data) => {
   }
   
   console.log('Playback status update:', data);
-  updatePlaybackStatus(data.isPlaying, data.playerType);
+  updatePlaybackStatus(data.isPlaying);
   lastPlaybackUpdate = now;
 });
 
@@ -1047,6 +992,24 @@ ipcRenderer.on('playlist-received', async (event, playlist) => {
     } else {
       console.log('Loading new playlist without auto-play');
       await ipcRenderer.invoke('load-playlist', playlist);
+      
+      // UI'ı güncelle
+      displayPlaylists();
+      
+      // İlk şarkı için UI'ı güncelle
+      const currentSong = playlist.songs[0];
+      if (currentSong) {
+          // UI'da aktif şarkıyı işaretle
+          const songElements = document.querySelectorAll('.playlist-item');
+          songElements.forEach(el => el.classList.remove('active'));
+          const activeSong = document.querySelector(`[data-index="0"]`);
+          if (activeSong) {
+              activeSong.classList.add('active');
+          }
+          
+          // Şarkı bilgilerini güncelle
+          updateUIForSong(currentSong);
+      }
     }
     
     deleteOldPlaylists();
@@ -1060,9 +1023,176 @@ ipcRenderer.on('playlist-received', async (event, playlist) => {
   }
 });
 
+// Playlist başlatma fonksiyonu
+async function startPlaylist(playlist) {
+  try {
+    if (!playlist || !playlist.songs || !Array.isArray(playlist.songs)) {
+      console.error('Invalid playlist:', playlist);
+      return;
+    }
+
+    // Önce aktif schedule kontrolü yap
+    const hasActiveSchedule = await ipcRenderer.invoke('check-active-schedule');
+    if (hasActiveSchedule) {
+      console.log('Cannot start playlist - active schedule exists');
+      new Notification('Schedule Active', {
+        body: 'Cannot play playlist while a schedule is active'
+      });
+      return;
+    }
+
+    console.log('Starting playlist:', playlist.name);
+    
+    // Direkt JukeboxPlayer'ı kullan
+    const result = await jukeboxPlayer.loadPlaylist(playlist);
+    
+    if (!result) {
+      console.error('Failed to start playlist');
+      new Notification('Playlist Error', {
+        body: 'Failed to start playlist'
+      });
+      return;
+    }
+
+    // Playlist başarıyla başlatıldı
+    console.log('Playlist started successfully');
+    
+    // UI'ı güncelle
+    playbackStateManager.setPlaybackState(true);
+    
+    // İlk şarkı için UI'ı güncelle
+    const currentSong = playlist.songs[0];
+    if (currentSong) {
+        // UI'da aktif şarkıyı işaretle
+        const songElements = document.querySelectorAll('.playlist-item');
+        songElements.forEach(el => el.classList.remove('active'));
+        const activeSong = document.querySelector(`[data-index="0"]`);
+        if (activeSong) {
+            activeSong.classList.add('active');
+        }
+        
+        // Şarkı bilgilerini güncelle
+        updateUIForSong(currentSong);
+    }
+  } catch (error) {
+    console.error('Error starting playlist:', error);
+    new Notification('Playlist Error', {
+      body: error.message
+    });
+  }
+}
+
+// UI'ı güncelle
+ipcRenderer.on('playlist-loaded', (event, playlist) => {
+    updateUIForPlaylist(playlist);
+});
+
 // Test için seek event listener'ı
 document.addEventListener('keydown', (event) => {
     if (event.key === 'F9') {  // F9 tuşuna basınca son 6 saniyeye gidecek
         jukeboxPlayer.seekToEnd();
     }
+});
+
+// UI güncelleme fonksiyonu
+function updateUIForSong(song) {
+    try {
+        if (!song) return;
+
+        // Şarkı bilgilerini güncelle
+        const songTitleElement = document.getElementById('currentSongTitle');
+        const artistElement = document.getElementById('currentArtist');
+        const albumElement = document.getElementById('currentAlbum');
+        const coverArtElement = document.getElementById('coverArt');
+
+        if (songTitleElement) songTitleElement.textContent = song.name || 'Unknown Title';
+        if (artistElement) artistElement.textContent = song.artist || 'Unknown Artist';
+        if (albumElement) albumElement.textContent = song.album || 'Unknown Album';
+        
+        // Kapak resmini güncelle
+        if (coverArtElement && song.coverArt) {
+            coverArtElement.src = song.coverArt;
+        } else if (coverArtElement) {
+            coverArtElement.src = './assets/default-cover.png'; // Varsayılan kapak resmi
+        }
+
+        // Progress bar'ı sıfırla
+        const progressBar = document.getElementById('progressBar');
+        if (progressBar) progressBar.style.width = '0%';
+
+        // Süre bilgisini güncelle
+        const durationElement = document.getElementById('duration');
+        if (durationElement && song.duration) {
+            const minutes = Math.floor(song.duration / 60);
+            const seconds = Math.floor(song.duration % 60);
+            durationElement.textContent = `${minutes}:${seconds.toString().padStart(2, '0')}`;
+        }
+
+        logger.info('UI updated for song:', song.name);
+    } catch (error) {
+        logger.error('Error updating UI for song:', error);
+    }
+}
+
+// Song changed eventini dinle
+ipcRenderer.on('song-changed', (event, song) => {
+    console.log('Song changed:', song);
+    
+    // PlayerUIManager'ı çağır
+    PlayerUIManager.updateCurrentSong(song);
+
+    // Playlist container'daki aktif şarkıyı güncelle
+    const playlistItems = document.querySelectorAll('.playlist-item');
+    playlistItems.forEach((item, index) => {
+        if (index === song.index) {
+            item.classList.add('active');
+        } else {
+            item.classList.remove('active');
+        }
+    });
+
+    // Şarkı bilgilerini güncelle
+    const container = document.getElementById('playlistContainer');
+    if (container) {
+        const currentItem = container.querySelector(`.playlist-item[data-index="${song.index}"]`);
+        if (currentItem) {
+            const titleEl = currentItem.querySelector('h3');
+            const artistEl = currentItem.querySelector('p');
+            
+            if (titleEl) titleEl.textContent = song.name || 'Unknown Song';
+            if (artistEl) artistEl.textContent = song.artist || 'Unknown Artist';
+        }
+    }
+});
+
+// Şarkı değişim eventi
+ipcRenderer.on('update-current-song', (event, song) => {
+    console.log('Renderer received update-current-song:', song);
+    
+    // Playlist container'ı güncelle
+    const container = document.getElementById('playlistContainer');
+    if (!container) {
+        console.error('Playlist container not found');
+        return;
+    }
+
+    // Tüm playlist itemlerini bul
+    const items = container.querySelectorAll('.playlist-item');
+    items.forEach(item => {
+        // Aktif sınıfını kaldır
+        item.classList.remove('active');
+        
+        // Eğer bu şarkı ise aktif yap ve bilgileri güncelle
+        const index = parseInt(item.getAttribute('data-index'));
+        if (index === song.index) {
+            item.classList.add('active');
+            
+            // Şarkı bilgilerini güncelle
+            const titleEl = item.querySelector('.playlist-details h3');
+            const artistEl = item.querySelector('.playlist-details p');
+            
+            if (titleEl) titleEl.textContent = song.name || 'Unknown Song';
+            if (artistEl) artistEl.textContent = song.artist || 'Unknown Artist';
+        }
+    });
 });

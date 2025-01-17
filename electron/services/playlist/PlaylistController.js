@@ -9,56 +9,74 @@ const storage = new store();
 class PlaylistController {
     constructor() {
         this.currentPlaylist = null;
+        this.isInitializing = false;
         this.storage = storage;
         this.initialize();
     }
 
     async initialize() {
         try {
+            if (this.isInitializing) {
+                logger.warn('PlaylistController already initializing');
+                return;
+            }
+            
+            this.isInitializing = true;
+            
+            // JukeboxPlayer'ı bekle
+            await this.waitForJukeboxPlayer();
+            
             // Başlangıç playlist'ini yükle
             const savedPlaylists = storage.get('playlists', {});
             if (Object.keys(savedPlaylists).length > 0) {
-                const latestPlaylistId = Object.keys(savedPlaylists)[Object.keys(savedPlaylists).length - 1];
-                const latestPlaylist = savedPlaylists[latestPlaylistId];
-                await this.loadPlaylist(latestPlaylist);
+                const lastPlaylist = Object.values(savedPlaylists)[Object.keys(savedPlaylists).length - 1];
+                logger.info('Loading last saved playlist:', lastPlaylist.name);
+                await this.loadPlaylist(lastPlaylist);
             }
+            
+            this.isInitializing = false;
         } catch (error) {
-            logger.error('Error initializing playlist:', error);
+            this.isInitializing = false;
+            logger.error('Error initializing PlaylistController:', error);
         }
+    }
+
+    // JukeboxPlayer hazır olana kadar bekle
+    async waitForJukeboxPlayer() {
+        return new Promise(resolve => {
+            const check = () => {
+                if (global.jukeboxPlayer && typeof global.jukeboxPlayer.loadPlaylist === 'function') {
+                    logger.info('JukeboxPlayer is ready');
+                    resolve();
+                } else {
+                    setTimeout(check, 100);
+                }
+            };
+            check();
+        });
     }
 
     async loadPlaylist(playlist) {
         try {
             if (!playlist?.songs?.length) {
-                logger.warn('No songs in playlist');
-                return false;
+                logger.warn('Invalid playlist or empty songs list');
+                return;
             }
 
-            logger.info('Loading playlist:', { id: playlist.id });
+            if (global.jukeboxPlayer.isPlaying()) {
+                logger.warn('Player already active, stopping current playback');
+                global.jukeboxPlayer.cleanup();
+            }
 
-            // Playlist'i storage'a kaydet
-            const playlists = this.storage.get('playlists', {});
-            playlists[playlist.id] = playlist;
-            this.storage.set('playlists', playlists);
-
-            // JukeboxPlayer'a gönder
-            jukeboxPlayer.loadPlaylist(playlist);
-
+            logger.info('Loading playlist:', playlist.name);
+            await global.jukeboxPlayer.loadPlaylist(playlist);
+            
             // UI'ı güncelle
-            this.updateUI(playlist);
-
-            // Eğer başka bir şey çalmıyorsa playlist'i başlat
-            if (!jukeboxPlayer.isPlaying()) {
-                const firstSong = playlist.songs[0];
-                await jukeboxPlayer.play(firstSong, 'playlist');
+            if (global.mainWindow) {
+                global.mainWindow.webContents.send('playlist-loaded', playlist);
             }
-
-            this.currentPlaylist = playlist;
-
-            return true;
         } catch (error) {
             logger.error('Error loading playlist:', error);
-            return false;
         }
     }
 

@@ -5,6 +5,8 @@ const AdminConnectionHandler = require('./handlers/AdminConnectionHandler');
 const DeviceConnectionHandler = require('./handlers/DeviceConnectionHandler');
 const Device = require('../models/Device');
 const ScheduleHandler = require('./handlers/ScheduleHandler');
+const PlaybackHistory = require('../models/PlaybackHistory');
+const mongoose = require('mongoose');
 
 class WebSocketServer {
   constructor(server) {
@@ -97,11 +99,39 @@ class WebSocketServer {
         break;
 
       case 'playbackStatus':
-        this.broadcastToAdmins({
-          type: 'deviceStatus',
-          token: token,
-          isPlaying: message.status === 'playing'
-        });
+        try {
+          // Admin paneline detaylı playback durumunu ilet
+          this.broadcastToAdmins({
+            type: 'playbackStatus',
+            token: token,
+            data: message.data
+          });
+
+          // Eğer şarkı tamamlandıysa PlaybackHistory'ye kaydet
+          if (message.data.completed) {
+            const device = await Device.findOne({ token });
+            if (device) {
+              // Şarkı başlangıç zamanını al
+              const startedAt = new Date(message.data.startedAt);
+              
+              // Gerçek çalma süresini al
+              const playDuration = message.data.playDuration;
+
+              // PlaybackHistory'ye kaydet
+              await PlaybackHistory.create({
+                deviceId: device._id,
+                songId: message.data.songId,
+                playedAt: startedAt,
+                playDuration: playDuration,
+                completed: true
+              });
+
+              console.log(`Playback history saved for device ${token}, song ${message.data.songId}, duration: ${playDuration}s`);
+            }
+          }
+        } catch (error) {
+          console.error('Error handling playback status:', error);
+        }
         break;
 
       case 'volume':
