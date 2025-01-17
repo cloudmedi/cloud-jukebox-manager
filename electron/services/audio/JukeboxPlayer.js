@@ -3,6 +3,13 @@ const path = require('path');
 const { createLogger } = require('../../utils/logger');
 const fs = require('fs');
 const { ipcRenderer } = require('electron');
+const Store = require('electron-store');
+const store = new Store({
+    name: 'playback-queue',
+    defaults: {
+        offlineQueue: []
+    }
+});
 
 const logger = createLogger('jukebox-player');
 
@@ -43,6 +50,14 @@ class JukeboxPlayer {
         this.onSongEndCallback = null;
         this.onPlaybackChangeCallback = null;
         this.onSongChangeCallback = null;  // Yeni callback
+        
+        // Offline destek için queue
+        this.offlineQueue = store.get('offlineQueue', []);
+        this.isOnline = true;
+        
+        // Online durumunu dinle
+        window.addEventListener('online', () => this.handleOnlineStatus(true));
+        window.addEventListener('offline', () => this.handleOnlineStatus(false));
     }
 
     // Websocket mesajı gönderme yardımcı fonksiyonu
@@ -54,14 +69,25 @@ class JukeboxPlayer {
             const currentTime = this.currentHowl ? this.currentHowl.seek() || 0 : 0;
             const duration = this.currentHowl ? this.currentHowl.duration() || 0 : 0;
 
-            // Gerçek çalma süresini hesapla
-            const now = Date.now();
-            const playDuration = this.playStartTime ? (now - this.playStartTime) / 1000 : 0;
+            // UTC zamanlarını hesapla
+            const now = new Date();
+            const startTime = this.playStartTime ? new Date(this.playStartTime) : now;
+            const playDuration = (now.getTime() - startTime.getTime()) / 1000;
 
             // Eğer completed=true ise, süreyi şarkının tam uzunluğu olarak gönder
             const reportedTime = completed ? duration : currentTime;
 
-            ipcRenderer.invoke('send-websocket-message', {
+            // Hata kontrolü
+            if (!this.validateTimes(startTime, now, playDuration)) {
+                logger.error('Invalid time values detected', {
+                    startTime: startTime.toISOString(),
+                    now: now.toISOString(),
+                    playDuration
+                });
+                return;
+            }
+
+            const message = {
                 type: 'playbackStatus',
                 data: {
                     isPlaying: this.isPlaying,
@@ -69,19 +95,94 @@ class JukeboxPlayer {
                     currentTime: reportedTime,
                     duration: duration,
                     completed: completed,
-                    timestamp: new Date().toISOString(),
-                    startedAt: this.playStartTime ? new Date(this.playStartTime).toISOString() : new Date().toISOString(),
-                    playDuration: playDuration, // Gerçek çalma süresini ekle
+                    timestamp: now.toISOString(),
+                    startedAt: startTime.toISOString(),
+                    playDuration: playDuration,
                     songDetails: {
                         name: currentSong.name,
                         artist: currentSong.artist,
                         artwork: currentSong.artwork
                     }
                 }
+            };
+
+            // Online/Offline durumuna göre işle
+            if (!this.isOnline) {
+                this.offlineQueue.push(message);
+                store.set('offlineQueue', this.offlineQueue);
+                console.log('Added to offline queue', { queueLength: this.offlineQueue.length });
+                return;
+            }
+
+            ipcRenderer.invoke('send-websocket-message', message).catch(error => {
+                console.error('Error in sendPlaybackStatus:', error);
+                // Hata durumunda offline queue'ya ekle
+                if (!this.isOnline) {
+                    this.offlineQueue.push(message);
+                    store.set('offlineQueue', this.offlineQueue);
+                }
             });
         } catch (error) {
-            logger.error('Error sending playback status:', error);
+            logger.error('Error in sendPlaybackStatus:', error);
         }
+    }
+
+    // Online/Offline durumu yönetimi
+    handleOnlineStatus(online) {
+        this.isOnline = online;
+        console.log(`Network status changed: ${online ? 'online' : 'offline'}`);
+        
+        if (online) {
+            this.processOfflineQueue();
+        }
+    }
+
+    // Offline queue işleme
+    async processOfflineQueue() {
+        console.log(`Processing offline queue, ${this.offlineQueue.length} items`);
+        
+        while (this.offlineQueue.length > 0) {
+            const batch = this.offlineQueue.splice(0, 10); // 10'lu batch'ler halinde işle
+            
+            try {
+                await Promise.all(batch.map(msg => 
+                    ipcRenderer.invoke('send-websocket-message', msg)
+                ));
+                console.log(`Processed ${batch.length} offline messages`);
+                store.set('offlineQueue', this.offlineQueue); // Kalan queue'yu kaydet
+            } catch (error) {
+                console.error('Error processing offline queue:', error);
+                // Başarısız olanları queue'ya geri ekle
+                this.offlineQueue.unshift(...batch);
+                store.set('offlineQueue', this.offlineQueue);
+                break;
+            }
+        }
+    }
+
+    // Zaman değerlerini doğrula
+    validateTimes(startTime, now, duration) {
+        // Geçerli tarihler mi?
+        if (!(startTime instanceof Date) || !(now instanceof Date)) {
+            return false;
+        }
+
+        // Tarihler geçerli mi?
+        if (isNaN(startTime.getTime()) || isNaN(now.getTime())) {
+            return false;
+        }
+
+        // Süre mantıklı mı?
+        if (duration < 0 || duration > 24 * 60 * 60) {
+            return false;
+        }
+
+        // Başlangıç zamanı şimdiden önce mi?
+        if (startTime > now) {
+            return false;
+        }
+
+        return true;
     }
 
     // Event listener setters
@@ -183,7 +284,7 @@ class JukeboxPlayer {
 
                                 const duration = this.currentHowl.duration();
                                 if (duration) {
-                                    this.setupCrossfadeTimer(duration);
+                                    this.setupCrossfadeTimer();
                                 }
                             }, 100);
                         } else {
@@ -196,7 +297,7 @@ class JukeboxPlayer {
                             
                             const duration = this.currentHowl.duration();
                             if (duration) {
-                                this.setupCrossfadeTimer(duration);
+                                this.setupCrossfadeTimer();
                             }
                         }
                         
